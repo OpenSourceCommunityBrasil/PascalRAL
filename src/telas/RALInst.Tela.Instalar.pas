@@ -4,6 +4,9 @@
 /// gets another version, and with nothing to do anywhere the run does not
 /// start ("Reinstalar mesmo assim" does it anyway). The run log also goes to a
 /// file, which is what is sent when something goes wrong.
+/// After an uninstall the page offers to delete what nobody uses any more
+/// (F19); after a run that updated, downgraded or switched RAL in an IDE, a
+/// link opens the project migrator with both versions (F21).
 unit RALInst.Tela.Instalar;
 
 {$mode ObjFPC}{$H+}
@@ -18,10 +21,12 @@ type
   /// Plan, installation and uninstallation page.
   TTelaInstalar = class(TTelaModelo)
     lbDesinstalar: TLabel;
+    lbMigrador: TLabel;
     lbReinstalar: TLabel;
     lbSubTitle: TLabel;
     mLogInstall: TMemo;
     procedure lbDesinstalarClick(Sender: TObject);
+    procedure lbMigradorClick(Sender: TObject);
     procedure lbNextClick(Sender: TObject);
     procedure lbReinstalarClick(Sender: TObject);
   private
@@ -29,6 +34,9 @@ type
     FDesinstalar: boolean;
     FExistentes: string;
     FInstalling: boolean;
+    /// F21: the RAL versions the migrator converts the projects between
+    FMigrarDe: string;
+    FMigrarPara: string;
     /// Every checked IDE already has the chosen version and features
     FNadaAFazer: boolean;
     FPlano: string;
@@ -38,6 +46,9 @@ type
     procedure Executar;
     /// Computes and shows the plan; the button and the links follow it
     procedure MostrarPlano;
+    /// F19: what the installer downloaded and nobody uses any more, after an
+    /// uninstall; deletes what the user keeps checked
+    procedure OferecerLimpeza;
     /// Saves the memo into <data>\logs\<prefix>-<date>.log; '' on failure
     function SalvarLog(const APrefixo: string): string;
   protected
@@ -55,7 +66,9 @@ implementation
 {$R *.lfm}
 
 uses
-  RALInst.Processo, RALInst.Situacao, RALInst.Tela.Mensagens, RALInst.Tela.Principal;
+  RALInst.Limpeza, RALInst.Migrador, RALInst.Processo, RALInst.Situacao,
+  RALInst.Tela.Limpeza, RALInst.Tela.Mensagens, RALInst.Tela.Principal,
+  RALInst.Traducao;
 
 procedure ProcessarMensagens;
 begin
@@ -111,12 +124,49 @@ begin
     FExistentes := TelaPrincipal.InstalacoesExistentes;
     lbDesinstalar.Visible := (FExistentes <> '') and not FDesinstalar;
     lbReinstalar.Visible := False;
+    lbMigrador.Visible := False;
     FPlanoVelho := True;
   finally
     Screen.Cursor := crDefault;
     AoEsperarProcesso := nil;
     FInstalling := False;
   end;
+  // F19: o que ficou para tras (versoes, dependencias, cache) e ninguem usa
+  OferecerLimpeza;
+end;
+
+procedure TTelaInstalar.OferecerLimpeza;
+var
+  vSobras: TSobras;
+  vBases: TStringList;
+begin
+  vSobras := TSobras.Create(True);
+  vBases := TStringList.Create;
+  try
+    vBases.Add(TelaPrincipal.PastaInstalacao);
+    vSobras.Listar(vBases, PastaDadosInstalador + 'recibos');
+    if not ConfirmarLimpeza(vSobras) then
+      Exit;
+    mLogInstall.Lines.Add('');
+    mLogInstall.Lines.Add(cmLimpandoSobras);
+    if vSobras.Apagar(PastaDadosInstalador + 'recibos', @LogarLinha) then
+      mLogInstall.Lines.Add(Format(cmLimpezaFeita, [DescreverTamanho(vSobras.TotalBytes)]))
+    else
+      mLogInstall.Lines.Add(cmLimpezaComErros);
+  finally
+    vBases.Free;
+    vSobras.Free;
+  end;
+end;
+
+procedure TTelaInstalar.lbMigradorClick(Sender: TObject);
+var
+  vErro: string;
+begin
+  if FInstalling then
+    Exit;
+  if not AbrirMigrador(FMigrarDe, FMigrarPara, IdiomaAtual, vErro) then
+    ShowMessage(vErro);
 end;
 
 procedure TTelaInstalar.lbNextClick(Sender: TObject);
@@ -194,6 +244,8 @@ begin
     mLogInstall.Lines.Add(TrimRight(FPlano));
     mLogInstall.Lines.Add('');
     Application.ProcessMessages;
+    // F21: de qual versao para qual, antes que a rodada mude o que a IDE tem
+    TelaPrincipal.VersoesMigracao(FMigrarDe, FMigrarPara);
 
     vOk := TelaPrincipal.InstallRAL(mLogInstall);
 
@@ -208,6 +260,13 @@ begin
       mLogInstall.Lines.Add(cmInstalacaoConcluida)
     else
       mLogInstall.Lines.Add(cmInstalacaoComErros);
+    // F21: os projetos do usuario seguem a versao nova pelo migrador
+    lbMigrador.Visible := FMigrarPara <> '';
+    if lbMigrador.Visible then
+    begin
+      lbMigrador.Caption := Format(cmMigrarProjetos, [FMigrarPara]);
+      mLogInstall.Lines.Add(Format(cmMigrarDica, [FMigrarDe, FMigrarPara]));
+    end;
     if vLog <> '' then
     begin
       mLogInstall.Lines.Add(Format(cmLog, [vLog]));
@@ -225,6 +284,7 @@ var
   vComMudanca, vAtualizacoes: integer;
 begin
   FPlanoVelho := False;
+  lbMigrador.Visible := False;
   Screen.Cursor := crHourGlass;
   try
     FDesinstalar := TelaPrincipal.ModoDesinstalar;

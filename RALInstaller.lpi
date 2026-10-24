@@ -13,7 +13,7 @@
         <DpiAware Value="True"/>
       </XPManifest>
       <Icon Value="0"/>
-      <Resources Count="15">
+      <Resources Count="19">
         <Resource_0 FileName="Assets\images\Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
         <Resource_1 FileName="Assets\images\Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
         <Resource_2 FileName="Assets\images\Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
@@ -29,6 +29,10 @@
         <Resource_12 FileName="src\languages\ralinstaller.pt-BR.po" Type="RCDATA" ResourceName="PO_PT_BR"/>
         <Resource_13 FileName="src\languages\ralinstaller.en-US.po" Type="RCDATA" ResourceName="PO_EN_US"/>
         <Resource_14 FileName="src\languages\ralinstaller.es-ES.po" Type="RCDATA" ResourceName="PO_ES_ES"/>
+        <Resource_15 FileName="manifesto\verificadas.json" Type="RCDATA" ResourceName="VERIFICADAS"/>
+        <Resource_16 FileName="receitas\libsagui.json" Type="RCDATA" ResourceName="RECEITA_LIBSAGUI"/>
+        <Resource_17 FileName="receitas\brotli.json" Type="RCDATA" ResourceName="RECEITA_BROTLI"/>
+        <Resource_18 FileName="receitas\zstd.json" Type="RCDATA" ResourceName="RECEITA_ZSTD"/>
       </Resources>
     </General>
     <i18n>

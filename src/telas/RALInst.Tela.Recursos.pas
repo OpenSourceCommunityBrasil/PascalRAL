@@ -40,26 +40,32 @@ type
     bAddVersion: TSpeedButton;
     cbVersao: TComboBox;
     ckSomentePaths: TCheckBox;
+    ckSoRuntime: TCheckBox;
     ckWin64: TCheckBox;
     dirSelect: TSelectDirectoryDialog;
     Label2: TLabel;
     lbDestino: TLabel;
+    lbBloqueio: TLabel;
     lbedDownloadPath: TLabeledEdit;
     lbDesmarcarTodos: TLabel;
     lbInfo: TLabel;
     lbInstalada: TLabel;
     lbMarcarTodos: TLabel;
     lbSomentePaths: TLabel;
+    lbSoRuntime: TLabel;
     lbSubTitle: TLabel;
     lbVersao: TLabel;
     lbWin64: TLabel;
     tvRecursos: TTreeView;
     procedure bAddVersionClick(Sender: TObject);
     procedure cbVersaoChange(Sender: TObject);
+    procedure ckSomentePathsChange(Sender: TObject);
+    procedure ckSoRuntimeChange(Sender: TObject);
     procedure lbDesmarcarTodosClick(Sender: TObject);
     procedure lbedDownloadPathEditingDone(Sender: TObject);
     procedure lbMarcarTodosClick(Sender: TObject);
     procedure lbSomentePathsClick(Sender: TObject);
+    procedure lbSoRuntimeClick(Sender: TObject);
     procedure lbWin64Click(Sender: TObject);
     procedure tvRecursosDblClick(Sender: TObject);
     procedure tvRecursosKeyDown(Sender: TObject; var Key: Word;
@@ -104,6 +110,8 @@ type
     FReinstalar: boolean;
     FRepo: TRepoGitHub;
     FSecao: TRTLCriticalSection;
+    /// F16: the heading of the "other versions" group in the version list
+    FSeparador: TVersaoRAL;
     FTarefa: TTarefa;
     FUltimoProgresso: int64;
     FVersoes: TVersoesRAL;
@@ -115,6 +123,10 @@ type
     function AssinaturaIDEs: string;
     /// The destination line under the folder
     procedure AtualizarDestino;
+    /// F15: a choice that would install a broken RAL in some checked IDE (no
+    /// engine, a version the manifest refuses there) turns the next button off
+    /// and says why under the tree
+    procedure AtualizarBloqueio;
     /// Delphi options only for Delphi runs
     procedure AtualizarOpcoes;
     /// The line beside the version: the RAL the checked IDEs have and what
@@ -195,6 +207,11 @@ type
     function Escolha: TEscolhaInstalacao;
     /// Where the sources are, or will be after the download
     function PastaFontes: string;
+    /// F19: the installation folder (<folder> of <folder>/PascalRAL/<version>)
+    function PastaInstalacao: string;
+    /// F21: the RAL version the run installs, as a number when there is one
+    /// ('1.1', '2.0.0' from a local folder's RALConsts); '' when unknown
+    function VersaoEscolhida: string;
     /// Decides what to download (only what some checked IDE lacks, in the
     /// version each one asks) and returns that part of the plan; the IDEs
     /// learn where each one goes
@@ -223,7 +240,7 @@ implementation
 uses
   StrUtils,
   RALInst.Dependencias, RALInst.Fontes, RALInst.Heranca, RALInst.Mensagens,
-  RALInst.Motores, RALInst.Tela.Imagens, RALInst.Tela.Mensagens,
+  RALInst.Motores, RALInst.Tela.Imagens, RALInst.Tela.Mensagens, RALInst.Verificadas,
   RALInst.Zip;
 
 const
@@ -329,7 +346,9 @@ begin
   FInstalados.CaseSensitive := False;
   FInstaladosDiretos := TStringList.Create;
   FInstaladosDiretos.CaseSensitive := False;
+  FSeparador := TVersaoRAL.Create;
   lbInfo.Caption := '';
+  lbBloqueio.Caption := '';
   AtualizarOpcoes;
 end;
 
@@ -338,6 +357,7 @@ begin
   CancelarEsperar;
   TThread.RemoveQueuedEvents(@MostrarProgresso);
   FreeAndNil(FCompat);
+  FreeAndNil(FSeparador);
   FreeAndNil(FDeteccoes);
   FreeAndNil(FInstaladosDiretos);
   FreeAndNil(FInstalados);
@@ -369,7 +389,71 @@ end;
 
 procedure TTelaRecursos.cbVersaoChange(Sender: TObject);
 begin
+  // F16: o titulo do grupo "outras" nao e uma versao: vai para a primeira dele
+  if (cbVersao.ItemIndex >= 0) and
+     (cbVersao.Items.Objects[cbVersao.ItemIndex] = FSeparador) then
+    cbVersao.ItemIndex := cbVersao.ItemIndex + 1;
   TrocarModo;
+end;
+
+procedure TTelaRecursos.ckSomentePathsChange(Sender: TObject);
+begin
+  if ckSomentePaths.Checked then
+    ckSoRuntime.Checked := False;
+end;
+
+procedure TTelaRecursos.ckSoRuntimeChange(Sender: TObject);
+begin
+  // so runtime compila os pacotes; somente library path nao compila nada
+  if ckSoRuntime.Checked then
+    ckSomentePaths.Checked := False;
+  AtualizarBloqueio;
+end;
+
+procedure TTelaRecursos.lbSoRuntimeClick(Sender: TObject);
+begin
+  ckSoRuntime.Checked := not ckSoRuntime.Checked;
+end;
+
+procedure TTelaRecursos.AtualizarBloqueio;
+var
+  vIDEs: TList;
+  vMotivos: TStringList;
+  vInt: integer;
+  vMotivo: string;
+begin
+  lbBloqueio.Caption := '';
+  lbBloqueio.Hint := '';
+  // nada marcado desinstala; sem catalogo, o Avancar explica
+  if Carregando or (FCatalogo.Count = 0) or (FEscolhidos.Count = 0) then
+  begin
+    PermitirAvancar(True);
+    Exit;
+  end;
+  vIDEs := TList.Create;
+  vMotivos := TStringList.Create;
+  try
+    IDEsMarcadas(vIDEs);
+    for vInt := 0 to Pred(vIDEs.Count) do
+    begin
+      vMotivo := FaltaMotor(FCatalogo, Compat, TIDETela(vIDEs[vInt]).Instancia,
+                            FEscolhidos);
+      if vMotivo <> '' then
+        vMotivos.Add(vMotivo);
+    end;
+    if vMotivos.Count > 0 then
+    begin
+      lbBloqueio.Caption := vMotivos[0];
+      if vMotivos.Count > 1 then
+        lbBloqueio.Caption := lbBloqueio.Caption + Format(cmSituacaoMais,
+                                                          [vMotivos.Count - 1]);
+      lbBloqueio.Hint := Trim(vMotivos.Text);
+    end;
+    PermitirAvancar(vMotivos.Count = 0);
+  finally
+    vMotivos.Free;
+    vIDEs.Free;
+  end;
 end;
 
 procedure TTelaRecursos.lbedDownloadPathEditingDone(Sender: TObject);
@@ -578,10 +662,12 @@ var
   vTela: TIDETela;
   vMudanca: TMudancaRAL;
   vInt: integer;
-  vTexto: string;
+  vTexto, vNaoVerificadas: string;
+  vVerif: TVerificacaoIDE;
 begin
   lbInstalada.Caption := '';
   lbInstalada.Hint := '';
+  vNaoVerificadas := '';
   if (FCatalogo.Count = 0) or Carregando then
     Exit;
   vIDEs := TList.Create;
@@ -605,8 +691,32 @@ begin
       if vTextos.IndexOf(vTexto) < 0 then
         vTextos.Add(vTexto);
     end;
-    if vLinhas.Count = 0 then
+    // F16: em quais IDEs marcadas o projeto ja conferiu esta versao (D-I5:
+    // a nao verificada instala do mesmo jeito)
+    for vInt := 0 to Pred(vIDEs.Count) do
+    begin
+      vTela := TIDETela(vIDEs[vInt]);
+      vVerif := VerificadasPadrao.Buscar(FManifesto.VersaoRAL, vTela.Instancia);
+      if FManifesto.VersaoRAL = '' then
+        Continue;
+      if (vVerif <> nil) and vVerif.Ok then
+        vLinhas.Add(vTela.Name + ': ' + Format(cmVerificadaNaIDE, [vVerif.Data]))
+      else if vVerif = nil then
+      begin
+        vLinhas.Add(vTela.Name + ': ' + cmNaoVerificadaNaIDE);
+        vNaoVerificadas := vNaoVerificadas + IfThen(vNaoVerificadas <> '', ', ', '') +
+                           vTela.Name;
+      end;
+    end;
+    if vTextos.Count = 0 then
+    begin
+      if vNaoVerificadas <> '' then
+      begin
+        lbInstalada.Caption := Format(cmNaoVerificadaEm, [vNaoVerificadas]);
+        lbInstalada.Hint := Trim(vLinhas.Text);
+      end;
       Exit;
+    end;
     // a linha diz o que muda; quais IDEs, a dica
     lbInstalada.Caption := vTextos[0];
     if vTextos.Count > 1 then
@@ -624,7 +734,7 @@ procedure TTelaRecursos.AtualizarOpcoes;
 var
   vDelphi: boolean;
 begin
-  // as duas opcoes so existem no Delphi
+  // as duas opcoes so existem no Delphi; so runtime (F18) vale nas duas
   {$IFDEF MSWINDOWS}
   vDelphi := (IDE = 0) or (IDE = 2);
   {$ELSE}
@@ -644,7 +754,9 @@ begin
   // a lista de versoes e o que depende do modo foram escritos em codigo
   vIndice := cbVersao.ItemIndex;
   for vInt := 0 to Pred(cbVersao.Items.Count) do
-    if cbVersao.Items.Objects[vInt] <> nil then
+    if cbVersao.Items.Objects[vInt] = FSeparador then
+      cbVersao.Items[vInt] := cmOutrasVersoes
+    else if cbVersao.Items.Objects[vInt] <> nil then
       cbVersao.Items[vInt] := TVersaoRAL(cbVersao.Items.Objects[vInt]).Descricao
     else
       cbVersao.Items[vInt] := cmPastaLocalFontes;
@@ -818,7 +930,14 @@ begin
     FVersoesLidas := nil;
     cbVersao.Items.Clear;
     for vInt := 0 to Pred(FVersoes.Count) do
+    begin
+      // F16: as estaveis primeiro; pre-lancamentos, tags antigas e ramos no
+      // grupo "outras", com o titulo
+      if FVersoes[vInt].Outra and
+         ((vInt = 0) or not FVersoes[vInt - 1].Outra) then
+        cbVersao.Items.AddObject(cmOutrasVersoes, FSeparador);
       cbVersao.Items.AddObject(FVersoes[vInt].Descricao, FVersoes[vInt]);
+    end;
     cbVersao.Items.AddObject(cmPastaLocalFontes, nil);
     if FVersoes.Count = 0 then
     begin
@@ -936,7 +1055,13 @@ begin
   FEscolha.Pacotes.Assign(FEscolhidos);
   FEscolha.Desinstalar := FEscolhidos.Count = 0;
   FEscolha.SomenteLibraryPath := ckSomentePaths.Visible and ckSomentePaths.Checked;
+  FEscolha.SoRuntime := ckSoRuntime.Checked and not FEscolha.SomenteLibraryPath;
   FEscolha.Win64 := ckWin64.Visible and ckWin64.Checked;
+  // F20: as DLLs das dependencias, junto da pasta de instalacao
+  if FPastaBase <> '' then
+    FEscolha.PastaRedist := IncludeTrailingPathDelimiter(FPastaBase) + 'redist'
+  else
+    FEscolha.PastaRedist := '';
   // a versao escolhida: o plano vem antes do download, e a pasta ainda nao a
   // tem (ou tem a anterior)
   vFontes := FontesEscolhidas;
@@ -1355,6 +1480,8 @@ begin
     vLista.Free;
     tvRecursos.Items.EndUpdate;
   end;
+  // F15: o que nao fecha um RAL que funciona nao avanca
+  AtualizarBloqueio;
 end;
 
 procedure TTelaRecursos.MostrarProgresso;
@@ -1790,10 +1917,26 @@ begin
   Result := True;
 end;
 
+function TTelaRecursos.PastaInstalacao: string;
+begin
+  Result := FPastaBase;
+end;
+
+function TTelaRecursos.VersaoEscolhida: string;
+var
+  vFontes: TFontesRAL;
+begin
+  vFontes := FontesEscolhidas;
+  Result := vFontes.Versao;
+  if Result = '' then
+    Result := FManifesto.VersaoRAL;
+end;
+
 function TTelaRecursos.Versao: TVersaoRAL;
 begin
   Result := nil;
-  if (cbVersao.ItemIndex >= 0) and not FModoLocal then
+  if (cbVersao.ItemIndex >= 0) and not FModoLocal and
+     (cbVersao.Items.Objects[cbVersao.ItemIndex] <> FSeparador) then
     Result := TVersaoRAL(cbVersao.Items.Objects[cbVersao.ItemIndex]);
 end;
 

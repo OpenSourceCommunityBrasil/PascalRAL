@@ -209,7 +209,9 @@ begin
     vBDS := BDSNoCaminho(vRaiz);
 
   vProd := ProdutoPorBDS(vBDS);
-  if vProd < 0 then
+  // um BDS mais novo que a tabela nao e o Delphi do sufixo que ele copiou
+  if (vProd < 0) and not ((vBDS <> '') and
+     (CompararVersoes(vBDS, DelphiProdutos[High(DelphiProdutos)].BDS) > 0)) then
   begin
     if FileExists(vBin + 'delphi32.exe') and not FileExists(vBin + 'bds.exe') then
       vProd := ProdutoPorSufixo('70')
@@ -254,6 +256,26 @@ begin
     if (vSufixo <> '') and (vSufixo <> Result.SufixoPacote) then
       Result.Avisos.Add(Format(wmDelphiSufixo,
         [vSufixo, Result.Nome, Result.SufixoPacote]));
+  end
+  else if (vBDS <> '') and
+          (CompararVersoes(vBDS, DelphiProdutos[High(DelphiProdutos)].BDS) > 0) then
+  begin
+    // F16: mais nova que a tabela: o que o disco diz (rsvars.bat e o dcc) basta.
+    // Do Delphi 13 em diante o BDS e a versao do compilador andam juntos
+    // (37.0, VER370, sufixo 370)
+    Result.BDSVersao := vBDS;
+    Result.Versao := vBDS;
+    Result.VersaoCompilador := 'VER' + IntToStr(Trunc(StrToFloatDef(
+                                 StringReplace(vBDS, '.', DefaultFormatSettings.
+                                 DecimalSeparator, []), 0)) * 10);
+    Result.SufixoPacote := vSufixo;
+    if Result.SufixoPacote = '' then
+      Result.SufixoPacote := Copy(Result.VersaoCompilador, 4, MaxInt);
+    Result.Nome := Format(cmDelphiMaisNovo, [vBDS,
+                          DelphiProdutos[High(DelphiProdutos)].Nome]);
+    Result.RegKey := DelphiProdutos[High(DelphiProdutos)].RegBase + '\' + vBDS;
+    Result.Avisos.Add(wmDelphiMaisNovo);
+    vProd := High(DelphiProdutos);
   end
   else
   begin

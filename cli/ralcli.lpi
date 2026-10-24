@@ -13,13 +13,17 @@
       <Title Value="ralcli"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
-      <Resources Count="6">
+      <Resources Count="10">
         <Resource_0 FileName="..\receitas\mormot2.json" Type="RCDATA" ResourceName="RECEITA_MORMOT2"/>
         <Resource_1 FileName="..\receitas\zeos.json" Type="RCDATA" ResourceName="RECEITA_ZEOS"/>
         <Resource_2 FileName="..\receitas\indy.json" Type="RCDATA" ResourceName="RECEITA_INDY"/>
         <Resource_3 FileName="..\receitas\unigui.json" Type="RCDATA" ResourceName="RECEITA_UNIGUI"/>
         <Resource_4 FileName="..\receitas\firedac.json" Type="RCDATA" ResourceName="RECEITA_FIREDAC"/>
         <Resource_5 FileName="..\manifesto\ral.json" Type="RCDATA" ResourceName="MANIFESTO_RAL"/>
+        <Resource_6 FileName="..\manifesto\verificadas.json" Type="RCDATA" ResourceName="VERIFICADAS"/>
+        <Resource_7 FileName="..\receitas\libsagui.json" Type="RCDATA" ResourceName="RECEITA_LIBSAGUI"/>
+        <Resource_8 FileName="..\receitas\brotli.json" Type="RCDATA" ResourceName="RECEITA_BROTLI"/>
+        <Resource_9 FileName="..\receitas\zstd.json" Type="RCDATA" ResourceName="RECEITA_ZSTD"/>
       </Resources>
     </General>
     <VersionInfo>

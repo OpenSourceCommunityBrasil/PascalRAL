@@ -3,7 +3,10 @@
 # A versao do instalador e independente da do RAL: a unica fonte e
 # VersaoInstalador em src/classes/RALInst.Versao.pas. A tag tem de bater com
 # ela (o job falha se nao bater), e os numeros vao para o VersionInfo dos .lpi.
-# O release leva, por sistema, o instalador grafico e a linha de comando, mais
+# O release leva, por sistema, o instalador grafico, a linha de comando e o
+# migrador dos projetos (F21: a auto-atualizacao troca os dois executaveis, e
+# um release sem o migrador deste sistema nao conta como versao nova), mais a
+# ralmigra (migrador em linha de comando; extra, fora da auto-atualizacao), mais
 # SHA256SUMS — que a auto-atualizacao (F12) confere antes de trocar o binario.
 #
 # Os binarios de Linux e macOS instalam so no Lazarus: o Delphi so existe no
@@ -30,16 +33,25 @@ jobs:
             gui: ralinstaller_w64.exe
             cli: ralcli.exe
             cli_final: ralcli_w64.exe
+            mig_final: ralmigrador_w64.exe
+            mig_cli: ralmigra.exe
+            mig_cli_final: ralmigra_w64.exe
           - os: ubuntu-latest
             modo: Linux64
             gui: ralinstaller_l64
             cli: ralcli
             cli_final: ralcli_l64
+            mig_final: ralmigrador_l64
+            mig_cli: ralmigra
+            mig_cli_final: ralmigra_l64
           - os: macos-13
             modo: MacOS64
             gui: ralinstaller_m64
             cli: ralcli
             cli_final: ralcli_m64
+            mig_final: ralmigrador_m64
+            mig_cli: ralmigra
+            mig_cli_final: ralmigra_m64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -84,6 +96,23 @@ jobs:
           mkdir -p saida
           cp "${{ matrix.gui }}" saida/
           cp "cli/${{ matrix.cli }}" "saida/${{ matrix.cli_final }}"
+          # F21: o migrador dos projetos (PLANO_MIGRADOR.md) sai no mesmo release;
+          # enquanto a pasta migrador/ nao existir, o release sai sem ele e a
+          # auto-atualizacao do instalador nao o oferece (ela exige os dois)
+          if [ -f migrador/ralmigrador.lpi ]; then
+            (cd migrador && lazbuild -B --bm=${{ matrix.modo }} ralmigrador.lpi)
+            cp "migrador/${{ matrix.mig_final }}" saida/
+          else
+            echo "::warning::sem migrador/: este release nao sera oferecido pela auto-atualizacao"
+          fi
+          # a linha de comando do migrador (ralmigra) sai junto, por conveniencia
+          # (CI, scripts, Linux sem tela). Ela e EXTRA: a auto-atualizacao troca
+          # so o instalador e o ralmigrador (RALInst.AutoAtualizacao compara os
+          # nomes ralinstaller_* e ralmigrador_*), nao a ralmigra
+          if [ -f migrador/ralmigra.lpi ]; then
+            (cd migrador && lazbuild -B ralmigra.lpi)
+            cp "migrador/${{ matrix.mig_cli }}" "saida/${{ matrix.mig_cli_final }}"
+          fi
 
       - name: Testes sem IDE
         if: runner.os != 'macOS'
@@ -95,11 +124,69 @@ jobs:
           fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/recibos" tests/recibos/recibos.lpr
           fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/traducao" tests/traducao/traducao.lpr
           fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/situacao" tests/situacao/situacao.lpr
+          fpc -B -Fusrc/classes -FUlib/testes -o"lib/testes/atualizacao" tests/atualizacao/atualizacao.lpr
           ./lib/testes/catalogo
           ./lib/testes/compatibilidade --testes --receitas=receitas
           ./lib/testes/recibos
           ./lib/testes/traducao .
           ./lib/testes/situacao --testes
+          ./lib/testes/atualizacao
+          # migrador (PLANO_MIGRADOR.md): so os testes que nao precisam de IDE, de
+          # compilador de terceiros nem de disco externo (todos rodam com
+          # --testes sobre pastas temporarias e fixtures do repositorio). Ficam
+          # de fora, por precisarem de coisas desta maquina: validacao --samples,
+          # projeto --gabarito, formulario --gabarito, codigo --compilar /
+          # --sem-falso-positivo, relatorio --samples e conferir --compilar
+          # (repositorio de samples, RAL 2.0 e IDEs instalados; o dono roda).
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_inventario" migrador/tests/inventario/inventario.lpr
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_copia" migrador/tests/copia/copia.lpr
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_previa" migrador/tests/previa/previa.lpr
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_apidiff_m9" migrador/tests/apidiff/apidiff_m9.lpr
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_regras" migrador/tests/regras/regras.lpr
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_leitura" migrador/tests/leitura/leitura.lpr
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_projeto" migrador/tests/projeto/projeto.lpr
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_formulario" migrador/tests/formulario/formulario.lpr
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_codigo" migrador/tests/codigo/codigo.lpr
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_relatorio" migrador/tests/relatorio/relatorio.lpr
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_validacao" migrador/tests/validacao/validacao.lpr
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_conferir" migrador/tests/conferir/conferir.lpr
+          # o teste de traducao le os RALMig.*.rsj que o compilador grava em -FU
+          # (lib/testes), ao lado do executavel, e os .po de migrador/languages
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_traducao" migrador/tests/traducao/traducao.lpr
+          ./lib/testes/mig_inventario --testes
+          ./lib/testes/mig_inventario --raiz=migrador
+          ./lib/testes/mig_copia --testes
+          ./lib/testes/mig_previa --testes
+          ./lib/testes/mig_apidiff_m9 --raiz=migrador
+          ./lib/testes/mig_regras --testes
+          ./lib/testes/mig_regras --pasta=migrador/regras
+          ./lib/testes/mig_leitura --testes
+          ./lib/testes/mig_projeto --testes
+          ./lib/testes/mig_formulario --testes
+          ./lib/testes/mig_codigo --testes
+          ./lib/testes/mig_relatorio --testes
+          ./lib/testes/mig_validacao --testes
+          ./lib/testes/mig_conferir --testes
+          ./lib/testes/mig_traducao
+          # motor.lpr le a linha de comando por CmdLine, que so existe no
+          # Windows (RTL do Windows): em Linux nem compila. So la, ate o teste
+          # passar a usar ParamStr
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_motor" migrador/tests/motor/motor.lpr
+            ./lib/testes/mig_motor --testes
+          fi
+
+      # M9: toda quebra nova traz a regra, preferencialmente (D-M7). O apidiff
+      # AVISA (anotacoes ::warning::) as diferencas entre o ultimo release e o dev
+      # que ficaram sem regra nem justificativa; nao falha o job. Quem cobra lista
+      # vazia e o rito de pre-lancamento (apidiff pendentes --pre-lancamento).
+      - name: Inventario do RAL (aviso)
+        if: runner.os == 'Linux'
+        continue-on-error: true
+        shell: bash
+        run: |
+          (cd migrador/ferramentas/apidiff && lazbuild -B apidiff.lpi)
+          migrador/ferramentas/apidiff/apidiff pendentes
 
       - uses: actions/upload-artifact@v4
         with:
@@ -128,4 +215,6 @@ jobs:
             - Windows (`ralinstaller_w64.exe`): Delphi e Lazarus.
             - Linux (`ralinstaller_l64`) e macOS (`ralinstaller_m64`): **só Lazarus** — o Delphi só existe no Windows, e esses binários saem sem a parte do Delphi.
             - `ralcli_*`: a linha de comando, com os mesmos passos da tela (`ralcli` sem argumentos mostra o uso).
+            - `ralmigrador_*`: o migrador dos projetos entre versões do RAL; a auto-atualização troca o instalador e o migrador juntos.
+            - `ralmigra_*`: o mesmo migrador na linha de comando (`ralmigra --ajuda`): detectar, prévia, aplicar, desfazer e conferir compilando. Não faz parte da auto-atualização.
             - `SHA256SUMS`: o que a auto-atualização confere antes de trocar o binário.

@@ -148,6 +148,29 @@ resourcestring
     'Feche as IDEs antes. Reinstalar agora?';
   cmReinstalarTitulo = 'Reinstalar o PascalRAL';
 
+  // F19: limpar o que ninguém usa (RALInst.Tela.Limpeza)
+  cmLimpandoSobras = '==== Apagando o que nenhuma IDE usa mais';
+  cmLimpezaApagar = 'Apagar os marcados';
+  cmLimpezaComErros = 'Algo não pôde ser apagado (veja o log acima).';
+  cmLimpezaFeita = 'Limpeza feita: %s liberados.';
+  cmLimpezaManterTudo = 'Manter tudo';
+  cmLimpezaPergunta = 'O instalador baixou isto e nenhuma IDE usa mais. Desmarque o ' +
+    'que quer manter; o resto é apagado, e não há como desfazer.';
+  cmLimpezaTitulo = 'Limpar o que ficou para trás';
+  cmLimpezaTotal = 'A apagar: %s';
+
+  // F21: o migrador dos projetos
+  cmMigrarDica = 'Os seus projetos usavam o RAL %s: o migrador atualiza o que mudou ' +
+    'para a %s (link abaixo).';
+  cmMigrarProjetos = 'Atualizar os meus projetos para a %s';
+
+  // F15/F16 na tela de recursos
+  cmNaoVerificadaEm = 'Não verificada em: %s (instala; se não compilar, nada muda)';
+  cmNaoVerificadaNaIDE = 'não verificada nesta IDE (instala; se não compilar, nada muda)';
+  cmOutrasVersoes = '— outras versões —';
+  cmVerificadaNaIDE = 'verificada nesta IDE em %s';
+  cmIDENaoSuportada = ' — o RAL não suporta esta IDE (%s)';
+
   // RALInst.Tela.Principal
   cmAbraDeNovo = 'Atualizado para a versão %s; abra o instalador de novo. (%s)';
   cmAtualizacaoNaoFeita = 'A atualização não foi feita: %s' + LineEnding +

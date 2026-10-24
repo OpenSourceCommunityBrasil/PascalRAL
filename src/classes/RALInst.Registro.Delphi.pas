@@ -70,6 +70,8 @@ type
     function DefinirVariavel(const ANome, AValor: string): boolean;
     /// Writes a value (noting the one before); False on error
     function Escrever(const ASubchave, AValor, AConteudo: string): boolean;
+    /// The subkey of the IDE key exists ('Library\Linux64')
+    function ExisteSubchave(const ASubchave: string): boolean;
     /// $(BDS), $(BDSCOMMONDIR), $(Platform), the IDE's own variables and the
     /// system's; what it does not know stays as it is
     function Expandir(const ACaminho: string;
@@ -90,6 +92,10 @@ type
       AX64: boolean = False): boolean;
     /// Deletes a value (noting it); False on error
     function Remover(const ASubchave, AValor: string): boolean;
+    /// F14: undoes every noted write, newest first (what existed gets its
+    /// value back, what was created is deleted) and forgets them; False when
+    /// some value could not be put back
+    function Reverter: boolean;
 
     property Alteracoes[AIndex: integer]: TAlteracaoRegistro read GetAlteracao;
     /// Relative to HKCU; by default the IDE's. The tests point it to a copy
@@ -119,11 +125,13 @@ uses
 
 function PlataformaRegistro(const APlataforma: string): string;
 const
-  Nomes: array[0..8, 0..1] of string = (
+  // o nome da pasta em lib\ (RALInst.IDE.Delphi) -> o da chave Library\
+  Nomes: array[0..12, 0..1] of string = (
     ('win32', 'Win32'), ('win64', 'Win64'), ('win64x', 'Win64x'),
-    ('linux64', 'Linux64'), ('osx64', 'OSX64'), ('osxarm64', 'OSXARM64'),
-    ('android', 'Android32'), ('android64', 'Android64'),
-    ('iosdevice64', 'iOSDevice64')
+    ('linux64', 'Linux64'), ('osx32', 'OSX32'), ('osx64', 'OSX64'),
+    ('osxarm64', 'OSXARM64'), ('android', 'Android32'), ('android64', 'Android64'),
+    ('iosdevice32', 'iOSDevice32'), ('iosdevice64', 'iOSDevice64'),
+    ('iossimulator', 'iOSSimulator'), ('iossimarm64', 'iOSSimARM64')
   );
 var
   vInt: integer;
@@ -305,6 +313,22 @@ begin
   end;
 end;
 
+function TRegistroDelphi.ExisteSubchave(const ASubchave: string): boolean;
+var
+  vReg: TRegistry;
+begin
+  Result := False;
+  if FChave = '' then
+    Exit;
+  vReg := TRegistry.Create(KEY_READ);
+  try
+    vReg.RootKey := HKEY_CURRENT_USER;
+    Result := vReg.KeyExists(FChave + '\' + ASubchave);
+  finally
+    vReg.Free;
+  end;
+end;
+
 function TRegistroDelphi.IDEEmExecucao: boolean;
 begin
   // bds.exe/delphi32.exe desta instalacao (<raiz>\bin)
@@ -432,6 +456,58 @@ begin
   finally
     vReg.Free;
   end;
+end;
+
+function TRegistroDelphi.Reverter: boolean;
+var
+  vReg: TRegistry;
+  vInt: integer;
+  vChave: string;
+begin
+  Result := True;
+  if FSimular then
+  begin
+    SetLength(FAlteracoes, 0);
+    Exit;
+  end;
+  vReg := TRegistry.Create(KEY_READ or KEY_WRITE);
+  try
+    vReg.RootKey := HKEY_CURRENT_USER;
+    for vInt := High(FAlteracoes) downto 0 do
+    begin
+      vChave := FChave + '\' + FAlteracoes[vInt].Chave;
+      try
+        if FAlteracoes[vInt].Existia then
+        begin
+          if vReg.OpenKey(vChave, True) then
+          begin
+            vReg.WriteString(FAlteracoes[vInt].Valor, FAlteracoes[vInt].Antes);
+            vReg.CloseKey;
+          end
+          else
+            Result := False;
+        end
+        else if vReg.OpenKey(vChave, False) then
+        begin
+          if vReg.ValueExists(FAlteracoes[vInt].Valor) then
+            vReg.DeleteValue(FAlteracoes[vInt].Valor);
+          vReg.CloseKey;
+        end;
+      except
+        on E: Exception do
+        begin
+          Logar(cmPrefixoErro + vChave + '\' + FAlteracoes[vInt].Valor + ': ' +
+                E.Message);
+          Result := False;
+        end;
+      end;
+    end;
+  finally
+    vReg.Free;
+  end;
+  if Length(FAlteracoes) > 0 then
+    Logar(Format(cmRegistroRevertido, [Length(FAlteracoes)]));
+  SetLength(FAlteracoes, 0);
 end;
 
 function TRegistroDelphi.Expandir(const ACaminho: string;

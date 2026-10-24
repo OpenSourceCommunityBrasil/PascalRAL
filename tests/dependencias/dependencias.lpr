@@ -39,7 +39,8 @@ end;
 
 function NomesAcoes(ABloco: TBlocoIDE): string;
 const
-  Nomes: array[TTipoAcao] of string = ('variavel', 'libpath', 'dpk', 'lpk');
+  Nomes: array[TTipoAcao] of string = ('variavel', 'libpath', 'dpk', 'lpk',
+    'copiar-arquivo');
 var
   vInt: integer;
 begin

@@ -356,6 +356,18 @@ begin
   ResolverConfig(Result);
   ResolverCompilador(Result);
 
+  // F16: o FPC Unleashed e outro compilador (extensoes de linguagem), nao uma
+  // versao do FPC: o instalador dele deixa um installer.ini ao lado de
+  // lazarus\ e fpc\
+  if Pos('Unleashed Installer manifest',
+         LerArquivo(ExtractFilePath(ExcludeTrailingPathDelimiter(vRaiz)) +
+                    'installer.ini')) > 0 then
+  begin
+    Result.VarianteFPC := 'unleashed';
+    Result.Nome := Format(cmLazarusUnleashed, [VersaoCurta(Result.Versao),
+                                                Result.VersaoCompilador]);
+  end;
+
   if not PastaGravavel(vRaiz) then
     Result.Avisos.Add(wmLazarusSemEscrita);
 end;

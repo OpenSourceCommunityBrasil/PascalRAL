@@ -82,7 +82,7 @@ type
     /// -NS: unit scope names
     procedure MontarNamespaces(APacote: TPacote; ALista: TStrings);
     /// -O: folders of the .obj files the units link
-    procedure MontarObjetos(APacote: TPacote; ALista: TStrings);
+    procedure MontarObjetos(APacote: TPacote; ABusca, ALista: TStrings);
     /// <BDSCOMMONDIR>\Bpl (plus the platform outside Win32)
     function PastaBplPadrao: string;
     /// <BDSCOMMONDIR>\Dcp (plus the platform when it exists)
@@ -514,9 +514,10 @@ begin
   ALista.AddStrings(FCaminhosExtras);
 end;
 
-procedure TBuildDelphi.MontarObjetos(APacote: TPacote; ALista: TStrings);
+procedure TBuildDelphi.MontarObjetos(APacote: TPacote; ABusca, ALista: TStrings);
 var
-  vUnidade, vPasta, vCandidata: string;
+  vUnidade, vPasta: string;
+  vInt: integer;
 
   procedure Tentar(const APastaObj: string);
   begin
@@ -524,21 +525,32 @@ var
       ALista.Add(APastaObj);
   end;
 
-begin
-  // {$L 'libbrotli.obj'}: o .obj nao fica ao lado da unidade, e sim numa
-  // subpasta por compilador e plataforma. Sem isto o brotli morre em E1026.
-  for vUnidade in APacote.Unidades do
+  procedure TentarEm(const APastaUnidade: string);
+  var
+    vCandidata: string;
   begin
-    vPasta := IncludeTrailingPathDelimiter(ExtractFilePath(
-                FRaizFontes + StringReplace(vUnidade, '/', PathDelim,
-                                            [rfReplaceAll])));
     for vCandidata in TStringArray.Create(
           'static_libs' + PathDelim + 'delphi' + PathDelim + LowerCase(FPlataforma),
           'static_libs' + PathDelim + LowerCase(FPlataforma),
           'obj' + PathDelim + LowerCase(FPlataforma),
           LowerCase(FPlataforma)) do
-      Tentar(ExcludeTrailingPathDelimiter(vPasta + vCandidata));
+      Tentar(ExcludeTrailingPathDelimiter(
+               IncludeTrailingPathDelimiter(APastaUnidade) + vCandidata));
   end;
+
+begin
+  // {$L 'libbrotli.obj'}: o .obj nao fica ao lado da unidade, e sim numa
+  // subpasta por compilador e plataforma. Sem isto o brotli morre em E1026.
+  for vUnidade in APacote.Unidades do
+  begin
+    vPasta := ExtractFilePath(FRaizFontes + StringReplace(vUnidade, '/',
+                PathDelim, [rfReplaceAll]));
+    TentarEm(vPasta);
+  end;
+  // a unidade com o {$L} pode vir pelo path e nao pelo contains (2.0: o
+  // brotlilib.pas fica em src\others e o pacote so usa)
+  for vInt := 0 to Pred(ABusca.Count) do
+    TentarEm(ABusca[vInt]);
 end;
 
 procedure TBuildDelphi.MontarNamespaces(APacote: TPacote; ALista: TStrings);
@@ -661,7 +673,7 @@ begin
   try
     MontarLU(APacote, vLU);
     MontarBusca(APacote, vBusca);
-    MontarObjetos(APacote, vObjetos);
+    MontarObjetos(APacote, vBusca, vObjetos);
     MontarNamespaces(APacote, vNamespaces);
 
     // --no-config: nada da maquina entra sem estar escrito aqui

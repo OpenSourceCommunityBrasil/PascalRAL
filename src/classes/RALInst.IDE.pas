@@ -70,6 +70,7 @@ type
     FRootDir: string;
     FSufixoPacote: string;
     FTipo: TTipoIDE;
+    FVarianteFPC: string;
     FVersao: string;
     FVersaoCompilador: string;
     /// Stores the folder in its canonical form (see NormalizarPasta)
@@ -117,6 +118,9 @@ type
     /// Delphi: '290', suffix of the IDE's .bpl files and of the updated Indy
     property SufixoPacote: string read FSufixoPacote write FSufixoPacote;
     property Tipo: TTipoIDE read FTipo;
+    /// Lazarus: 'unleashed' for the FPC Unleashed (another compiler, with
+    /// language extensions); empty for the official FPC
+    property VarianteFPC: string read FVarianteFPC write FVarianteFPC;
     /// Product version: '12', '4.6.0.0'
     property Versao: string read FVersao write FVersao;
     /// Delphi: 'VER360'; Lazarus: the FPC version, when known
@@ -383,6 +387,7 @@ begin
   FRegKey := ASource.FRegKey;
   FSufixoPacote := ASource.FSufixoPacote;
   FVersaoCompilador := ASource.FVersaoCompilador;
+  FVarianteFPC := ASource.FVarianteFPC;
   FCompilerFile := ASource.FCompilerFile;
   FOrigem := ASource.FOrigem;
   FCapacidades := ASource.FCapacidades;

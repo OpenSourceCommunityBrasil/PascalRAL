@@ -814,10 +814,6 @@ msgstr ""
 msgid "  configuração: %s"
 msgstr ""
 
-#: ralinst.mensagens.cmplanoexternosausentes
-msgid "  ATENÇÃO: não encontrei nesta IDE %s — instale antes, ou a reconstrução da IDE vai falhar"
-msgstr ""
-
 #: ralinst.mensagens.cmplanoficadeforalinha
 msgid "    fica de fora: %s"
 msgstr ""
@@ -864,10 +860,6 @@ msgstr ""
 
 #: ralinst.mensagens.emlazbuildregistrar
 msgid "ERRO: falha ao registrar os pacotes."
-msgstr ""
-
-#: ralinst.mensagens.wmexternosausentes
-msgid "não encontrei nesta IDE %s; se não estiverem instalados, a reconstrução da IDE falha"
 msgstr ""
 
 #: ralinst.mensagens.wmidenaoreconstruida
@@ -2042,4 +2034,292 @@ msgstr ""
 
 #: ralinst.tela.mensagens.cmgrupoplugins
 msgid "Plugins"
+msgstr ""
+
+#: ralinst.mensagens.cmregistrorevertido
+msgid "  registro devolvido ao que era (%d valor(es))"
+msgstr ""
+
+#: ralinst.mensagens.cmconjuntofuncional
+msgid "%s; o resto é opcional"
+msgstr ""
+
+#: ralinst.mensagens.cmconjuntomotor
+msgid "um motor entre %s"
+msgstr ""
+
+#: ralinst.mensagens.cmconjuntonaocompilou
+msgid "%s não compilou — %s"
+msgstr ""
+
+#: ralinst.mensagens.cmconjuntonenhummotor
+msgid "nenhum motor compilou (%s)"
+msgstr ""
+
+#: ralinst.mensagens.cmconjuntoplataforma
+msgid "%s em %s"
+msgstr ""
+
+#: ralinst.mensagens.cmconjuntosemmotivo
+msgid "veja o log"
+msgstr ""
+
+#: ralinst.mensagens.cmpromocaodesfeita
+msgid "  devolvido: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmpromovidos
+msgid "  %d arquivo(s) trocados na pasta da IDE"
+msgstr ""
+
+#: ralinst.mensagens.empromocaodesfazer
+msgid "não foi possível devolver %s: renomeie à mão, tirando o \".anterior\""
+msgstr ""
+
+#: ralinst.mensagens.empromovergravar
+msgid "não foi possível gravar %s (a IDE ou outro programa está com ele aberto?)"
+msgstr ""
+
+#: ralinst.mensagens.empromoverrenomear
+msgid "não foi possível renomear %s (a IDE ou outro programa está com ele aberto?)"
+msgstr ""
+
+#: ralinst.mensagens.empromoversemarquivo
+msgid "o compilador não gravou %s"
+msgstr ""
+
+#: ralinst.mensagens.cmnadamudou
+msgid "Nada mudou nesta IDE: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoconjunto
+msgid "  instala se compilar: %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoconjuntocopia
+msgid "  compila antes numa cópia da configuração; a verdadeira só muda se %s compilar"
+msgstr ""
+
+#: ralinst.mensagens.cmcompilandonacopia
+msgid "== compilando numa cópia da configuração (%s)"
+msgstr ""
+
+#: ralinst.mensagens.cmcompilandopacotelazarus
+msgid "[lazbuild] %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanosoruntimelazarus
+msgid "  modo: só runtime (os pacotes só são registrados: os projetos podem exigi-los; nada vai para a IDE, que não é reconstruída)"
+msgstr ""
+
+#: ralinst.mensagens.emcopiaconfiguracao
+msgid "não foi possível copiar a configuração para %s"
+msgstr ""
+
+#: ralinst.mensagens.emregistroincompleto
+msgid "uma escrita no registro falhou; o registro e os arquivos voltaram ao que eram"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoforadaplataforma
+msgid "    %s: sem %s (não serve nesta plataforma)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoplataformasemchave
+msgid "  %s está instalada, mas a IDE ainda não foi aberta depois disso: abra a IDE uma vez e rode o instalador de novo para pôr o library path nela"
+msgstr ""
+
+#: ralinst.mensagens.wmplataformasemchave
+msgid "%s instalada e sem library path na IDE: abra a IDE uma vez e rode o instalador de novo"
+msgstr ""
+
+#: ralinst.mensagens.cmfontesdapastaversao
+msgid "RAL %s da pasta %s"
+msgstr ""
+
+#: ralinst.mensagens.cmexistentesoruntime
+msgid "só runtime (nada na IDE)"
+msgstr ""
+
+#: ralinst.mensagens.cmforasoruntime
+msgid "só de design (instalação só runtime)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanosoruntime
+msgid "  modo: só runtime (compila os pacotes, nada vai para a IDE)"
+msgstr ""
+
+#: ralinst.mensagens.cmsaisoruntime
+msgid "instalação só runtime: sai da IDE, o .bpl fica"
+msgstr ""
+
+#: ralinst.mensagens.wmsoruntimedesignide
+msgid "%s exige o designide, que não é redistribuível: um programa compilado com pacotes de runtime não roda fora da máquina de desenvolvimento (é da 1.x; a 2.0 separou o design)"
+msgstr ""
+
+#: ralinst.mensagens.wmredistcopiado
+msgid "%s — vai junto do executável do seu programa (o instalador não sabe onde ele fica)"
+msgstr ""
+
+#: ralinst.mensagens.cmcopiadoredist
+msgid "  copiado para %s"
+msgstr ""
+
+#: ralinst.mensagens.cmplanodepplataformas
+msgid "      library path dela em: %s"
+msgstr ""
+
+#: ralinst.mensagens.emacaocopiar
+msgid "copiar-arquivo precisa de \"arquivos\" e \"plataforma\""
+msgstr ""
+
+#: ralinst.mensagens.emcopiararquivo
+msgid "%s: não foi possível copiar %s para %s"
+msgstr ""
+
+#: ralinst.mensagens.emcopiarsemarquivo
+msgid "%s: nenhum arquivo casa com %s"
+msgstr ""
+
+#: ralinst.mensagens.emlibpathplataformas
+msgid "\"plataformas\" no libpath só vale no bloco do Delphi"
+msgstr ""
+
+#: ralinst.mensagens.cmmotivoversaobloqueada
+msgid "esta versão do RAL não serve nesta IDE: %s"
+msgstr ""
+
+#: ralinst.mensagens.emversaonaoserve
+msgid "%s não recebe esta versão do RAL: %s"
+msgstr ""
+
+#: ralinst.mensagens.emmanifestobloqueiosemmotivo
+msgid "um bloqueio precisa de \"motivo\""
+msgstr ""
+
+#: ralinst.mensagens.cmsobraapagada
+msgid "  apagado: %s (%s)"
+msgstr ""
+
+#: ralinst.mensagens.cmsobracache
+msgid "cache de downloads (zips das versões e das dependências)"
+msgstr ""
+
+#: ralinst.mensagens.cmsobrapreparo
+msgid "pasta de preparo de uma rodada interrompida"
+msgstr ""
+
+#: ralinst.mensagens.ematusemmigrador
+msgid "a versão %s não tem o migrador deste sistema (%s): não conta como atualização"
+msgstr ""
+
+#: ralinst.mensagens.emmigradorabrir
+msgid "não foi possível abrir o migrador: %s"
+msgstr ""
+
+#: ralinst.mensagens.emmigradorausente
+msgid "o migrador dos projetos não está em %s: ele vem no mesmo release do instalador"
+msgstr ""
+
+#: ralinst.mensagens.wmmigradortrocadepois
+msgid "%s está aberto: a versão nova fica ao lado dele e entra na próxima vez que o instalador abrir"
+msgstr ""
+
+#: ralinst.mensagens.cmfalhounavarredura
+msgid "não compilou na verificação do projeto (%s)"
+msgstr ""
+
+#: ralinst.mensagens.cmplanonaoverificada
+msgid "  esta versão do RAL não foi verificada nesta IDE (o projeto testa por amostragem); se não compilar, nada muda na IDE"
+msgstr ""
+
+#: ralinst.mensagens.cmplanoverificada
+msgid "  verificada nesta IDE pelo projeto em %s"
+msgstr ""
+
+#: ralinst.mensagens.cmverificadasembutida
+msgid "lista embutida de verificadas"
+msgstr ""
+
+#: ralinst.mensagens.emverificadasformato
+msgid "%s não é uma lista de verificadas (formato 1)"
+msgstr ""
+
+#: ralinst.mensagens.cmdelphimaisnovo
+msgid "Delphi (BDS %s, mais novo que o %s)"
+msgstr ""
+
+#: ralinst.mensagens.cmlazarusunleashed
+msgid "Lazarus %s (FPC Unleashed %s)"
+msgstr ""
+
+#: ralinst.mensagens.wmdelphimaisnovo
+msgid "Delphi mais novo que este instalador conhece: instala com o que o disco diz (rsvars.bat, bin\\dcc*.exe); sem verificação nesta versão"
+msgstr ""
+
+#: ralinst.mensagens.cmfaixavariante
+msgid "FPC %s"
+msgstr ""
+
+#: ralinst.mensagens.emvariantedesconhecida
+msgid "fpc-variante desconhecida: %s (use oficial ou unleashed)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmlimpandosobras
+msgid "==== Apagando o que nenhuma IDE usa mais"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmlimpezaapagar
+msgid "Apagar os marcados"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmlimpezacomerros
+msgid "Algo não pôde ser apagado (veja o log acima)."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmlimpezafeita
+msgid "Limpeza feita: %s liberados."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmlimpezamantertudo
+msgid "Manter tudo"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmlimpezapergunta
+msgid "O instalador baixou isto e nenhuma IDE usa mais. Desmarque o que quer manter; o resto é apagado, e não há como desfazer."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmlimpezatitulo
+msgid "Limpar o que ficou para trás"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmlimpezatotal
+msgid "A apagar: %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmmigrardica
+msgid "Os seus projetos usavam o RAL %s: o migrador atualiza o que mudou para a %s (link abaixo)."
+msgstr ""
+
+#: ralinst.tela.mensagens.cmmigrarprojetos
+msgid "Atualizar os meus projetos para a %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnaoverificadaem
+msgid "Não verificada em: %s (instala; se não compilar, nada muda)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmnaoverificadanaide
+msgid "não verificada nesta IDE (instala; se não compilar, nada muda)"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmoutrasversoes
+msgid "— outras versões —"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmverificadanaide
+msgid "verificada nesta IDE em %s"
+msgstr ""
+
+#: ralinst.tela.mensagens.cmidenaosuportada
+msgid " — o RAL não suporta esta IDE (%s)"
 msgstr ""

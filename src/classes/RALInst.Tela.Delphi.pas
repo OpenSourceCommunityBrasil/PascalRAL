@@ -48,6 +48,8 @@ begin
   Result.PastasDependencias.Assign(AEscolha.PastasDependencias);
   Result.Manifesto := AEscolha.Manifesto;
   Result.SomenteLibraryPath := AEscolha.SomenteLibraryPath;
+  Result.SoRuntime := AEscolha.SoRuntime;
+  Result.PastaRedist := AEscolha.PastaRedist;
   if AEscolha.Win64 and (Instancia.Plataformas.IndexOf('win64') >= 0) then
     Result.Plataformas.Add('win64');
   // a versao escolhida: antes de baixar, a pasta ainda nao a tem
@@ -121,6 +123,9 @@ begin
       LogarLinha(TrimRight(vInst.Relatorio.Text));
     end;
     Resumir(Result, vInst.Avisos);
+    // F14: a IDE ficou como estava, e o resumo diz por que
+    if vInst.NadaMudou then
+      Resumo := Name + ': ' + Format(cmNadaMudou, [vInst.MotivoNadaMudou]);
   finally
     vInst.Free;
   end;

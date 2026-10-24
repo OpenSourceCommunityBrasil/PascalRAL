@@ -100,7 +100,7 @@ inherited TelaRecursos: TTelaRecursos
   end
   object tvRecursos: TTreeView[14]
     Left = 48
-    Height = 202
+    Height = 190
     Top = 274
     Width = 601
     Images = Imagens.imgList
@@ -116,15 +116,16 @@ inherited TelaRecursos: TTelaRecursos
   object ckSomentePaths: TCheckBox[15]
     Left = 48
     Height = 19
-    Top = 484
+    Top = 468
     Width = 20
     TabOrder = 3
+    OnChange = ckSomentePathsChange
   end
   object lbSomentePaths: TLabel[16]
     Cursor = crHandPoint
     Left = 70
     Height = 15
-    Top = 486
+    Top = 470
     Width = 405
     Caption = 'Somente library path (não compila nem instala pacotes na IDE)'
     ParentColor = False
@@ -133,7 +134,7 @@ inherited TelaRecursos: TTelaRecursos
   object ckWin64: TCheckBox[17]
     Left = 48
     Height = 19
-    Top = 506
+    Top = 488
     Width = 20
     TabOrder = 4
   end
@@ -141,7 +142,7 @@ inherited TelaRecursos: TTelaRecursos
     Cursor = crHandPoint
     Left = 70
     Height = 15
-    Top = 508
+    Top = 490
     Width = 400
     Caption = 'Também Win64 (pacotes de runtime e library path)'
     ParentColor = False
@@ -155,7 +156,7 @@ inherited TelaRecursos: TTelaRecursos
     Cursor = crHandPoint
     Left = 480
     Height = 15
-    Top = 486
+    Top = 470
     Width = 169
     Alignment = taRightJustify
     AutoSize = False
@@ -169,7 +170,7 @@ inherited TelaRecursos: TTelaRecursos
     Cursor = crHandPoint
     Left = 480
     Height = 15
-    Top = 508
+    Top = 490
     Width = 169
     Alignment = taRightJustify
     AutoSize = False
@@ -188,6 +189,37 @@ inherited TelaRecursos: TTelaRecursos
     AutoSize = False
     Caption = ''
     ParentColor = False
+    ParentShowHint = False
+    ShowHint = True
+  end
+  object ckSoRuntime: TCheckBox[23]
+    Left = 48
+    Height = 19
+    Top = 508
+    Width = 20
+    TabOrder = 5
+    OnChange = ckSoRuntimeChange
+  end
+  object lbSoRuntime: TLabel[24]
+    Cursor = crHandPoint
+    Left = 70
+    Height = 15
+    Top = 510
+    Width = 579
+    Caption = 'Instalar sem componentes na IDE (só runtime: compila os pacotes para os projetos)'
+    ParentColor = False
+    OnClick = lbSoRuntimeClick
+  end
+  object lbBloqueio: TLabel[25]
+    Left = 48
+    Height = 15
+    Top = 530
+    Width = 601
+    AutoSize = False
+    Caption = ''
+    Font.Color = clRed
+    ParentColor = False
+    ParentFont = False
     ParentShowHint = False
     ShowHint = True
   end

@@ -19,7 +19,7 @@ uses
   {$IFDEF UNIX}cthreads,{$ENDIF}
   Classes, SysUtils, StrUtils, fpjson, jsonparser, RALInst.IDE, RALInst.IDE.Lazarus,
   RALInst.Catalogo, RALInst.Receitas, RALInst.Compatibilidade, RALInst.Instalar.Lazarus,
-  RALInst.Zip
+  RALInst.Verificadas, RALInst.Zip
   {$IFDEF MSWINDOWS}, Windows, RALInst.IDE.Delphi, RALInst.Instalar.Delphi{$ENDIF};
 
 type
@@ -233,6 +233,230 @@ begin
   end;
 end;
 
+// F15/F16: regras com faixa de versao do RAL, bloqueios, a variante do FPC e
+// as falhas da varredura
+procedure TestesF15(const APastaReceitas: string);
+var
+  vD7, vD2010, vXE, vXE2, vD13, vL300, vL323, vLUnl: TIDEInstance;
+  vManifesto: TManifesto;
+  vCompat: TCompatibilidade;
+  vPacote: TPacote;
+  vCatalogo: TCatalogo;
+  vVerif: TVerificadas;
+  vReceitas: TReceitas;
+  vOrigem: TOrigemLocal;
+  vTexto, vRaizWS: string;
+  vOk: boolean;
+
+  function Manifesto(const AVersaoRAL: string): TManifesto;
+  begin
+    Result := TManifesto.Create;
+    Result.CarregarTexto('{ "formato": 1,' +
+      ' "pacotes": [ { "pacote": "SynopseRAL", "delphi-min": "2009" },' +
+      '              { "pacote": "NetHttpRAL", "ral-min": "2.0", "delphi-min": "11" } ],' +
+      ' "bloqueios": [ { "delphi-max": "2010", "motivo": "minimo XE" },' +
+      '                { "fpc-max": "3.1.x", "motivo": "minimo FPC 3.2" },' +
+      '                { "ral-max": "1.1.x", "delphi-min": "XE2", "delphi-max": "XE2",' +
+      '                  "motivo": "RALClient.pas(991)" },' +
+      '                { "pacote": "IndyRAL", "ral-min": "1.2", "ral-max": "1.2.x",' +
+      '                  "fpc-variante": "unleashed", "motivo": "nao compila no Unleashed" } ] }',
+      'teste');
+    Result.VersaoRAL := AVersaoRAL;
+  end;
+
+  function Pacote(const ANome: string; ATipo: TTipoPacote): TPacote;
+  begin
+    Result := vCatalogo.Buscar(ATipo, ANome);
+  end;
+
+begin
+  WriteLn('F15: faixa de versao do RAL e bloqueios:');
+  Conferir(VersaoRALNumerica('1.2.0-108') = '1.2.0', 'RALVERSION 1.2.0-108 -> 1.2.0');
+  Conferir(VersaoRALNumerica('v1.1') = '1.1', 'tag v1.1 -> 1.1');
+  Conferir(VersaoRALNumerica('dev') = '', 'ramo sem numero -> vazio');
+  Conferir(CompararVersoes('1.1.0', '1.1.x') <= 0, '1.1.0 cabe em ral-max 1.1.x');
+  Conferir(CompararVersoes('1.2.0', '1.1.x') > 0, '1.2.0 nao cabe em ral-max 1.1.x');
+
+  vD7 := IDEDe(tiDelphi, DelphiProdutos[ProdutoPorNome('7')].VersaoNum, 'VER150');
+  vD2010 := IDEDe(tiDelphi, DelphiProdutos[ProdutoPorNome('2010')].VersaoNum, 'VER210');
+  vXE := IDEDe(tiDelphi, DelphiProdutos[ProdutoPorNome('XE')].VersaoNum, 'VER220');
+  vXE2 := IDEDe(tiDelphi, DelphiProdutos[ProdutoPorNome('XE2')].VersaoNum, 'VER230');
+  vXE2.BDSVersao := '9.0';
+  vD13 := IDEDe(tiDelphi, DelphiProdutos[ProdutoPorNome('13')].VersaoNum, 'VER370');
+  vD13.BDSVersao := '37.0';
+  vL300 := IDEDe(tiLazarus, '2.0.0.0', '3.0.4');
+  vL323 := IDEDe(tiLazarus, '4.9.0.0', '3.2.3');
+  vLUnl := IDEDe(tiLazarus, '4.99.0.0', '3.3.1');
+  vLUnl.VarianteFPC := 'unleashed';
+  vCatalogo := TCatalogo.Create;
+  vReceitas := TReceitas.Create;
+  try
+    // a regra sem pacote e a versao inteira: o minimo e dado
+    vManifesto := Manifesto('1.1.0');
+    vCompat := TCompatibilidade.Create(nil, vManifesto, nil);
+    try
+      Conferir(vManifesto.Erros.Count = 0, 'manifesto com bloqueios valido ' +
+               vManifesto.Erros.Text);
+      Conferir(vCompat.MotivoVersao(vD7) = 'minimo XE', 'Delphi 7 recusado: minimo XE');
+      Conferir(vCompat.MotivoVersao(vD2010) = 'minimo XE', 'Delphi 2010 recusado');
+      Conferir(vCompat.MotivoVersao(vXE) = '', 'Delphi XE aceito');
+      Conferir(vCompat.MotivoVersao(vXE2) = 'RALClient.pas(991)', '1.1 no XE2 recusada');
+      Conferir(vCompat.MotivoVersao(vD13) = '', '1.1 no Delphi 13 aceita');
+      Conferir(vCompat.MotivoVersao(vL300) = 'minimo FPC 3.2', 'FPC 3.0.4 recusado');
+      Conferir(vCompat.MotivoVersao(vL323) = '', 'FPC 3.2.3 aceito');
+    finally
+      vCompat.Free;
+      vManifesto.Free;
+    end;
+    vManifesto := Manifesto('1.2.0');
+    vCompat := TCompatibilidade.Create(nil, vManifesto, nil);
+    try
+      Conferir(vCompat.MotivoVersao(vXE2) = '', 'a 1.2 (dev) no XE2 aceita: a regra e da 1.1');
+      Conferir(vCompat.MotivoVersao(vD7) = 'minimo XE', 'o minimo vale em toda versao');
+    finally
+      vCompat.Free;
+      vManifesto.Free;
+    end;
+    // ramo sem numero conhecido: so as regras sem faixa de versao do RAL casam
+    vManifesto := Manifesto('');
+    vCompat := TCompatibilidade.Create(nil, vManifesto, nil);
+    try
+      Conferir(vCompat.MotivoVersao(vXE2) = '', 'versao do RAL desconhecida: regra com ' +
+               'faixa do RAL nao casa');
+      Conferir(vCompat.MotivoVersao(vD2010) = 'minimo XE', 'mas o minimo sim');
+    finally
+      vCompat.Free;
+      vManifesto.Free;
+    end;
+    vManifesto := TManifesto.Create;
+    try
+      Conferir(not vManifesto.CarregarTexto('{ "formato": 1, "bloqueios": [ { ' +
+        '"delphi-max": "2010" } ] }', 'b1'), 'bloqueio sem motivo recusado');
+      Conferir(not vManifesto.CarregarTexto('{ "formato": 1, "bloqueios": [ { ' +
+        '"fpc-variante": "turbo", "motivo": "x" } ] }', 'b2'), 'variante desconhecida recusada');
+      Conferir(vManifesto.CarregarTexto('{ "formato": 1, "bloqueios": [ { ' +
+        '"ral-min": "2.0", "motivo": "x" } ] }', 'b3'), 'ral-min aceito');
+    finally
+      vManifesto.Free;
+    end;
+
+    // por pacote, com a arvore do RAL (a do workspace, quando existe)
+    vRaizWS := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..' + PathDelim + '..' +
+                              PathDelim + '..' + PathDelim + 'PascalRAL-dev');
+    if vCatalogo.Carregar(vRaizWS) then
+    begin
+      vOrigem := TOrigemLocal.Create(vRaizWS);
+      try
+        vTexto := VersaoRALDaOrigem(vOrigem);
+        Conferir(CompararVersoes(vTexto, '1.2') >= 0, 'RALVERSION do dev: ' + vTexto);
+      finally
+        vOrigem.Free;
+      end;
+      vManifesto := Manifesto('1.2.0');
+      vCompat := TCompatibilidade.Create(vCatalogo, vManifesto, nil);
+      try
+        vPacote := Pacote('indyral', tpLazarus);
+        if vPacote <> nil then
+        begin
+          Conferir(vCompat.Motivo(vPacote, vLUnl) = 'nao compila no Unleashed',
+                   'bloqueio por pacote e variante: indyral no Unleashed');
+          Conferir(vCompat.Motivo(vPacote, vL323) = '', 'e nao no FPC oficial');
+        end;
+        vPacote := Pacote('SynopseRAL', tpDelphi);
+        if vPacote <> nil then
+          Conferir(Pos('2009', vCompat.Motivo(vPacote, vD2010)) = 0,
+                   'regra de pacote antiga continua valendo');
+      finally
+        vCompat.Free;
+        vManifesto.Free;
+      end;
+    end
+    else
+      WriteLn('  --    sem a arvore ', vRaizWS, ': testes por pacote pulados');
+    vRaizWS := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..' + PathDelim + '..' +
+                              PathDelim + '..' + PathDelim + 'PascalRAL-2.0');
+    if DirectoryExists(vRaizWS) then
+    begin
+      vOrigem := TOrigemLocal.Create(vRaizWS);
+      try
+        Conferir(VersaoRALDaOrigem(vOrigem) = '2.0.0', 'RALVERSION da 2.0 (src/core): ' +
+                 VersaoRALDaOrigem(vOrigem));
+      finally
+        vOrigem.Free;
+      end;
+    end;
+
+    WriteLn('F16: verificadas e as falhas da varredura viram bloqueio:');
+    vVerif := TVerificadas.Create;
+    vManifesto := TManifesto.Create;
+    try
+      Conferir(vVerif.CarregarTexto('{ "formato": 1, "verificacoes": [' +
+        ' { "ral": "1.1.0", "ide": "delphi", "versao": "37.0", "resultado": "ok", "data": "2026-10-18" },' +
+        ' { "ral": "1.1.0", "ide": "delphi", "versao": "23.0", "resultado": "falhou", "motivo": "E2003 x" },' +
+        ' { "ral": "1.2.0", "ide": "lazarus", "versao": "4.9", "fpc": "3.2.3", "variante": "oficial", "resultado": "ok" },' +
+        ' { "ral": "1.2.0", "ide": "lazarus", "versao": "4.99", "fpc": "3.3.1", "variante": "unleashed", "resultado": "falhou", "motivo": "Unleashed" } ] }',
+        't'), 'lista de verificadas lida');
+      Conferir((vVerif.Buscar('1.1.0', vD13) <> nil) and vVerif.Buscar('1.1.0', vD13).Ok,
+               '1.1 verificada no Delphi 13');
+      Conferir(vVerif.Buscar('1.1.0', vXE2) = nil, '1.1 nao verificada no XE2');
+      Conferir((vVerif.Buscar('1.2.0', vL323) <> nil), '1.2 verificada no Lazarus 4.9/FPC 3.2.3');
+      Conferir(vVerif.Buscar('1.2.0', vLUnl) <> nil, 'o Unleashed e outra IDE da lista');
+      vManifesto.CarregarTexto('{ "formato": 1 }', 'vazio');
+      vManifesto.AcrescentarFalhas(vVerif);
+      vManifesto.VersaoRAL := '1.2.0';
+      vCompat := TCompatibilidade.Create(nil, vManifesto, nil);
+      try
+        Conferir(Pos('Unleashed', vCompat.MotivoVersao(vLUnl)) > 0,
+                 'a falha no Unleashed vira bloqueio: ' + vCompat.MotivoVersao(vLUnl));
+        Conferir(vCompat.MotivoVersao(vL323) = '', 'e nao no FPC oficial');
+      finally
+        vCompat.Free;
+      end;
+      vVerif.Registrar('1.2.0', 'abc', vD13, True, '');
+      Conferir((vVerif.Buscar('1.2.0', vD13) <> nil) and vVerif.Buscar('1.2.0', vD13).Ok,
+               'registrar acrescenta');
+      vVerif.Registrar('1.2.0', 'abc', vD13, False, 'quebrou');
+      Conferir(not vVerif.Buscar('1.2.0', vD13).Ok, 'registrar de novo troca');
+      vVerif.Salvar(GetTempDir + 'ralinst-verificadas-teste.json');
+      vVerif.Clear;
+      Conferir(vVerif.CarregarArquivo(GetTempDir + 'ralinst-verificadas-teste.json') and
+               (vVerif.Count = 5), Format('salvo e lido de volta (%d)', [vVerif.Count]));
+      SysUtils.DeleteFile(GetTempDir + 'ralinst-verificadas-teste.json');
+    finally
+      vManifesto.Free;
+      vVerif.Free;
+    end;
+
+    WriteLn('F20: receitas novas:');
+    vReceitas.CarregarPasta(APastaReceitas);
+    Conferir(vReceitas.Erros.Count = 0, 'receitas sem erro ' + vReceitas.Erros.Text);
+    Conferir((vReceitas.Buscar('libsagui') <> nil) and not vReceitas.Buscar('libsagui').Codigo,
+             'libsagui: so os binarios do release');
+    Conferir((vReceitas.Buscar('brotli') <> nil) and
+             (vReceitas.Buscar('brotli').Delphi.Acao(0).Tipo = taCopiarArquivo),
+             'brotli: copiar-arquivo');
+    vOk := vReceitas.CarregarTexto('{ "nome": "x", "fonte": { "github": "a/b" }, ' +
+      '"delphi": { "acoes": [ { "acao": "copiar-arquivo", "plataforma": "win32", ' +
+      '"arquivos": ["../../windows/system32/x.dll"] } ] } }', 'ruim');
+    Conferir(not vOk, 'copiar-arquivo com .. recusado');
+    vOk := vReceitas.CarregarTexto('{ "nome": "y", "fonte": { "github": "a/b" }, ' +
+      '"lazarus": { "acoes": [ { "acao": "libpath", "caminhos": ["x"], ' +
+      '"plataformas": ["linux64"] } ] } }', 'ruim2');
+    Conferir(not vOk, '"plataformas" no libpath do Lazarus recusado');
+  finally
+    vReceitas.Free;
+    vCatalogo.Free;
+    vLUnl.Free;
+    vL323.Free;
+    vL300.Free;
+    vD13.Free;
+    vXE2.Free;
+    vXE.Free;
+    vD2010.Free;
+    vD7.Free;
+  end;
+end;
+
 procedure Testes;
 var
   vXE2, vD12, vLaz322, vLaz323, vLaz331, vLazSemFPC: TIDEInstance;
@@ -383,6 +607,7 @@ begin
     if Copy(ParamStr(2), 1, 11) = '--receitas=' then
       GPastaReceitas := Copy(ParamStr(2), 12, MaxInt);
     TestesZeos(GPastaReceitas);
+    TestesF15(GPastaReceitas);
     WriteLn;
     if GFalhas = 0 then
       WriteLn('todos os testes passaram')

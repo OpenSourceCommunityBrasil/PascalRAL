@@ -1,6 +1,6 @@
 /// Runtime translation of the installer texts. The .po files are embedded in
 /// the executable (RCDATA PO_PT_BR, PO_EN_US, PO_ES_ES), so the single exe
-/// speaks every language; a languages/ralinstaller.<lang>.po beside it wins, so
+/// speaks every language; a languages/<PrefixoPO>.<lang>.po beside it wins, so
 /// a translator can test without recompiling. LCL-free: the GUI and the CLI use
 /// it the same way (the GUI also hands the text to the LCL form translator).
 unit RALInst.Traducao;
@@ -39,6 +39,11 @@ const
   IdiomasInstalador: array[0..2] of string = ('en-US', 'es-ES', 'pt-BR');
   /// Language of the original texts (the msgid of every .po)
   IdiomaOriginal = 'pt-BR';
+
+var
+  /// File name prefix of the .po beside the executable
+  /// (languages/<prefix>.<lang>.po); the migrator sets 'ralmigrador'
+  PrefixoPO: string = 'ralinstaller';
 
 /// The .po of a language: languages/ralinstaller.<lang>.po beside the
 /// executable wins, else the embedded resource; nil when there is neither
@@ -241,7 +246,7 @@ begin
   vTexto := TStringList.Create;
   try
     vArquivo := ExtractFilePath(ParamStr(0)) + 'languages' + PathDelim +
-                'ralinstaller.' + AIdioma + '.po';
+                PrefixoPO + '.' + AIdioma + '.po';
     if FileExists(vArquivo) then
     begin
       vTexto.LoadFromFile(vArquivo);

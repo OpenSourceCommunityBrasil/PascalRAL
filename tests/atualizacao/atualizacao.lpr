@@ -172,8 +172,11 @@ begin
   WriteLn('escolha do release (asset deste sistema: ', AssetDestaPlataforma, '):');
   vLista := '[' +
     Release('1.1', False, False, Asset(AssetDestaPlataforma, 'http://x/ral', 10)) + ',' +
-    Release('instalador-v0.9.0', False, False, Asset(AssetDestaPlataforma, 'http://x/090', 10)) + ',' +
+    Release('instalador-v0.9.0', False, False, Asset(AssetDestaPlataforma, 'http://x/090', 10) +
+            ',' + Asset(AssetDestaPlataforma(ProgramaMigrador), 'http://x/m090', 5)) + ',' +
     Release('instalador-v0.9.5', False, False, Asset(AssetDestaPlataforma, 'http://x/095', 20) + ',' +
+            Asset(AssetDestaPlataforma(ProgramaCLI), 'http://x/cli095', 15) + ',' +
+            Asset(AssetDestaPlataforma(ProgramaMigrador), 'http://x/m095', 7) + ',' +
             Asset('SHA256SUMS', 'http://x/somas', 1)) + ',' +
     Release('instalador-v0.10.0', False, True, Asset(AssetDestaPlataforma, 'http://x/0100pre', 30)) + ',' +
     Release('instalador-v0.11.0', True, False, Asset(AssetDestaPlataforma, 'http://x/0110draft', 40)) + ']';
@@ -187,6 +190,31 @@ begin
     Conferir(vAtu.Tamanho = 20, 'com o tamanho');
     Conferir(vAtu.EscolherDe(vJSON, '0.9.5') = rvAtualizado, 'na 0.9.5 esta atualizado');
     Conferir(vAtu.EscolherDe(vJSON, '0.10.0') = rvAtualizado, 'uma versao mais nova que a publicada tambem');
+  finally
+    vAtu.Free;
+    vJSON.Free;
+  end;
+
+  // F21: a CLI troca a si mesma pelo ralcli do release, nao pelo instalador
+  vJSON := GetJSON(vLista);
+  vAtu := TAtualizacao.Create(ProgramaCLI);
+  try
+    vAtu.EscolherDe(vJSON, '0.9.0');
+    Conferir(vAtu.URLAsset = 'http://x/cli095', 'a CLI escolhe o ralcli do release (' +
+             vAtu.URLAsset + ')');
+  finally
+    vAtu.Free;
+    vJSON.Free;
+  end;
+
+  // F21: o instalador e o migrador vem do mesmo release; sem o migrador deste
+  // sistema a versao nova nao conta
+  vJSON := GetJSON('[' + Release('instalador-v1.0.0', False, False,
+                                 Asset(AssetDestaPlataforma, 'http://x/s', 5)) + ']');
+  vAtu := TAtualizacao.Create;
+  try
+    vOk := vAtu.EscolherDe(vJSON, '0.9.0') = rvNaoVerificou;
+    Conferir(vOk, 'versao nova sem o migrador deste sistema nao conta: ' + vAtu.Erro);
   finally
     vAtu.Free;
     vJSON.Free;
@@ -214,10 +242,11 @@ end;
 
 procedure TestesDownloadETroca;
 var
-  vPasta, vExe, vNovo, vBinario, vSomas, vArquivo: string;
+  vPasta, vExe, vNovo, vBinario, vSomas, vArquivo, vMigrador, vMigradorPub: string;
   vAtu: TAtualizacao;
   vJSON: TJSONData;
-  vTamanho: int64;
+  vTamanho, vTamanhoMigrador: int64;
+  vPreso: TFileStream;
   vBusca: TSearchRec;
   vOk: boolean;
 
@@ -225,7 +254,9 @@ var
   var
     vAssets: string;
   begin
-    vAssets := Asset(AssetDestaPlataforma, URLArquivo(vBinario), vTamanho);
+    vAssets := Asset(AssetDestaPlataforma, URLArquivo(vBinario), vTamanho) + ',' +
+               Asset(AssetDestaPlataforma(ProgramaMigrador), URLArquivo(vMigradorPub),
+                     vTamanhoMigrador);
     if ASomas <> '' then
       vAssets := vAssets + ',' + Asset('SHA256SUMS', URLArquivo(ASomas), 1);
     Result := GetJSON('[' + Release('instalador-v9.9.9', False, False, vAssets) + ']');
@@ -239,15 +270,24 @@ begin
   Sleep(300);
   vExe := vPasta + 'instalador_de_teste.bin';
   vBinario := vPasta + 'publicado.bin';
+  vMigradorPub := vPasta + 'migrador_publicado.bin';
+  vMigrador := vPasta + 'migrador_de_teste.bin';
   vSomas := vPasta + 'SHA256SUMS';
   Gravar(vExe, 'versao velha');
   Gravar(vBinario, 'versao nova do instalador');
+  Gravar(vMigradorPub, 'versao nova do migrador');
   FindFirst(vBinario, faAnyFile, vBusca);
   vTamanho := vBusca.Size;
   SysUtils.FindClose(vBusca);
+  FindFirst(vMigradorPub, faAnyFile, vBusca);
+  vTamanhoMigrador := vBusca.Size;
+  SysUtils.FindClose(vBusca);
+  SysUtils.DeleteFile(vMigrador);
 
   // hash certo
   Gravar(vSomas, SHA256Arquivo(vBinario) + '  ' + AssetDestaPlataforma + LineEnding +
+                 SHA256Arquivo(vMigradorPub) + '  ' +
+                 AssetDestaPlataforma(ProgramaMigrador) + LineEnding +
                  '0000  outro_arquivo');
   vAtu := TAtualizacao.Create;
   vJSON := Lista(vSomas);
@@ -263,8 +303,34 @@ begin
     Conferir(Ler(vExe) = Ler(vBinario), 'o executavel agora e o novo');
     Conferir(FileExists(vExe + '.old') and (Ler(vExe + '.old') = 'versao velha' + LineEnding),
              'o antigo ficou como .old');
-    LimparAtualizacaoAnterior(vExe);
+    LimparAtualizacaoAnterior(vExe, vMigrador);
     Conferir(not FileExists(vExe + '.old'), 'a proxima abertura apaga o .old');
+
+    // F21: o migrador tambem: o primeiro entra no lugar, o seguinte troca
+    vAtu.ArquivoMigrador := vMigrador;
+    Conferir(vAtu.BaixarMigrador(vNovo) and (Ler(vNovo) = Ler(vMigradorPub)),
+             'migrador baixado e conferido pelo SHA256SUMS ' + vAtu.Erro);
+    Conferir(vAtu.TrocarMigrador(vNovo) and (Ler(vMigrador) = Ler(vMigradorPub)),
+             'o primeiro migrador da pasta entra no lugar ' + vAtu.Erro);
+    Gravar(vMigrador, 'migrador velho');
+    Conferir(vAtu.BaixarMigrador(vNovo) and vAtu.TrocarMigrador(vNovo) and
+             (Ler(vMigrador) = Ler(vMigradorPub)) and FileExists(vMigrador + '.old'),
+             'o migrador seguinte troca, o antigo fica .old ' + vAtu.Erro);
+    // aberto (preso por outro processo): o .novo espera a proxima abertura
+    Gravar(vMigrador, 'migrador velho');
+    SysUtils.DeleteFile(vMigrador + '.old');
+    vPreso := TFileStream.Create(vMigrador, fmOpenRead or fmShareDenyNone);
+    try
+      Conferir(vAtu.BaixarMigrador(vNovo), 'baixado com o migrador aberto');
+      vOk := not vAtu.TrocarMigrador(vNovo) and vAtu.MigradorPendente and
+             FileExists(vMigrador + '.novo');
+      Conferir(vOk, 'migrador aberto: fica para a proxima abertura (' + vAtu.Erro + ')');
+    finally
+      vPreso.Free;
+    end;
+    LimparAtualizacaoAnterior(vExe, vMigrador);
+    Conferir((Ler(vMigrador) = Ler(vMigradorPub)) and not FileExists(vMigrador + '.novo'),
+             'a proxima abertura do instalador troca o migrador que esperava');
   finally
     vJSON.Free;
     vAtu.Free;
@@ -307,7 +373,7 @@ begin
   finally
     vAtu.Free;
   end;
-  for vArquivo in [vExe, vBinario, vSomas] do
+  for vArquivo in [vExe, vBinario, vSomas, vMigrador, vMigradorPub, vMigrador + '.old'] do
     SysUtils.DeleteFile(vArquivo);
 end;
 

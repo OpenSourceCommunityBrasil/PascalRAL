@@ -28,22 +28,37 @@ type
   /// Result of a check for a new version.
   TResultadoVerificacao = (rvAtualizado, rvNovaVersao, rvNaoVerificou);
 
-  /// Checks, downloads and swaps in a new installer version.
+  /// Checks, downloads and swaps in a new installer version. F21: a release
+  /// carries two programs for this system, the installer (or the command line)
+  /// and the project migrator, and both are swapped: a release without the
+  /// migrator of this system does not count as a new version.
   TAtualizacao = class
   private
+    FArquivoMigrador: string;
     FErro: string;
     FLog: TLogLinha;
+    FMigradorPendente: boolean;
     FNotas: string;
+    FPrograma: string;
     FTag: string;
     FTamanho: int64;
+    FTamanhoMigrador: int64;
     FURLAsset: string;
+    FURLMigrador: string;
     FURLSomas: string;
     FVersaoNova: string;
+    /// Downloads one asset into ADestino and checks size and hash
+    function BaixarAsset(const AURL, AAsset: string; ATamanho: int64;
+      const ADestino: string): boolean;
+    function GetArquivoMigrador: string;
     /// Passes the line to Log when assigned
     procedure Logar(const ALinha: string);
   public
+    constructor Create(const APrograma: string = '');
     /// Downloads this system's binary into <exe>.novo and checks size and hash
     function Baixar(out AArquivo: string; const AExecutavel: string = ''): boolean;
+    /// F21: downloads this system's migrator into <migrator>.novo, checked
+    function BaixarMigrador(out AArquivo: string): boolean;
     /// The choice, apart from the network for the tests: the newest installer
     /// release (neither draft nor pre-release) in the API list
     function EscolherDe(AReleases: TJSONData;
@@ -54,28 +69,43 @@ type
     /// The executable (ParamStr(0) by default) becomes ANovo; the current one
     /// becomes .old
     function Trocar(const ANovo: string; const AExecutavel: string = ''): boolean;
+    /// F21: the migrator becomes ANovo. An open migrator cannot be swapped:
+    /// the .novo stays and the next opening of the installer swaps it
+    /// (MigradorPendente); False then, with the reason in Erro
+    function TrocarMigrador(const ANovo: string): boolean;
     /// Queries the releases of the installer repository
     function Verificar(const AVersaoAtual: string = ''): TResultadoVerificacao;
 
+    /// Where the migrator is (or goes) beside this program; the tests point it
+    /// elsewhere
+    property ArquivoMigrador: string read GetArquivoMigrador write FArquivoMigrador;
     property Erro: string read FErro;
     property Log: TLogLinha read FLog write FLog;
+    /// The migrator was open: its new version waits beside it for the next
+    /// opening of the installer
+    property MigradorPendente: boolean read FMigradorPendente;
     property Notas: string read FNotas;
+    /// 'ralinstaller' (the screens) or 'ralcli': which binary of the release
+    /// replaces this program
+    property Programa: string read FPrograma;
     property Tag: string read FTag;
     property Tamanho: int64 read FTamanho;
     property URLAsset: string read FURLAsset;
     property VersaoNova: string read FVersaoNova;
   end;
 
-/// Deletes the .old a previous update left (at startup)
-procedure LimparAtualizacaoAnterior(const AExecutavel: string = '');
+/// Deletes the .old a previous update left (at startup), and swaps in a
+/// migrator that was open then (its .novo waits beside it)
+procedure LimparAtualizacaoAnterior(const AExecutavel: string = '';
+  const AMigrador: string = '');
 
 implementation
 
 uses
   {$IFDEF UNIX} BaseUnix, {$ENDIF}
   Process,
-  RALInst.GitHub, RALInst.HTTP, RALInst.IDE, RALInst.Mensagens, RALInst.SHA256,
-  RALInst.Versao;
+  RALInst.GitHub, RALInst.HTTP, RALInst.IDE, RALInst.Mensagens, RALInst.Migrador,
+  RALInst.SHA256, RALInst.Versao;
 
 function Executavel(const AExecutavel: string): string;
 begin
@@ -85,18 +115,56 @@ begin
     Result := ParamStr(0);
 end;
 
-procedure LimparAtualizacaoAnterior(const AExecutavel: string);
+procedure LimparAtualizacaoAnterior(const AExecutavel, AMigrador: string);
 var
-  vAntigo: string;
+  vAntigo, vMigrador: string;
+  vAtu: TAtualizacao;
 begin
   vAntigo := Executavel(AExecutavel) + '.old';
   // pode ainda estar em uso por um instante (o processo antigo saindo): fica
   // para a proxima vez
   if FileExists(vAntigo) then
     SysUtils.DeleteFile(vAntigo);
+  // F21: o migrador que estava aberto na atualizacao: a versao nova esperou
+  vMigrador := AMigrador;
+  if vMigrador = '' then
+  begin
+    vMigrador := RALInst.Migrador.ArquivoMigrador;
+    if vMigrador = '' then
+      vMigrador := DestinoMigrador;
+  end;
+  if FileExists(vMigrador + '.old') then
+    SysUtils.DeleteFile(vMigrador + '.old');
+  if FileExists(vMigrador + '.novo') then
+  begin
+    vAtu := TAtualizacao.Create;
+    try
+      vAtu.ArquivoMigrador := vMigrador;
+      vAtu.TrocarMigrador(vMigrador + '.novo');
+    finally
+      vAtu.Free;
+    end;
+  end;
 end;
 
 { TAtualizacao }
+
+constructor TAtualizacao.Create(const APrograma: string);
+begin
+  inherited Create;
+  FPrograma := APrograma;
+  if FPrograma = '' then
+    FPrograma := ProgramaInstalador;
+end;
+
+function TAtualizacao.GetArquivoMigrador: string;
+begin
+  Result := FArquivoMigrador;
+  if Result = '' then
+    Result := RALInst.Migrador.ArquivoMigrador;
+  if Result = '' then
+    Result := DestinoMigrador;
+end;
 
 procedure TAtualizacao.Logar(const ALinha: string);
 begin
@@ -117,7 +185,9 @@ begin
   FTag := '';
   FURLAsset := '';
   FURLSomas := '';
+  FURLMigrador := '';
   FTamanho := 0;
+  FTamanhoMigrador := 0;
   if not (AReleases is TJSONArray) then
   begin
     FErro := emGitHubRespostaInesperada;
@@ -155,10 +225,15 @@ begin
     for vAsset := 0 to Pred(vAssets.Count) do
     begin
       vArq := vAssets.Objects[vAsset];
-      if SameText(vArq.Get('name', ''), AssetDestaPlataforma) then
+      if SameText(vArq.Get('name', ''), AssetDestaPlataforma(FPrograma)) then
       begin
         FURLAsset := vArq.Get('browser_download_url', '');
         FTamanho := vArq.Get('size', int64(0));
+      end
+      else if SameText(vArq.Get('name', ''), AssetDestaPlataforma(ProgramaMigrador)) then
+      begin
+        FURLMigrador := vArq.Get('browser_download_url', '');
+        FTamanhoMigrador := vArq.Get('size', int64(0));
       end
       else if SameText(vArq.Get('name', ''), 'SHA256SUMS') then
         FURLSomas := vArq.Get('browser_download_url', '');
@@ -166,7 +241,14 @@ begin
   if FURLAsset = '' then
   begin
     FErro := Format(emAtuSemBinario,
-                    [FVersaoNova, AssetDestaPlataforma]);
+                    [FVersaoNova, AssetDestaPlataforma(FPrograma)]);
+    Exit(rvNaoVerificou);
+  end;
+  // F21: o migrador sai no mesmo release; sem ele a versao nova nao conta
+  if FURLMigrador = '' then
+  begin
+    FErro := Format(emAtuSemMigrador,
+                    [FVersaoNova, AssetDestaPlataforma(ProgramaMigrador)]);
     Exit(rvNaoVerificou);
   end;
   Result := rvNovaVersao;
@@ -206,43 +288,64 @@ begin
 end;
 
 function TAtualizacao.Baixar(out AArquivo: string; const AExecutavel: string): boolean;
-var
-  vCli: TClienteHTTP;
-  vArq: TFileStream;
-  vSomas: TStringList;
-  vTexto, vHash, vLinha: string;
-  vOk: boolean;
 begin
-  Result := False;
   FErro := '';
   AArquivo := Executavel(AExecutavel) + '.novo';
   if FURLAsset = '' then
   begin
     FErro := emAtuNenhumaVersao;
-    Exit;
+    Exit(False);
   end;
+  Result := BaixarAsset(FURLAsset, AssetDestaPlataforma(FPrograma), FTamanho, AArquivo);
+end;
+
+function TAtualizacao.BaixarMigrador(out AArquivo: string): boolean;
+begin
+  FErro := '';
+  AArquivo := ArquivoMigrador + '.novo';
+  if FURLMigrador = '' then
+  begin
+    FErro := emAtuNenhumaVersao;
+    Exit(False);
+  end;
+  Result := BaixarAsset(FURLMigrador, AssetDestaPlataforma(ProgramaMigrador),
+                        FTamanhoMigrador, AArquivo);
+end;
+
+function TAtualizacao.BaixarAsset(const AURL, AAsset: string; ATamanho: int64;
+  const ADestino: string): boolean;
+var
+  vCli: TClienteHTTP;
+  vArq: TFileStream;
+  vSomas: TStringList;
+  vTexto, vHash, vLinha, vArquivo: string;
+  vOk: boolean;
+begin
+  Result := False;
+  FErro := '';
+  vArquivo := ADestino;
   // ao lado do atual: a troca e um rename
   try
-    vArq := TFileStream.Create(AArquivo, fmCreate);
+    vArq := TFileStream.Create(vArquivo, fmCreate);
   except
     on E: Exception do
     begin
-      FErro := Format(emAtuSemEscrita, [ExtractFilePath(AArquivo), E.Message]);
+      FErro := Format(emAtuSemEscrita, [ExtractFilePath(vArquivo), E.Message]);
       Exit;
     end;
   end;
   vCli := TClienteHTTP.Create;
   try
-    Logar(Format(cmBaixandoArquivo, [FURLAsset]));
+    Logar(Format(cmBaixandoArquivo, [AURL]));
     try
-      vOk := vCli.Obter(FURLAsset, vArq);
+      vOk := vCli.Obter(AURL, vArq);
     finally
       vArq.Free;
     end;
     if not vOk then
     begin
       FErro := Format(emAtuDownload, [vCli.Erro]);
-      SysUtils.DeleteFile(AArquivo);
+      SysUtils.DeleteFile(vArquivo);
       Exit;
     end;
   finally
@@ -250,16 +353,16 @@ begin
   end;
 
   // download pela metade nunca vira o executavel
-  vArq := TFileStream.Create(AArquivo, fmOpenRead or fmShareDenyNone);
+  vArq := TFileStream.Create(vArquivo, fmOpenRead or fmShareDenyNone);
   try
-    vOk := (FTamanho <= 0) or (vArq.Size = FTamanho);
+    vOk := (ATamanho <= 0) or (vArq.Size = ATamanho);
   finally
     vArq.Free;
   end;
   if not vOk then
   begin
     FErro := emAtuTamanho;
-    SysUtils.DeleteFile(AArquivo);
+    SysUtils.DeleteFile(vArquivo);
     Exit;
   end;
 
@@ -271,7 +374,7 @@ begin
       if not vCli.ObterTexto(FURLSomas, vTexto) then
       begin
         FErro := Format(emAtuSomas, [vCli.Erro]);
-        SysUtils.DeleteFile(AArquivo);
+        SysUtils.DeleteFile(vArquivo);
         Exit;
       end;
       vSomas.Text := vTexto;
@@ -279,18 +382,18 @@ begin
       // "<hash>  <arquivo>", como o sha256sum escreve
       for vLinha in vSomas do
         if SameText(Trim(Copy(Trim(vLinha), Pos(' ', Trim(vLinha)) + 1, MaxInt)),
-                    AssetDestaPlataforma) then
+                    AAsset) then
           vHash := LowerCase(Copy(Trim(vLinha), 1, Pos(' ', Trim(vLinha)) - 1));
       if vHash = '' then
       begin
-        FErro := Format(emAtuSomasSemAsset, [AssetDestaPlataforma]);
-        SysUtils.DeleteFile(AArquivo);
+        FErro := Format(emAtuSomasSemAsset, [AAsset]);
+        SysUtils.DeleteFile(vArquivo);
         Exit;
       end;
-      if SHA256Arquivo(AArquivo) <> vHash then
+      if SHA256Arquivo(vArquivo) <> vHash then
       begin
         FErro := emAtuHash;
-        SysUtils.DeleteFile(AArquivo);
+        SysUtils.DeleteFile(vArquivo);
         Exit;
       end;
       Logar(Format(cmHashConferido, [vHash]));
@@ -301,7 +404,7 @@ begin
   end;
 
   {$IFDEF UNIX}
-  FpChmod(AArquivo, &755);
+  FpChmod(vArquivo, &755);
   {$ENDIF}
   Result := True;
 end;
@@ -341,6 +444,42 @@ begin
   {$IFDEF UNIX}
   FpChmod(vExe, &755);
   {$ENDIF}
+  Result := True;
+end;
+
+function TAtualizacao.TrocarMigrador(const ANovo: string): boolean;
+var
+  vMigrador: string;
+begin
+  Result := False;
+  FErro := '';
+  FMigradorPendente := False;
+  vMigrador := ArquivoMigrador;
+  if not FileExists(ANovo) then
+  begin
+    FErro := Format(emAtuNovoNaoExiste, [ANovo]);
+    Exit;
+  end;
+  // o primeiro migrador desta pasta: nada a trocar
+  if not FileExists(vMigrador) then
+  begin
+    Result := RenameFile(ANovo, vMigrador);
+    if not Result then
+      FErro := emAtuTrocar
+    {$IFDEF UNIX}
+    else
+      FpChmod(vMigrador, &755)
+    {$ENDIF};
+    Exit;
+  end;
+  // aberto, nao se troca: o .novo espera a proxima abertura do instalador
+  if ProgramaEmExecucao([ExtractFileName(vMigrador)], ExtractFilePath(vMigrador)) or
+     not Trocar(ANovo, vMigrador) then
+  begin
+    FMigradorPendente := FileExists(ANovo);
+    FErro := Format(wmMigradorTrocaDepois, [ExtractFileName(vMigrador)]);
+    Exit;
+  end;
   Result := True;
 end;
 

@@ -1,11 +1,20 @@
 {
   "formato": 1,
-  "comentario": "O que os pacotes do RAL nao declaram e o instalador nao consegue deduzir do disco. Copia embutida no instalador (RCDATA MANIFESTO_RAL); um ralinstaller.json na raiz da versao do RAL substitui esta. A falta de FireDAC no XE2 e o System.Net.HttpClient do NetHttpRAL (XE8+) o instalador ja deduz sozinho: nao precisam de regra.",
+  "comentario": "O que os pacotes do RAL nao declaram e o instalador nao consegue deduzir do disco. Copia embutida no instalador (RCDATA MANIFESTO_RAL); um ralinstaller.json na raiz da versao do RAL substitui esta. A falta de FireDAC no XE2 e o System.Net.HttpClient do NetHttpRAL (XE8+) o instalador ja deduz sozinho: nao precisam de regra. 'pacotes' dizem onde o pacote vale; 'bloqueios' dizem onde algo e sabido quebrado (sem 'pacote', a versao inteira do RAL naquela IDE). ral-min/ral-max casam pelo RALVERSION da arvore (o ramo dev declara 1.2.0, a 2.0 declara 2.0.0).",
   "pacotes": [
     { "pacote": "SynopseRAL", "delphi-min": "2009",
       "motivo": "wiki: compatibilidade dos motores" },
     { "pacote": "SaguiRAL", "delphi-min": "2009",
       "motivo": "wiki: compatibilidade dos motores" }
+  ],
+  "bloqueios": [
+    { "delphi-max": "2010",
+      "motivo": "o RAL exige o Delphi XE ou mais novo (o piso do Unicode, decisão D-I1)",
+      "comentario": "o minimo e dado, nao codigo: a versao do RAL que trouxer o porte para o Delphi 7 muda esta regra no ralinstaller.json dela" },
+    { "fpc-max": "3.1.x",
+      "motivo": "o RAL exige o FPC 3.2.0 ou mais novo" },
+    { "ral-max": "1.1.x", "delphi-min": "XE2", "delphi-max": "XE2",
+      "motivo": "RALClient.pas(991) atribui CharRAL a um UTF8String (E2010); corrigido depois da 1.1" }
   ],
   "dependencias": [
     { "receita": "mORMot2", "versao": "master",

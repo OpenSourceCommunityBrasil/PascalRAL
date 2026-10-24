@@ -3,6 +3,9 @@
 /// engine packages (the Engine folder of pkg/<IDE>) that fit that IDE. The
 /// installer refuses such a run instead of warning: a RAL with no engine
 /// installs cleanly and then answers nothing.
+/// The same idea after compiling (F14): a run only reaches the IDE when what
+/// compiled makes a working RAL — the core, the design package when the IDE
+/// gets one, and at least one engine. Otherwise the IDE stays as it was.
 unit RALInst.Motores;
 
 {$mode ObjFPC}{$H+}
@@ -13,18 +16,29 @@ uses
   Classes, SysUtils,
   RALInst.Catalogo, RALInst.Compatibilidade, RALInst.IDE;
 
+/// F14: what FaltaConjunto requires, for the plan: 'PascalRAL, PascalRALDsgn,
+/// um motor entre IndyRAL, SynopseRAL; o resto e opcional'
+function DescreverConjunto(ALista: TList; ADesign: boolean): string;
 /// True when the package is an engine: its folder in pkg/<IDE> is Engine.
 function EhMotor(APacote: TPacote): boolean;
-/// The package kind an IDE installs.
-function TipoDaIDE(AIDE: TIDEInstance): TTipoPacote;
+{ F14: '' when what compiled (AOk, by name) makes a working RAL out of the
+  run (ALista, TPacote): the core, the design package when ADesign and the run
+  has it, and at least one of the run's engines. Otherwise why not, with the
+  reason of what failed (AMotivos: name=reason). Optional packages (database,
+  compression...) never count: they stay out alone. }
+function FaltaConjunto(ALista: TList; AOk, AMotivos: TStrings;
+  ADesign: boolean): string;
+{ '' when AEscolhidos holds an engine that fits AIDE, or no package of AIDE's
+  kind at all (nothing is installed there: a run with nothing checked
+  uninstalls); otherwise why RAL cannot be installed there. A RAL version the
+  manifest blocks for the IDE (F15) says that reason. }
+function FaltaMotor(ACatalogo: TCatalogo; ACompat: TCompatibilidade;
+  AIDE: TIDEInstance; AEscolhidos: TStrings): string;
 /// The engines of the catalog that fit AIDE, by name, in installation order.
 procedure MotoresDaIDE(ACatalogo: TCatalogo; ACompat: TCompatibilidade;
   AIDE: TIDEInstance; ALista: TStrings);
-{ '' when AEscolhidos holds an engine that fits AIDE, or no package of AIDE's
-  kind at all (nothing is installed there: a run with nothing checked
-  uninstalls); otherwise why RAL cannot be installed there. }
-function FaltaMotor(ACatalogo: TCatalogo; ACompat: TCompatibilidade;
-  AIDE: TIDEInstance; AEscolhidos: TStrings): string;
+/// The package kind an IDE installs.
+function TipoDaIDE(AIDE: TIDEInstance): TTipoPacote;
 
 implementation
 
@@ -47,6 +61,94 @@ begin
     Result := tpDelphi
   else
     Result := tpLazarus;
+end;
+
+function Obrigatorio(APacote: TPacote; ADesign: boolean): boolean;
+begin
+  // o nucleo sempre; o de design (PascalRALDsgn, pascalraldsgn) so com a IDE
+  Result := SameText(APacote.Nome, 'PascalRAL') or
+            (ADesign and SameText(APacote.Nome, 'PascalRALDsgn'));
+end;
+
+function FaltaConjunto(ALista: TList; AOk, AMotivos: TStrings;
+  ADesign: boolean): string;
+var
+  vInt: integer;
+  vPacote: TPacote;
+  vMotores: TStringList;
+
+  function MotivoDe(const ANome: string): string;
+  begin
+    Result := '';
+    if AMotivos <> nil then
+      Result := AMotivos.Values[ANome];
+    if Result = '' then
+      Result := cmConjuntoSemMotivo;
+  end;
+
+begin
+  Result := '';
+  vMotores := TStringList.Create;
+  try
+    for vInt := 0 to Pred(ALista.Count) do
+    begin
+      vPacote := TPacote(ALista[vInt]);
+      if Obrigatorio(vPacote, ADesign) and (AOk.IndexOf(vPacote.Nome) < 0) then
+        Exit(Format(cmConjuntoNaoCompilou, [vPacote.Nome, MotivoDe(vPacote.Nome)]));
+      if EhMotor(vPacote) then
+        vMotores.Add(vPacote.Nome);
+    end;
+    // a rodada sem motor nenhum e assunto de FaltaMotor (recusa antes)
+    if vMotores.Count = 0 then
+      Exit;
+    for vInt := 0 to Pred(vMotores.Count) do
+      if AOk.IndexOf(vMotores[vInt]) >= 0 then
+        Exit;
+    for vInt := 0 to Pred(vMotores.Count) do
+    begin
+      if Result <> '' then
+        Result := Result + '; ';
+      Result := Result + vMotores[vInt] + ': ' + MotivoDe(vMotores[vInt]);
+    end;
+    Result := Format(cmConjuntoNenhumMotor, [Result]);
+  finally
+    vMotores.Free;
+  end;
+end;
+
+function DescreverConjunto(ALista: TList; ADesign: boolean): string;
+var
+  vInt: integer;
+  vPacote: TPacote;
+  vMotores: string;
+begin
+  Result := '';
+  vMotores := '';
+  for vInt := 0 to Pred(ALista.Count) do
+  begin
+    vPacote := TPacote(ALista[vInt]);
+    if Obrigatorio(vPacote, ADesign) then
+    begin
+      if Result <> '' then
+        Result := Result + ', ';
+      Result := Result + vPacote.Nome;
+    end
+    else if EhMotor(vPacote) then
+    begin
+      if vMotores <> '' then
+        vMotores := vMotores + ', ';
+      vMotores := vMotores + vPacote.Nome;
+    end;
+  end;
+  if Pos(',', vMotores) > 0 then
+    vMotores := Format(cmConjuntoMotor, [vMotores]);
+  if vMotores <> '' then
+  begin
+    if Result <> '' then
+      Result := Result + ', ';
+    Result := Result + vMotores;
+  end;
+  Result := Format(cmConjuntoFuncional, [Result]);
 end;
 
 function Cabe(APacote: TPacote; ACompat: TCompatibilidade; AIDE: TIDEInstance): boolean;
@@ -84,6 +186,7 @@ var
   vInt: integer;
   vPacote: TPacote;
   vAlgum: boolean;
+  vMotivo: string;
 begin
   Result := '';
   vAlgum := False;
@@ -102,7 +205,13 @@ begin
     // nada desta IDE: ela nao recebe RAL nesta rodada
     if not vAlgum then
       Exit;
-    if vMotores.Count = 0 then
+    // F15: a versao inteira nao serve nesta IDE: e esse o motivo, nao o motor
+    vMotivo := '';
+    if ACompat <> nil then
+      vMotivo := ACompat.MotivoVersao(AIDE);
+    if vMotivo <> '' then
+      Result := Format(emVersaoNaoServe, [AIDE.Nome, vMotivo])
+    else if vMotores.Count = 0 then
       Result := Format(emIDESemMotorPossivel, [AIDE.Nome])
     else
       Result := Format(emSemMotor, [AIDE.Nome,

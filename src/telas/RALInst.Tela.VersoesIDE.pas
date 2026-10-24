@@ -78,6 +78,9 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure AtualizarTextos; override;
+    /// F21: the RAL version (before the run) of the first checked IDE whose
+    /// last plan updates, downgrades or switches it; '' when none does
+    function VersaoAnteriorMudada: string;
     /// Checked IDEs whose last plan found one of these changes
     function ContarMudancas(AMudancas: TMudancasRAL): integer;
     /// False when some checked IDE failed
@@ -494,6 +497,33 @@ begin
       if (TIDETela(vLista[vInt]).TextoMudanca <> '') and
          (TIDETela(vLista[vInt]).Mudanca in AMudancas) then
         Inc(Result);
+  finally
+    vLista.Free;
+  end;
+end;
+
+function TTelaVersoesIDE.VersaoAnteriorMudada: string;
+var
+  vLista: TList;
+  vInt: integer;
+  vTela: TIDETela;
+begin
+  Result := '';
+  vLista := TList.Create;
+  try
+    ListarMarcadas(vLista);
+    for vInt := 0 to Pred(vLista.Count) do
+    begin
+      vTela := TIDETela(vLista[vInt]);
+      if (vTela.TextoMudanca = '') or
+         not (vTela.Mudanca in [mrAtualizar, mrVoltar, mrTrocar]) then
+        Continue;
+      Result := vTela.Fontes.Versao;
+      if Result = '' then
+        Result := vTela.Fontes.VersaoArvore;
+      if Result <> '' then
+        Exit;
+    end;
   finally
     vLista.Free;
   end;

@@ -30,7 +30,9 @@ type
     FNomes: TStringList;
     FPacotes: TStringList;
     FPacotes64: TStringList;
+    FSoRuntime: boolean;
     FVariavel: string;
+    FVersaoRAL: string;
     /// Adds the names of the packages in <root>/pkg/<kind>
     procedure NomesDaPasta(const ARaiz: string; ATipo: TTipoPacote);
   public
@@ -57,8 +59,15 @@ type
     property Pacotes: TStringList read FPacotes;
     /// Delphi: name=bpl in Known Packages x64 (the 64-bit IDE)
     property Pacotes64: TStringList read FPacotes64;
+    /// F18: RAL is there for the user's projects only (compiled packages and
+    /// the library path in Delphi, the links in Lazarus) and nothing of it is
+    /// in the IDE
+    property SoRuntime: boolean read FSoRuntime write FSoRuntime;
     /// Delphi: the value of $(PascalRAL) ('' when there is none)
     property Variavel: string read FVariavel write FVariavel;
+    /// The RAL version the tree declares (RALVERSION: '1.2.0', '2.0.0'); '' when
+    /// unknown
+    property VersaoRAL: string read FVersaoRAL write FVersaoRAL;
   end;
 
 {$IFDEF MSWINDOWS}
@@ -78,7 +87,23 @@ implementation
 
 uses
   {$IFDEF MSWINDOWS} RALInst.Registro.Delphi, {$ENDIF}
-  RALInst.Config.Lazarus, RALInst.Heranca, RALInst.Mensagens;
+  RALInst.Compatibilidade, RALInst.Config.Lazarus, RALInst.Heranca, RALInst.Mensagens;
+
+// a versao que a arvore declara (RALConsts.pas); '' quando nao diz
+function VersaoDaArvore(const ARaiz: string): string;
+var
+  vOrigem: TOrigemLocal;
+begin
+  Result := '';
+  if (ARaiz = '') or not DirectoryExists(ARaiz) then
+    Exit;
+  vOrigem := TOrigemLocal.Create(ARaiz);
+  try
+    Result := VersaoRALDaOrigem(vOrigem);
+  finally
+    vOrigem.Free;
+  end;
+end;
 
 const
   // o nucleo existe em toda versao do RAL, com estes nomes
@@ -242,9 +267,14 @@ begin
         vNomes.Add(FLinks.Names[vInt]);
     Result := StringReplace(vNomes.CommaText, ',', ', ', [rfReplaceAll]);
     // so a variavel e o library path: o RAL usado como fontes, sem pacotes
-    if (Result = '') and ((FCaminhos.Count > 0) or (FVariavel <> '')) then
+    if (Result = '') and FSoRuntime then
+      Result := cmExistenteSoRuntime
+    else if (Result = '') and ((FCaminhos.Count > 0) or (FVariavel <> '')) then
       Result := cmExistenteSoPaths;
-    if FFontes <> '' then
+    if (FVersaoRAL <> '') and (FFontes <> '') then
+      Result := Trim(Result + ' (RAL ' + FVersaoRAL + ', ' +
+                     ExcludeTrailingPathDelimiter(FFontes) + ')')
+    else if FFontes <> '' then
       Result := Trim(Result + ' (' + ExcludeTrailingPathDelimiter(FFontes) + ')');
   finally
     vNomes.Free;
@@ -333,6 +363,17 @@ begin
           Result.Caminhos.Add(vSub + '|' + vValor);
       end;
     end;
+
+    // F18: nada na IDE, mas o library path e o .dcp do nucleo onde a IDE
+    // procura pacotes: o RAL so para os projetos que compilam com pacotes
+    Result.SoRuntime := (Result.Pacotes.Count = 0) and (Result.Pacotes64.Count = 0) and
+      (Result.Caminhos.Count > 0) and
+      (FileExists(AIDE.CommonDir + 'Dcp' + PathDelim + 'PascalRAL.dcp') or
+       FileExists(vReg.Expandir(vReg.LerValor(vReg.ChaveLibrary('win32'),
+                                              'Package DCP Output')) + PathDelim +
+                  'PascalRAL.dcp'));
+    // F21: a versao que a arvore declara (RALVERSION 2.0.0 numa 2.0 a mao)
+    Result.VersaoRAL := VersaoDaArvore(Result.Fontes);
   finally
     vItens.Free;
     vPlataformas.Free;
@@ -381,6 +422,9 @@ begin
     for vInt := 0 to Pred(vInstalados.Count) do
       if Result.DoRAL(vInstalados[vInt]) then
         Result.Pacotes.Add(vInstalados[vInt] + '=');
+    // F18: so os links, nada na IDE: os projetos exigem os pacotes
+    Result.SoRuntime := (Result.Links.Count > 0) and (Result.Pacotes.Count = 0);
+    Result.VersaoRAL := VersaoDaArvore(Result.Fontes);
   finally
     vInstalados.Free;
     vLinks.Free;

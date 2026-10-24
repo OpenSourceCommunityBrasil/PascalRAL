@@ -14,7 +14,9 @@ program ralcli;
 //   ralcli instalar --ide=<raiz> [--ide=<raiz>]... [opcoes] [--sim]
 //   ralcli recibos  [--todos]
 //   ralcli desinstalar --ide=<raiz> [--ide=<raiz>]... [--sim] [--sem-reconstruir]
+//                      [--limpar [--pasta=<pasta>] [--manter=<n,m>]]
 //   ralcli desinstalar --desfazer=<registro> [--sim]
+//   ralcli limpar   [--pasta=<pasta>] [--manter=<n,m>] [--sim]
 //   ralcli versao
 //   ralcli atualizar [--verificar]
 //
@@ -26,6 +28,9 @@ program ralcli;
 //                         indyral do Lazarus); sem isso, o nucleo do RAL
 //   --win64               Delphi: tambem compila o runtime de Win64
 //   --somente-paths       Delphi: so library path, sem compilar
+//   --so-runtime          compila os pacotes de runtime (Delphi: .bpl/.dcp e
+//                         library path; Lazarus: so os links), nada vai para a
+//                         IDE
 //   --ignorar-existentes  baixa as dependencias mesmo que a IDE ja tenha
 //   --reinstalar          compila e registra tudo, mesmo o que ja esta la
 //   --remover-outros      tira da IDE os pacotes do RAL que nao foram pedidos
@@ -39,7 +44,15 @@ program ralcli;
 //   --sim                 nao pergunta antes de mexer nas IDEs
 //
 // --ide aceita a pasta raiz da IDE, ou #<n> da lista de 'ralcli ides'.
-// Codigo de saida: 0 deu certo, 1 algo falhou, 2 uso errado.
+// Codigo de saida: 0 deu certo, 1 algo falhou, 2 uso errado, 3 nada mudou numa
+// IDE porque o conjunto minimo (nucleo, design e um motor) nao compilou (F14:
+// a IDE ficou exatamente como estava).
+//
+// limpar (e desinstalar --limpar): apaga o que o instalador baixou e nenhuma
+// instalacao usa mais — versoes do RAL, dependencias, DLLs em redist, o cache
+// de downloads. Lista antes, com o tamanho; --manter=<n,m> guarda os itens n e
+// m; --sim nao pergunta. Pasta sem a marca do instalador nunca e apagada, nem
+// dependencia que ja era do usuario.
 //
 // Nunca se atualiza sozinho: numa rodada de servidor, trocar de versao no meio
 // e defeito, nao recurso (F12). So 'ralcli atualizar' troca o binario.
@@ -49,8 +62,8 @@ uses
   {$IFDEF MSWINDOWS} Windows, RALInst.IDE.Delphi, RALInst.Instalar.Delphi, {$ENDIF}
   Classes, SysUtils,
   RALInst.AutoAtualizacao, RALInst.Catalogo, RALInst.GitHub, RALInst.IDE,
-  RALInst.IDE.Lazarus, RALInst.Instalar.Lazarus, RALInst.Processo, RALInst.Recibos,
-  RALInst.Rodada, RALInst.Versao;
+  RALInst.IDE.Lazarus, RALInst.Instalar.Lazarus, RALInst.Limpeza, RALInst.Processo,
+  RALInst.Recibos, RALInst.Rodada, RALInst.Versao;
 
 // as receitas e o manifesto embutidos (ralcli.lpi, como no instalador grafico)
 {$R *.res}
@@ -81,12 +94,14 @@ begin
   WriteLn('  ralcli pacotes [--versao=<ref>|--local=<pasta>]');
   WriteLn('  ralcli plano --ide=<raiz|#n> [--versao=<ref>|--local=<pasta>]');
   WriteLn('               [--pasta=<pasta>] [--pacotes=a,b] [--win64] [--somente-paths]');
-  WriteLn('               [--ignorar-existentes] [--reinstalar] [--remover-outros]');
-  WriteLn('               [--sem-reconstruir]');
+  WriteLn('               [--so-runtime] [--ignorar-existentes] [--reinstalar]');
+  WriteLn('               [--remover-outros] [--sem-reconstruir]');
   WriteLn('  ralcli instalar (as mesmas opções do plano) [--sim]');
   WriteLn('  ralcli recibos [--todos]');
   WriteLn('  ralcli desinstalar --ide=<raiz|#n> [--sim] [--sem-reconstruir]');
+  WriteLn('                     [--limpar [--pasta=<pasta>] [--manter=n,m]]');
   WriteLn('  ralcli desinstalar --desfazer=<registro em recibos\desinstalacoes> [--sim]');
+  WriteLn('  ralcli limpar [--pasta=<pasta>] [--manter=n,m] [--sim]');
   WriteLn('  ralcli versao');
   WriteLn('  ralcli atualizar [--verificar]');
   Halt(2);
@@ -282,6 +297,13 @@ begin
     Result.Pacotes.CommaText := Opcao('pacotes');
   Result.Win64 := Chave('win64');
   Result.SomenteLibraryPath := Chave('somente-paths');
+  Result.SoRuntime := Chave('so-runtime');
+  if Result.SoRuntime and Result.SomenteLibraryPath then
+  begin
+    WriteLn('ERRO: --so-runtime compila os pacotes; --somente-paths não compila nada. ' +
+            'Escolha um.');
+    Halt(2);
+  end;
   Result.IgnorarExistentes := Chave('ignorar-existentes');
   Result.Reinstalar := Chave('reinstalar');
   Result.ManterInstalados := not Chave('remover-outros');
@@ -315,6 +337,7 @@ procedure MostrarVersoes;
 var
   vRodada: TRodada;
   vInt: integer;
+  vOutras: boolean;
 begin
   vRodada := TRodada.Create;
   try
@@ -324,10 +347,72 @@ begin
       WriteLn('ERRO: ', vRodada.Erro);
       Halt(1);
     end;
+    // F16: as estaveis primeiro; pre-lancamentos, tags antigas e ramos depois
+    WriteLn('Estáveis:');
+    vOutras := False;
     for vInt := 0 to Pred(vRodada.Versoes.Count) do
+    begin
+      if vRodada.Versoes[vInt].Outra and not vOutras then
+      begin
+        WriteLn('Outras (pré-lançamentos, tags antigas e ramos):');
+        vOutras := True;
+      end;
       WriteLn('  ', vRodada.Versoes[vInt].Descricao);
+    end;
   finally
     vRodada.Free;
+  end;
+end;
+
+// F19: o que o instalador baixou e ninguem usa; True quando nada falhou
+function LimparSobras: boolean;
+var
+  vSobras: TSobras;
+  vBases, vManter: TStringList;
+  vInt, vNum: integer;
+  vPasta: string;
+begin
+  Result := True;
+  vSobras := TSobras.Create(True);
+  vBases := TStringList.Create;
+  vManter := TStringList.Create;
+  try
+    vPasta := Opcao('pasta');
+    if vPasta = '' then
+      vPasta := IncludeTrailingPathDelimiter(GetUserDir) + 'RAL';
+    vBases.Add(vPasta);
+    vSobras.Listar(vBases, PastaDadosInstalador + 'recibos');
+    if vSobras.Count = 0 then
+    begin
+      WriteLn('Nada a limpar: tudo o que o instalador baixou ainda é usado por alguma ' +
+              'IDE.');
+      Exit;
+    end;
+    vManter.CommaText := Opcao('manter');
+    for vInt := 0 to Pred(vManter.Count) do
+    begin
+      vNum := StrToIntDef(vManter[vInt], 0);
+      if (vNum >= 1) and (vNum <= vSobras.Count) then
+        vSobras[vNum - 1].Manter := True;
+    end;
+    WriteLn('O instalador baixou e nenhuma IDE usa mais:');
+    for vInt := 0 to Pred(vSobras.Count) do
+      WriteLn(Format('  %s %2d. %-34s %10s  %s',
+        [BoolToStr(vSobras[vInt].Manter, '[ ]', '[x]'), vInt + 1,
+         vSobras[vInt].Descricao, DescreverTamanho(vSobras[vInt].Tamanho),
+         vSobras[vInt].Caminho]));
+    WriteLn('Total a apagar: ', DescreverTamanho(vSobras.TotalBytes),
+            ' (--manter=n,m guarda itens)');
+    if not Confirmar('Apagar os itens marcados? Não há como desfazer.') then
+    begin
+      WriteLn('Nada foi apagado.');
+      Exit;
+    end;
+    Result := vSobras.Apagar(PastaDadosInstalador + 'recibos', @GSaida.Linha);
+  finally
+    vManter.Free;
+    vBases.Free;
+    vSobras.Free;
   end;
 end;
 
@@ -396,6 +481,9 @@ begin
       WriteLn('  ', vRodada.Relatorio[vInt]);
     if vRodada.Erro <> '' then
       WriteLn('ERRO: ', vRodada.Erro);
+    // F14: alguma IDE ficou exatamente como estava: o conjunto minimo falhou
+    if not vOk and (vRodada.IDEsIntactas.Count > 0) then
+      Halt(3);
     Halt(Ord(not vOk));
   finally
     vRodada.Free;
@@ -528,6 +616,13 @@ begin
       if not DesinstalarDaIDE(vIDE) then
         vOk := False;
     end;
+    // F19: o que ficou para tras e ninguem usa
+    if Chave('limpar') then
+    begin
+      WriteLn;
+      if not LimparSobras then
+        vOk := False;
+    end;
     Halt(Ord(not vOk));
   finally
     vIDEs.Free;
@@ -536,9 +631,11 @@ end;
 procedure Atualizar;
 var
   vAtu: TAtualizacao;
-  vNovo: string;
+  vNovo, vNovoMigrador: string;
 begin
-  vAtu := TAtualizacao.Create;
+  // a CLI troca a si mesma (o ralcli do release, nao o instalador grafico) e o
+  // migrador (F21)
+  vAtu := TAtualizacao.Create(ProgramaCLI);
   try
     vAtu.Log := @GSaida.Linha;
     case vAtu.Verificar of
@@ -559,11 +656,16 @@ begin
       Exit;
     // a CLI e o executavel em uso: troca o arquivo, e a proxima chamada ja e
     // a versao nova (o .old sai quando o grafico abrir, ou na proxima troca)
-    if not vAtu.Baixar(vNovo) or not vAtu.Trocar(vNovo) then
+    if not vAtu.Baixar(vNovo) or not vAtu.BaixarMigrador(vNovoMigrador) or
+       not vAtu.Trocar(vNovo) then
     begin
       WriteLn('ERRO: ', vAtu.Erro);
+      SysUtils.DeleteFile(vNovo);
+      SysUtils.DeleteFile(vNovoMigrador);
       Halt(1);
     end;
+    if not vAtu.TrocarMigrador(vNovoMigrador) and vAtu.MigradorPendente then
+      WriteLn('aviso: ', vAtu.Erro);
     WriteLn('Atualizado para a versão ', vAtu.VersaoNova, '.');
   finally
     vAtu.Free;
@@ -574,7 +676,14 @@ var
   GVerbo: string;
 
 begin
-  {$IFDEF MSWINDOWS}SetConsoleOutputCP(CP_UTF8);{$ENDIF}
+  {$IFDEF MSWINDOWS}
+  SetConsoleOutputCP(CP_UTF8);
+  // os textos do nucleo sao UTF-8, como na tela (a LazUTF8 faz o mesmo la):
+  // sem isto o WriteLn os converteria de novo, como se fossem da pagina do sistema
+  DefaultSystemCodePage := CP_UTF8;
+  SetTextCodePage(Output, CP_UTF8);
+  SetTextCodePage(StdErr, CP_UTF8);
+  {$ENDIF}
   if ParamCount = 0 then
     Uso;
   GVerbo := LowerCase(ParamStr(1));
@@ -607,8 +716,9 @@ begin
     else if (GVerbo = 'plano') or (GVerbo = 'instalar') then
     begin
       ConferirOpcoes(['ide', 'versao', 'local', 'pasta', 'pacotes', 'win64',
-                      'somente-paths', 'ignorar-existentes', 'reinstalar',
-                      'remover-outros', 'sem-reconstruir', 'buscar-em', 'sim']);
+                      'somente-paths', 'so-runtime', 'ignorar-existentes',
+                      'reinstalar', 'remover-outros', 'sem-reconstruir', 'buscar-em',
+                      'sim']);
       BuscarIDEs;
       Planejar(GVerbo = 'instalar');
     end
@@ -619,9 +729,15 @@ begin
     end
     else if GVerbo = 'desinstalar' then
     begin
-      ConferirOpcoes(['ide', 'sim', 'sem-reconstruir', 'buscar-em']);
+      ConferirOpcoes(['ide', 'sim', 'sem-reconstruir', 'buscar-em', 'desfazer',
+                      'limpar', 'pasta', 'manter']);
       BuscarIDEs;
       Desinstalar;
+    end
+    else if GVerbo = 'limpar' then
+    begin
+      ConferirOpcoes(['pasta', 'manter', 'sim']);
+      Halt(Ord(not LimparSobras));
     end
     else
       Uso;

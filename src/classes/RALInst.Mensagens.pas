@@ -277,8 +277,7 @@ resourcestring
   cmNadaAInstalarLazarus = 'Nada a instalar: a configuração da IDE não foi alterada.';
   cmPacoteJaRegistrado = 'pacote %s já registrado nesta IDE';
   cmPlanoConfiguracao = '  configuração: %s';
-  cmPlanoExternosAusentes = '  ATENÇÃO: não encontrei nesta IDE %s — instale antes, ou ' +
-    'a reconstrução da IDE vai falhar';
+
   cmPlanoFicaDeForaLinha = '    fica de fora: %s';
   cmPlanoPacotes = '  pacotes, na ordem:';
   cmPlanoReconstroi = '  reconstrói a IDE no fim (lazbuild --build-ide)';
@@ -293,8 +292,7 @@ resourcestring
   emLazbuildReconstruir = 'ERRO: falha ao reconstruir a IDE (o erro do compilador está ' +
     'acima).';
   emLazbuildRegistrar = 'ERRO: falha ao registrar os pacotes.';
-  wmExternosAusentes = 'não encontrei nesta IDE %s; se não estiverem instalados, a ' +
-    'reconstrução da IDE falha';
+
   wmIDENaoReconstruida = 'IDE não reconstruída: ela pede para reconstruir ao abrir.';
 
   // RALInst.Processo
@@ -357,6 +355,7 @@ resourcestring
   cmRegistroJaRegistrado = '  %s: %s já registrado';
   cmRegistroOutraPasta = '  %s -= %s  (mesmo pacote em outra pasta)';
   cmRegistroRestaurado = '  restaurado: %s';
+  cmRegistroRevertido = '  registro devolvido ao que era (%d valor(es))';
   cmRegistroVariavel = '  variável $(%s) = %s';
   cmRegistroVariavelEra = '  variável $(%s) = %s  (era %s)';
   emRegistroAbrir = 'ERRO: não foi possível abrir %s';
@@ -459,6 +458,101 @@ resourcestring
     'pode ser instalado nela.';
   emSemMotor = '%s: nenhum motor escolhido. O RAL não funciona sem um; escolha ao ' +
     'menos um destes: %s.';
+  cmConjuntoFuncional = '%s; o resto é opcional';
+  cmConjuntoMotor = 'um motor entre %s';
+  cmConjuntoNaoCompilou = '%s não compilou — %s';
+  cmConjuntoNenhumMotor = 'nenhum motor compilou (%s)';
+  cmConjuntoPlataforma = '%s em %s';
+  cmConjuntoSemMotivo = 'veja o log';
+
+  // RALInst.Promocao (F14: nunca pior do que estava)
+  cmPromocaoDesfeita = '  devolvido: %s';
+  cmPromovidos = '  %d arquivo(s) trocados na pasta da IDE';
+  emPromocaoDesfazer = 'não foi possível devolver %s: renomeie à mão, tirando o ' +
+    '".anterior"';
+  emPromoverGravar = 'não foi possível gravar %s (a IDE ou outro programa está com ele ' +
+    'aberto?)';
+  emPromoverRenomear = 'não foi possível renomear %s (a IDE ou outro programa está com ' +
+    'ele aberto?)';
+  emPromoverSemArquivo = 'o compilador não gravou %s';
+
+  // F14: o conjunto funcional
+  cmNadaMudou = 'Nada mudou nesta IDE: %s';
+  cmPlanoConjunto = '  instala se compilar: %s';
+  cmPlanoConjuntoCopia = '  compila antes numa cópia da configuração; a verdadeira só ' +
+    'muda se %s compilar';
+  cmCompilandoNaCopia = '== compilando numa cópia da configuração (%s)';
+  cmCompilandoPacoteLazarus = '[lazbuild] %s';
+  cmPlanoSoRuntimeLazarus = '  modo: só runtime (os pacotes só são registrados: os ' +
+    'projetos podem exigi-los; nada vai para a IDE, que não é reconstruída)';
+  emCopiaConfiguracao = 'não foi possível copiar a configuração para %s';
+  emRegistroIncompleto = 'uma escrita no registro falhou; o registro e os arquivos ' +
+    'voltaram ao que eram';
+
+  // F17: library path em todas as plataformas do Delphi
+  cmPlanoForaDaPlataforma = '    %s: sem %s (não serve nesta plataforma)';
+  cmPlanoPlataformaSemChave = '  %s está instalada, mas a IDE ainda não foi aberta ' +
+    'depois disso: abra a IDE uma vez e rode o instalador de novo para pôr o library ' +
+    'path nela';
+  wmPlataformaSemChave = '%s instalada e sem library path na IDE: abra a IDE uma vez e ' +
+    'rode o instalador de novo';
+
+  // F21: a versão que a árvore declara
+  cmFontesDaPastaVersao = 'RAL %s da pasta %s';
+
+  // F18: só runtime
+  cmExistenteSoRuntime = 'só runtime (nada na IDE)';
+  cmForaSoRuntime = 'só de design (instalação só runtime)';
+  cmPlanoSoRuntime = '  modo: só runtime (compila os pacotes, nada vai para a IDE)';
+  cmSaiSoRuntime = 'instalação só runtime: sai da IDE, o .bpl fica';
+  wmSoRuntimeDesignide = '%s exige o designide, que não é redistribuível: um programa ' +
+    'compilado com pacotes de runtime não roda fora da máquina de desenvolvimento ' +
+    '(é da 1.x; a 2.0 separou o design)';
+
+  // F20: arquivos de tempo de execução das dependências
+  wmRedistCopiado = '%s — vai junto do executável do seu programa (o instalador não ' +
+    'sabe onde ele fica)';
+  cmCopiadoRedist = '  copiado para %s';
+  cmPlanoDepPlataformas = '      library path dela em: %s';
+  emAcaoCopiar = 'copiar-arquivo precisa de "arquivos" e "plataforma"';
+  emCopiarArquivo = '%s: não foi possível copiar %s para %s';
+  emCopiarSemArquivo = '%s: nenhum arquivo casa com %s';
+  emLibpathPlataformas = '"plataformas" no libpath só vale no bloco do Delphi';
+
+  // F15: o manifesto com faixa de versão do RAL
+  cmMotivoVersaoBloqueada = 'esta versão do RAL não serve nesta IDE: %s';
+  emVersaoNaoServe = '%s não recebe esta versão do RAL: %s';
+  emManifestoBloqueioSemMotivo = 'um bloqueio precisa de "motivo"';
+
+  // F19: limpar o que ninguem usa
+  cmSobraApagada = '  apagado: %s (%s)';
+  cmSobraCache = 'cache de downloads (zips das versões e das dependências)';
+  cmSobraPreparo = 'pasta de preparo de uma rodada interrompida';
+
+  // F21: o migrador dos projetos
+  emAtuSemMigrador = 'a versão %s não tem o migrador deste sistema (%s): não conta ' +
+    'como atualização';
+  emMigradorAbrir = 'não foi possível abrir o migrador: %s';
+  emMigradorAusente = 'o migrador dos projetos não está em %s: ele vem no mesmo ' +
+    'release do instalador';
+  wmMigradorTrocaDepois = '%s está aberto: a versão nova fica ao lado dele e entra na ' +
+    'próxima vez que o instalador abrir';
+
+  // F16: verificadas por amostragem
+  cmFalhouNaVarredura = 'não compilou na verificação do projeto (%s)';
+  cmPlanoNaoVerificada = '  esta versão do RAL não foi verificada nesta IDE (o projeto ' +
+    'testa por amostragem); se não compilar, nada muda na IDE';
+  cmPlanoVerificada = '  verificada nesta IDE pelo projeto em %s';
+  cmVerificadasEmbutida = 'lista embutida de verificadas';
+  emVerificadasFormato = '%s não é uma lista de verificadas (formato 1)';
+
+  // F16: o FPC Unleashed e o Delphi mais novo que a tabela
+  cmDelphiMaisNovo = 'Delphi (BDS %s, mais novo que o %s)';
+  cmLazarusUnleashed = 'Lazarus %s (FPC Unleashed %s)';
+  wmDelphiMaisNovo = 'Delphi mais novo que este instalador conhece: instala com o ' +
+    'que o disco diz (rsvars.bat, bin\dcc*.exe); sem verificação nesta versão';
+  cmFaixaVariante = 'FPC %s';
+  emVarianteDesconhecida = 'fpc-variante desconhecida: %s (use oficial ou unleashed)';
 
 implementation
 

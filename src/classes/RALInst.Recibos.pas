@@ -38,6 +38,10 @@ type
     Fontes: string;
     IDENome: string;
     IDERaiz: string;
+    /// F18: 'design' (in the IDE), 'runtime' (only the packages) or
+    /// 'library-path'; older receipts have no mode: 'design', or 'library-path'
+    /// when they say so
+    Modo: string;
     /// Lazarus: the run rebuilt the IDE
     ReconstruiuIDE: boolean;
     SomenteLibraryPath: boolean;
@@ -242,6 +246,12 @@ begin
     CommitRAL := vRAL.Get('commit', '');
   end;
   SomenteLibraryPath := FDados.Get('somente-library-path', False);
+  Modo := FDados.Get('modo', '');
+  if Modo = '' then
+    if SomenteLibraryPath then
+      Modo := 'library-path'
+    else
+      Modo := 'design';
   ReconstruiuIDE := FDados.Get('reconstruiu-ide', False);
   FPacotes.Clear;
   FResultados.Clear;

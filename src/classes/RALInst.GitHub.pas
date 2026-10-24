@@ -37,6 +37,9 @@ type
     Titulo: string;
     /// Text for the version list
     function Descricao: string;
+    /// F16: goes in the "others" group of the list: a pre-release, an old tag
+    /// (before 1.0, or with a suffix: 0.9.11-alpha, 0.12.4) or a branch
+    function Outra: boolean;
     /// Name of this version's folder inside <folder>/PascalRAL
     function NomePasta: string;
   end;
@@ -243,6 +246,24 @@ begin
     Result := Result + ', ' + DataCurta(Data);
 end;
 
+function TVersaoRAL.Outra: boolean;
+var
+  vRef: string;
+begin
+  case Tipo of
+    tvEstavel:
+      Result := False;
+    tvTag:
+      begin
+        vRef := SemV(Ref);
+        // 0.12.4, 0.9.11-alpha: de antes da 1.0, ou com sufixo
+        Result := (vRef = '') or not (vRef[1] in ['1'..'9']) or (Pos('-', vRef) > 0);
+      end;
+  else
+    Result := True;
+  end;
+end;
+
 function TVersaoRAL.NomePasta: string;
 begin
   Result := SemCaracteresRuins(Ref);
@@ -279,20 +300,33 @@ function OrdemVersoes(A, B: Pointer): integer;
 var
   vA, vB: TVersaoRAL;
 
+  function RamoNumerico(AVersao: TVersaoRAL): boolean;
+  begin
+    Result := (AVersao.Ref <> '') and (SemV(AVersao.Ref)[1] in ['0'..'9']);
+  end;
+
   function Peso(AVersao: TVersaoRAL): integer;
   begin
     if AVersao.Recomendada then
       Exit(0);
+    // F16: estaveis (releases e tags 1.x), depois o grupo "outras"
     case AVersao.Tipo of
       tvEstavel: Result := 1;
-      tvPreLancamento: Result := 2;
-      tvTag: Result := 3;
+      tvTag:
+        if AVersao.Outra then
+          Result := 4
+        else
+          Result := 2;
+      tvPreLancamento: Result := 3;
     else
-      // dev e master antes dos outros ramos
+      // dev e master antes dos outros ramos; os de numero (o 2.0, a proxima
+      // versao) logo depois, do mais novo ao mais velho
       if SameText(AVersao.Ref, 'dev') or SameText(AVersao.Ref, 'master') then
-        Result := 4
+        Result := 5
+      else if RamoNumerico(AVersao) then
+        Result := 6
       else
-        Result := 5;
+        Result := 7;
     end;
   end;
 
@@ -302,7 +336,7 @@ begin
   Result := Peso(vA) - Peso(vB);
   if Result <> 0 then
     Exit;
-  if vA.Tipo = tvRamo then
+  if (vA.Tipo = tvRamo) and not RamoNumerico(vA) then
     Result := CompareText(vA.Ref, vB.Ref)
   else
     Result := CompararTags(vB.Ref, vA.Ref);

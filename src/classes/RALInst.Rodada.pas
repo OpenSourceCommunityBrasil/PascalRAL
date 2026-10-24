@@ -16,6 +16,7 @@ interface
 
 uses
   Classes, SysUtils,
+  {$IFDEF MSWINDOWS} RALInst.Instalar.Delphi, {$ENDIF}
   RALInst.Catalogo, RALInst.Compatibilidade, RALInst.GitHub, RALInst.IDE,
   RALInst.Processo, RALInst.Receitas, RALInst.Situacao;
 
@@ -32,6 +33,8 @@ type
     FErro: string;
     FExigirIDEFechada: boolean;
     FIDEs: TList;
+    /// F14: IDEs the run left exactly as they were (minimum set failed)
+    FIDEsIntactas: TStringList;
     FIgnorarExistentes: boolean;
     FLog: TLogLinha;
     FManifesto: TManifesto;
@@ -41,14 +44,20 @@ type
     FMudancas: TStringList;
     FPacotes: TStringList;
     FPastaBase: string;
+    /// Tests: the .bpl/.dcp of every Delphi go to <this>\<bds>\bpl and \dcp
+    FPastaSaidaTeste: string;
     FPastaLocal: string;
     FPastaRecibos: string;
     FPlanejado: boolean;
     FReceitas: TReceitas;
     FReinstalar: boolean;
+    /// Tests: every Delphi works on a copy of its registry key,
+    /// <this>\BDS\<bds> (relative to HKCU)
+    FRegistroTeste: string;
     FRelatorio: TStringList;
     FRepo: TRepoGitHub;
     FSomenteLibraryPath: boolean;
+    FSoRuntime: boolean;
     FVersao: TVersaoRAL;
     FVersoes: TVersoesRAL;
     FWin64: boolean;
@@ -72,7 +81,15 @@ type
     procedure SubmodulosDaEscolha(ALista: TStrings);
     /// Package kind of an IDE
     function TipoDe(AIDE: TIDEInstance): TTipoPacote;
+    {$IFDEF MSWINDOWS}
+    /// The test redirections of a Delphi engine (registry copy, output folders)
+    procedure DesviosDeTeste(AInst: TInstalacaoDelphi);
+    {$ENDIF}
   public
+    /// F16: one line on whether the project checked this RAL version in the
+    /// IDE ('verificada ... em 2026-10-18', 'nao verificada ...'); '' when the
+    /// version is unknown
+    function TextoVerificacao(AIDE: TIDEInstance): string;
     constructor Create;
     destructor Destroy; override;
     procedure AdicionarIDE(AIDE: TIDEInstance);
@@ -97,8 +114,11 @@ type
     function SemMotor: string;
     /// The asked names that exist in the IDE kind; with none asked, RAL's core
     procedure PacotesDoTipo(ATipo: TTipoPacote; ALista: TStrings);
+    procedure PacotesDaIDE(AIDE: TIDEInstance; ALista: TStrings);
     /// <folder>/PascalRAL/<version>/, or the local folder
     function PastaFontes: string;
+    /// F20: <folder>/redist, where the recipes copy runtime files (DLLs)
+    function PastaRedist: string;
     /// What will be done, without doing it (decides the dependencies to
     /// download)
     function Plano: string;
@@ -113,6 +133,9 @@ type
     /// Refuses to touch an open IDE (default); the tests, on copies, turn it off
     property ExigirIDEFechada: boolean read FExigirIDEFechada write FExigirIDEFechada;
     property IDEs: TList read FIDEs;
+    /// F14: name=reason of each IDE the last Executar left as it was, because
+    /// what compiled does not make a working RAL there
+    property IDEsIntactas: TStringList read FIDEsIntactas;
     property IgnorarExistentes: boolean read FIgnorarExistentes write FIgnorarExistentes;
     property Log: TLogLinha read FLog write FLog;
     property Manifesto: TManifesto read FManifesto;
@@ -125,14 +148,23 @@ type
     property PastaLocal: string read FPastaLocal;
     /// Where the receipts live (default: the installer's data folder)
     property PastaRecibos: string read FPastaRecibos write FPastaRecibos;
+    /// Tests: .bpl/.dcp of each Delphi in <folder>\<bds>\bpl and \dcp instead of
+    /// the IDE's output folders
+    property PastaSaidaTeste: string read FPastaSaidaTeste write FPastaSaidaTeste;
     property Receitas: TReceitas read FReceitas;
     /// Compiles and registers everything even where nothing changed
     property Reinstalar: boolean read FReinstalar write FReinstalar;
+    /// Tests: each Delphi works on a copy of its key in HKCU<key>\BDS\<bds>,
+    /// which the test made; the IDE's own key is never touched
+    property RegistroTeste: string read FRegistroTeste write FRegistroTeste;
     /// One line per IDE: what entered and what stayed out, and why
     property Relatorio: TStringList read FRelatorio;
     property Repo: TRepoGitHub read FRepo;
     property SomenteLibraryPath: boolean read FSomenteLibraryPath
       write FSomenteLibraryPath;
+    /// F18: compiles the runtime packages and writes the library path (Delphi)
+    /// or the links (Lazarus); nothing goes into the IDE
+    property SoRuntime: boolean read FSoRuntime write FSoRuntime;
     property Versao: TVersaoRAL read FVersao;
     property Versoes: TVersoesRAL read FVersoes;
     property Win64: boolean read FWin64 write FWin64;
@@ -142,9 +174,8 @@ implementation
 
 uses
   StrUtils,
-  {$IFDEF MSWINDOWS} RALInst.Instalar.Delphi, {$ENDIF}
   RALInst.Dependencias, RALInst.Fontes, RALInst.Instalar.Lazarus, RALInst.Mensagens,
-  RALInst.Recibos, RALInst.Zip, RALInst.Motores;
+  RALInst.Recibos, RALInst.Verificadas, RALInst.Zip, RALInst.Motores;
 
 { TRodada }
 
@@ -166,6 +197,7 @@ begin
   FRelatorio := TStringList.Create;
   FMudancas := TStringList.Create;
   FMudancas.CaseSensitive := False;
+  FIDEsIntactas := TStringList.Create;
   FManterInstalados := True;
   FConstruirIDE := True;
   FPastaRecibos := PastaDadosInstalador + 'recibos';
@@ -176,6 +208,7 @@ end;
 destructor TRodada.Destroy;
 begin
   FCompat.Free;
+  FIDEsIntactas.Free;
   FMudancas.Free;
   FRelatorio.Free;
   FDeteccoes.Free;
@@ -196,6 +229,21 @@ begin
   if Assigned(FLog) then
     FLog(ALinha);
 end;
+
+{$IFDEF MSWINDOWS}
+procedure TRodada.DesviosDeTeste(AInst: TInstalacaoDelphi);
+begin
+  if FRegistroTeste <> '' then
+    AInst.ChaveRegistro := FRegistroTeste + '\BDS\' + AInst.IDE.BDSVersao;
+  if FPastaSaidaTeste <> '' then
+  begin
+    AInst.PastaBpl := IncludeTrailingPathDelimiter(FPastaSaidaTeste) +
+                      AInst.IDE.BDSVersao + '\bpl';
+    AInst.PastaDcp := IncludeTrailingPathDelimiter(FPastaSaidaTeste) +
+                      AInst.IDE.BDSVersao + '\dcp';
+  end;
+end;
+{$ENDIF}
 
 function TRodada.TipoDe(AIDE: TIDEInstance): TTipoPacote;
 begin
@@ -244,6 +292,7 @@ begin
   begin
     vDelphi := TInstalacaoDelphi.Create(AIDE, FCatalogo);
     try
+      DesviosDeTeste(vDelphi);
       Result := vDelphi.DependenciaInstalada(AReceita);
     finally
       vDelphi.Free;
@@ -392,16 +441,52 @@ begin
   end;
 end;
 
+procedure TRodada.PacotesDaIDE(AIDE: TIDEInstance; ALista: TStrings);
+var
+  vLaz: TInstalacaoLazarus;
+  {$IFDEF MSWINDOWS}
+  vDelphi: TInstalacaoDelphi;
+  {$ENDIF}
+begin
+  PacotesDoTipo(TipoDe(AIDE), ALista);
+  if (ALista.Count = 0) or not FManterInstalados then
+    Exit;
+  // o que a IDE ja tem (e os herdeiros 2.0 da 1.x) entra junto do pedido
+  if AIDE.Tipo = tiLazarus then
+  begin
+    vLaz := TInstalacaoLazarus.Create(AIDE, CatalogoDaExecucao);
+    try
+      vLaz.Pacotes.Assign(ALista);
+      vLaz.ManterInstalados := True;
+      vLaz.IncluirInstalados;
+      ALista.Assign(vLaz.Pacotes);
+    finally
+      vLaz.Free;
+    end;
+  end
+  {$IFDEF MSWINDOWS}
+  else
+  begin
+    vDelphi := TInstalacaoDelphi.Create(AIDE, CatalogoDaExecucao);
+    try
+      DesviosDeTeste(vDelphi);
+      vDelphi.Pacotes.Assign(ALista);
+      vDelphi.ManterInstalados := True;
+      vDelphi.IncluirInstalados;
+      ALista.Assign(vDelphi.Pacotes);
+    finally
+      vDelphi.Free;
+    end;
+  end
+  {$ENDIF};
+end;
+
 function TRodada.SemMotor: string;
 var
   vNomes: TStringList;
   vIDE: integer;
   vAIDE: TIDEInstance;
   vMotivo: string;
-  vLaz: TInstalacaoLazarus;
-  {$IFDEF MSWINDOWS}
-  vDelphi: TInstalacaoDelphi;
-  {$ENDIF}
 begin
   Result := '';
   vNomes := TStringList.Create;
@@ -409,37 +494,10 @@ begin
     for vIDE := 0 to Pred(FIDEs.Count) do
     begin
       vAIDE := TIDEInstance(FIDEs[vIDE]);
-      PacotesDoTipo(TipoDe(vAIDE), vNomes);
+      // o que a IDE ja tem e continua instalado tambem conta como motor
+      PacotesDaIDE(vAIDE, vNomes);
       if vNomes.Count = 0 then
         Continue;
-      // o que a IDE ja tem e continua instalado tambem conta como motor
-      if FManterInstalados then
-        if vAIDE.Tipo = tiLazarus then
-        begin
-          vLaz := TInstalacaoLazarus.Create(vAIDE, CatalogoDaExecucao);
-          try
-            vLaz.Pacotes.Assign(vNomes);
-            vLaz.ManterInstalados := True;
-            vLaz.IncluirInstalados;
-            vNomes.Assign(vLaz.Pacotes);
-          finally
-            vLaz.Free;
-          end;
-        end
-        {$IFDEF MSWINDOWS}
-        else
-        begin
-          vDelphi := TInstalacaoDelphi.Create(vAIDE, CatalogoDaExecucao);
-          try
-            vDelphi.Pacotes.Assign(vNomes);
-            vDelphi.ManterInstalados := True;
-            vDelphi.IncluirInstalados;
-            vNomes.Assign(vDelphi.Pacotes);
-          finally
-            vDelphi.Free;
-          end;
-        end
-        {$ENDIF};
       vMotivo := FaltaMotor(FCatalogo, Compat, vAIDE, vNomes);
       if vMotivo <> '' then
         Result := Result + vMotivo + LineEnding;
@@ -458,6 +516,14 @@ begin
     if (FCatalogo.Buscar(tpDelphi, FPacotes[vInt]) = nil) and
        (FCatalogo.Buscar(tpLazarus, FPacotes[vInt]) = nil) then
       ALista.Add(FPacotes[vInt]);
+end;
+
+function TRodada.PastaRedist: string;
+begin
+  // F20: as DLLs das dependencias, junto da pasta de instalacao
+  Result := '';
+  if FPastaBase <> '' then
+    Result := IncludeTrailingPathDelimiter(FPastaBase) + 'redist';
 end;
 
 function TRodada.PastaFontes: string;
@@ -539,6 +605,15 @@ begin
     if vNomes.Count = 0 then
       Exit(Format(cmNenhumPedidoExiste, [AIDE.Nome, NomeTipoPacote(TipoDe(AIDE))]) +
            LineEnding);
+    // F15: a versao inteira nao serve nesta IDE: o plano so diz por que
+    if Compat.MotivoVersao(AIDE) <> '' then
+    begin
+      FMudancas.Values[AIDE.RootDir] := IntToStr(Ord(mrNada)) + '|' +
+        Format(emVersaoNaoServe, [AIDE.Nome, Compat.MotivoVersao(AIDE)]);
+      Exit(AIDE.Nome + '  (' + ExcludeTrailingPathDelimiter(AIDE.RootDir) + ')' +
+           LineEnding + '  ' + Format(emVersaoNaoServe, [AIDE.Nome,
+                                      Compat.MotivoVersao(AIDE)]) + LineEnding);
+    end;
     if AIDE.Tipo = tiLazarus then
     begin
       vLaz := TInstalacaoLazarus.Create(AIDE, CatalogoDaExecucao);
@@ -553,6 +628,7 @@ begin
         vLaz.PastaRecibos := FPastaRecibos;
         vLaz.ManterInstalados := FManterInstalados;
         vLaz.Reinstalar := FReinstalar;
+        vLaz.SoRuntime := FSoRuntime;
         if FVersao <> nil then
           vLaz.VersaoNova := FVersao.Ref;
         vLaz.CommitNovo := CommitEscolhido;
@@ -568,6 +644,7 @@ begin
     begin
       vDelphi := TInstalacaoDelphi.Create(AIDE, CatalogoDaExecucao);
       try
+        DesviosDeTeste(vDelphi);
         vDelphi.Pacotes.Assign(vNomes);
         vDelphi.RaizFontes := PastaFontes;
         vDelphi.Receitas := FReceitas;
@@ -580,6 +657,8 @@ begin
         vDelphi.PastaRecibos := FPastaRecibos;
         vDelphi.ManterInstalados := FManterInstalados;
         vDelphi.Reinstalar := FReinstalar;
+        vDelphi.SoRuntime := FSoRuntime;
+        vDelphi.PastaRedist := PastaRedist;
         if FVersao <> nil then
           vDelphi.VersaoNova := FVersao.Ref;
         vDelphi.CommitNovo := CommitEscolhido;
@@ -648,7 +727,7 @@ begin
     for vIDE := 0 to Pred(FIDEs.Count) do
     begin
       vAIDE := TIDEInstance(FIDEs[vIDE]);
-      PacotesDoTipo(TipoDe(vAIDE), vNomes);
+      PacotesDaIDE(vAIDE, vNomes);
       FCatalogo.Fechamento(TipoDe(vAIDE), vNomes, vLista);
       vFora.Clear;
       Compat.Filtrar(vLista, vAIDE, vFora);
@@ -699,10 +778,20 @@ begin
       end;
     end;
 
-    // 3. cada IDE
+    // 3. cada IDE, e se o projeto ja conferiu esta versao nela (F16)
     Result := Result + LineEnding;
     for vIDE := 0 to Pred(FIDEs.Count) do
-      Result := Result + PlanoDaIDE(TIDEInstance(FIDEs[vIDE])) + LineEnding;
+    begin
+      vAIDE := TIDEInstance(FIDEs[vIDE]);
+      Result := Result + PlanoDaIDE(vAIDE);
+      PacotesDoTipo(TipoDe(vAIDE), vNomes);
+      if (vNomes.Count > 0) and
+         (StrToIntDef(Copy(FMudancas.Values[vAIDE.RootDir], 1,
+                           Pos('|', FMudancas.Values[vAIDE.RootDir]) - 1), -1) <>
+          Ord(mrNada)) then
+        Result := Result + TextoVerificacao(vAIDE);
+      Result := Result + LineEnding;
+    end;
   finally
     vLista.Free;
     vPedidas.Free;
@@ -712,6 +801,21 @@ begin
     vDesconhecidos.Free;
     vSubs.Free;
   end;
+end;
+
+function TRodada.TextoVerificacao(AIDE: TIDEInstance): string;
+var
+  vVerif: TVerificacaoIDE;
+begin
+  Result := '';
+  if FManifesto.VersaoRAL = '' then
+    Exit;
+  vVerif := VerificadasPadrao.Buscar(FManifesto.VersaoRAL, AIDE);
+  if (vVerif <> nil) and vVerif.Ok then
+    Result := Format(cmPlanoVerificada, [vVerif.Data]) + LineEnding
+  else if vVerif = nil then
+    Result := cmPlanoNaoVerificada + LineEnding;
+  // a que falhou ja e bloqueio do manifesto: o plano diz o motivo antes
 end;
 
 function TRodada.InstalarNaIDE(AIDE: TIDEInstance): boolean;
@@ -733,6 +837,10 @@ var
       Logar(ARelatorio[vI]);
     // o que a rodada fez nesta IDE: instalar, atualizar, nada...
     vEstado := IfThen(AOk, cmEstadoOk, cmTerminouComErro);
+    // F14: a IDE ficou como estava; a primeira linha do relatorio diz por que
+    if not AOk and (ARelatorio.Count > 0) and
+       (Pos(Format(cmNadaMudou, ['']), ARelatorio[0]) = 1) then
+      vEstado := ARelatorio[0];
     if AMudanca = mrNada then
       vEstado := ATexto
     else
@@ -771,12 +879,16 @@ begin
         vLaz.ExigirIDEFechada := FExigirIDEFechada;
         vLaz.ManterInstalados := FManterInstalados;
         vLaz.Reinstalar := FReinstalar;
+        vLaz.SoRuntime := FSoRuntime;
+        vLaz.PastaRedist := PastaRedist;
         if FVersao <> nil then
           vLaz.VersaoNova := FVersao.Ref;
         vLaz.CommitNovo := CommitEscolhido;
         vLaz.Log := FLog;
         Result := vLaz.Executar;
         Relatar(vLaz.Relatorio, vLaz.Avisos, Result, vLaz.Mudanca, vLaz.TextoMudanca);
+        if vLaz.NadaMudou then
+          FIDEsIntactas.Values[AIDE.Nome] := vLaz.MotivoNadaMudou;
       finally
         vLaz.Free;
       end;
@@ -786,6 +898,7 @@ begin
     begin
       vDelphi := TInstalacaoDelphi.Create(AIDE, CatalogoDaExecucao);
       try
+        DesviosDeTeste(vDelphi);
         vDelphi.Pacotes.Assign(vNomes);
         vDelphi.RaizFontes := PastaFontes;
         vDelphi.Receitas := FReceitas;
@@ -799,6 +912,8 @@ begin
         vDelphi.ExigirIDEFechada := FExigirIDEFechada;
         vDelphi.ManterInstalados := FManterInstalados;
         vDelphi.Reinstalar := FReinstalar;
+        vDelphi.SoRuntime := FSoRuntime;
+        vDelphi.PastaRedist := PastaRedist;
         if FVersao <> nil then
           vDelphi.VersaoNova := FVersao.Ref;
         vDelphi.CommitNovo := CommitEscolhido;
@@ -806,6 +921,8 @@ begin
         Result := vDelphi.Executar;
         Relatar(vDelphi.Relatorio, vDelphi.Avisos, Result, vDelphi.Mudanca,
                 vDelphi.TextoMudanca);
+        if vDelphi.NadaMudou then
+          FIDEsIntactas.Values[AIDE.Nome] := vDelphi.MotivoNadaMudou;
       finally
         vDelphi.Free;
       end;
@@ -834,6 +951,7 @@ begin
   Result := False;
   FErro := '';
   FRelatorio.Clear;
+  FIDEsIntactas.Clear;
   if FIDEs.Count = 0 then
   begin
     FErro := emNenhumaIDE;

@@ -18,25 +18,35 @@ const
   PrefixoTagInstalador = 'instalador-v';
   RepoInstalador = 'PascalRAL';
 
-/// Name of this system's binary among the release assets
-function AssetDestaPlataforma: string;
+  /// The programs of a release: the screens, the command line and the project
+  /// migrator (PLANO_MIGRADOR.md), all from the same source and tag
+  ProgramaCLI = 'ralcli';
+  ProgramaInstalador = 'ralinstaller';
+  ProgramaMigrador = 'ralmigrador';
+
+  /// '.exe' on Windows, nothing elsewhere
+  ExtensaoExecutavel = {$IFDEF MSWINDOWS}'.exe'{$ELSE}''{$ENDIF};
+
+/// Name of this system's binary of a program among the release assets
+/// ('ralinstaller_w64.exe', 'ralcli_l64', 'ralmigrador_m64')
+function AssetDestaPlataforma(const APrograma: string = ProgramaInstalador): string;
 
 implementation
 
-function AssetDestaPlataforma: string;
+function AssetDestaPlataforma(const APrograma: string): string;
 begin
   {$IF defined(MSWINDOWS) and defined(CPU64)}
-  Result := 'ralinstaller_w64.exe';
+  Result := APrograma + '_w64.exe';
   {$ELSEIF defined(MSWINDOWS)}
-  Result := 'ralinstaller_w32.exe';
+  Result := APrograma + '_w32.exe';
   {$ELSEIF defined(DARWIN) and defined(CPUAARCH64)}
-  Result := 'ralinstaller_marm64';
+  Result := APrograma + '_marm64';
   {$ELSEIF defined(DARWIN)}
-  Result := 'ralinstaller_m64';
+  Result := APrograma + '_m64';
   {$ELSEIF defined(LINUX) and defined(CPU64)}
-  Result := 'ralinstaller_l64';
+  Result := APrograma + '_l64';
   {$ELSE}
-  Result := 'ralinstaller_l32';
+  Result := APrograma + '_l32';
   {$ENDIF}
 end;
 

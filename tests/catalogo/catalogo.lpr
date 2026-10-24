@@ -8,7 +8,8 @@ program catalogo;
 //                                              plano de instalacao da arvore
 
 uses
-  Classes, SysUtils, RALInst.Catalogo;
+  Classes, SysUtils, RALInst.Catalogo, RALInst.Compatibilidade, RALInst.Heranca,
+  RALInst.Motores;
 
 type
 
@@ -288,6 +289,121 @@ begin
   end;
 end;
 
+// F21 (o que a F13 deixou): uma arvore com o desenho da 2.0 ao lado da 1.x —
+// pastas por categoria, runtime e design separados, so o nucleo na raiz — e o
+// conjunto funcional da F14 sobre ela
+procedure Testes20;
+var
+  vMem: TOrigemMemoria;
+  vCat: TCatalogo;
+  vLista: TList;
+  vOk, vMotivos, vNomes, vHerdeiros: TStringList;
+  vInt: integer;
+  vPacote: TPacote;
+begin
+  WriteLn('== arvore 2.0 (em memoria)');
+  vMem := TOrigemMemoria.Create;
+  vMem.Gravar('src/core/RALConsts.pas', 'unit RALConsts; interface const RALVERSION = ' +
+              '''2.0.0''; implementation end.');
+  vMem.Gravar('src/core/RALServer.pas', 'unit RALServer; interface implementation end.');
+  vMem.Gravar('src/design/RALRegister.pas', 'unit RALRegister; interface implementation end.');
+  vMem.Gravar('src/engine/indy/RALIndyServer.pas', 'unit RALIndyServer; interface implementation end.');
+  vMem.Gravar('src/storage/RALStorageJSON.pas', 'unit RALStorageJSON; interface implementation end.');
+  vMem.Gravar('src/plugins/RALAuthBasic.pas', 'unit RALAuthBasic; interface implementation end.');
+  vMem.Gravar('src/database/RALDBFireDAC.pas', 'unit RALDBFireDAC; interface implementation end.');
+  vMem.Gravar('src/design/RALDBFireDACReg.pas', 'unit RALDBFireDACReg; interface implementation end.');
+  vMem.Gravar('src/design/RALWizard.pas', 'unit RALWizard; interface implementation end.');
+  vMem.Gravar('pkg/Delphi/PascalRAL.dpk', Dpk('PascalRAL', 'rtl',
+    '  RALServer in ''..\..\src\core\RALServer.pas'''));
+  vMem.Gravar('pkg/Delphi/PascalRALDsgn.dpk', '{$DESIGNONLY}' + LineEnding +
+    Dpk('PascalRALDsgn', 'designide,' + LineEnding + '  PascalRAL',
+        '  RALRegister in ''..\..\src\design\RALRegister.pas'''));
+  vMem.Gravar('pkg/Delphi/Engine/IndyRAL.dpk', Dpk('IndyRAL', 'PascalRAL',
+    '  RALIndyServer in ''..\..\..\src\engine\indy\RALIndyServer.pas'''));
+  vMem.Gravar('pkg/Delphi/Storage/RALStoragePackage.dpk', Dpk('RALStoragePackage',
+    'PascalRAL', '  RALStorageJSON in ''..\..\..\src\storage\RALStorageJSON.pas'''));
+  vMem.Gravar('pkg/Delphi/Plugins/RALPluginAuthPackage.dpk', Dpk('RALPluginAuthPackage',
+    'PascalRAL', '  RALAuthBasic in ''..\..\..\src\plugins\RALAuthBasic.pas'''));
+  vMem.Gravar('pkg/Delphi/Database/RALDBFireDACPackage.dpk', Dpk('RALDBFireDACPackage',
+    'PascalRAL', '  RALDBFireDAC in ''..\..\..\src\database\RALDBFireDAC.pas'''));
+  vMem.Gravar('pkg/Delphi/Database/RALDBFireDACDsgn.dpk', '{$DESIGNONLY}' + LineEnding +
+    Dpk('RALDBFireDACDsgn', 'designide,' + LineEnding + '  RALDBFireDACPackage',
+        '  RALDBFireDACReg in ''..\..\..\src\design\RALDBFireDACReg.pas'''));
+  vMem.Gravar('pkg/Delphi/Wizard/RALWizardDsgn.dpk', '{$DESIGNONLY}' + LineEnding +
+    Dpk('RALWizardDsgn', 'designide,' + LineEnding + '  PascalRALDsgn',
+        '  RALWizard in ''..\..\..\src\design\RALWizard.pas'''));
+  vCat := TCatalogo.Create;
+  vLista := TList.Create;
+  vOk := TStringList.Create;
+  vMotivos := TStringList.Create;
+  vNomes := TStringList.Create;
+  vHerdeiros := TStringList.Create;
+  try
+    Conferir(vCat.Carregar(vMem), 'carrega a arvore 2.0');
+    Conferir(VersaoRALDaOrigem(vCat.Origem) = '2.0.0', 'RALVERSION em src/core: 2.0.0');
+    Conferir(vCat.Buscar(tpDelphi, 'IndyRAL').Grupo = 'Engine', 'motor na pasta Engine');
+    Conferir(vCat.Buscar(tpDelphi, 'RALStoragePackage').Grupo = 'Storage', 'categoria Storage');
+    Conferir(vCat.Buscar(tpDelphi, 'RALPluginAuthPackage').Grupo = 'Plugins',
+             'categoria Plugins');
+    Conferir(vCat.Buscar(tpDelphi, 'RALWizardDsgn').Grupo = 'Wizard',
+             'o assistente saiu da raiz (Wizard)');
+    Conferir(vCat.Buscar(tpDelphi, 'PascalRALDsgn').Uso = upDesign, '{$DESIGNONLY} -> design');
+    Conferir(vCat.Buscar(tpDelphi, 'IndyRAL').Internos.CommaText = 'PascalRAL',
+             'o motor exige o PascalRAL, nao o PascalRALDsgn');
+    Conferir(Posicao(vCat, tpDelphi, 'PascalRAL') < Posicao(vCat, tpDelphi, 'IndyRAL'),
+             'PascalRAL antes do motor');
+    Conferir(Posicao(vCat, tpDelphi, 'PascalRALDsgn') < Posicao(vCat, tpDelphi,
+             'RALWizardDsgn'), 'PascalRALDsgn antes do assistente');
+    Conferir(Posicao(vCat, tpDelphi, 'RALDBFireDACPackage') <
+             Posicao(vCat, tpDelphi, 'RALDBFireDACDsgn'), 'runtime antes do design');
+    // so o nucleo na raiz: e o que a rodada pede quando nada foi pedido
+    vCat.Listar(tpDelphi, vLista);
+    for vInt := 0 to Pred(vLista.Count) do
+      if TPacote(vLista[vInt]).Grupo = '' then
+        vNomes.Add(TPacote(vLista[vInt]).Nome);
+    Conferir(vNomes.CommaText = 'PascalRAL,PascalRALDsgn', 'raiz = obrigatorios: ' +
+             vNomes.CommaText);
+
+    // F13: um RALDBFireDACLink da 1.x vira o par da 2.0
+    vNomes.Clear;
+    vNomes.Add('RALDBFireDACLink');
+    IncluirHerdeiros('', vNomes, vCat, tpDelphi, vHerdeiros);
+    Conferir((vHerdeiros.IndexOf('RALDBFireDACPackage') >= 0) and
+             (vHerdeiros.IndexOf('RALDBFireDACDsgn') >= 0),
+             'heranca 1.x -> 2.0: ' + vHerdeiros.CommaText);
+
+    // F14: o conjunto funcional
+
+    vNomes.Clear;
+    vNomes.CommaText := 'PascalRALDsgn,IndyRAL';
+    vCat.Fechamento(tpDelphi, vNomes, vLista);
+    vPacote := vCat.Buscar(tpDelphi, 'IndyRAL');
+    Conferir(EhMotor(vPacote), 'IndyRAL e motor');
+    vOk.CommaText := 'PascalRAL,PascalRALDsgn';
+    vMotivos.Values['IndyRAL'] := 'E2003 x';
+    Conferir(Pos('nenhum motor', FaltaConjunto(vLista, vOk, vMotivos, True)) > 0,
+             'sem motor que compilou: nao fecha (' + FaltaConjunto(vLista, vOk, vMotivos,
+             True) + ')');
+    vOk.CommaText := 'PascalRAL,IndyRAL';
+    Conferir(Pos('PascalRALDsgn', FaltaConjunto(vLista, vOk, vMotivos, True)) > 0,
+             'com a IDE, o design e obrigatorio');
+    Conferir(FaltaConjunto(vLista, vOk, vMotivos, False) = '',
+             'so runtime: nucleo e motor bastam');
+    vOk.CommaText := 'PascalRALDsgn,IndyRAL';
+    Conferir(Pos('PascalRAL ', FaltaConjunto(vLista, vOk, vMotivos, False) + ' ') > 0,
+             'sem o nucleo nunca fecha');
+    Conferir(Pos('IndyRAL', DescreverConjunto(vLista, True)) > 0,
+             'o plano diz: ' + DescreverConjunto(vLista, True));
+  finally
+    vHerdeiros.Free;
+    vNomes.Free;
+    vMotivos.Free;
+    vOk.Free;
+    vLista.Free;
+    vCat.Free;
+  end;
+end;
+
 procedure Testes;
 var
   vRaiz: string;
@@ -302,6 +418,7 @@ begin
   Verificar(TOrigemLocal.Create(vRaiz));
   WriteLn('== origem em memoria');
   Verificar(vMemoria);
+  Testes20;
 
   if GFalhas = 0 then
     WriteLn('todos os testes passaram')

@@ -12,7 +12,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALInst.GitHub, RALInst.HTTP, RALInst.Processo, RALInst.Receitas;
+  RALInst.GitHub, RALInst.HTTP, RALInst.IDE, RALInst.Processo, RALInst.Receitas;
 
 type
   /// Downloads one dependency, at the version an IDE asks for.
@@ -31,6 +31,10 @@ type
     FVersaoPedida: string;
     /// Downloads and extracts the recipe extras (release assets)
     function BaixarExtras: boolean;
+    /// F20: a recipe with no source code ("fonte.codigo": false) still gets
+    /// its folder with the installer's mark; False when the folder is someone
+    /// else's
+    function GarantirPastaSemCodigo: boolean;
     /// Passes the line to Log when assigned
     procedure Logar(const ALinha: string);
     /// Parses 'owner/repo:ref' and recreates the repository when it changes
@@ -62,11 +66,141 @@ type
     property VersaoPedida: string read FVersaoPedida write SetVersaoPedida;
   end;
 
+/// F20: runs a copiar-arquivo action: the files (relative to the dependency
+/// root ARaiz, '*' allowed in a part of the path) go to <ARedist>/<platform>/
+/// when the action's platform is one of APlataformas and its IDE range holds;
+/// ACopiados gets 'platform: destination' of each copy. False when a file is
+/// missing or could not be copied
+function CopiarArquivosDep(AReceita: TReceita; AAcao: TAcaoReceita;
+  AIDE: TIDEInstance; const ARaiz, ARedist: string; APlataformas: TStrings;
+  ALog: TLogLinha; ACopiados: TStrings): boolean;
+/// F20: where the runtime files go: ARedist when given, else <installation
+/// folder>/redist, the installation folder being the one holding
+/// dependencias/<name>/<version> (ARaiz)
+function PastaRedistDe(const ARaiz, ARedist: string): string;
+
 implementation
 
 uses
-  RegExpr,
-  RALInst.Fontes, RALInst.Mensagens, RALInst.Tar, RALInst.Zip;
+  RegExpr, fpjson,
+  RALInst.Fontes, RALInst.Mensagens, RALInst.Promocao, RALInst.Tar, RALInst.Zip;
+
+function PastaRedistDe(const ARaiz, ARedist: string): string;
+begin
+  if ARedist <> '' then
+    Result := IncludeTrailingPathDelimiter(ARedist)
+  else
+    // <instalacao>/dependencias/<nome>/<versao>/ -> <instalacao>/redist/
+    Result := IncludeTrailingPathDelimiter(ExpandFileName(
+                IncludeTrailingPathDelimiter(ARaiz) + '..' + PathDelim + '..' +
+                PathDelim + '..')) + 'redist' + PathDelim;
+end;
+
+// os arquivos que casam com um caminho relativo com '*' numa das partes
+procedure BuscarArquivos(const APasta, ARelativo: string; ALista: TStrings);
+var
+  vParte, vResto: string;
+  vPos: integer;
+  vBusca: TSearchRec;
+begin
+  vPos := Pos('/', ARelativo);
+  if vPos = 0 then
+  begin
+    vParte := ARelativo;
+    vResto := '';
+  end
+  else
+  begin
+    vParte := Copy(ARelativo, 1, vPos - 1);
+    vResto := Copy(ARelativo, vPos + 1, MaxInt);
+  end;
+  if FindFirst(IncludeTrailingPathDelimiter(APasta) + vParte, faAnyFile,
+               vBusca) = 0 then
+  try
+    repeat
+      if (vBusca.Name = '.') or (vBusca.Name = '..') then
+        Continue;
+      if vResto = '' then
+      begin
+        if (vBusca.Attr and faDirectory) = 0 then
+          ALista.Add(IncludeTrailingPathDelimiter(APasta) + vBusca.Name);
+      end
+      else if (vBusca.Attr and faDirectory) <> 0 then
+        BuscarArquivos(IncludeTrailingPathDelimiter(APasta) + vBusca.Name, vResto,
+                       ALista);
+    until FindNext(vBusca) <> 0;
+  finally
+    SysUtils.FindClose(vBusca);
+  end;
+end;
+
+// a plataforma da acao (nome do Delphi: win32, win64) e a do FPC no Lazarus
+function PlataformaDaIDE(AIDE: TIDEInstance; const APlataforma: string;
+  APlataformas: TStrings): boolean;
+begin
+  if AIDE.Tipo = tiDelphi then
+    Result := APlataformas.IndexOf(APlataforma) >= 0
+  else if SameText(APlataforma, 'win32') then
+    Result := AIDE.Plataformas.IndexOf('i386-win32') >= 0
+  else if SameText(APlataforma, 'win64') then
+    Result := AIDE.Plataformas.IndexOf('x86_64-win64') >= 0
+  else if SameText(APlataforma, 'linux64') then
+    Result := AIDE.Plataformas.IndexOf('x86_64-linux') >= 0
+  else
+    Result := False;
+end;
+
+function CopiarArquivosDep(AReceita: TReceita; AAcao: TAcaoReceita;
+  AIDE: TIDEInstance; const ARaiz, ARedist: string; APlataformas: TStrings;
+  ALog: TLogLinha; ACopiados: TStrings): boolean;
+var
+  vArquivos: TStringList;
+  vPadrao, vArquivo, vDestino: string;
+begin
+  Result := True;
+  if not PlataformaDaIDE(AIDE, AAcao.Plataforma, APlataformas) then
+    Exit;
+  // a faixa da acao: a DLL do brotli no Win32 so antes do 10.1 (que liga o .obj)
+  if AAcao.Condicao.Relevante(AIDE) and not AAcao.Condicao.Satisfaz(AIDE, True) then
+    Exit;
+  vArquivos := TStringList.Create;
+  try
+    for vPadrao in AAcao.Arquivos do
+    begin
+      vArquivos.Clear;
+      BuscarArquivos(ExcludeTrailingPathDelimiter(ARaiz),
+                     StringReplace(vPadrao, '\', '/', [rfReplaceAll]), vArquivos);
+      if vArquivos.Count = 0 then
+      begin
+        if Assigned(ALog) then
+          ALog('  ' + Format(emCopiarSemArquivo, [AReceita.Nome, vPadrao]));
+        Result := False;
+        Continue;
+      end;
+      for vArquivo in vArquivos do
+      begin
+        vDestino := IncludeTrailingPathDelimiter(ARedist) + AAcao.Plataforma +
+                    PathDelim + ExtractFileName(vArquivo);
+        ForceDirectories(ExtractFileDir(vDestino));
+        if FileExists(vDestino) then
+          SysUtils.DeleteFile(vDestino);
+        if not CopiarArquivo(vArquivo, vDestino) then
+        begin
+          if Assigned(ALog) then
+            ALog('  ' + Format(emCopiarArquivo, [AReceita.Nome, vArquivo, vDestino]));
+          Result := False;
+          Continue;
+        end;
+        if Assigned(ALog) then
+          ALog(Format(cmCopiadoRedist, [vDestino]));
+        if ACopiados <> nil then
+          ACopiados.Add(AAcao.Plataforma + ': ' + vDestino);
+      end;
+    end;
+  finally
+    vArquivos.Free;
+  end;
+end;
 
 { TBaixaDependencia }
 
@@ -215,7 +349,8 @@ end;
 function TBaixaDependencia.BaixarExtras: boolean;
 var
   vInt: integer;
-  vAsset, vDestino, vArquivo, vErro, vURL, vValor, vRelease: string;
+  vAsset, vDestino, vArquivo, vErro, vURL, vValor, vRelease, vNumero: string;
+  vTemVersao: boolean;
   vCli: TClienteHTTP;
   vArq: TFileStream;
 
@@ -242,6 +377,7 @@ begin
     vAsset := FReceita.Extras.Names[vInt];
     vValor := FReceita.Extras.ValueFromIndex[vInt];
     vRelease := Copy(vValor, Pos('|', vValor) + 1, MaxInt);
+    vTemVersao := Pos('{versao}', LowerCase(vAsset)) > 0;
     vDestino := PastaDestino + ExpandirRaiz(Copy(vValor, 1, Pos('|', vValor) - 1), '');
     // ja extraido (mesma versao ja na pasta)
     if DirectoryExists(vDestino) and
@@ -263,6 +399,14 @@ begin
     begin
       FErro := Format(emExtraSemRelease, [FReceita.Nome, vAsset, FRef]);
       Exit(False);
+    end;
+    // F20: o nome do asset traz a versao (libsagui-3.5.2-windows_386.zip)
+    if vTemVersao then
+    begin
+      vNumero := vRelease;
+      if (vNumero <> '') and (vNumero[1] in ['v', 'V']) then
+        Delete(vNumero, 1, 1);
+      vAsset := StringReplace(vAsset, '{versao}', vNumero, [rfReplaceAll, rfIgnoreCase]);
     end;
 
     // o asset tambem fica no cache: release nao muda
@@ -323,6 +467,42 @@ begin
   end;
 end;
 
+function TBaixaDependencia.GarantirPastaSemCodigo: boolean;
+var
+  vPasta: string;
+  vMarca: TJSONObject;
+begin
+  Result := False;
+  vPasta := PastaDestino;
+  if PastaDeOutro(vPasta) then
+  begin
+    FErro := Format(emPastaDeOutro, [vPasta]);
+    Exit;
+  end;
+  if not FileExists(vPasta + ArquivoMarca) then
+  begin
+    ForceDirectories(vPasta);
+    vMarca := TJSONObject.Create;
+    try
+      vMarca.Add('repositorio', Fonte);
+      vMarca.Add('versao', FRef);
+      vMarca.Add('commit', '');
+      vMarca.Add('data', FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss', Now));
+      vMarca.Add('aviso', 'Pasta criada pelo RAL Installer.');
+      with TStringList.Create do
+      try
+        Text := vMarca.FormatJSON;
+        SaveToFile(vPasta + ArquivoMarca);
+      finally
+        Free;
+      end;
+    finally
+      vMarca.Free;
+    end;
+  end;
+  Result := True;
+end;
+
 function TBaixaDependencia.Executar: boolean;
 var
   vPreparo: TPreparoFontes;
@@ -331,6 +511,16 @@ begin
   FErro := '';
   if not ResolverVersao then
     Exit;
+
+  // F20: so os arquivos do release (as DLLs), sem o codigo: a pasta ganha a
+  // marca do instalador do mesmo jeito, para a limpeza (F19) a reconhecer
+  if not FReceita.Codigo then
+  begin
+    if not GarantirPastaSemCodigo then
+      Exit;
+    Result := BaixarExtras;
+    Exit;
+  end;
 
   FRepo.Log := FLog;
   vPreparo := TPreparoFontes.Create(FRepo, FRef, FRamo);

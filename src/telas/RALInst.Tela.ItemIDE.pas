@@ -42,7 +42,7 @@ implementation
 {$R *.lfm}
 
 uses
-  RALInst.Tela.Mensagens;
+  RALInst.Compatibilidade, RALInst.Tela.Mensagens;
 
 { TItemIDE }
 
@@ -63,6 +63,7 @@ procedure TItemIDE.Atualizar;
 var
   vIDE: TIDEInstance;
   vDica: TStringList;
+  vMinimo: string;
 begin
   vIDE := FObjectData.Instancia;
 
@@ -106,6 +107,17 @@ begin
   // library path: o motivo esta nos avisos da dica
   ckSelecionado.Enabled := (ciCompilar in vIDE.Capacidades) and
     ((vIDE.Tipo <> tiDelphi) or (ciLibraryPath in vIDE.Capacidades));
+  // F15: IDE que nenhuma versao do RAL aceita (o minimo do manifesto: Delphi
+  // XE, FPC 3.2.0) continua na lista, com o motivo, sem poder ser marcada
+  vMinimo := MotivoMinimoIDE(vIDE);
+  if vMinimo <> '' then
+  begin
+    ckSelecionado.Enabled := False;
+    lbPath.Caption := lbPath.Caption + Format(cmIDENaoSuportada, [vMinimo]);
+    Hint := Hint + LineEnding + vMinimo;
+    lbIDEName.Hint := Hint;
+    lbPath.Hint := Hint;
+  end;
   if not ckSelecionado.Enabled then
     ckSelecionado.Checked := False;
 end;

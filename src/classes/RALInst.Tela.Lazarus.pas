@@ -45,6 +45,8 @@ begin
   Result.Receitas := AEscolha.Receitas;
   Result.PastasDependencias.Assign(AEscolha.PastasDependencias);
   Result.Manifesto := AEscolha.Manifesto;
+  Result.SoRuntime := AEscolha.SoRuntime;
+  Result.PastaRedist := AEscolha.PastaRedist;
   // a versao escolhida: antes de baixar, a pasta ainda nao a tem
   Result.VersaoNova := AEscolha.VersaoRAL;
   Result.CommitNovo := AEscolha.CommitRAL;
@@ -116,6 +118,9 @@ begin
       LogarLinha(TrimRight(vInst.Relatorio.Text));
     end;
     Resumir(Result, vInst.Avisos);
+    // F14: a configuracao ficou como estava, e o resumo diz por que
+    if vInst.NadaMudou then
+      Resumo := Name + ': ' + Format(cmNadaMudou, [vInst.MotivoNadaMudou]);
   finally
     vInst.Free;
   end;

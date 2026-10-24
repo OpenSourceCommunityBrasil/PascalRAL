@@ -11,17 +11,28 @@
 /// - Dependency: the version per compiler comes from the recipe
 ///   ("fonte.versoes"); when no version works, the package that needs it stays
 ///   out, unless the IDE already has the dependency.
-/// What cannot be deduced comes from the manifest: an IDE range per package and
-/// the dependency version *this* RAL version requires. The manifest belongs to
-/// the RAL version: a ralinstaller.json at its root wins; without it, the copy
-/// embedded in the installer (RCDATA MANIFESTO_RAL, from manifesto/ral.json).
+/// What cannot be deduced comes from the manifest: an IDE range per package,
+/// the IDEs a RAL version is known not to work in, and the dependency version
+/// *this* RAL version requires. The manifest belongs to the RAL version: a
+/// ralinstaller.json at its root wins; without it, the copy embedded in the
+/// installer (RCDATA MANIFESTO_RAL, from manifesto/ral.json). The embedded copy
+/// speaks of every RAL version at once, so its rules may carry a RAL range
+/// (ral-min, ral-max): a published tag cannot gain a ralinstaller.json. A
+/// branch matches by the version its RALConsts.pas declares (RALVERSION).
 ///
 ///   {
 ///     "formato": 1,
 ///     "pacotes": [ { "pacote": "SynopseRAL", "delphi-min": "2009",
 ///                    "motivo": "..." } ],
+///     "bloqueios": [ { "ral-max": "1.1.x", "delphi-min": "XE2",
+///                      "delphi-max": "XE2", "motivo": "..." },
+///                    { "delphi-max": "2010", "motivo": "minimo: Delphi XE" } ],
 ///     "dependencias": [ { "receita": "mORMot2", "versao": "master" } ]
 ///   }
+///
+/// "pacotes" say where a package holds (outside the range it stays out);
+/// "bloqueios" say where something is known broken (inside the range it is
+/// refused): without "pacote", the whole RAL version for that IDE.
 unit RALInst.Compatibilidade;
 
 {$mode ObjFPC}{$H+}
@@ -30,17 +41,27 @@ interface
 
 uses
   Classes, SysUtils, Contnrs, fpjson,
-  RALInst.Catalogo, RALInst.IDE, RALInst.Receitas;
+  RALInst.Catalogo, RALInst.IDE, RALInst.Receitas, RALInst.Verificadas;
 
 type
-  /// The package only holds inside the range.
+  /// The package only holds inside the range ("pacotes"), or something is
+  /// refused inside it ("bloqueios").
   TRegraPacote = class
   public
+    /// From "bloqueios": the range is where it does NOT work
+    Bloqueio: boolean;
     Condicao: TCondicaoIDE;
     Motivo: string;
+    /// Empty in a block: the whole RAL version
     Pacote: string;
+    /// RAL versions the rule speaks of ('' = any); 'x' matches any number
+    RALMax: string;
+    RALMin: string;
     constructor Create;
     destructor Destroy; override;
+    /// The rule speaks of this RAL version (unknown version: only rules with
+    /// no RAL range)
+    function ValeParaRAL(const AVersaoRAL: string): boolean;
   end;
 
   /// Rules of one RAL version that cannot be read from its packages.
@@ -50,14 +71,19 @@ type
     FErros: TStringList;
     FOrigem: string;
     FRegras: TObjectList;
+    FVersaoRAL: string;
     function GetRegra(AIndex: integer): TRegraPacote;
     function GetTotalRegras: integer;
   public
     constructor Create;
     destructor Destroy; override;
+    /// F16: what the project's sweep found broken becomes a block of the
+    /// whole version for that exact IDE, with the first error as the reason
+    procedure AcrescentarFalhas(AVerificadas: TVerificadas);
     /// A file on disk (the test tools, which have no resource)
     function CarregarArquivo(const AArquivo: string): boolean;
-    /// The RAL version's own (ralinstaller.json at its root), else the embedded
+    /// The RAL version's own (ralinstaller.json at its root), else the
+    /// embedded; plus the failures of the project's sweep (verificadas.json)
     procedure CarregarPadrao(AOrigem: TOrigemArquivos);
     /// The embedded copy (RCDATA MANIFESTO_RAL)
     procedure CarregarRecurso;
@@ -73,6 +99,9 @@ type
     property Origem: string read FOrigem;
     property Regras[AIndex: integer]: TRegraPacote read GetRegra;
     property TotalRegras: integer read GetTotalRegras;
+    /// The RAL version the rules are matched against ('1.1.0', '2.0.0'):
+    /// RALVERSION of the tree, read by CarregarPadrao; '' when unknown
+    property VersaoRAL: string read FVersaoRAL write FVersaoRAL;
   end;
 
   /// Where the dependency already is in this IDE ('' if it is not): the
@@ -98,12 +127,15 @@ type
     function Existe(const AArquivo: string): boolean;
     /// Does a recipe provide this package name?
     function FornecidoPorReceita(ATipo: TTipoPacote; const ANome: string): boolean;
-    /// Missing .dcp or RTL .dcu in a Delphi
-    function MotivoDelphi(APacote: TPacote; AIDE: TIDEInstance): string;
+    /// Missing .dcp or RTL .dcu in a Delphi (APlataforma: the lib\<plat> the
+    /// units are checked against; the .dcp only for Win32)
+    function MotivoDelphi(APacote: TPacote; AIDE: TIDEInstance;
+      const APlataforma: string = 'win32'): string;
     /// A dependency that no version satisfies, or an unusable installed copy
     function MotivoDependencias(APacote: TPacote; AIDE: TIDEInstance): string;
-    /// RTL units a unit uses with this IDE's symbols (cached)
-    function UsosDaUnidade(const AArquivo: string; AIDE: TIDEInstance): TStrings;
+    /// RTL units a unit uses with this IDE's (and platform's) symbols (cached)
+    function UsosDaUnidade(const AArquivo: string; AIDE: TIDEInstance;
+      const APlataforma: string = 'win32'): TStrings;
   public
     /// Owns nothing; manifest and recipes may be nil
     constructor Create(ACatalogo: TCatalogo; AManifesto: TManifesto;
@@ -119,6 +151,14 @@ type
     /// '' when the package itself fits the IDE; else why not. What it
     /// requires from RAL itself is Filtrar's business
     function Motivo(APacote: TPacote; AIDE: TIDEInstance): string;
+    /// F17: '' when the package units find, on another Delphi platform, the
+    /// RTL units they use with that platform's symbols; only the library path
+    /// of that platform depends on it (nothing is compiled there)
+    function MotivoPlataforma(APacote: TPacote; AIDE: TIDEInstance;
+      const APlataforma: string): string;
+    /// F15: '' when this RAL version may go to the IDE; else why not (a block
+    /// with no package matches the IDE: "minimo Delphi XE", "1.1 no XE2")
+    function MotivoVersao(AIDE: TIDEInstance): string;
     /// The dependency version for this IDE: the manifest's (of this RAL
     /// version), the recipe's by range, or the recipe default. '' and AMotivo
     /// set when no version works
@@ -132,9 +172,20 @@ type
 /// Key of PastasDependencias: the same dependency may be downloaded in two
 /// versions (stable Zeos for Delphi, 8.0-patches for FPC 3.3)
 function ChaveDependencia(const AReceita, AVersao: string): string;
+/// F15: why NO RAL version goes to this IDE, by the embedded manifest's blocks
+/// that speak of every version (the minimum Delphi XE, FPC 3.2.0); '' when
+/// some may. The IDE list uses it before a version is chosen
+function MotivoMinimoIDE(AIDE: TIDEInstance): string;
 /// The symbols PascalRAL.inc and the compiler define for this Delphi IDE
-/// (DELPHIXE4UP, VER360, MSWINDOWS...), for Win32
-procedure SimbolosDelphi(AIDE: TIDEInstance; ADefinidos, ANaoDefinidos: TStrings);
+/// (DELPHIXE4UP, VER360, MSWINDOWS...), for a platform (Win32 by default)
+procedure SimbolosDelphi(AIDE: TIDEInstance; ADefinidos, ANaoDefinidos: TStrings;
+  const APlataforma: string = 'win32');
+/// F15: the RAL version a tree declares (RALVERSION of RALConsts.pas, in
+/// src/core or src/base), without the build suffix: '1.2.0-108' -> '1.2.0'; ''
+/// when it does not say
+function VersaoRALDaOrigem(AOrigem: TOrigemArquivos): string;
+/// '1.2.0-108' -> '1.2.0', 'v1.1' -> '1.1'; '' when it is not a number
+function VersaoRALNumerica(const AVersao: string): string;
 /// The units the source uses with the known symbols: {$IFDEF X} with X in
 /// ADefinidos counts, in ANaoDefinidos does not (and its {$ELSE} counts); a
 /// symbol in neither, and {$IF expression}, leave the block out
@@ -161,6 +212,27 @@ const
 function ChaveDependencia(const AReceita, AVersao: string): string;
 begin
   Result := AReceita + '@' + AVersao;
+end;
+
+var
+  GManifestoEmbutido: TManifesto = nil;
+
+function MotivoMinimoIDE(AIDE: TIDEInstance): string;
+var
+  vCompat: TCompatibilidade;
+begin
+  if GManifestoEmbutido = nil then
+  begin
+    GManifestoEmbutido := TManifesto.Create;
+    GManifestoEmbutido.CarregarRecurso;
+  end;
+  // sem versao do RAL, so casam os bloqueios sem faixa de versao
+  vCompat := TCompatibilidade.Create(nil, GManifestoEmbutido, nil);
+  try
+    Result := vCompat.MotivoVersao(AIDE);
+  finally
+    vCompat.Free;
+  end;
 end;
 
 procedure UsosIncondicionais(const AFonte: string; ALista: TStrings);
@@ -316,10 +388,51 @@ begin
   end;
 end;
 
-procedure SimbolosDelphi(AIDE: TIDEInstance; ADefinidos, ANaoDefinidos: TStrings);
+function VersaoRALNumerica(const AVersao: string): string;
+begin
+  Result := Trim(AVersao);
+  if (Result <> '') and (Result[1] in ['v', 'V']) then
+    Delete(Result, 1, 1);
+  if Pos('-', Result) > 0 then
+    Result := Copy(Result, 1, Pos('-', Result) - 1);
+  if (Result = '') or not (Result[1] in ['0'..'9']) then
+    Result := '';
+end;
+
+function VersaoRALDaOrigem(AOrigem: TOrigemArquivos): string;
+var
+  vArquivo, vTexto: string;
+  vPos, vFim: integer;
+begin
+  Result := '';
+  if AOrigem = nil then
+    Exit;
+  for vArquivo in TStringArray.Create('src/core/RALConsts.pas',
+                                      'src/base/RALConsts.pas') do
+  begin
+    if not AOrigem.Existe(vArquivo) then
+      Continue;
+    try
+      vTexto := AOrigem.Ler(vArquivo);
+    except
+      Continue;
+    end;
+    // RALVERSION = '1.2.0-108';
+    vPos := Pos('RALVERSION', UpperCase(vTexto));
+    if vPos = 0 then
+      Continue;
+    vPos := PosEx('''', vTexto, vPos);
+    vFim := PosEx('''', vTexto, vPos + 1);
+    if (vPos > 0) and (vFim > vPos) then
+      Exit(VersaoRALNumerica(Copy(vTexto, vPos + 1, vFim - vPos - 1)));
+  end;
+end;
+
+procedure SimbolosDelphi(AIDE: TIDEInstance; ADefinidos, ANaoDefinidos: TStrings;
+  const APlataforma: string);
 var
   vInt: integer;
-  vNome: string;
+  vNome, vPlat: string;
 begin
   // os DELPHI<x>UP do PascalRAL.inc, pela versao da IDE: 'Delphi 10 Seattle'
   // -> DELPHI10_0UP, 'Delphi 10.1 Berlin' -> DELPHI10_1UP, 'Delphi XE2' ->
@@ -347,12 +460,53 @@ begin
     ANaoDefinidos.Add('UNICODE');
   if AIDE.VersaoCompilador <> '' then
     ADefinidos.Add(AIDE.VersaoCompilador);
-  // a conferencia e da plataforma Win32, a do design-time
-  ADefinidos.AddStrings(['MSWINDOWS', 'WINDOWS', 'WIN32', 'CPUX86', 'CPU386',
-                         'CONDITIONALEXPRESSIONS']);
-  ANaoDefinidos.AddStrings(['FPC', 'LINUX', 'UNIX', 'POSIX', 'DARWIN', 'MACOS',
-                            'ANDROID', 'IOS', 'WIN64', 'CPUX64', 'CPU64', 'CLR',
-                            'LAZARUS']);
+  ADefinidos.Add('CONDITIONALEXPRESSIONS');
+  ANaoDefinidos.AddStrings(['FPC', 'CLR', 'LAZARUS']);
+  // F17: os simbolos de cada plataforma; o que o Delphi talvez defina (LINUX
+  // no Android) fica de fora das duas listas: na duvida, nao se acusa
+  vPlat := LowerCase(APlataforma);
+  if vPlat = 'win64' then
+  begin
+    ADefinidos.AddStrings(['MSWINDOWS', 'WINDOWS', 'WIN64', 'CPUX64', 'CPU64',
+                           'CPU64BITS']);
+    ANaoDefinidos.AddStrings(['WIN32', 'CPUX86', 'CPU386', 'LINUX', 'UNIX', 'POSIX',
+                              'DARWIN', 'MACOS', 'ANDROID', 'IOS']);
+  end
+  else if vPlat = 'linux64' then
+  begin
+    ADefinidos.AddStrings(['LINUX', 'LINUX64', 'POSIX', 'POSIX64', 'CPUX64', 'CPU64',
+                           'CPU64BITS']);
+    ANaoDefinidos.AddStrings(['MSWINDOWS', 'WINDOWS', 'WIN32', 'WIN64', 'MACOS',
+                              'ANDROID', 'IOS', 'CPUX86', 'CPU386']);
+  end
+  else if (vPlat = 'osx64') or (vPlat = 'osxarm64') or (vPlat = 'osx32') then
+  begin
+    ADefinidos.AddStrings(['MACOS', 'POSIX', 'OSX']);
+    if vPlat <> 'osx32' then
+      ADefinidos.AddStrings(['MACOS64', 'CPU64', 'CPU64BITS']);
+    ANaoDefinidos.AddStrings(['MSWINDOWS', 'WINDOWS', 'WIN32', 'WIN64', 'LINUX',
+                              'ANDROID', 'IOS']);
+  end
+  else if (vPlat = 'android') or (vPlat = 'android64') then
+  begin
+    ADefinidos.AddStrings(['ANDROID', 'POSIX']);
+    ANaoDefinidos.AddStrings(['MSWINDOWS', 'WINDOWS', 'WIN32', 'WIN64', 'MACOS',
+                              'IOS', 'CPUX86', 'CPU386', 'CPUX64']);
+  end
+  else if Copy(vPlat, 1, 3) = 'ios' then
+  begin
+    ADefinidos.AddStrings(['IOS', 'MACOS', 'POSIX']);
+    ANaoDefinidos.AddStrings(['MSWINDOWS', 'WINDOWS', 'WIN32', 'WIN64', 'LINUX',
+                              'ANDROID', 'CPUX86', 'CPU386', 'CPUX64']);
+  end
+  else
+  begin
+    // Win32: a do design-time
+    ADefinidos.AddStrings(['MSWINDOWS', 'WINDOWS', 'WIN32', 'CPUX86', 'CPU386',
+                           'CPU32BITS']);
+    ANaoDefinidos.AddStrings(['LINUX', 'UNIX', 'POSIX', 'DARWIN', 'MACOS', 'ANDROID',
+                              'IOS', 'WIN64', 'CPUX64', 'CPU64']);
+  end;
 end;
 
 function DaRTL(const AUnidade: string): boolean;
@@ -372,6 +526,20 @@ constructor TRegraPacote.Create;
 begin
   inherited Create;
   Condicao := TCondicaoIDE.Create;
+end;
+
+function TRegraPacote.ValeParaRAL(const AVersaoRAL: string): boolean;
+begin
+  Result := True;
+  if (RALMin = '') and (RALMax = '') then
+    Exit;
+  // versao do RAL desconhecida (pasta sem RALConsts): regra com faixa nao casa
+  if AVersaoRAL = '' then
+    Exit(False);
+  if (RALMin <> '') and (CompararVersoes(AVersaoRAL, RALMin) < 0) then
+    Exit(False);
+  if (RALMax <> '') and (CompararVersoes(AVersaoRAL, RALMax) > 0) then
+    Exit(False);
 end;
 
 destructor TRegraPacote.Destroy;
@@ -413,6 +581,7 @@ begin
   FRegras.Clear;
   FDependencias.Clear;
   FOrigem := '';
+  FVersaoRAL := '';
 end;
 
 function TManifesto.CarregarTexto(const ATexto, AOrigem: string): boolean;
@@ -425,7 +594,8 @@ var
   vRegra: TRegraPacote;
   vVersao: TRegraVersao;
   vRegras, vDeps: TObjectList;
-  vAchou: boolean;
+  vAchou, vBloqueio: boolean;
+  vSecao: string;
 begin
   Result := False;
   vErro := '';
@@ -450,40 +620,53 @@ begin
     vRaiz := TJSONObject(vJSON);
     for vInt := 0 to Pred(vRaiz.Count) do
       if AnsiIndexStr(vRaiz.Names[vInt],
-                      ['formato', 'pacotes', 'dependencias', 'comentario']) < 0 then
+                      ['formato', 'pacotes', 'bloqueios', 'dependencias',
+                       'comentario']) < 0 then
         vErro := Format(emCampoDesconhecido, [vRaiz.Names[vInt], 'manifesto']);
     if (vErro = '') and (vRaiz.Get('formato', 0) <> 1) then
       vErro := Format(emManifestoFormato, [vRaiz.Get('formato', 0)]);
 
-    vLista := vRaiz.Get('pacotes', TJSONArray(nil));
-    if vLista <> nil then
-      for vInt := 0 to Pred(vLista.Count) do
-      begin
-        if vErro <> '' then
-          Break;
-        if not (vLista.Items[vInt] is TJSONObject) then
+    // "pacotes": onde o pacote vale; "bloqueios": onde algo nao funciona
+    for vBloqueio := False to True do
+    begin
+      vSecao := IfThen(vBloqueio, 'bloqueios', 'pacotes');
+      vLista := vRaiz.Get(vSecao, TJSONArray(nil));
+      if vLista <> nil then
+        for vInt := 0 to Pred(vLista.Count) do
         begin
-          vErro := Format(emReceitaItemObjeto, ['pacotes']);
-          Break;
+          if vErro <> '' then
+            Break;
+          if not (vLista.Items[vInt] is TJSONObject) then
+          begin
+            vErro := Format(emReceitaItemObjeto, [vSecao]);
+            Break;
+          end;
+          vItem := vLista.Objects[vInt];
+          for vCampo := 0 to Pred(vItem.Count) do
+          begin
+            vNome := vItem.Names[vCampo];
+            vAchou := AnsiIndexStr(vNome, ['pacote', 'motivo', 'comentario',
+                                           'ral-min', 'ral-max']) >= 0;
+            vAchou := vAchou or (AnsiIndexStr(vNome, CamposCondicao) >= 0);
+            if not vAchou then
+              vErro := Format(emCampoDesconhecido, [vNome, vSecao]);
+          end;
+          vRegra := TRegraPacote.Create;
+          vRegras.Add(vRegra);
+          vRegra.Bloqueio := vBloqueio;
+          vRegra.Pacote := vItem.Get('pacote', '');
+          vRegra.Motivo := vItem.Get('motivo', '');
+          vRegra.RALMin := vItem.Get('ral-min', '');
+          vRegra.RALMax := vItem.Get('ral-max', '');
+          // um bloqueio sem pacote vale para a versao inteira
+          if (vRegra.Pacote = '') and not vBloqueio then
+            vErro := emManifestoSemPacote
+          else if vBloqueio and (vRegra.Motivo = '') then
+            vErro := emManifestoBloqueioSemMotivo
+          else if vErro = '' then
+            vRegra.Condicao.Ler(vItem, vErro);
         end;
-        vItem := vLista.Objects[vInt];
-        for vCampo := 0 to Pred(vItem.Count) do
-        begin
-          vNome := vItem.Names[vCampo];
-          vAchou := AnsiIndexStr(vNome, ['pacote', 'motivo', 'comentario']) >= 0;
-          vAchou := vAchou or (AnsiIndexStr(vNome, CamposCondicao) >= 0);
-          if not vAchou then
-            vErro := Format(emCampoDesconhecido, [vNome, 'pacotes']);
-        end;
-        vRegra := TRegraPacote.Create;
-        vRegras.Add(vRegra);
-        vRegra.Pacote := vItem.Get('pacote', '');
-        vRegra.Motivo := vItem.Get('motivo', '');
-        if vRegra.Pacote = '' then
-          vErro := emManifestoSemPacote
-        else if vErro = '' then
-          vRegra.Condicao.Ler(vItem, vErro);
-      end;
+    end;
 
     vLista := vRaiz.Get('dependencias', TJSONArray(nil));
     if vLista <> nil then
@@ -513,7 +696,8 @@ begin
       Exit;
     end;
 
-    Limpar;
+    FRegras.Clear;
+    FDependencias.Clear;
     FOrigem := AOrigem;
     vRegras.OwnsObjects := False;
     for vInt := 0 to Pred(vRegras.Count) do
@@ -572,16 +756,67 @@ end;
 procedure TManifesto.CarregarPadrao(AOrigem: TOrigemArquivos);
 begin
   Limpar;
+  // F15: as regras com faixa de versao do RAL casam pelo que a arvore declara
+  FVersaoRAL := VersaoRALDaOrigem(AOrigem);
   if (AOrigem <> nil) and AOrigem.Existe('ralinstaller.json') then
     try
-      if CarregarTexto(AOrigem.Ler('ralinstaller.json'),
-                       Format(cmManifestoDaVersao, [AOrigem.Descricao])) then
-        Exit;
+      if not CarregarTexto(AOrigem.Ler('ralinstaller.json'),
+                           Format(cmManifestoDaVersao, [AOrigem.Descricao])) then
+        CarregarRecurso;
     except
       on E: Exception do
+      begin
         FErros.Add('ralinstaller.json: ' + E.Message);
+        CarregarRecurso;
+      end;
+    end
+  else
+    CarregarRecurso;
+  // F16: o que a varredura do projeto achou quebrado
+  AcrescentarFalhas(VerificadasPadrao);
+end;
+
+procedure TManifesto.AcrescentarFalhas(AVerificadas: TVerificadas);
+var
+  vInt, vProd: integer;
+  vVerif: TVerificacaoIDE;
+  vRegra: TRegraPacote;
+begin
+  if AVerificadas = nil then
+    Exit;
+  for vInt := 0 to Pred(AVerificadas.Count) do
+  begin
+    vVerif := AVerificadas[vInt];
+    if vVerif.Ok then
+      Continue;
+    vRegra := TRegraPacote.Create;
+    vRegra.Bloqueio := True;
+    vRegra.RALMin := vVerif.RAL;
+    vRegra.RALMax := vVerif.RAL;
+    vRegra.Motivo := Format(cmFalhouNaVarredura, [vVerif.Motivo]);
+    if vVerif.Tipo = 'delphi' then
+    begin
+      // o Delphi do manifesto e pelo nome (XE2, 12); BDS que a tabela nao
+      // conhece nao tem como ser dito
+      vProd := ProdutoPorBDS(vVerif.Versao);
+      if vProd < 0 then
+      begin
+        vRegra.Free;
+        Continue;
+      end;
+      vRegra.Condicao.DelphiMin := Copy(DelphiProdutos[vProd].Nome, 8, MaxInt);
+      vRegra.Condicao.DelphiMax := vRegra.Condicao.DelphiMin;
+    end
+    else
+    begin
+      vRegra.Condicao.LazarusMin := vVerif.Versao;
+      vRegra.Condicao.LazarusMax := vVerif.Versao + '.x';
+      vRegra.Condicao.FPCMin := vVerif.FPC;
+      vRegra.Condicao.FPCMax := vVerif.FPC;
+      vRegra.Condicao.FPCVariante := vVerif.Variante;
     end;
-  CarregarRecurso;
+    FRegras.Add(vRegra);
+  end;
 end;
 
 procedure TManifesto.RegrasDependencia(const AReceita: string; ALista: TList);
@@ -628,14 +863,15 @@ begin
 end;
 
 function TCompatibilidade.UsosDaUnidade(const AArquivo: string;
-  AIDE: TIDEInstance): TStrings;
+  AIDE: TIDEInstance; const APlataforma: string): TStrings;
 var
   vIdx: integer;
   vLista, vTodos, vDef, vNaoDef: TStringList;
   vNome, vChave: string;
 begin
-  // o resultado depende da versao: {$IFDEF DELPHIXE4UP} escolhe outro uses
-  vChave := AIDE.Versao + '|' + AArquivo;
+  // o resultado depende da versao e da plataforma: {$IFDEF DELPHIXE4UP} e
+  // {$IFDEF MSWINDOWS} escolhem outro uses
+  vChave := AIDE.Versao + '|' + LowerCase(APlataforma) + '|' + AArquivo;
   vIdx := FUsos.IndexOf(vChave);
   if vIdx >= 0 then
     Exit(TStrings(FUsos.Objects[vIdx]));
@@ -651,7 +887,7 @@ begin
   vNaoDef := TStringList.Create;
   try
     vTodos.CaseSensitive := False;
-    SimbolosDelphi(AIDE, vDef, vNaoDef);
+    SimbolosDelphi(AIDE, vDef, vNaoDef, APlataforma);
     try
       UsosEfetivos(FCatalogo.Origem.Ler(AArquivo), vDef, vNaoDef, vTodos);
     except
@@ -680,7 +916,8 @@ begin
       Exit(True);
 end;
 
-function TCompatibilidade.MotivoDelphi(APacote: TPacote; AIDE: TIDEInstance): string;
+function TCompatibilidade.MotivoDelphi(APacote: TPacote; AIDE: TIDEInstance;
+  const APlataforma: string): string;
 var
   vLib, vDcp, vNome, vUnidade: string;
   vPastas: array of string;
@@ -700,10 +937,11 @@ var
 
 begin
   Result := '';
-  // as bibliotecas da propria IDE: lib\win32\release do XE em diante, lib\ antes
-  vLib := AIDE.RootDir + 'lib' + PathDelim + 'win32' + PathDelim + 'release' +
-          PathDelim;
-  if not DirectoryExists(vLib) then
+  // as bibliotecas da propria IDE: lib\<plataforma>\release do XE em diante,
+  // lib\ antes
+  vLib := AIDE.RootDir + 'lib' + PathDelim + LowerCase(APlataforma) + PathDelim +
+          'release' + PathDelim;
+  if not DirectoryExists(vLib) and SameText(APlataforma, 'win32') then
     vLib := AIDE.RootDir + 'lib' + PathDelim;
   if not DirectoryExists(vLib) then
     Exit;
@@ -715,20 +953,53 @@ begin
   vPastas[1] := vDcp;
 
   // pacotes que o requires exige, e o Indy/FireDAC que o .dproj usa: o que
-  // uma receita fornece e assunto da F7 (baixa, ou diz que falta)
-  for vNome in APacote.Externos do
-    if not FornecidoPorReceita(tpDelphi, vNome) and not TemDcp(vNome) then
-      Exit(Format(cmMotivoSemPacote, [AIDE.Nome, vNome]));
-  for vNome in APacote.Implicitos do
-    if (AnsiStartsText('Indy', vNome) or AnsiStartsText('FireDAC', vNome)) and
-       not FornecidoPorReceita(tpDelphi, vNome) and not TemDcp(vNome) then
-      Exit(Format(cmMotivoSemPacote, [AIDE.Nome, vNome]));
+  // uma receita fornece e assunto da F7 (baixa, ou diz que falta). So no
+  // Win32: nas outras plataformas so vai o library path (F17), sem compilar
+  if SameText(APlataforma, 'win32') then
+  begin
+    for vNome in APacote.Externos do
+      if not FornecidoPorReceita(tpDelphi, vNome) and not TemDcp(vNome) then
+        Exit(Format(cmMotivoSemPacote, [AIDE.Nome, vNome]));
+    for vNome in APacote.Implicitos do
+      if (AnsiStartsText('Indy', vNome) or AnsiStartsText('FireDAC', vNome)) and
+         not FornecidoPorReceita(tpDelphi, vNome) and not TemDcp(vNome) then
+        Exit(Format(cmMotivoSemPacote, [AIDE.Nome, vNome]));
+  end;
 
   // as unidades da RTL que o pacote usa sem {$IFDEF}
   for vUnidade in APacote.Unidades do
-    for vNome in UsosDaUnidade(vUnidade, AIDE) do
+    for vNome in UsosDaUnidade(vUnidade, AIDE, APlataforma) do
       if not Existe(vLib + vNome + '.dcu') then
         Exit(Format(cmMotivoSemUnidade, [vNome, AIDE.Nome]));
+end;
+
+function TCompatibilidade.MotivoPlataforma(APacote: TPacote; AIDE: TIDEInstance;
+  const APlataforma: string): string;
+begin
+  Result := '';
+  if (APacote.Tipo = tpDelphi) and (AIDE.Tipo = tiDelphi) then
+    Result := MotivoDelphi(APacote, AIDE, APlataforma);
+end;
+
+function TCompatibilidade.MotivoVersao(AIDE: TIDEInstance): string;
+var
+  vInt: integer;
+  vRegra: TRegraPacote;
+begin
+  Result := '';
+  if FManifesto = nil then
+    Exit;
+  for vInt := 0 to Pred(FManifesto.TotalRegras) do
+  begin
+    vRegra := FManifesto.Regras[vInt];
+    if not vRegra.Bloqueio or (vRegra.Pacote <> '') or
+       not vRegra.ValeParaRAL(FManifesto.VersaoRAL) or
+       not vRegra.Condicao.Relevante(AIDE) then
+      Continue;
+    // dentro da faixa e o bloqueio; IDE de versao desconhecida nao e bloqueada
+    if vRegra.Condicao.Satisfaz(AIDE, False) then
+      Exit(vRegra.Motivo);
+  end;
 end;
 
 function TCompatibilidade.AvisoInstalada(AReceita: TReceita; AIDE: TIDEInstance;
@@ -819,12 +1090,25 @@ var
   vFaixa: string;
 begin
   Result := '';
+  // F15: a versao inteira do RAL nao vai para esta IDE
+  Result := MotivoVersao(AIDE);
+  if Result <> '' then
+    Exit(Format(cmMotivoVersaoBloqueada, [Result]));
   if FManifesto <> nil then
     for vInt := 0 to Pred(FManifesto.TotalRegras) do
     begin
       vRegra := FManifesto.Regras[vInt];
       if not SameText(vRegra.Pacote, APacote.Nome) or
-         vRegra.Condicao.Satisfaz(AIDE, True) then
+         not vRegra.ValeParaRAL(FManifesto.VersaoRAL) then
+        Continue;
+      if vRegra.Bloqueio then
+      begin
+        // sabido quebrado nesta faixa
+        if vRegra.Condicao.Relevante(AIDE) and vRegra.Condicao.Satisfaz(AIDE, False) then
+          Exit(vRegra.Motivo);
+        Continue;
+      end;
+      if vRegra.Condicao.Satisfaz(AIDE, True) then
         Continue;
       vFaixa := vRegra.Condicao.Descrever(AIDE);
       Result := Format(cmMotivoExige, [vFaixa]);
@@ -904,5 +1188,8 @@ begin
     vRegras.Free;
   end;
 end;
+
+finalization
+  FreeAndNil(GManifestoEmbutido);
 
 end.

@@ -59,6 +59,9 @@ type
     Pasta: string;
     /// As GitHub writes it ('1.1', 'dev'); '' for a local folder
     Versao: string;
+    /// F21: what the tree itself declares (RALVERSION: '1.2.0', '2.0.0'), for
+    /// the texts of a local folder or a hand installation; '' when unknown
+    VersaoArvore: string;
   end;
 
 /// The results and files the installer left in the IDE from exactly these
@@ -97,7 +100,23 @@ implementation
 
 uses
   StrUtils,
-  RALInst.Fontes, RALInst.GitHub, RALInst.Mensagens, RALInst.Recibos;
+  RALInst.Catalogo, RALInst.Compatibilidade, RALInst.Fontes, RALInst.GitHub,
+  RALInst.Mensagens, RALInst.Recibos;
+
+function VersaoDaPasta(const APasta: string): string;
+var
+  vOrigem: TOrigemLocal;
+begin
+  Result := '';
+  if (APasta = '') or not DirectoryExists(APasta) then
+    Exit;
+  vOrigem := TOrigemLocal.Create(APasta);
+  try
+    Result := VersaoRALDaOrigem(vOrigem);
+  finally
+    vOrigem.Free;
+  end;
+end;
 
 const
   // o que muda o que o compilador gera; .res e .rc o proprio instalador grava
@@ -137,6 +156,8 @@ begin
     Result.Versao := vVersao;
     Result.Commit := vCommit;
   end;
+  if Result.Versao = '' then
+    Result.VersaoArvore := VersaoDaPasta(APasta);
 end;
 
 function FontesDaIDE(const ARaizIDE: string; AExistente: TInstalacaoExistente;
@@ -183,6 +204,7 @@ begin
     LerMarca(Result.Pasta, vRepo, vVersao, vCommit);
     Result.Versao := vVersao;
     Result.Commit := vCommit;
+    Result.VersaoArvore := AExistente.VersaoRAL;
   end;
 end;
 
@@ -288,6 +310,9 @@ begin
     if AFontes.Commit <> '' then
       Result := Result + ' (' + Copy(AFontes.Commit, 1, 7) + ')';
   end
+  else if (AFontes.Pasta <> '') and (AFontes.VersaoArvore <> '') then
+    Result := Format(cmFontesDaPastaVersao, [AFontes.VersaoArvore,
+                                             ExcludeTrailingPathDelimiter(AFontes.Pasta)])
   else if AFontes.Pasta <> '' then
     Result := Format(cmFontesDaPasta, [ExcludeTrailingPathDelimiter(AFontes.Pasta)])
   else

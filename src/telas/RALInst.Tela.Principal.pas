@@ -65,6 +65,13 @@ type
     function InstallRAL(ALog: TMemo): boolean;
     /// No feature chosen: the run uninstalls
     function ModoDesinstalar: boolean;
+    /// F19: the installation folder of the choice (<folder> of
+    /// <folder>/PascalRAL/<version>)
+    function PastaInstalacao: string;
+    /// F21: the versions the project migrator would convert between, for a
+    /// run that updates, downgrades or switches RAL in some checked IDE; both
+    /// '' when no IDE changes version
+    procedure VersoesMigracao(out ADe, APara: string);
     /// One line per checked IDE with what the last plan found in it
     function Mudancas: string;
     procedure NextPage;
@@ -153,7 +160,7 @@ end;
 
 procedure TTelaPrincipal.AtualizacaoConsultada(Sender: TObject);
 var
-  vNovo: string;
+  vNovo, vNovoMigrador: string;
 begin
   case FResultadoAtualizacao of
     rvAtualizado:
@@ -176,11 +183,23 @@ begin
 
   Screen.Cursor := crHourGlass;
   try
-    if not FAtualizacao.Baixar(vNovo) or not FAtualizacao.Trocar(vNovo) then
+    // F21: os dois executaveis baixados e conferidos antes de trocar qualquer um
+    if not FAtualizacao.Baixar(vNovo) or
+       not FAtualizacao.BaixarMigrador(vNovoMigrador) or
+       not FAtualizacao.Trocar(vNovo) then
     begin
       Screen.Cursor := crDefault;
+      SysUtils.DeleteFile(vNovo);
+      SysUtils.DeleteFile(vNovoMigrador);
       ShowMessage(Format(cmAtualizacaoNaoFeita, [FAtualizacao.Erro, VersaoInstalador]));
       Exit;
+    end;
+    // o migrador aberto fica para a proxima abertura (LimparAtualizacaoAnterior)
+    if not FAtualizacao.TrocarMigrador(vNovoMigrador) and
+       FAtualizacao.MigradorPendente then
+    begin
+      Screen.Cursor := crDefault;
+      ShowMessage(FAtualizacao.Erro);
     end;
   finally
     Screen.Cursor := crDefault;
@@ -323,6 +342,24 @@ end;
 function TTelaPrincipal.ModoDesinstalar: boolean;
 begin
   Result := FPgRecursos.Escolha.Desinstalar;
+end;
+
+function TTelaPrincipal.PastaInstalacao: string;
+begin
+  Result := FPgRecursos.PastaInstalacao;
+end;
+
+procedure TTelaPrincipal.VersoesMigracao(out ADe, APara: string);
+begin
+  ADe := FPgIDEVersions.VersaoAnteriorMudada;
+  APara := '';
+  if ADe = '' then
+    Exit;
+  APara := FPgRecursos.VersaoEscolhida;
+  // de uma versao sem numero conhecido nao ha o que migrar com certeza: o
+  // migrador pergunta
+  if APara = '' then
+    ADe := '';
 end;
 
 function TTelaPrincipal.ContarMudancas(AMudancas: TMudancasRAL): integer;

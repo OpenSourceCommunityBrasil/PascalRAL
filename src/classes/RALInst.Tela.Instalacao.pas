@@ -23,10 +23,12 @@ type
     FManifesto: TManifesto;
     FPacotes: TStringList;
     FPastaFontes: string;
+    FPastaRedist: string;
     FPastasDependencias: TStringList;
     FReceitas: TReceitas;
     FReinstalar: boolean;
     FSomenteLibraryPath: boolean;
+    FSoRuntime: boolean;
     FVersaoRAL: string;
     FWin64: boolean;
   public
@@ -48,6 +50,8 @@ type
     property Pacotes: TStringList read FPacotes;
     /// Where the RAL sources are, or will be after the download
     property PastaFontes: string read FPastaFontes write FPastaFontes;
+    /// F20: <installation folder>/redist, where the recipes copy DLLs
+    property PastaRedist: string read FPastaRedist write FPastaRedist;
     /// Where each downloaded dependency is, or will be (name@version=folder)
     property PastasDependencias: TStringList read FPastasDependencias;
     /// The recipes (owned by the features page)
@@ -57,6 +61,8 @@ type
     /// Delphi: only the library path, compiling and installing nothing
     property SomenteLibraryPath: boolean read FSomenteLibraryPath
       write FSomenteLibraryPath;
+    /// F18: compiles the runtime packages, nothing goes into the IDE
+    property SoRuntime: boolean read FSoRuntime write FSoRuntime;
     /// The chosen GitHub version ('1.1', 'dev'); '' for a local folder
     property VersaoRAL: string read FVersaoRAL write FVersaoRAL;
     /// Delphi: also compiles the runtime and sets the Win64 library path

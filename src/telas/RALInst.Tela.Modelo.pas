@@ -49,6 +49,9 @@ type
     /// Makes an image draw its picture scaled to its own size (AWidth x
     /// AHeight at 96 DPI), so it follows the screen scale
     procedure DimensionarImagem(AImagem: TImage; AWidth, AHeight: integer);
+    /// F15: the next button lights up or not (a choice that would install a
+    /// broken RAL leaves it off; the page says why)
+    procedure PermitirAvancar(APermitido: boolean);
     /// Puts AAnel (a ring picture) centered around AAlvo
     procedure EnvolverImagem(AAnel, AAlvo: TImage);
     /// Keeps a text exactly over its button picture, at any screen scale
@@ -146,8 +149,22 @@ end;
 
 procedure TTelaModelo.lbNextClick(Sender: TObject);
 begin
+  if not lbNext.Enabled then
+    Exit;
   if ValidatePageNext then
     TelaPrincipal.NextPage;
+end;
+
+procedure TTelaModelo.PermitirAvancar(APermitido: boolean);
+begin
+  lbNext.Enabled := APermitido;
+  imNext.Enabled := APermitido;
+  // a figura do botao nao fica cinza sozinha
+  if APermitido then
+    imNext.Cursor := crHandPoint
+  else
+    imNext.Cursor := crNo;
+  lbNext.Cursor := imNext.Cursor;
 end;
 
 procedure TTelaModelo.CentralizarLadoALado(const AControles: array of TControl;

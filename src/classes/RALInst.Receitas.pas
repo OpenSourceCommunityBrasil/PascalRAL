@@ -4,7 +4,9 @@
 /// already installed, and what to do in each IDE. The action vocabulary is
 /// CLOSED: variavel, libpath, dpk, lpk. There is no "run this command": the
 /// recipe comes from the network, and a recipe able to run anything would make
-/// the installer an attack vector. An action or field the installer does not
+/// the installer an attack vector (copiar-arquivo only copies a file of the
+/// dependency into the installation's redist folder). An action or field the
+/// installer does not
 /// know refuses the whole recipe, by name. Who needs which recipe comes from the
 /// RAL packages themselves: requires ('ZComponent', 'indylaz', 'mormot2'), the
 /// search path variables ($(mormot2) in SynopseRAL.dproj) and, for what is
@@ -54,6 +56,9 @@ type
     DelphiMin: string;
     FPCMax: string;
     FPCMin: string;
+    /// F16: 'oficial' or 'unleashed' (the FPC Unleashed language extensions
+    /// may change what compiles); empty = any
+    FPCVariante: string;
     LazarusMax: string;
     LazarusMin: string;
     Sistemas: TStringList;
@@ -100,15 +105,20 @@ type
   end;
 
   /// Kind of recipe action (the closed vocabulary).
-  TTipoAcao = (taVariavel, taLibPath, taDpk, taLpk);
+  TTipoAcao = (taVariavel, taLibPath, taDpk, taLpk, taCopiarArquivo);
 
   /// One action of a recipe.
   TAcaoReceita = class
   public
     /// lpk: file relative to the root
     Arquivo: string;
+    /// copiar-arquivo: files relative to the root ('*' in a part of the path)
+    Arquivos: TStringList;
     /// libpath: paths, with {raiz} or $(variable)
     Caminhos: TStringList;
+    /// copiar-arquivo: the IDE range it holds for (brotli's DLL in Win32 only
+    /// before Delphi 10.1, which links the .obj)
+    Condicao: TCondicaoIDE;
     /// lpk: mode 'instalar' (True) or 'link' (only registers); dpk: install
     /// the design packages in the IDE
     Instalar: boolean;
@@ -116,6 +126,11 @@ type
     Nome: string;
     /// dpk: folder of the .dpk files per BDS version ('23.0=packages/Delphi12')
     Pastas: TStringList;
+    /// copiar-arquivo: the platform the files are for ('win32', 'win64')
+    Plataforma: string;
+    /// libpath: the Delphi platforms it holds for (F20); empty = every one
+    /// that gets RAL's library path
+    Plataformas: TStringList;
     Tipo: TTipoAcao;
     /// variavel: value ({raiz} = the dependency folder)
     Valor: string;
@@ -153,6 +168,7 @@ type
   /// One dependency recipe.
   TReceita = class
   private
+    FCodigo: boolean;
     FDelphi: TBlocoIDE;
     FExtras: TStringList;
     FLazarus: TBlocoIDE;
@@ -178,6 +194,9 @@ type
     /// Free and hosted on GitHub
     function PodeBaixar: boolean;
 
+    /// F20: the source code is downloaded ("fonte.codigo", default true);
+    /// false = only the release extras (the DLLs of brotli and libsagui)
+    property Codigo: boolean read FCodigo write FCodigo;
     property Delphi: TBlocoIDE read FDelphi;
     /// asset=destination|release (release file, extracted into <root>/<dest>)
     property Extras: TStringList read FExtras;
@@ -220,13 +239,16 @@ type
 
 const
   /// Fields of a range condition
-  CamposCondicao: array[0..6] of string = ('delphi-min', 'delphi-max', 'lazarus-min',
-    'lazarus-max', 'fpc-min', 'fpc-max', 'sistemas');
+  CamposCondicao: array[0..7] of string = ('delphi-min', 'delphi-max', 'lazarus-min',
+    'lazarus-max', 'fpc-min', 'fpc-max', 'sistemas', 'fpc-variante');
 
 /// True when the text matches the expression ('.' also matches line breaks)
 function CasaExpressao(const ATexto, AExpressao: string): boolean;
 /// {raiz} replaced by the folder; '/' replaced by the system separator
 function ExpandirRaiz(const ATexto, ARaiz: string): string;
+/// F16: 'unleashed' for a Lazarus of the FPC Unleashed installer, else
+/// 'oficial' (the empty TIDEInstance.VarianteFPC)
+function VarianteFPCDe(AIDE: TIDEInstance): string;
 /// { "fpc-min": "3.3", "versao": "8.0-patches" } or { ..., "incompativel": ...};
 /// nil (and the reason) when not valid. ACamposExtras: the other fields the
 /// place accepts besides the condition ("receita" in the manifest)
@@ -293,6 +315,13 @@ begin
   inherited Destroy;
 end;
 
+function VarianteFPCDe(AIDE: TIDEInstance): string;
+begin
+  Result := LowerCase(AIDE.VarianteFPC);
+  if Result = '' then
+    Result := 'oficial';
+end;
+
 function SistemaAtual: string;
 begin
   {$IF defined(MSWINDOWS)}
@@ -346,7 +375,11 @@ begin
   LazarusMax := AObj.Get('lazarus-max', '');
   FPCMin := AObj.Get('fpc-min', '');
   FPCMax := AObj.Get('fpc-max', '');
-  if not NomeDelphiValido(DelphiMin) then
+  FPCVariante := LowerCase(AObj.Get('fpc-variante', ''));
+  if (FPCVariante <> '') and (FPCVariante <> 'oficial') and
+     (FPCVariante <> 'unleashed') then
+    AErro := Format(emVarianteDesconhecida, [FPCVariante])
+  else if not NomeDelphiValido(DelphiMin) then
     AErro := Format(emDelphiDesconhecido, [DelphiMin])
   else if not NomeDelphiValido(DelphiMax) then
     AErro := Format(emDelphiDesconhecido, [DelphiMax]);
@@ -368,7 +401,7 @@ var
 begin
   vDelphi := (DelphiMin <> '') or (DelphiMax <> '');
   vLazarus := (LazarusMin <> '') or (LazarusMax <> '') or (FPCMin <> '') or
-              (FPCMax <> '');
+              (FPCMax <> '') or (FPCVariante <> '');
   if AIDE.Tipo = tiDelphi then
     Result := vDelphi or not vLazarus
   else
@@ -399,8 +432,13 @@ begin
     Result := Dentro(AIDE.Versao, VersaoNumDelphi(DelphiMin),
                      VersaoNumDelphi(DelphiMax))
   else
+  begin
     Result := Dentro(AIDE.Versao, LazarusMin, LazarusMax) and
               Dentro(AIDE.VersaoCompilador, FPCMin, FPCMax);
+    // F16: o FPC Unleashed e outro compilador, nao outra versao
+    if Result and (FPCVariante <> '') then
+      Result := SameText(FPCVariante, VarianteFPCDe(AIDE));
+  end;
 end;
 
 function TCondicaoIDE.Descrever(AIDE: TIDEInstance): string;
@@ -436,6 +474,8 @@ begin
   begin
     Juntar(Faixa('Lazarus', LazarusMin, LazarusMax));
     Juntar(Faixa('FPC', FPCMin, FPCMax));
+    if FPCVariante <> '' then
+      Juntar(Format(cmFaixaVariante, [FPCVariante]));
   end;
   if Sistemas.Count > 0 then
     Juntar(Format(cmFaixaSistemas,
@@ -518,10 +558,16 @@ begin
   inherited Create;
   Caminhos := NovaLista;
   Pastas := NovaLista;
+  Arquivos := NovaLista;
+  Plataformas := NovaLista;
+  Condicao := TCondicaoIDE.Create;
 end;
 
 destructor TAcaoReceita.Destroy;
 begin
+  Condicao.Free;
+  Plataformas.Free;
+  Arquivos.Free;
   Pastas.Free;
   Caminhos.Free;
   inherited Destroy;
@@ -563,6 +609,7 @@ end;
 constructor TReceita.Create;
 begin
   inherited Create;
+  FCodigo := True;
   FDelphi := TBlocoIDE.Create;
   FLazarus := TBlocoIDE.Create;
   FPacotesRAL := NovaLista;
@@ -733,7 +780,7 @@ var
         vItem := vLista.Objects[vInt];
         ConferirCampos(vItem, ['arquivo', 'expressao', 'aviso', 'comentario',
           'delphi-min', 'delphi-max', 'lazarus-min', 'lazarus-max', 'fpc-min',
-          'fpc-max', 'sistemas'], AIDE + '.verificacoes');
+          'fpc-max', 'sistemas', 'fpc-variante'], AIDE + '.verificacoes');
         vVerif := TVerificacao.Create;
         ABloco.Verificacoes.Add(vVerif);
         vVerif.Arquivo := vItem.Get('arquivo', '');
@@ -811,9 +858,33 @@ var
         else if vNomeAcao = 'libpath' then
         begin
           vAcao.Tipo := taLibPath;
-          ConferirCampos(vItem, ['acao', 'caminhos', 'comentario'],
+          ConferirCampos(vItem, ['acao', 'caminhos', 'plataformas', 'comentario'],
                          AIDE + '.acoes[libpath]');
           LerLista(vItem.Find('caminhos'), vAcao.Caminhos, 'libpath.caminhos');
+          LerLista(vItem.Find('plataformas'), vAcao.Plataformas,
+                   'libpath.plataformas');
+          if (vAcao.Plataformas.Count > 0) and (AIDE <> 'delphi') then
+            Falhar(emLibpathPlataformas);
+        end
+        else if vNomeAcao = 'copiar-arquivo' then
+        begin
+          // F20: uma DLL da dependencia vai para <instalacao>/redist/<plataforma>;
+          // so arquivo de dentro da pasta da dependencia, sem '..'
+          vAcao.Tipo := taCopiarArquivo;
+          ConferirCampos(vItem, ['acao', 'arquivos', 'plataforma', 'comentario',
+            'delphi-min', 'delphi-max', 'lazarus-min', 'lazarus-max', 'fpc-min',
+            'fpc-max', 'sistemas', 'fpc-variante'], AIDE + '.acoes[copiar-arquivo]');
+          LerLista(vItem.Find('arquivos'), vAcao.Arquivos, 'copiar-arquivo.arquivos');
+          vAcao.Plataforma := LowerCase(vItem.Get('plataforma', ''));
+          if (vAcao.Arquivos.Count = 0) or (vAcao.Plataforma = '') then
+            Falhar(emAcaoCopiar)
+          else if not vAcao.Condicao.Ler(vItem, vErroCond) then
+            Falhar(AIDE + '.acoes[copiar-arquivo]: ' + vErroCond);
+          for vCampo := 0 to Pred(vAcao.Arquivos.Count) do
+            if (Pos('..', vAcao.Arquivos[vCampo]) > 0) or
+               (Pos(':', vAcao.Arquivos[vCampo]) > 0) or
+               (Copy(vAcao.Arquivos[vCampo], 1, 1) = '/') then
+              Falhar(Format(emVerificacaoArquivo, [vAcao.Arquivos[vCampo]]));
         end
         else if (vNomeAcao = 'dpk') and (AIDE = 'delphi') then
         begin
@@ -885,9 +956,11 @@ begin
     vFonte := vRaiz.Get('fonte', TJSONObject(nil));
     if vFonte <> nil then
     begin
-      ConferirCampos(vFonte, ['github', 'versao', 'versoes', 'comentario'], 'fonte');
+      ConferirCampos(vFonte, ['github', 'versao', 'versoes', 'codigo', 'comentario'],
+                     'fonte');
       vReceita.Github := vFonte.Get('github', '');
       vReceita.Versao := vFonte.Get('versao', 'estavel');
+      vReceita.Codigo := vFonte.Get('codigo', True);
       if Pos('/', vReceita.Github) = 0 then
         Falhar(Format(emRegraGithub, ['fonte']));
       // F6: versao por faixa de IDE/compilador (o Zeos por FPC)
