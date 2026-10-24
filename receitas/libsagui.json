@@ -1,0 +1,28 @@
+{
+  "nome": "libsagui",
+  "descricao": "Sagui: a biblioteca C do motor SaguiRAL. Só a DLL, em tempo de execução: a unidade Pascal (libsagui.pas) vem com o RAL",
+  "site": "https://github.com/risoflora/libsagui",
+  "fonte": { "github": "risoflora/libsagui", "versao": "estavel", "codigo": false,
+             "comentario": "o codigo e C: so os binarios do release interessam; o zip traz libsagui-<versao>/bin/" },
+  "extras": [
+    { "asset": "libsagui-{versao}-windows_386.zip", "destino": "bin/win32" },
+    { "asset": "libsagui-{versao}-windows_amd64.zip", "destino": "bin/win64" }
+  ],
+  "pacotes-ral": ["SaguiRAL", "saguiral"],
+  "delphi": {
+    "comentario": "o SaguiRAL compila sem a DLL; o programa do usuario e que a carrega",
+    "acoes": [
+      { "acao": "copiar-arquivo", "plataforma": "win32", "arquivos": ["bin/win32/*/bin/*.dll"] },
+      { "acao": "copiar-arquivo", "plataforma": "win64", "arquivos": ["bin/win64/*/bin/*.dll"] }
+    ]
+  },
+  "lazarus": {
+    "comentario": "no Linux e no macOS a libsagui vem do gerenciador de pacotes do sistema",
+    "acoes": [
+      { "acao": "copiar-arquivo", "plataforma": "win32", "arquivos": ["bin/win32/*/bin/*.dll"],
+        "sistemas": ["windows"] },
+      { "acao": "copiar-arquivo", "plataforma": "win64", "arquivos": ["bin/win64/*/bin/*.dll"],
+        "sistemas": ["windows"] }
+    ]
+  }
+}

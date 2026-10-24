@@ -1,0 +1,519 @@
+{
+  "formato": 1,
+  "origem": "RAL",
+  "de": "1.1",
+  "para": "1.2",
+  "regras": [
+    {
+      "id": "1.2/sagui-maxconnections",
+      "acao": "propriedade-renomear",
+      "onde": ["form", "pas"],
+      "classe": "TRALSaguiServer",
+      "propriedade": "ConnectionLimit",
+      "para": "MaxConnections",
+      "descricao": {
+        "pt-BR": "A propriedade ConnectionLimit do servidor Sagui passou a se chamar MaxConnections. O nome antigo ainda funciona (o formulário abre e o código compila), então a troca é só de organização.",
+        "en-US": "The ConnectionLimit property of the Sagui server is now called MaxConnections. The old name still works (the form opens and the code compiles), so the change is only housekeeping.",
+        "es-ES": "La propiedad ConnectionLimit del servidor Sagui pasó a llamarse MaxConnections. El nombre antiguo todavía funciona (el formulario abre y el código compila), por lo que el cambio es solo de orden."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: troque ConnectionLimit por MaxConnections no TRALSaguiServer.",
+        "en-US": "In %arquivo%, line %linha%: replace ConnectionLimit with MaxConnections on the TRALSaguiServer.",
+        "es-ES": "En %arquivo%, línea %linha%: cambie ConnectionLimit por MaxConnections en el TRALSaguiServer."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/cors-materializar-asterisco",
+      "acao": "valor-padrao-materializar",
+      "onde": ["form"],
+      "classe": "TRAL*Server",
+      "propriedade": "CORSOptions.AllowOrigin",
+      "valor": "'*'",
+      "quando": "ausente",
+      "modo": "escrever",
+      "descricao": {
+        "pt-BR": "Na 1.1 o servidor aceitava chamadas de qualquer site do navegador (CORS aberto) sem você escrever nada; na 1.2 o CORS vem fechado. Para o projeto continuar fazendo o que fazia, o formulário passa a dizer isso explicitamente: CORSOptions.AllowOrigin = '*'.",
+        "en-US": "In 1.1 the server accepted calls from any website in the browser (open CORS) without you writing anything; in 1.2 CORS comes closed. For the project to keep doing what it did, the form now says so explicitly: CORSOptions.AllowOrigin = '*'.",
+        "es-ES": "En la 1.1 el servidor aceptaba llamadas desde cualquier sitio web en el navegador (CORS abierto) sin que usted escribiera nada; en la 1.2 el CORS viene cerrado. Para que el proyecto siga haciendo lo mismo, el formulario ahora lo dice de forma explícita: CORSOptions.AllowOrigin = '*'."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%, defina CORSOptions.AllowOrigin = '*' (ou a lista de sites que podem chamar o servidor). Sem isso, nenhuma página de outro site consegue chamá-lo.",
+        "en-US": "On the server %nome% in %arquivo%, set CORSOptions.AllowOrigin = '*' (or the list of sites allowed to call the server). Without it, no page from another site can call it.",
+        "es-ES": "En el servidor %nome% de %arquivo%, defina CORSOptions.AllowOrigin = '*' (o la lista de sitios que pueden llamar al servidor). Sin eso, ninguna página de otro sitio puede llamarlo."
+      },
+      "comportamento": {
+        "pt-BR": "O servidor %nome% continua aberto para qualquer site (AllowOrigin = '*'), como na 1.1. Para fechar, troque o '*' pela lista de sites permitidos.",
+        "en-US": "The server %nome% stays open to any site (AllowOrigin = '*'), as in 1.1. To close it, replace '*' with the list of allowed sites.",
+        "es-ES": "El servidor %nome% sigue abierto a cualquier sitio (AllowOrigin = '*'), como en la 1.1. Para cerrarlo, reemplace '*' por la lista de sitios permitidos."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/cors-codigo-aviso",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "ausencia-atribuicao",
+        "criacao-de": "TRAL*Server",
+        "propriedade": "CORSOptions.AllowOrigin"
+      },
+      "trecho": "%variavel%.CORSOptions.AllowOrigin := '*';",
+      "descricao": {
+        "pt-BR": "Servidor criado em código sem definir CORSOptions.AllowOrigin: na 1.1 aceitava qualquer site, na 1.2 o CORS vem fechado. O migrador escreveu a linha CORSOptions.AllowOrigin := '*' logo após a criação, para manter o comportamento.",
+        "en-US": "A server created in code without setting CORSOptions.AllowOrigin: in 1.1 it accepted any site, in 1.2 CORS comes closed. The migrator wrote the line CORSOptions.AllowOrigin := '*' right after the creation, to keep the behavior.",
+        "es-ES": "Servidor creado en código sin definir CORSOptions.AllowOrigin: en la 1.1 aceptaba cualquier sitio, en la 1.2 el CORS viene cerrado. El migrador escribió la línea CORSOptions.AllowOrigin := '*' justo después de la creación, para mantener el comportamiento."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: o migrador escreveu logo após criar %variavel%: %trecho% Troque o '*' pela lista de sites permitidos se só alguns sites devem chamar este servidor.",
+        "en-US": "In %arquivo%, line %linha%: the migrator wrote right after creating %variavel%: %trecho% Replace the '*' with the list of allowed sites if only some sites may call this server.",
+        "es-ES": "En %arquivo%, línea %linha%: el migrador escribió justo después de crear %variavel%: %trecho% Reemplace el '*' por la lista de sitios permitidos si solo algunos sitios deben llamar a este servidor."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/cliente-chamada-sincrona",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "chamada-metodo",
+        "classe": "TRALClient",
+        "metodos": ["Get", "Post", "Put", "Patch", "Delete"]
+      },
+      "descricao": {
+        "pt-BR": "As chamadas do cliente que recebem um evento (callback) sem informar o comportamento de execução passaram de ebMultiThread para ebSingleThread: agora esperam a resposta antes de continuar.",
+        "en-US": "Client calls that take an event (callback) without stating the execution behavior changed from ebMultiThread to ebSingleThread: they now wait for the response before moving on.",
+        "es-ES": "Las llamadas del cliente que reciben un evento (callback) sin indicar el comportamiento de ejecución pasaron de ebMultiThread a ebSingleThread: ahora esperan la respuesta antes de continuar."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: esta chamada agora espera a resposta. Se ela roda num botão ou evento de tela que não pode travar, passe ebMultiThread como último parâmetro.",
+        "en-US": "In %arquivo%, line %linha%: this call now waits for the response. If it runs from a button or a screen event that cannot freeze, pass ebMultiThread as the last parameter.",
+        "es-ES": "En %arquivo%, línea %linha%: esta llamada ahora espera la respuesta. Si se ejecuta desde un botón o un evento de pantalla que no puede congelarse, pase ebMultiThread como último parámetro."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/fdquery-behavior-materializar",
+      "acao": "valor-padrao-materializar",
+      "onde": ["form"],
+      "classe": "TRALFDQuery",
+      "propriedade": "QueryBehavior",
+      "valor": "ebMultiThread",
+      "quando": "ausente",
+      "modo": "escrever",
+      "descricao": {
+        "pt-BR": "O padrão de QueryBehavior do TRALFDQuery passou de ebMultiThread para ebSingleThread. Para o projeto continuar como era, o formulário passa a gravar QueryBehavior = ebMultiThread.",
+        "en-US": "The default of QueryBehavior in TRALFDQuery changed from ebMultiThread to ebSingleThread. For the project to stay as it was, the form now stores QueryBehavior = ebMultiThread.",
+        "es-ES": "El valor por defecto de QueryBehavior en TRALFDQuery pasó de ebMultiThread a ebSingleThread. Para que el proyecto siga como era, el formulario ahora guarda QueryBehavior = ebMultiThread."
+      },
+      "manual": {
+        "pt-BR": "No TRALFDQuery %nome% de %arquivo%, defina QueryBehavior = ebMultiThread para manter o comportamento da 1.1, ou deixe ebSingleThread para esperar a resposta.",
+        "en-US": "On the TRALFDQuery %nome% in %arquivo%, set QueryBehavior = ebMultiThread to keep the 1.1 behavior, or leave ebSingleThread to wait for the response.",
+        "es-ES": "En el TRALFDQuery %nome% de %arquivo%, defina QueryBehavior = ebMultiThread para mantener el comportamiento de la 1.1, o deje ebSingleThread para esperar la respuesta."
+      },
+      "comportamento": {
+        "pt-BR": "O TRALFDQuery %nome% continua em ebMultiThread (não trava a tela). Para esperar a resposta, troque para ebSingleThread.",
+        "en-US": "The TRALFDQuery %nome% stays on ebMultiThread (does not freeze the screen). To wait for the response, switch to ebSingleThread.",
+        "es-ES": "El TRALFDQuery %nome% sigue en ebMultiThread (no congela la pantalla). Para esperar la respuesta, cambie a ebSingleThread."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/cliente-conexao-compartilhada",
+      "acao": "valor-padrao-materializar",
+      "onde": ["form"],
+      "classe": "TRAL*Client",
+      "propriedade": "ShareConnection",
+      "valor": "False",
+      "quando": "ausente",
+      "modo": "so-relatar",
+      "descricao": {
+        "pt-BR": "ShareConnection passou a vir ligado: clientes do mesmo endereço dividem a conexão. Quase ninguém é afetado, então o migrador não escreve nada; só informa.",
+        "en-US": "ShareConnection now comes on: clients for the same address share the connection. Almost nobody is affected, so the migrator writes nothing; it only reports it.",
+        "es-ES": "ShareConnection ahora viene activado: los clientes de la misma dirección comparten la conexión. Casi nadie se ve afectado, así que el migrador no escribe nada; solo informa."
+      },
+      "manual": {
+        "pt-BR": "No cliente %nome% de %arquivo%, defina ShareConnection = False se precisar de uma conexão exclusiva.",
+        "en-US": "On the client %nome% in %arquivo%, set ShareConnection = False if you need an exclusive connection.",
+        "es-ES": "En el cliente %nome% de %arquivo%, defina ShareConnection = False si necesita una conexión exclusiva."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/cliente-pool-habilitado",
+      "acao": "valor-padrao-materializar",
+      "onde": ["form"],
+      "classe": "TRAL*Client",
+      "propriedade": "PoolConnection.Enabled",
+      "valor": "False",
+      "quando": "ausente",
+      "modo": "so-relatar",
+      "descricao": {
+        "pt-BR": "PoolConnection.Enabled passou a vir ligado. Quase ninguém é afetado, então o migrador não escreve nada; só informa.",
+        "en-US": "PoolConnection.Enabled now comes on. Almost nobody is affected, so the migrator writes nothing; it only reports it.",
+        "es-ES": "PoolConnection.Enabled ahora viene activado. Casi nadie se ve afectado, así que el migrador no escribe nada; solo informa."
+      },
+      "manual": {
+        "pt-BR": "No cliente %nome% de %arquivo%, defina PoolConnection.Enabled = False se não quiser o pool de conexões.",
+        "en-US": "On the client %nome% in %arquivo%, set PoolConnection.Enabled = False if you do not want the connection pool.",
+        "es-ES": "En el cliente %nome% de %arquivo%, defina PoolConnection.Enabled = False si no quiere el pool de conexiones."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/webmodule-docroot",
+      "acao": "valor-padrao-materializar",
+      "onde": ["form"],
+      "classe": "TRALWebModule",
+      "propriedade": "UseApplicationPathAsRoot",
+      "valor": "True",
+      "quando": "ausente",
+      "modo": "perguntar",
+      "condicao": { "tipo": "tem-propriedade", "propriedade": "DocumentRoot", "negar": true },
+      "descricao": {
+        "pt-BR": "Um TRALWebModule com DocumentRoot vazio servia a pasta do executável; na 1.2 não serve nada. Reproduzir o comportamento antigo (UseApplicationPathAsRoot = True) abre a pasta do .exe para a internet, então a decisão é sua e o migrador pergunta.",
+        "en-US": "A TRALWebModule with an empty DocumentRoot used to serve the executable's folder; in 1.2 it serves nothing. Reproducing the old behavior (UseApplicationPathAsRoot = True) exposes the .exe folder to the internet, so the decision is yours and the migrator asks.",
+        "es-ES": "Un TRALWebModule con DocumentRoot vacío servía la carpeta del ejecutable; en la 1.2 no sirve nada. Reproducir el comportamiento antiguo (UseApplicationPathAsRoot = True) expone la carpeta del .exe a internet, por lo que la decisión es suya y el migrador pregunta."
+      },
+      "manual": {
+        "pt-BR": "No TRALWebModule %nome% de %arquivo%, aponte DocumentRoot para a pasta do site (relativa ao .exe) ou, se quer mesmo servir a pasta do executável, ligue UseApplicationPathAsRoot.",
+        "en-US": "On the TRALWebModule %nome% in %arquivo%, point DocumentRoot at the site folder (relative to the .exe) or, if you really want to serve the executable's folder, turn UseApplicationPathAsRoot on.",
+        "es-ES": "En el TRALWebModule %nome% de %arquivo%, apunte DocumentRoot a la carpeta del sitio (relativa al .exe) o, si realmente quiere servir la carpeta del ejecutable, active UseApplicationPathAsRoot."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/webmodule-domain",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "atribuicao-propriedade",
+        "classe": "TRALWebModule",
+        "propriedade": "Domain"
+      },
+      "descricao": {
+        "pt-BR": "Um TRALWebModule com Domain diferente de '/' passou a responder só abaixo desse Domain.",
+        "en-US": "A TRALWebModule with a Domain other than '/' now answers only below that Domain.",
+        "es-ES": "Un TRALWebModule con Domain distinto de '/' pasó a responder solo por debajo de ese Domain."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: o módulo agora responde só abaixo de Domain. Confira os links e caminhos do site.",
+        "en-US": "In %arquivo%, line %linha%: the module now answers only below Domain. Check the site's links and paths.",
+        "es-ES": "En %arquivo%, línea %linha%: el módulo ahora responde solo por debajo de Domain. Compruebe los enlaces y rutas del sitio."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/params-por-origem",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "chamada-metodo",
+        "classe": "TRALParams",
+        "metodos": ["GetKind", "AssignParamsUrl"]
+      },
+      "descricao": {
+        "pt-BR": "Nos motores Indy, UniGUI, fpHTTP e CGI os parâmetros agora são separados por origem: formulário é rpkFIELD, URL é rpkQUERY e cabeçalhos são rpkHEADER. ParamByName continua igual.",
+        "en-US": "On the Indy, UniGUI, fpHTTP and CGI engines, parameters are now split by origin: form is rpkFIELD, URL is rpkQUERY and headers are rpkHEADER. ParamByName stays the same.",
+        "es-ES": "En los motores Indy, UniGUI, fpHTTP y CGI los parámetros ahora se separan por origen: formulario es rpkFIELD, URL es rpkQUERY y encabezados son rpkHEADER. ParamByName sigue igual."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: este código lê parâmetros por tipo. Revise: dados de formulário vêm em rpkFIELD, da URL em rpkQUERY e dos cabeçalhos em rpkHEADER.",
+        "en-US": "In %arquivo%, line %linha%: this code reads parameters by kind. Review it: form data arrives as rpkFIELD, URL data as rpkQUERY and headers as rpkHEADER.",
+        "es-ES": "En %arquivo%, línea %linha%: este código lee parámetros por tipo. Revíselo: los datos del formulario llegan como rpkFIELD, los de la URL como rpkQUERY y los de los encabezados como rpkHEADER."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/params-body-obsoleto",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "identificador",
+        "nomes": ["TRALParams.Body", "TRALParam.AsStream"]
+      },
+      "descricao": {
+        "pt-BR": "Params.Body e TRALParam.AsStream ficaram obsoletos. No FPC o compilador avisa (deprecated); no Delphi só há um comentário.",
+        "en-US": "Params.Body and TRALParam.AsStream are now obsolete. FPC warns (deprecated); Delphi has only a comment.",
+        "es-ES": "Params.Body y TRALParam.AsStream quedaron obsoletos. FPC avisa (deprecated); en Delphi solo hay un comentario."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: troque %valor% por Content, SaveToStream ou Count(rpkBODY), conforme o uso.",
+        "en-US": "In %arquivo%, line %linha%: replace %valor% with Content, SaveToStream or Count(rpkBODY), depending on the use.",
+        "es-ES": "En %arquivo%, línea %linha%: reemplace %valor% por Content, SaveToStream o Count(rpkBODY), según el uso."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/memtable-excecoes",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "chamada-metodo",
+        "classe": ["TRALDBFDMemTable", "TRALDBZMemTable", "TRALDBBufDataset"],
+        "metodos": ["ApplyUpdates", "ExecSQL"]
+      },
+      "descricao": {
+        "pt-BR": "Nas memtables do RAL (FireDAC, Zeos, BufDataset), um UPDATE ou DELETE que não afeta exatamente um registro agora é erro, e toda falha de ApplyUpdates/ExecSQL é levantada como exceção além de ir para o OnError.",
+        "en-US": "In the RAL memtables (FireDAC, Zeos, BufDataset), an UPDATE or DELETE that does not affect exactly one record is now an error, and every ApplyUpdates/ExecSQL failure is raised as an exception in addition to going to OnError.",
+        "es-ES": "En las memtables de RAL (FireDAC, Zeos, BufDataset), un UPDATE o DELETE que no afecta exactamente un registro ahora es un error, y todo fallo de ApplyUpdates/ExecSQL se levanta como excepción además de ir a OnError."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: envolva a chamada em try/except. Se o UpdateSQL altera vários registros de propósito, defina CountUpdatedRecords := False na memtable (UpdateOptions.CountUpdatedRecords no FireDAC).",
+        "en-US": "In %arquivo%, line %linha%: wrap the call in try/except. If the UpdateSQL changes several records on purpose, set CountUpdatedRecords := False on the memtable (UpdateOptions.CountUpdatedRecords in FireDAC).",
+        "es-ES": "En %arquivo%, línea %linha%: envuelva la llamada en try/except. Si el UpdateSQL cambia varios registros a propósito, defina CountUpdatedRecords := False en la memtable (UpdateOptions.CountUpdatedRecords en FireDAC)."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/dbware-legacywire",
+      "acao": "padrao-avisar",
+      "onde": [],
+      "padrao": { "tipo": "somente-relatorio" },
+      "trecho": "RALLegacyWire := True;",
+      "descricao": {
+        "pt-BR": "Na 1.2, NUMERIC/DECIMAL e datas com milissegundos viajam num formato novo no DBWare. Falando com um outro lado ainda em RAL anterior à 1.2, o lado novo precisa de RALLegacyWire := True.",
+        "en-US": "In 1.2, NUMERIC/DECIMAL and dates with milliseconds travel in a new format in DBWare. When talking to a side still on a RAL older than 1.2, the new side needs RALLegacyWire := True.",
+        "es-ES": "En la 1.2, NUMERIC/DECIMAL y las fechas con milisegundos viajan en un formato nuevo en DBWare. Al comunicarse con un lado que todavía usa un RAL anterior a la 1.2, el lado nuevo necesita RALLegacyWire := True."
+      },
+      "manual": {
+        "pt-BR": "Se o outro lado do DBWare continua em RAL anterior à 1.2, acrescente no lado novo, ao iniciar o programa: %trecho% (variável global, só em código). Melhor ainda: atualize os dois lados juntos.",
+        "en-US": "If the other side of DBWare is still on a RAL older than 1.2, add on the new side, when the program starts: %trecho% (a global variable, code only). Better still: update both sides together.",
+        "es-ES": "Si el otro lado de DBWare sigue en un RAL anterior a la 1.2, agregue en el lado nuevo, al iniciar el programa: %trecho% (variable global, solo en código). Mejor aún: actualice los dos lados juntos."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/cookie-samesite-zero",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "identificador",
+        "nomes": ["TRALCookieSiteScope", "cssLax", "cssNone", "cssStrict"]
+      },
+      "descricao": {
+        "pt-BR": "TRALCookieSiteScope ganhou cssDefault na primeira posição (cssLax, cssNone, cssStrict viraram cssDefault, cssLax, cssNone, cssStrict). Um TRALCookie zerado (FillChar, por exemplo) deixa de escrever SameSite=Lax.",
+        "en-US": "TRALCookieSiteScope gained cssDefault in the first position (cssLax, cssNone, cssStrict became cssDefault, cssLax, cssNone, cssStrict). A zeroed TRALCookie (FillChar, for instance) no longer writes SameSite=Lax.",
+        "es-ES": "TRALCookieSiteScope ganó cssDefault en la primera posición (cssLax, cssNone, cssStrict pasaron a cssDefault, cssLax, cssNone, cssStrict). Un TRALCookie puesto a cero (FillChar, por ejemplo) deja de escribir SameSite=Lax."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: se o código compara o valor ordinal do escopo ou zera um TRALCookie, revise. Defina SiteScope := cssLax explicitamente onde precisar do SameSite=Lax.",
+        "en-US": "In %arquivo%, line %linha%: if the code compares the ordinal value of the scope or zeroes a TRALCookie, review it. Set SiteScope := cssLax explicitly where you need SameSite=Lax.",
+        "es-ES": "En %arquivo%, línea %linha%: si el código compara el valor ordinal del scope o pone a cero un TRALCookie, revíselo. Defina SiteScope := cssLax explícitamente donde necesite SameSite=Lax."
+      },
+      "wiki": ""
+    }
+  ],
+  "comportamento": [
+    {
+      "id": "1.2/cors-fechado",
+      "descricao": {
+        "pt-BR": "AllowOrigin começa vazio: nenhuma página de outro site chama o servidor pelo navegador. Também são novos AllowCredentials (só com origem nomeada, nunca com '*') e a lista de origens separadas por espaço ou vírgula.",
+        "en-US": "AllowOrigin starts empty: no page from another site calls the server from the browser. Also new are AllowCredentials (only with a named origin, never with '*') and a list of origins separated by space or comma.",
+        "es-ES": "AllowOrigin empieza vacío: ninguna página de otro sitio llama al servidor desde el navegador. También son nuevos AllowCredentials (solo con un origen nombrado, nunca con '*') y la lista de orígenes separados por espacio o coma."
+      },
+      "fazer": {
+        "pt-BR": "O migrador escreve CORSOptions.AllowOrigin = '*' no formulário que não tinha a linha (o projeto continua aberto, como na 1.1). Servidor criado em código: CORSOptions.AllowOrigin := '*' ou a lista de sites.",
+        "en-US": "The migrator writes CORSOptions.AllowOrigin = '*' into a form that had no such line (the project stays open, as in 1.1). Server created in code: CORSOptions.AllowOrigin := '*' or the list of sites.",
+        "es-ES": "El migrador escribe CORSOptions.AllowOrigin = '*' en el formulario que no tenía la línea (el proyecto sigue abierto, como en la 1.1). Servidor creado en código: CORSOptions.AllowOrigin := '*' o la lista de sitios."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/cliente-espera-resposta",
+      "descricao": {
+        "pt-BR": "As chamadas do cliente que recebem um evento esperam a resposta (ebSingleThread). Antes, sem dizer nada, rodavam em outra thread (ebMultiThread).",
+        "en-US": "Client calls that take an event wait for the response (ebSingleThread). Before, with nothing stated, they ran on another thread (ebMultiThread).",
+        "es-ES": "Las llamadas del cliente que reciben un evento esperan la respuesta (ebSingleThread). Antes, sin indicar nada, se ejecutaban en otro hilo (ebMultiThread)."
+      },
+      "fazer": {
+        "pt-BR": "Onde a tela não pode travar, passe ebMultiThread na chamada.",
+        "en-US": "Where the screen must not freeze, pass ebMultiThread in the call.",
+        "es-ES": "Donde la pantalla no puede congelarse, pase ebMultiThread en la llamada."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/cliente-conexao-compartilhada",
+      "descricao": {
+        "pt-BR": "ShareConnection e PoolConnection.Enabled passaram a vir ligados: clientes do mesmo endereço dividem conexões.",
+        "en-US": "ShareConnection and PoolConnection.Enabled now come on: clients for the same address share connections.",
+        "es-ES": "ShareConnection y PoolConnection.Enabled pasaron a venir activados: los clientes de la misma dirección comparten conexiones."
+      },
+      "fazer": {
+        "pt-BR": "Quase ninguém é afetado. Para ter conexão exclusiva, desligue os dois.",
+        "en-US": "Almost nobody is affected. To have an exclusive connection, turn both off.",
+        "es-ES": "Casi nadie se ve afectado. Para tener una conexión exclusiva, desactive ambos."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/webmodule-sem-docroot",
+      "descricao": {
+        "pt-BR": "Um TRALWebModule com DocumentRoot vazio deixou de servir a pasta do executável. Também mudaram: BlockedExtensions (vem vazio), sessões que funcionam (cookie HttpOnly, 30 minutos) e FollowLinks.",
+        "en-US": "A TRALWebModule with an empty DocumentRoot no longer serves the executable's folder. Also changed: BlockedExtensions (comes empty), working sessions (HttpOnly cookie, 30 minutes) and FollowLinks.",
+        "es-ES": "Un TRALWebModule con DocumentRoot vacío dejó de servir la carpeta del ejecutable. También cambiaron: BlockedExtensions (viene vacío), sesiones que funcionan (cookie HttpOnly, 30 minutos) y FollowLinks."
+      },
+      "fazer": {
+        "pt-BR": "Seu site deixou de ser servido? Aponte DocumentRoot (relativo ao .exe) ou ligue UseApplicationPathAsRoot.",
+        "en-US": "Did your site stop being served? Point DocumentRoot (relative to the .exe) or turn on UseApplicationPathAsRoot.",
+        "es-ES": "¿Su sitio dejó de servirse? Apunte DocumentRoot (relativo al .exe) o active UseApplicationPathAsRoot."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/webmodule-domain",
+      "descricao": {
+        "pt-BR": "Um WebModule com Domain diferente de '/' responde só abaixo do Domain.",
+        "en-US": "A WebModule with a Domain other than '/' answers only below the Domain.",
+        "es-ES": "Un WebModule con Domain distinto de '/' responde solo por debajo del Domain."
+      },
+      "fazer": {
+        "pt-BR": "Confira os links do site.",
+        "en-US": "Check the site's links.",
+        "es-ES": "Compruebe los enlaces del sitio."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/verbo-rota-405",
+      "descricao": {
+        "pt-BR": "Uma rota que existe mas não aceita o método HTTP respondia 404; agora responde 405 com o cabeçalho Allow. Um método que o servidor não implementa responde 501 (antes rodava o GET).",
+        "en-US": "A route that exists but does not accept the HTTP method used to answer 404; it now answers 405 with the Allow header. A method the server does not implement answers 501 (before, it ran the GET).",
+        "es-ES": "Una ruta que existe pero no acepta el método HTTP respondía 404; ahora responde 405 con el encabezado Allow. Un método que el servidor no implementa responde 501 (antes ejecutaba el GET)."
+      },
+      "fazer": {
+        "pt-BR": "Testes que esperavam 404 para verbo errado passam a esperar 405; método desconhecido responde 501.",
+        "en-US": "Tests that expected 404 for a wrong verb should expect 405; an unknown method answers 501.",
+        "es-ES": "Las pruebas que esperaban 404 para un verbo erróneo deben esperar 405; un método desconocido responde 501."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/params-por-origem",
+      "descricao": {
+        "pt-BR": "Nos motores Indy, UniGUI, fpHTTP e CGI os parâmetros são separados por origem (formulário, URL, cabeçalho).",
+        "en-US": "On the Indy, UniGUI, fpHTTP and CGI engines, parameters are split by origin (form, URL, header).",
+        "es-ES": "En los motores Indy, UniGUI, fpHTTP y CGI los parámetros se separan por origen (formulario, URL, encabezado)."
+      },
+      "fazer": {
+        "pt-BR": "ParamByName continua igual; revise onde você lê parâmetros por tipo.",
+        "en-US": "ParamByName stays the same; review where you read parameters by kind.",
+        "es-ES": "ParamByName sigue igual; revise dónde lee parámetros por tipo."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/params-body-obsoleto",
+      "descricao": {
+        "pt-BR": "Params.Body e TRALParam.AsStream ficaram obsoletos.",
+        "en-US": "Params.Body and TRALParam.AsStream became obsolete.",
+        "es-ES": "Params.Body y TRALParam.AsStream quedaron obsoletos."
+      },
+      "fazer": {
+        "pt-BR": "Use Content, SaveToStream e Count(rpkBODY).",
+        "en-US": "Use Content, SaveToStream and Count(rpkBODY).",
+        "es-ES": "Use Content, SaveToStream y Count(rpkBODY)."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/dbware-decimal-milissegundos",
+      "descricao": {
+        "pt-BR": "NUMERIC/DECIMAL viajam inteiros e as datas com milissegundos. A 1.1 e a 1.2 não se leem nessas colunas e datas.",
+        "en-US": "NUMERIC/DECIMAL travel as integers and dates with milliseconds. 1.1 and 1.2 cannot read each other in those columns and dates.",
+        "es-ES": "NUMERIC/DECIMAL viajan como enteros y las fechas con milisegundos. La 1.1 y la 1.2 no se leen entre sí en esas columnas y fechas."
+      },
+      "fazer": {
+        "pt-BR": "Atualize cliente e servidor DBWare juntos, ou use RALLegacyWire := True no lado novo.",
+        "en-US": "Update the DBWare client and server together, or use RALLegacyWire := True on the new side.",
+        "es-ES": "Actualice juntos el cliente y el servidor DBWare, o use RALLegacyWire := True en el lado nuevo."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/memtable-excecoes",
+      "descricao": {
+        "pt-BR": "Nas memtables, UPDATE/DELETE que não afeta exatamente um registro é erro (emDBRowsAffected), e toda falha de ApplyUpdates/ExecSQL é levantada além de ir para o OnError.",
+        "en-US": "In the memtables, an UPDATE/DELETE that does not affect exactly one record is an error (emDBRowsAffected), and every ApplyUpdates/ExecSQL failure is raised in addition to going to OnError.",
+        "es-ES": "En las memtables, un UPDATE/DELETE que no afecta exactamente un registro es un error (emDBRowsAffected), y todo fallo de ApplyUpdates/ExecSQL se levanta además de ir a OnError."
+      },
+      "fazer": {
+        "pt-BR": "Envolva em try/except. Para UpdateSQL que altera vários registros, use CountUpdatedRecords := False.",
+        "en-US": "Wrap it in try/except. For an UpdateSQL that changes several records, use CountUpdatedRecords := False.",
+        "es-ES": "Envuélvalo en try/except. Para un UpdateSQL que cambia varios registros, use CountUpdatedRecords := False."
+      },
+      "wiki": "atualizacao.md#11--12-"
+    },
+    {
+      "id": "1.2/dao-validateapplyupdates",
+      "descricao": {
+        "pt-BR": "No DAO do FireDAC, com OnValidateSQL atribuído e OnValidateApplyUpdates não, o ApplyUpdates é recusado.",
+        "en-US": "In the FireDAC DAO, with OnValidateSQL assigned and OnValidateApplyUpdates not, ApplyUpdates is refused.",
+        "es-ES": "En el DAO de FireDAC, con OnValidateSQL asignado y OnValidateApplyUpdates no, ApplyUpdates es rechazado."
+      },
+      "fazer": {
+        "pt-BR": "Quem validava SQL no DAO: atribua também OnValidateApplyUpdates.",
+        "en-US": "If you validated SQL in the DAO: also assign OnValidateApplyUpdates.",
+        "es-ES": "Si validaba SQL en el DAO: asigne también OnValidateApplyUpdates."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.2/forca-bruta-conta-segredo",
+      "descricao": {
+        "pt-BR": "A proteção contra força bruta passa a contar só segredo checado e recusado (Bearer falho, 403 da aplicação e flood não contam). A rota de token tem limite próprio, e um pedido com corpo na rota de token é login, mesmo com Bearer ou cookie.",
+        "en-US": "Brute-force protection now counts only a secret that was checked and refused (a failed Bearer, an application 403 and flood do not count). The token route has its own limit, and a request with a body on the token route is a login, even with a Bearer or cookie.",
+        "es-ES": "La protección contra fuerza bruta ahora cuenta solo un secreto comprobado y rechazado (un Bearer fallido, un 403 de la aplicación y el flood no cuentan). La ruta de token tiene un límite propio, y una petición con cuerpo en la ruta de token es un login, aunque traiga Bearer o cookie."
+      },
+      "fazer": {
+        "pt-BR": "Se dependia de qualquer 401 contar como tentativa, revise MaxTry. Login com corpo ganha do token do cookie.",
+        "en-US": "If you relied on any 401 counting as an attempt, review MaxTry. A login with a body wins over the cookie token.",
+        "es-ES": "Si dependía de que cualquier 401 contara como intento, revise MaxTry. El login con cuerpo gana sobre el token de la cookie."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.2/multipart-sem-parte-400",
+      "descricao": {
+        "pt-BR": "Um corpo multipart/form-data sem nenhuma parte responde 400 antes de chegar na rota.",
+        "en-US": "A multipart/form-data body with no part at all answers 400 before reaching the route.",
+        "es-ES": "Un cuerpo multipart/form-data sin ninguna parte responde 400 antes de llegar a la ruta."
+      },
+      "fazer": {
+        "pt-BR": "Cliente que mandava multipart vazio, sem boundary, recebe 400.",
+        "en-US": "A client that sent an empty multipart, with no boundary, gets 400.",
+        "es-ES": "Un cliente que enviaba multipart vacío, sin boundary, recibe 400."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.2/redirect-https",
+      "descricao": {
+        "pt-BR": "Com SSL.Required (ou pino de certificado), o redirecionamento 3xx é a resposta e não é seguido para http.",
+        "en-US": "With SSL.Required (or a certificate pin), the 3xx redirect is the response and is not followed to http.",
+        "es-ES": "Con SSL.Required (o pin de certificado), la redirección 3xx es la respuesta y no se sigue hacia http."
+      },
+      "fazer": {
+        "pt-BR": "Nada, se o servidor não redireciona de https para http.",
+        "en-US": "Nothing, if the server does not redirect from https to http.",
+        "es-ES": "Nada, si el servidor no redirige de https a http."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.2/cookie-samesite-zero",
+      "descricao": {
+        "pt-BR": "TRALCookieSiteScope ganhou cssDefault na primeira posição: os valores ordinais mudaram.",
+        "en-US": "TRALCookieSiteScope gained cssDefault in the first position: the ordinal values changed.",
+        "es-ES": "TRALCookieSiteScope ganó cssDefault en la primera posición: los valores ordinales cambiaron."
+      },
+      "fazer": {
+        "pt-BR": "Código que compara o ordinal ou zera um TRALCookie com FillChar: revise.",
+        "en-US": "Code that compares the ordinal or zeroes a TRALCookie with FillChar: review it.",
+        "es-ES": "Código que compara el ordinal o pone a cero un TRALCookie con FillChar: revíselo."
+      },
+      "wiki": ""
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="12"/>
+    <PathDelim Value="\"/>
+    <General>
+      <Flags>
+        <MainUnitHasCreateFormStatements Value="False"/>
+        <MainUnitHasTitleStatement Value="False"/>
+        <MainUnitHasScaledStatement Value="False"/>
+      </Flags>
+      <SessionStorage Value="InProjectDir"/>
+      <Title Value="ralmigra"/>
+      <UseAppBundle Value="False"/>
+      <ResourceType Value="res"/>
+      <Resources Count="10">
+        <Resource_0 FileName="regras/v1.0-1.1.json" Type="RCDATA" ResourceName="REGRAS_1_0__1_1"/>
+        <Resource_1 FileName="regras/1.1-1.2.json" Type="RCDATA" ResourceName="REGRAS_1_1__1_2"/>
+        <Resource_2 FileName="regras/1.2-2.0.json" Type="RCDATA" ResourceName="REGRAS_1_2__2_0"/>
+        <Resource_3 FileName="api/api-v1.0.json" Type="RCDATA" ResourceName="API_V1_0"/>
+        <Resource_4 FileName="api/api-1.1.json" Type="RCDATA" ResourceName="API_1_1"/>
+        <Resource_5 FileName="api/api-dev.json" Type="RCDATA" ResourceName="API_DEV"/>
+        <Resource_6 FileName="api/api-2.0.json" Type="RCDATA" ResourceName="API_2_0"/>
+        <Resource_7 FileName="languages/ralmigrador.pt-BR.po" Type="RCDATA" ResourceName="PO_PT_BR"/>
+        <Resource_8 FileName="languages/ralmigrador.en-US.po" Type="RCDATA" ResourceName="PO_EN_US"/>
+        <Resource_9 FileName="languages/ralmigrador.es-ES.po" Type="RCDATA" ResourceName="PO_ES_ES"/>
+      </Resources>
+    </General>
+    <VersionInfo>
+      <UseVersionInfo Value="True"/>
+      <MinorVersionNr Value="9"/>
+      <StringTable CompanyName="Pascal RAL" FileDescription="Migrador do RAL (linha de comando)" ProductName="RAL Migrator"/>
+    </VersionInfo>
+    <BuildModes>
+      <Item Name="Default" Default="True"/>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+    </PublishOptions>
+    <RunParams>
+      <FormatVersion Value="2"/>
+    </RunParams>
+    <Units>
+      <Unit>
+        <Filename Value="ralmigra.lpr"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <PathDelim Value="\"/>
+    <Target>
+      <Filename Value="ralmigra"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <OtherUnitFiles Value="src;..\src\classes"/>
+      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+    <CodeGeneration>
+      <Optimizations>
+        <OptimizationLevel Value="2"/>
+      </Optimizations>
+    </CodeGeneration>
+    <Linking>
+      <Debugging>
+        <GenerateDebugInfo Value="False"/>
+      </Debugging>
+    </Linking>
+  </CompilerOptions>
+</CONFIG>

@@ -1,0 +1,1261 @@
+{
+  "formato": 1,
+  "origem": "RAL",
+  "de": "1.2",
+  "para": "2.0",
+  "regras": [
+    {
+      "id": "2.0/plugin-compress",
+      "acao": "propriedade-para-componente",
+      "onde": ["form", "pas"],
+      "classe-dona": "TRAL*Server",
+      "propriedades": ["CompressType"],
+      "mapeamento": { "CompressType": "CompressType" },
+      "omitir-valores": { "CompressType": "ctNone" },
+      "componente": "TRALCompressPlugin",
+      "unit": "RALContent",
+      "nome-base": "RALCompressPlugin",
+      "ligacao": "Server",
+      "criar-quando": { "tipo": "sempre" },
+      "descricao": {
+        "pt-BR": "Na 2.0 a compressão deixou de ser propriedade do servidor e virou um plugin. Todo servidor ganha um TRALCompressPlugin, mesmo com CompressType = ctNone: na 1.x o servidor sempre comprimia conforme o cliente pedia, e sem o plugin ele deixaria de comprimir.",
+        "en-US": "In 2.0 compression is no longer a server property but a plugin. Every server gets a TRALCompressPlugin, even with CompressType = ctNone: in 1.x the server always compressed as the client asked, and without the plugin it would stop compressing.",
+        "es-ES": "En la 2.0 la compresión dejó de ser una propiedad del servidor y pasó a ser un plugin. Todo servidor recibe un TRALCompressPlugin, incluso con CompressType = ctNone: en la 1.x el servidor siempre comprimía según lo que pedía el cliente, y sin el plugin dejaría de comprimir."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%: solte um TRALCompressPlugin (paleta RAL - Plugins) no formulário, defina Server = %nome% e CompressType = %valor%. Acrescente RALContent ao uses. Apague a propriedade CompressType do servidor (o formulário antigo não abre na 2.0).",
+        "en-US": "On the server %nome% in %arquivo%: drop a TRALCompressPlugin (RAL - Plugins palette) on the form, set Server = %nome% and CompressType = %valor%. Add RALContent to the uses clause. Delete the server's CompressType property (the old form does not open in 2.0).",
+        "es-ES": "En el servidor %nome% de %arquivo%: suelte un TRALCompressPlugin (paleta RAL - Plugins) en el formulario, defina Server = %nome% y CompressType = %valor%. Agregue RALContent al uses. Elimine la propiedad CompressType del servidor (el formulario antiguo no abre en la 2.0)."
+      },
+      "comportamento": {
+        "pt-BR": "O servidor %nome% ganhou o plugin de compressão %componente%, para comprimir como antes.",
+        "en-US": "The server %nome% got the compression plugin %componente%, so it compresses as before.",
+        "es-ES": "El servidor %nome% recibió el plugin de compresión %componente%, para comprimir como antes."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/plugin-cripto",
+      "acao": "propriedade-para-componente",
+      "onde": ["form", "pas"],
+      "classe-dona": "TRAL*Server",
+      "propriedades": ["CriptoOptions.Key", "CriptoOptions.CriptType"],
+      "mapeamento": { "CriptoOptions.Key": "Key" },
+      "descartar": ["CriptoOptions.CriptType"],
+      "componente": "TRALCriptoPlugin",
+      "unit": "RALContent",
+      "nome-base": "RALCriptoPlugin",
+      "ligacao": "Server",
+      "criar-quando": {
+        "tipo": "alguma",
+        "condicoes": [
+          { "tipo": "valor-diferente", "propriedade": "CriptoOptions.CriptType", "valor": "crNone" },
+          { "tipo": "tem-propriedade", "propriedade": "CriptoOptions.Key" }
+        ]
+      },
+      "descricao": {
+        "pt-BR": "A criptografia do servidor virou o plugin TRALCriptoPlugin, que só leva a chave (Key). O tamanho da cifra (CriptType) deixou de existir: vem do cabeçalho Accept-Encription que o cliente manda. O plugin só é criado quando havia cifra ligada ou uma chave.",
+        "en-US": "Server encryption became the TRALCriptoPlugin plugin, which only takes the key (Key). The cipher size (CriptType) is gone: it comes from the Accept-Encription header sent by the client. The plugin is only created when a cipher was on or a key was set.",
+        "es-ES": "El cifrado del servidor pasó a ser el plugin TRALCriptoPlugin, que solo lleva la clave (Key). El tamaño del cifrado (CriptType) dejó de existir: viene del encabezado Accept-Encription que envía el cliente. El plugin solo se crea cuando había un cifrado activo o una clave."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%: solte um TRALCriptoPlugin no formulário, defina Server = %nome% e Key com a chave que estava em CriptoOptions.Key. Acrescente RALContent ao uses e apague CriptoOptions do servidor.",
+        "en-US": "On the server %nome% in %arquivo%: drop a TRALCriptoPlugin on the form, set Server = %nome% and Key to the key that was in CriptoOptions.Key. Add RALContent to the uses clause and delete CriptoOptions from the server.",
+        "es-ES": "En el servidor %nome% de %arquivo%: suelte un TRALCriptoPlugin en el formulario, defina Server = %nome% y Key con la clave que estaba en CriptoOptions.Key. Agregue RALContent al uses y elimine CriptoOptions del servidor."
+      },
+      "comportamento": {
+        "pt-BR": "O servidor %nome% ganhou o plugin de criptografia %componente% com a mesma chave. O tamanho da cifra agora é escolhido pelo cliente.",
+        "en-US": "The server %nome% got the encryption plugin %componente% with the same key. The cipher size is now chosen by the client.",
+        "es-ES": "El servidor %nome% recibió el plugin de cifrado %componente% con la misma clave. El tamaño del cifrado ahora lo elige el cliente."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/plugin-limits",
+      "acao": "propriedade-para-componente",
+      "onde": ["form", "pas"],
+      "classe-dona": "TRAL*Server",
+      "propriedades": ["MaxRequestSize"],
+      "mapeamento": { "MaxRequestSize": "MaxRequestSize" },
+      "componente": "TRALLimitsPlugin",
+      "unit": "RALContent",
+      "nome-base": "RALLimitsPlugin",
+      "ligacao": "Server",
+      "criar-quando": { "tipo": "valor-diferente", "propriedade": "MaxRequestSize", "valor": "0" },
+      "descricao": {
+        "pt-BR": "O limite de tamanho do pedido (MaxRequestSize) virou o plugin TRALLimitsPlugin. Só é criado quando o limite era diferente de zero.",
+        "en-US": "The request size limit (MaxRequestSize) became the TRALLimitsPlugin plugin. It is only created when the limit was not zero.",
+        "es-ES": "El límite de tamaño de la petición (MaxRequestSize) pasó a ser el plugin TRALLimitsPlugin. Solo se crea cuando el límite era distinto de cero."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%: solte um TRALLimitsPlugin, defina Server = %nome% e MaxRequestSize = %valor%. Acrescente RALContent ao uses e apague MaxRequestSize do servidor.",
+        "en-US": "On the server %nome% in %arquivo%: drop a TRALLimitsPlugin, set Server = %nome% and MaxRequestSize = %valor%. Add RALContent to the uses clause and delete MaxRequestSize from the server.",
+        "es-ES": "En el servidor %nome% de %arquivo%: suelte un TRALLimitsPlugin, defina Server = %nome% y MaxRequestSize = %valor%. Agregue RALContent al uses y elimine MaxRequestSize del servidor."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/plugin-jsonbody",
+      "acao": "propriedade-para-componente",
+      "onde": ["form", "pas"],
+      "classe-dona": "TRAL*Server",
+      "propriedades": ["JSONBodyToParams"],
+      "mapeamento": {},
+      "componente": "TRALJSONBodyPlugin",
+      "unit": "RALContent",
+      "nome-base": "RALJSONBodyPlugin",
+      "ligacao": "Server",
+      "criar-quando": { "tipo": "valor-igual", "propriedade": "JSONBodyToParams", "valor": "True" },
+      "descricao": {
+        "pt-BR": "JSONBodyToParams (corpo JSON lido como parâmetros) virou o plugin TRALJSONBodyPlugin, que não tem propriedades. Só é criado quando estava ligado.",
+        "en-US": "JSONBodyToParams (JSON body read as parameters) became the TRALJSONBodyPlugin plugin, which has no properties. It is only created when it was on.",
+        "es-ES": "JSONBodyToParams (cuerpo JSON leído como parámetros) pasó a ser el plugin TRALJSONBodyPlugin, que no tiene propiedades. Solo se crea cuando estaba activado."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%: solte um TRALJSONBodyPlugin e defina Server = %nome%. Acrescente RALContent ao uses e apague JSONBodyToParams do servidor.",
+        "en-US": "On the server %nome% in %arquivo%: drop a TRALJSONBodyPlugin and set Server = %nome%. Add RALContent to the uses clause and delete JSONBodyToParams from the server.",
+        "es-ES": "En el servidor %nome% de %arquivo%: suelte un TRALJSONBodyPlugin y defina Server = %nome%. Agregue RALContent al uses y elimine JSONBodyToParams del servidor."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/plugin-cors",
+      "acao": "propriedade-para-componente",
+      "onde": ["form", "pas"],
+      "classe-dona": "TRAL*Server",
+      "propriedades": [
+        "CORSOptions.AllowOrigin",
+        "CORSOptions.AllowHeaders.Strings",
+        "CORSOptions.MaxAge",
+        "CORSOptions.AllowCredentials"
+      ],
+      "mapeamento": {
+        "CORSOptions.AllowOrigin": "Options.AllowOrigin",
+        "CORSOptions.AllowHeaders.Strings": "Options.AllowHeaders.Strings",
+        "CORSOptions.MaxAge": "Options.MaxAge",
+        "CORSOptions.AllowCredentials": "Options.AllowCredentials"
+      },
+      "componente": "TRALCORSPlugin",
+      "unit": "RALCORS",
+      "nome-base": "RALCORSPlugin",
+      "ligacao": "Server",
+      "criar-quando": { "tipo": "valor-nao-vazio", "propriedade": "CORSOptions.AllowOrigin" },
+      "descricao": {
+        "pt-BR": "As opções de CORS saíram do servidor e viraram o plugin TRALCORSPlugin (as mesmas propriedades, dentro de Options). O plugin só é criado quando AllowOrigin tinha valor; é por isso que o passo anterior escreve AllowOrigin = '*' nos formulários que rodavam com CORS aberto.",
+        "en-US": "The CORS options left the server and became the TRALCORSPlugin plugin (the same properties, inside Options). The plugin is only created when AllowOrigin had a value, which is why the previous step writes AllowOrigin = '*' into forms that ran with open CORS.",
+        "es-ES": "Las opciones de CORS salieron del servidor y pasaron a ser el plugin TRALCORSPlugin (las mismas propiedades, dentro de Options). El plugin solo se crea cuando AllowOrigin tenía valor; por eso el paso anterior escribe AllowOrigin = '*' en los formularios que funcionaban con CORS abierto."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%: solte um TRALCORSPlugin, defina Server = %nome% e copie CORSOptions.AllowOrigin, AllowHeaders, MaxAge e AllowCredentials para Options. Acrescente RALCORS ao uses e apague CORSOptions do servidor. Sem o plugin o servidor não manda cabeçalhos CORS.",
+        "en-US": "On the server %nome% in %arquivo%: drop a TRALCORSPlugin, set Server = %nome% and copy CORSOptions.AllowOrigin, AllowHeaders, MaxAge and AllowCredentials into Options. Add RALCORS to the uses clause and delete CORSOptions from the server. Without the plugin the server sends no CORS headers.",
+        "es-ES": "En el servidor %nome% de %arquivo%: suelte un TRALCORSPlugin, defina Server = %nome% y copie CORSOptions.AllowOrigin, AllowHeaders, MaxAge y AllowCredentials a Options. Agregue RALCORS al uses y elimine CORSOptions del servidor. Sin el plugin el servidor no envía encabezados CORS."
+      },
+      "comportamento": {
+        "pt-BR": "O servidor %nome% ganhou o plugin de CORS %componente% com as mesmas opções.",
+        "en-US": "The server %nome% got the CORS plugin %componente% with the same options.",
+        "es-ES": "El servidor %nome% recibió el plugin de CORS %componente% con las mismas opciones."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/plugin-bruteforce",
+      "acao": "propriedade-para-componente",
+      "onde": ["form", "pas"],
+      "classe-dona": "TRAL*Server",
+      "propriedades": ["Security.BruteForce.MaxTry", "Security.BruteForce.ExpirationTime"],
+      "mapeamento": {
+        "Security.BruteForce.MaxTry": "MaxTry",
+        "Security.BruteForce.ExpirationTime": "ExpirationTime"
+      },
+      "descartar": ["Security.BruteForce.MaxTry", "Security.BruteForce.ExpirationTime"],
+      "componente": "TRALBruteForcePlugin",
+      "unit": "RALSecurity",
+      "nome-base": "RALBruteForcePlugin",
+      "ligacao": "Server",
+      "criar-quando": { "tipo": "set-contem", "propriedade": "Security.Options", "opcao": "rsoBruteForceProtection" },
+      "descricao": {
+        "pt-BR": "A proteção contra força bruta (rsoBruteForceProtection em Security.Options) virou o plugin TRALBruteForcePlugin, com MaxTry (padrão 3) e ExpirationTime em milissegundos (padrão 1 800 000). Sem a opção ligada, as propriedades só são descartadas.",
+        "en-US": "Brute-force protection (rsoBruteForceProtection in Security.Options) became the TRALBruteForcePlugin plugin, with MaxTry (default 3) and ExpirationTime in milliseconds (default 1,800,000). Without the option on, the properties are simply dropped.",
+        "es-ES": "La protección contra fuerza bruta (rsoBruteForceProtection en Security.Options) pasó a ser el plugin TRALBruteForcePlugin, con MaxTry (por defecto 3) y ExpirationTime en milisegundos (por defecto 1 800 000). Sin la opción activada, las propiedades simplemente se descartan."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%: solte um TRALBruteForcePlugin, defina Server = %nome%, MaxTry e ExpirationTime (em milissegundos) com os valores que estavam em Security.BruteForce. Acrescente RALSecurity ao uses.",
+        "en-US": "On the server %nome% in %arquivo%: drop a TRALBruteForcePlugin, set Server = %nome%, MaxTry and ExpirationTime (in milliseconds) to the values that were in Security.BruteForce. Add RALSecurity to the uses clause.",
+        "es-ES": "En el servidor %nome% de %arquivo%: suelte un TRALBruteForcePlugin, defina Server = %nome%, MaxTry y ExpirationTime (en milisegundos) con los valores que estaban en Security.BruteForce. Agregue RALSecurity al uses."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/plugin-flood",
+      "acao": "propriedade-para-componente",
+      "onde": ["form", "pas"],
+      "classe-dona": "TRAL*Server",
+      "propriedades": ["Security.FloodTimeInterval"],
+      "mapeamento": { "Security.FloodTimeInterval": "Interval" },
+      "descartar": ["Security.FloodTimeInterval"],
+      "componente": "TRALFloodPlugin",
+      "unit": "RALSecurity",
+      "nome-base": "RALFloodPlugin",
+      "ligacao": "Server",
+      "criar-quando": { "tipo": "set-contem", "propriedade": "Security.Options", "opcao": "rsoFloodProtection" },
+      "descricao": {
+        "pt-BR": "A proteção contra flood (rsoFloodProtection) virou o plugin TRALFloodPlugin; Security.FloodTimeInterval passou a se chamar Interval (milissegundos, padrão 30).",
+        "en-US": "Flood protection (rsoFloodProtection) became the TRALFloodPlugin plugin; Security.FloodTimeInterval is now called Interval (milliseconds, default 30).",
+        "es-ES": "La protección contra flood (rsoFloodProtection) pasó a ser el plugin TRALFloodPlugin; Security.FloodTimeInterval pasó a llamarse Interval (milisegundos, por defecto 30)."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%: solte um TRALFloodPlugin, defina Server = %nome% e Interval = %valor% (o antigo Security.FloodTimeInterval). Acrescente RALSecurity ao uses.",
+        "en-US": "On the server %nome% in %arquivo%: drop a TRALFloodPlugin, set Server = %nome% and Interval = %valor% (the old Security.FloodTimeInterval). Add RALSecurity to the uses clause.",
+        "es-ES": "En el servidor %nome% de %arquivo%: suelte un TRALFloodPlugin, defina Server = %nome% e Interval = %valor% (el antiguo Security.FloodTimeInterval). Agregue RALSecurity al uses."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/plugin-pathtraversal",
+      "acao": "propriedade-para-componente",
+      "onde": ["form", "pas"],
+      "classe-dona": "TRAL*Server",
+      "propriedades": [],
+      "mapeamento": {},
+      "componente": "TRALPathTraversalPlugin",
+      "unit": "RALSecurity",
+      "nome-base": "RALPathTraversalPlugin",
+      "ligacao": "Server",
+      "criar-quando": { "tipo": "set-contem", "propriedade": "Security.Options", "opcao": "rsoPathTransvBlackList" },
+      "descricao": {
+        "pt-BR": "A proteção contra travessia de pastas (rsoPathTransvBlackList) virou o plugin TRALPathTraversalPlugin, sem propriedades.",
+        "en-US": "Path-traversal protection (rsoPathTransvBlackList) became the TRALPathTraversalPlugin plugin, with no properties.",
+        "es-ES": "La protección contra recorrido de directorios (rsoPathTransvBlackList) pasó a ser el plugin TRALPathTraversalPlugin, sin propiedades."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%: solte um TRALPathTraversalPlugin e defina Server = %nome%. Acrescente RALSecurity ao uses.",
+        "en-US": "On the server %nome% in %arquivo%: drop a TRALPathTraversalPlugin and set Server = %nome%. Add RALSecurity to the uses clause.",
+        "es-ES": "En el servidor %nome% de %arquivo%: suelte un TRALPathTraversalPlugin y defina Server = %nome%. Agregue RALSecurity al uses."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/plugin-whitelist",
+      "acao": "propriedade-para-componente",
+      "onde": ["form", "pas"],
+      "classe-dona": "TRAL*Server",
+      "propriedades": ["Security.WhiteIPList"],
+      "mapeamento": { "Security.WhiteIPList": "IPList" },
+      "componente": "TRALWhiteListPlugin",
+      "unit": "RALSecurity",
+      "nome-base": "RALWhiteListPlugin",
+      "ligacao": "Server",
+      "criar-quando": { "tipo": "valor-nao-vazio", "propriedade": "Security.WhiteIPList" },
+      "descricao": {
+        "pt-BR": "A lista de IPs permitidos (Security.WhiteIPList) virou o plugin TRALWhiteListPlugin, com as mesmas linhas em IPList. Só é criado quando a lista não estava vazia.",
+        "en-US": "The allowed-IP list (Security.WhiteIPList) became the TRALWhiteListPlugin plugin, with the same lines in IPList. It is only created when the list was not empty.",
+        "es-ES": "La lista de IPs permitidas (Security.WhiteIPList) pasó a ser el plugin TRALWhiteListPlugin, con las mismas líneas en IPList. Solo se crea cuando la lista no estaba vacía."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%: solte um TRALWhiteListPlugin, defina Server = %nome% e copie as linhas de Security.WhiteIPList para IPList. Acrescente RALSecurity ao uses.",
+        "en-US": "On the server %nome% in %arquivo%: drop a TRALWhiteListPlugin, set Server = %nome% and copy the lines of Security.WhiteIPList into IPList. Add RALSecurity to the uses clause.",
+        "es-ES": "En el servidor %nome% de %arquivo%: suelte un TRALWhiteListPlugin, defina Server = %nome% y copie las líneas de Security.WhiteIPList a IPList. Agregue RALSecurity al uses."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/plugin-blacklist",
+      "acao": "propriedade-para-componente",
+      "onde": ["form", "pas"],
+      "classe-dona": "TRAL*Server",
+      "propriedades": ["Security.BlackIPList"],
+      "mapeamento": { "Security.BlackIPList": "IPList" },
+      "componente": "TRALBlackListPlugin",
+      "unit": "RALSecurity",
+      "nome-base": "RALBlackListPlugin",
+      "ligacao": "Server",
+      "criar-quando": { "tipo": "valor-nao-vazio", "propriedade": "Security.BlackIPList" },
+      "descricao": {
+        "pt-BR": "A lista de IPs bloqueados (Security.BlackIPList) virou o plugin TRALBlackListPlugin, com as mesmas linhas em IPList. Só é criado quando a lista não estava vazia.",
+        "en-US": "The blocked-IP list (Security.BlackIPList) became the TRALBlackListPlugin plugin, with the same lines in IPList. It is only created when the list was not empty.",
+        "es-ES": "La lista de IPs bloqueadas (Security.BlackIPList) pasó a ser el plugin TRALBlackListPlugin, con las mismas líneas en IPList. Solo se crea cuando la lista no estaba vacía."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%: solte um TRALBlackListPlugin, defina Server = %nome% e copie as linhas de Security.BlackIPList para IPList. Acrescente RALSecurity ao uses.",
+        "en-US": "On the server %nome% in %arquivo%: drop a TRALBlackListPlugin, set Server = %nome% and copy the lines of Security.BlackIPList into IPList. Add RALSecurity to the uses clause.",
+        "es-ES": "En el servidor %nome% de %arquivo%: suelte un TRALBlackListPlugin, defina Server = %nome% y copie las líneas de Security.BlackIPList a IPList. Agregue RALSecurity al uses."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/plugin-securityheaders",
+      "acao": "propriedade-para-componente",
+      "onde": ["form", "pas"],
+      "classe-dona": "TRAL*Server",
+      "propriedades": ["SecurityHeaders"],
+      "mapeamento": { "SecurityHeaders": "Headers" },
+      "componente": "TRALSecurityHeadersPlugin",
+      "unit": "RALSecurity",
+      "nome-base": "RALSecurityHeadersPlugin",
+      "ligacao": "Server",
+      "criar-quando": { "tipo": "valor-nao-vazio", "propriedade": "SecurityHeaders" },
+      "descricao": {
+        "pt-BR": "SecurityHeaders (cabeçalhos de segurança enviados pelo servidor) virou o plugin TRALSecurityHeadersPlugin, com os mesmos valores rsh* em Headers. Só é criado quando o conjunto não estava vazio.",
+        "en-US": "SecurityHeaders (security headers sent by the server) became the TRALSecurityHeadersPlugin plugin, with the same rsh* values in Headers. It is only created when the set was not empty.",
+        "es-ES": "SecurityHeaders (encabezados de seguridad que envía el servidor) pasó a ser el plugin TRALSecurityHeadersPlugin, con los mismos valores rsh* en Headers. Solo se crea cuando el conjunto no estaba vacío."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%: solte um TRALSecurityHeadersPlugin, defina Server = %nome% e Headers = %valor% (os mesmos valores rsh*). Acrescente RALSecurity ao uses.",
+        "en-US": "On the server %nome% in %arquivo%: drop a TRALSecurityHeadersPlugin, set Server = %nome% and Headers = %valor% (the same rsh* values). Add RALSecurity to the uses clause.",
+        "es-ES": "En el servidor %nome% de %arquivo%: suelte un TRALSecurityHeadersPlugin, defina Server = %nome% y Headers = %valor% (los mismos valores rsh*). Agregue RALSecurity al uses."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/seguranca-descartar-vazio",
+      "acao": "propriedade-remover",
+      "onde": ["form"],
+      "classe": "TRAL*Server",
+      "propriedades": [
+        "Security.Options",
+        "Security.BruteForce.MaxTry",
+        "Security.BruteForce.ExpirationTime",
+        "Security.FloodTimeInterval",
+        "CriptoOptions.CriptType",
+        "MaxRequestSize",
+        "JSONBodyToParams",
+        "SecurityHeaders"
+      ],
+      "valores-descartaveis": {
+        "Security.Options": ["[]"],
+        "CriptoOptions.CriptType": ["crNone"],
+        "MaxRequestSize": ["0"],
+        "JSONBodyToParams": ["False"],
+        "SecurityHeaders": ["[]"]
+      },
+      "descricao": {
+        "pt-BR": "As propriedades de segurança que sobraram no servidor e não ligavam nenhum recurso (opções vazias, cifra crNone, limite 0, JSONBodyToParams falso, cabeçalhos vazios) só são apagadas do formulário: a 2.0 não conhece essas propriedades e o formulário antigo não abriria.",
+        "en-US": "The security properties left on the server that did not switch anything on (empty options, crNone cipher, limit 0, JSONBodyToParams false, empty headers) are simply deleted from the form: 2.0 does not know these properties and the old form would not open.",
+        "es-ES": "Las propiedades de seguridad que quedaron en el servidor y no activaban ningún recurso (opciones vacías, cifrado crNone, límite 0, JSONBodyToParams falso, encabezados vacíos) simplemente se borran del formulario: la 2.0 no conoce esas propiedades y el formulario antiguo no abriría."
+      },
+      "manual": {
+        "pt-BR": "No servidor %nome% de %arquivo%, a propriedade %propriedade% = %valor% não existe mais na 2.0. Se ela ligava um recurso, crie o plugin correspondente (paleta RAL - Plugins); depois apague a linha do formulário (View as Text).",
+        "en-US": "On the server %nome% in %arquivo%, the property %propriedade% = %valor% no longer exists in 2.0. If it switched a feature on, create the matching plugin (RAL - Plugins palette); then delete the line from the form (View as Text).",
+        "es-ES": "En el servidor %nome% de %arquivo%, la propiedad %propriedade% = %valor% ya no existe en la 2.0. Si activaba un recurso, cree el plugin correspondiente (paleta RAL - Plugins); luego borre la línea del formulario (View as Text)."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/oauth1-removido",
+      "acao": "objeto-sem-equivalente",
+      "onde": ["form", "pas"],
+      "classes": ["TRALClientOAuth", "TRALServerOAuth"],
+      "identificadores": ["TRALClientOAuth", "TRALServerOAuth", "TRALOAuth", "TRALOAuthAlgorithm", "TRALOnGetTokenSecret", "OnGetTokenSecret", "ratOAuth"],
+      "unit": "RALOAuth2",
+      "alternativa": "TRALClientOAuth2 / TRALServerOAuth2",
+      "descricao": {
+        "pt-BR": "O OAuth 1.0a foi removido da 2.0 (nunca funcionou de verdade). Não há conversão automática: o migrador só aponta onde ele é usado.",
+        "en-US": "OAuth 1.0a was removed in 2.0 (it never really worked). There is no automatic conversion: the migrator only points out where it is used.",
+        "es-ES": "OAuth 1.0a se eliminó en la 2.0 (nunca funcionó de verdad). No hay conversión automática: el migrador solo señala dónde se usa."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: %nome% (OAuth 1.0a) não existe mais. Use %alternativa% (unit %unit%, pacote RALPluginAuthPackage) e configure o fluxo OAuth 2 no lugar.",
+        "en-US": "In %arquivo%, line %linha%: %nome% (OAuth 1.0a) no longer exists. Use %alternativa% (unit %unit%, package RALPluginAuthPackage) and set up the OAuth 2 flow instead.",
+        "es-ES": "En %arquivo%, línea %linha%: %nome% (OAuth 1.0a) ya no existe. Use %alternativa% (unit %unit%, paquete RALPluginAuthPackage) y configure en su lugar el flujo OAuth 2."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/auth-attemptof",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "sobrescrita-metodo",
+        "ancestral": ["TRALAuthServer", "TRALServerJWTAuth"],
+        "metodo": ["AttemptOf"]
+      },
+      "descricao": {
+        "pt-BR": "O método AttemptOf das autenticações do servidor ganhou um parâmetro AResult: TRALAuthResult antes do Boolean final. Quem escreveu uma autenticação própria e sobrescreve AttemptOf precisa da assinatura nova.",
+        "en-US": "The AttemptOf method of the server authentications gained an AResult: TRALAuthResult parameter before the final Boolean. If you wrote your own authentication that overrides AttemptOf, you need the new signature.",
+        "es-ES": "El método AttemptOf de las autenticaciones del servidor ganó un parámetro AResult: TRALAuthResult antes del Boolean final. Si escribió una autenticación propia que sobrescribe AttemptOf, necesita la firma nueva."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: troque a assinatura de AttemptOf para function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse; AResult: TRALAuthResult; ASafe: Boolean): TRALAuthAttempt; override;",
+        "en-US": "In %arquivo%, line %linha%: change the AttemptOf signature to function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse; AResult: TRALAuthResult; ASafe: Boolean): TRALAuthAttempt; override;",
+        "es-ES": "En %arquivo%, línea %linha%: cambie la firma de AttemptOf a function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse; AResult: TRALAuthResult; ASafe: Boolean): TRALAuthAttempt; override;"
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/digest-stale",
+      "acao": "padrao-avisar",
+      "onde": ["pas", "form"],
+      "padrao": {
+        "tipo": "atribuicao-propriedade",
+        "classe": "TRALDigestParams",
+        "propriedade": "Stale"
+      },
+      "trecho": "%variavel%.Stale := True;",
+      "descricao": {
+        "pt-BR": "A propriedade Stale de TRALDigestParams (autenticação Digest) mudou de texto (StringRAL) para Boolean.",
+        "en-US": "The Stale property of TRALDigestParams (Digest authentication) changed from text (StringRAL) to Boolean.",
+        "es-ES": "La propiedad Stale de TRALDigestParams (autenticación Digest) cambió de texto (StringRAL) a Boolean."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: atribua um Boolean a Stale, por exemplo %trecho%, em vez de um texto como 'true'.",
+        "en-US": "In %arquivo%, line %linha%: assign a Boolean to Stale, for example %trecho%, instead of a text such as 'true'.",
+        "es-ES": "En %arquivo%, línea %linha%: asigne un Boolean a Stale, por ejemplo %trecho%, en lugar de un texto como 'true'."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/classe-digest",
+      "acao": "uses-adicionar",
+      "onde": ["pas"],
+      "unit": "RALDigest",
+      "quando-identificador": ["TRALServerDigest", "TRALClientDigest"],
+      "descricao": {
+        "pt-BR": "TRALServerDigest e TRALClientDigest saíram de RALAuthentication e foram para a unit RALDigest (sem apelido na unit antiga). Quem declara o tipo precisa de RALDigest no uses.",
+        "en-US": "TRALServerDigest and TRALClientDigest left RALAuthentication and moved to the RALDigest unit (no alias in the old unit). Anyone who declares the type needs RALDigest in the uses clause.",
+        "es-ES": "TRALServerDigest y TRALClientDigest salieron de RALAuthentication y pasaron a la unit RALDigest (sin alias en la unit antigua). Quien declara el tipo necesita RALDigest en el uses."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, acrescente %unit% à cláusula uses (o tipo %nome% mudou de RALAuthentication para %unit%).",
+        "en-US": "In %arquivo%, add %unit% to the uses clause (the type %nome% moved from RALAuthentication to %unit%).",
+        "es-ES": "En %arquivo%, agregue %unit% a la cláusula uses (el tipo %nome% pasó de RALAuthentication a %unit%)."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/classe-oauth2",
+      "acao": "uses-adicionar",
+      "onde": ["pas"],
+      "unit": "RALOAuth2",
+      "quando-identificador": ["TRALServerOAuth2", "TRALClientOAuth2"],
+      "descricao": {
+        "pt-BR": "TRALServerOAuth2 e TRALClientOAuth2 saíram de RALAuthentication e foram para a unit RALOAuth2 (sem apelido na unit antiga). Quem declara o tipo precisa de RALOAuth2 no uses.",
+        "en-US": "TRALServerOAuth2 and TRALClientOAuth2 left RALAuthentication and moved to the RALOAuth2 unit (no alias in the old unit). Anyone who declares the type needs RALOAuth2 in the uses clause.",
+        "es-ES": "TRALServerOAuth2 y TRALClientOAuth2 salieron de RALAuthentication y pasaron a la unit RALOAuth2 (sin alias en la unit antigua). Quien declara el tipo necesita RALOAuth2 en el uses."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, acrescente %unit% à cláusula uses (o tipo %nome% mudou de RALAuthentication para %unit%).",
+        "en-US": "In %arquivo%, add %unit% to the uses clause (the type %nome% moved from RALAuthentication to %unit%).",
+        "es-ES": "En %arquivo%, agregue %unit% a la cláusula uses (el tipo %nome% pasó de RALAuthentication a %unit%)."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/classe-cors",
+      "acao": "uses-adicionar",
+      "onde": ["pas"],
+      "unit": "RALCORS",
+      "quando-identificador": ["TRALCORSOptions", "TRALTextVersion"],
+      "descricao": {
+        "pt-BR": "TRALCORSOptions e TRALTextVersion saíram de RALServer e foram para a unit RALCORS (sem apelido). Só afeta código que usava esses tipos diretamente.",
+        "en-US": "TRALCORSOptions and TRALTextVersion left RALServer and moved to the RALCORS unit (no alias). It only affects code that used these types directly.",
+        "es-ES": "TRALCORSOptions y TRALTextVersion salieron de RALServer y pasaron a la unit RALCORS (sin alias). Solo afecta al código que usaba esos tipos directamente."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, acrescente %unit% à cláusula uses (o tipo %nome% mudou de RALServer para %unit%).",
+        "en-US": "In %arquivo%, add %unit% to the uses clause (the type %nome% moved from RALServer to %unit%).",
+        "es-ES": "En %arquivo%, agregue %unit% a la cláusula uses (el tipo %nome% pasó de RALServer a %unit%)."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/classe-security",
+      "acao": "uses-adicionar",
+      "onde": ["pas"],
+      "unit": "RALSecurity",
+      "quando-identificador": ["TRALClientList", "TRALClientBlockList"],
+      "descricao": {
+        "pt-BR": "TRALClientList e TRALClientBlockList saíram de RALServer e foram para a unit RALSecurity (sem apelido).",
+        "en-US": "TRALClientList and TRALClientBlockList left RALServer and moved to the RALSecurity unit (no alias).",
+        "es-ES": "TRALClientList y TRALClientBlockList salieron de RALServer y pasaron a la unit RALSecurity (sin alias)."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, acrescente %unit% à cláusula uses (o tipo %nome% mudou de RALServer para %unit%).",
+        "en-US": "In %arquivo%, add %unit% to the uses clause (the type %nome% moved from RALServer to %unit%).",
+        "es-ES": "En %arquivo%, agregue %unit% a la cláusula uses (el tipo %nome% pasó de RALServer a %unit%)."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/classe-security-sumiu",
+      "acao": "objeto-sem-equivalente",
+      "onde": ["pas"],
+      "classes": [],
+      "identificadores": ["TRALSecurity", "TRALBruteForceProtection"],
+      "alternativa": "TRALBruteForcePlugin, TRALFloodPlugin, TRALPathTraversalPlugin, TRALWhiteListPlugin, TRALBlackListPlugin",
+      "unit": "RALSecurity",
+      "descricao": {
+        "pt-BR": "Os tipos TRALSecurity e TRALBruteForceProtection não existem mais: a segurança do servidor agora é feita por plugins (unit RALSecurity). Código que usava esses tipos precisa ser reescrito com o plugin certo.",
+        "en-US": "The types TRALSecurity and TRALBruteForceProtection no longer exist: server security is now done by plugins (unit RALSecurity). Code that used these types must be rewritten with the right plugin.",
+        "es-ES": "Los tipos TRALSecurity y TRALBruteForceProtection ya no existen: la seguridad del servidor ahora la hacen los plugins (unit RALSecurity). El código que usaba esos tipos debe reescribirse con el plugin correcto."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: %nome% não existe mais. Use o plugin que corresponde ao recurso: %alternativa% (unit %unit%).",
+        "en-US": "In %arquivo%, line %linha%: %nome% no longer exists. Use the plugin that matches the feature: %alternativa% (unit %unit%).",
+        "es-ES": "En %arquivo%, línea %linha%: %nome% ya no existe. Use el plugin que corresponde al recurso: %alternativa% (unit %unit%)."
+      },
+      "wiki": "plugins.md#o-que-mudou-da-12-para-a-20"
+    },
+    {
+      "id": "2.0/classe-authattempt",
+      "acao": "uses-adicionar",
+      "onde": ["pas"],
+      "unit": "RALPlugin",
+      "quando-identificador": ["TRALAuthAttempt"],
+      "descricao": {
+        "pt-BR": "TRALAuthAttempt saiu de RALAuthentication e foi para a unit RALPlugin.",
+        "en-US": "TRALAuthAttempt left RALAuthentication and moved to the RALPlugin unit.",
+        "es-ES": "TRALAuthAttempt salió de RALAuthentication y pasó a la unit RALPlugin."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, acrescente %unit% à cláusula uses (o tipo TRALAuthAttempt mudou de RALAuthentication para %unit%).",
+        "en-US": "In %arquivo%, add %unit% to the uses clause (the type TRALAuthAttempt moved from RALAuthentication to %unit%).",
+        "es-ES": "En %arquivo%, agregue %unit% a la cláusula uses (el tipo TRALAuthAttempt pasó de RALAuthentication a %unit%)."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/classe-auth-server-base",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "identificador",
+        "nomes": ["TRALAuthentication"]
+      },
+      "descricao": {
+        "pt-BR": "No servidor, TRALAuthServer agora descende de TRALPlugin (antes de TRALAuthentication): as autenticações Basic, JWT, Digest e OAuth2 do servidor são plugins. Código que converte um objeto do servidor para TRALAuthentication não funciona mais.",
+        "en-US": "On the server, TRALAuthServer now descends from TRALPlugin (before, from TRALAuthentication): the server's Basic, JWT, Digest and OAuth2 authentications are plugins. Code that casts a server object to TRALAuthentication no longer works.",
+        "es-ES": "En el servidor, TRALAuthServer ahora desciende de TRALPlugin (antes de TRALAuthentication): las autenticaciones Basic, JWT, Digest y OAuth2 del servidor son plugins. El código que convierte un objeto del servidor a TRALAuthentication ya no funciona."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: se %nome% é uma autenticação do servidor, use TRALAuthServer ou TRALPlugin em vez de TRALAuthentication (no cliente, TRALAuthClient continua igual).",
+        "en-US": "In %arquivo%, line %linha%: if %nome% is a server authentication, use TRALAuthServer or TRALPlugin instead of TRALAuthentication (on the client, TRALAuthClient stays the same).",
+        "es-ES": "En %arquivo%, línea %linha%: si %nome% es una autenticación del servidor, use TRALAuthServer o TRALPlugin en lugar de TRALAuthentication (en el cliente, TRALAuthClient sigue igual)."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/unit-dbtypes",
+      "acao": "unit-renomear",
+      "onde": ["pas"],
+      "mapa": { "RALDBTypes": "RALStorageTypes" },
+      "descricao": {
+        "pt-BR": "RALDBTypes passou a se chamar RALStorageTypes (tipos de campo e de banco compartilhados com os storages). A unit antiga continua existindo como apelido obsoleto, então a troca é opcional, mas o migrador a faz.",
+        "en-US": "RALDBTypes is now called RALStorageTypes (field and database types shared with the storages). The old unit still exists as an obsolete alias, so the change is optional, but the migrator does it.",
+        "es-ES": "RALDBTypes pasó a llamarse RALStorageTypes (tipos de campo y de base de datos compartidos con los storages). La unit antigua todavía existe como alias obsoleto, por lo que el cambio es opcional, pero el migrador lo hace."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: troque RALDBTypes por RALStorageTypes no uses. A unit antiga ainda funciona, mas está obsoleta.",
+        "en-US": "In %arquivo%, line %linha%: replace RALDBTypes with RALStorageTypes in the uses clause. The old unit still works but is obsolete.",
+        "es-ES": "En %arquivo%, línea %linha%: cambie RALDBTypes por RALStorageTypes en el uses. La unit antigua todavía funciona, pero está obsoleta."
+      },
+      "wiki": "migrar-para-2.0.md#units-que-mudaram-de-nome"
+    },
+    {
+      "id": "2.0/unit-reg-motores",
+      "acao": "unit-renomear",
+      "onde": ["pas", "dpr", "lpr"],
+      "mapa": {
+        "RALIndyRegister": "RALIndyReg",
+        "RALSynopseRegister": "RALSynopseReg",
+        "RALSaguiRegister": "RALSaguiReg",
+        "RALNetHTTPRegister": "RALNetHTTPReg",
+        "RALUniGUIRegister": "RALUniGUIReg",
+        "RALfpHTTPRegister": "RALfpHTTPReg",
+        "RALCGIRegister": "RALCGIReg",
+        "RALMsQuicRegister": "RALMsQuicReg",
+        "RALKwikRegister": "RALKwikReg",
+        "RALOkHttpRegister": "RALOkHttpReg"
+      },
+      "descricao": {
+        "pt-BR": "As units de registro dos motores (que só a IDE usa) perderam o 'ister': RALIndyRegister virou RALIndyReg, e assim por diante. Só afeta quem citava a unit de registro, por exemplo num .lpr gerado pelo assistente do Lazarus.",
+        "en-US": "The registration units of the engines (used only by the IDE) lost the 'ister': RALIndyRegister became RALIndyReg, and so on. It only affects those who named the registration unit, for example in a .lpr generated by the Lazarus wizard.",
+        "es-ES": "Las units de registro de los motores (que solo usa el IDE) perdieron el 'ister': RALIndyRegister pasó a ser RALIndyReg, y así sucesivamente. Solo afecta a quien nombraba la unit de registro, por ejemplo en un .lpr generado por el asistente de Lazarus."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: troque a unit %de% por %para% no uses.",
+        "en-US": "In %arquivo%, line %linha%: replace the unit %de% with %para% in the uses clause.",
+        "es-ES": "En %arquivo%, línea %linha%: cambie la unit %de% por %para% en el uses."
+      },
+      "wiki": "migrar-para-2.0.md#units-que-mudaram-de-nome"
+    },
+    {
+      "id": "2.0/unit-reg-db",
+      "acao": "unit-renomear",
+      "onde": ["pas", "dpr", "lpr"],
+      "mapa": {
+        "raldbregister": "RALDBReg",
+        "RALDBFireDACLinkReg": "RALDBFireDACReg",
+        "RALDBZeosLinkReg": "RALDBZeosReg",
+        "RALDBSQLDBLinkReg": "RALDBSQLDBReg"
+      },
+      "descricao": {
+        "pt-BR": "As units de registro do banco foram renomeadas (raldbregister virou RALDBReg; RALDBFireDACLinkReg virou RALDBFireDACReg; e assim por diante). Só afeta quem citava a unit de registro.",
+        "en-US": "The database registration units were renamed (raldbregister became RALDBReg; RALDBFireDACLinkReg became RALDBFireDACReg; and so on). It only affects those who named the registration unit.",
+        "es-ES": "Las units de registro de la base de datos se renombraron (raldbregister pasó a ser RALDBReg; RALDBFireDACLinkReg pasó a ser RALDBFireDACReg; y así sucesivamente). Solo afecta a quien nombraba la unit de registro."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: troque a unit %de% por %para% no uses.",
+        "en-US": "In %arquivo%, line %linha%: replace the unit %de% with %para% in the uses clause.",
+        "es-ES": "En %arquivo%, línea %linha%: cambie la unit %de% por %para% en el uses."
+      },
+      "wiki": "migrar-para-2.0.md#units-que-mudaram-de-nome"
+    },
+    {
+      "id": "2.0/unit-reg-bson",
+      "acao": "unit-renomear",
+      "onde": ["pas", "dpr", "lpr"],
+      "mapa": { "RALBSONReg": "RALStorageBSONReg" },
+      "descricao": {
+        "pt-BR": "A unit de registro do BSON passou a se chamar RALStorageBSONReg.",
+        "en-US": "The BSON registration unit is now called RALStorageBSONReg.",
+        "es-ES": "La unit de registro de BSON pasó a llamarse RALStorageBSONReg."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: troque a unit %de% por %para% no uses.",
+        "en-US": "In %arquivo%, line %linha%: replace the unit %de% with %para% in the uses clause.",
+        "es-ES": "En %arquivo%, línea %linha%: cambie la unit %de% por %para% en el uses."
+      },
+      "wiki": "migrar-para-2.0.md#units-que-mudaram-de-nome"
+    },
+    {
+      "id": "2.0/caminho-reforma",
+      "acao": "padrao-avisar",
+      "onde": [],
+      "padrao": { "tipo": "somente-relatorio" },
+      "descricao": {
+        "pt-BR": "A 2.0 reorganizou as pastas do RAL: base virou core e storage; base\\plugins virou plugins (com plugins\\auth e plugins\\tls); base\\modules virou common, modules\\web e modules\\swagger; utils virou common, compress, crypto e storage; os módulos de others foram para bindings, compress\\zstd, compress\\brotli e storage\\bson. O migrador troca essas pastas no caminho de units dos projetos (regras caminho-*); este item cobre os caminhos que ele não consegue provar, como um caminho absoluto fora da árvore do RAL.",
+        "en-US": "2.0 reorganized the RAL folders: base became core and storage; base\\plugins became plugins (with plugins\\auth and plugins\\tls); base\\modules became common, modules\\web and modules\\swagger; utils became common, compress, crypto and storage; the RAL units in others moved to bindings, compress\\zstd, compress\\brotli and storage\\bson. The migrator swaps these folders in the projects' unit search path (the caminho-* rules); this item covers the paths it cannot prove, such as an absolute path outside the RAL tree.",
+        "es-ES": "La 2.0 reorganizó las carpetas de RAL: base pasó a ser core y storage; base\\plugins pasó a ser plugins (con plugins\\auth y plugins\\tls); base\\modules pasó a ser common, modules\\web y modules\\swagger; utils pasó a ser common, compress, crypto y storage; las units de RAL en others pasaron a bindings, compress\\zstd, compress\\brotli y storage\\bson. El migrador cambia esas carpetas en la ruta de units de los proyectos (las reglas caminho-*); este ítem cubre las rutas que no puede comprobar, como una ruta absoluta fuera del árbol de RAL."
+      },
+      "manual": {
+        "pt-BR": "Confira o caminho de units de %arquivo% com a tabela de pastas da 2.0 (modelo mínimo: core;common;compress;crypto;plugins mais o motor). Um erro F2613 'Unit not found' diz qual unit falta; a tabela diz de qual pasta ela é.",
+        "en-US": "Check the unit search path of %arquivo% against the 2.0 folder table (minimum model: core;common;compress;crypto;plugins plus the engine). An F2613 'Unit not found' error tells which unit is missing; the table says which folder it lives in.",
+        "es-ES": "Compruebe la ruta de units de %arquivo% con la tabla de carpetas de la 2.0 (modelo mínimo: core;common;compress;crypto;plugins más el motor). Un error F2613 'Unit not found' indica qué unit falta; la tabla dice en qué carpeta está."
+      },
+      "wiki": "migrar-para-2.0.md#as-pastas-library-path"
+    },
+    {
+      "id": "2.0/caminho-base",
+      "acao": "caminho-trocar",
+      "onde": ["dproj", "lpi"],
+      "de": "base",
+      "modo": "trocar",
+      "para": ["core", "common", "storage"],
+      "descricao": {
+        "pt-BR": "A pasta base do RAL foi dividida: o núcleo foi para core, os utilitários usados pelo núcleo para common e os storages para storage.",
+        "en-US": "The RAL base folder was split: the core went to core, the utilities the core uses to common, and the storages to storage.",
+        "es-ES": "La carpeta base de RAL se dividió: el núcleo pasó a core, las utilidades que usa el núcleo a common y los storages a storage."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque a pasta base do RAL por %pastas% no caminho de units.",
+        "en-US": "In %arquivo%, replace the RAL base folder with %pastas% in the unit search path.",
+        "es-ES": "En %arquivo%, reemplace la carpeta base de RAL por %pastas% en la ruta de units."
+      },
+      "wiki": "migrar-para-2.0.md#as-pastas-library-path"
+    },
+    {
+      "id": "2.0/caminho-base-plugins",
+      "acao": "caminho-trocar",
+      "onde": ["dproj", "lpi"],
+      "de": "base\\plugins",
+      "modo": "trocar",
+      "para": ["plugins"],
+      "para-se-unit": {
+        "plugins\\auth": ["RALAuthentication", "RALDigest", "RALOAuth2"],
+        "plugins\\tls": ["RALSelfSigned"]
+      },
+      "descricao": {
+        "pt-BR": "A pasta base\\plugins virou plugins (os plugins do núcleo); a autenticação foi para plugins\\auth e o TLS para plugins\\tls. Essas duas só entram quando o projeto usa as units delas.",
+        "en-US": "The folder base\\plugins became plugins (the core plugins); authentication went to plugins\\auth and TLS to plugins\\tls. Those two are only added when the project uses their units.",
+        "es-ES": "La carpeta base\\plugins pasó a ser plugins (los plugins del núcleo); la autenticación pasó a plugins\\auth y el TLS a plugins\\tls. Esas dos solo se agregan cuando el proyecto usa sus units."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque base\\plugins por %pastas% no caminho de units (plugins\\auth se usa autenticação, plugins\\tls se usa RALSelfSigned).",
+        "en-US": "In %arquivo%, replace base\\plugins with %pastas% in the unit search path (plugins\\auth if it uses authentication, plugins\\tls if it uses RALSelfSigned).",
+        "es-ES": "En %arquivo%, reemplace base\\plugins por %pastas% en la ruta de units (plugins\\auth si usa autenticación, plugins\\tls si usa RALSelfSigned)."
+      },
+      "wiki": "migrar-para-2.0.md#as-pastas-library-path"
+    },
+    {
+      "id": "2.0/caminho-base-modules",
+      "acao": "caminho-trocar",
+      "onde": ["dproj", "lpi"],
+      "de": "base\\modules",
+      "modo": "trocar",
+      "para": ["common"],
+      "para-se-unit": {
+        "modules\\web": ["RALWebModule"],
+        "modules\\swagger": ["RALSwaggerModule", "RALSwaggerExporter", "RALPostmanExporter"]
+      },
+      "descricao": {
+        "pt-BR": "A pasta base\\modules virou common (RALExternalsLibraries), modules\\web (WebModule) e modules\\swagger (Swagger e Postman). As duas últimas só entram quando o projeto usa as units delas.",
+        "en-US": "The folder base\\modules became common (RALExternalsLibraries), modules\\web (WebModule) and modules\\swagger (Swagger and Postman). The last two are only added when the project uses their units.",
+        "es-ES": "La carpeta base\\modules pasó a ser common (RALExternalsLibraries), modules\\web (WebModule) y modules\\swagger (Swagger y Postman). Las dos últimas solo se agregan cuando el proyecto usa sus units."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque base\\modules por %pastas% no caminho de units (modules\\web se usa RALWebModule, modules\\swagger se usa Swagger ou Postman).",
+        "en-US": "In %arquivo%, replace base\\modules with %pastas% in the unit search path (modules\\web if it uses RALWebModule, modules\\swagger if it uses Swagger or Postman).",
+        "es-ES": "En %arquivo%, reemplace base\\modules por %pastas% en la ruta de units (modules\\web si usa RALWebModule, modules\\swagger si usa Swagger o Postman)."
+      },
+      "wiki": "migrar-para-2.0.md#as-pastas-library-path"
+    },
+    {
+      "id": "2.0/caminho-utils",
+      "acao": "caminho-trocar",
+      "onde": ["dproj", "lpi"],
+      "de": "utils",
+      "modo": "trocar",
+      "para": ["common", "compress", "crypto", "storage"],
+      "descricao": {
+        "pt-BR": "A pasta utils foi dividida em common, compress, crypto e storage.",
+        "en-US": "The utils folder was split into common, compress, crypto and storage.",
+        "es-ES": "La carpeta utils se dividió en common, compress, crypto y storage."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque a pasta utils por %pastas% no caminho de units.",
+        "en-US": "In %arquivo%, replace the utils folder with %pastas% in the unit search path.",
+        "es-ES": "En %arquivo%, reemplace la carpeta utils por %pastas% en la ruta de units."
+      },
+      "wiki": "migrar-para-2.0.md#as-pastas-library-path"
+    },
+    {
+      "id": "2.0/caminho-others",
+      "acao": "caminho-trocar",
+      "onde": ["dproj", "lpi"],
+      "de": "others",
+      "modo": "trocar",
+      "para": ["others"],
+      "para-se-unit": {
+        "bindings": ["MsQuic", "libsagui"],
+        "compress\\zstd": ["RALCompressZStd"],
+        "compress\\brotli": ["RALCompressBrotli"],
+        "storage\\bson": ["RALStorageBSON", "RALBSONReg"]
+      },
+      "descricao": {
+        "pt-BR": "A pasta others ficou só com os submódulos de terceiros (ZSTD, pascal_brotli, kxBSON). As units do RAL que moravam nela foram para bindings, compress\\zstd, compress\\brotli e storage\\bson; essas pastas só entram quando o projeto usa as units correspondentes.",
+        "en-US": "The others folder kept only the third-party submodules (ZSTD, pascal_brotli, kxBSON). The RAL units that lived in it moved to bindings, compress\\zstd, compress\\brotli and storage\\bson; those folders are only added when the project uses the matching units.",
+        "es-ES": "La carpeta others quedó solo con los submódulos de terceros (ZSTD, pascal_brotli, kxBSON). Las units de RAL que vivían en ella pasaron a bindings, compress\\zstd, compress\\brotli y storage\\bson; esas carpetas solo se agregan cuando el proyecto usa las units correspondientes."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, mantenha a pasta others (só submódulos) e acrescente %pastas% conforme as units que usa. Arquivo que falta em others é um submódulo não baixado: git submodule update --init --recursive.",
+        "en-US": "In %arquivo%, keep the others folder (submodules only) and add %pastas% according to the units you use. A file missing from others is a submodule that was not downloaded: git submodule update --init --recursive.",
+        "es-ES": "En %arquivo%, mantenga la carpeta others (solo submódulos) y agregue %pastas% según las units que use. Un archivo que falta en others es un submódulo no descargado: git submodule update --init --recursive."
+      },
+      "wiki": "migrar-para-2.0.md#as-pastas-library-path"
+    },
+    {
+      "id": "2.0/caminho-engine-msquic",
+      "acao": "caminho-trocar",
+      "onde": ["dproj", "lpi"],
+      "de": "engine\\msquic",
+      "modo": "acrescentar",
+      "para": ["bindings"],
+      "descricao": {
+        "pt-BR": "O motor MsQuic precisa também da pasta bindings, onde ficou a unit MsQuic.",
+        "en-US": "The MsQuic engine also needs the bindings folder, where the MsQuic unit now lives.",
+        "es-ES": "El motor MsQuic también necesita la carpeta bindings, donde quedó la unit MsQuic."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, acrescente a pasta bindings ao caminho de units, ao lado de engine\\msquic.",
+        "en-US": "In %arquivo%, add the bindings folder to the unit search path, next to engine\\msquic.",
+        "es-ES": "En %arquivo%, agregue la carpeta bindings a la ruta de units, junto a engine\\msquic."
+      },
+      "wiki": "migrar-para-2.0.md#as-pastas-library-path"
+    },
+    {
+      "id": "2.0/caminho-engine-sagui",
+      "acao": "caminho-trocar",
+      "onde": ["dproj", "lpi"],
+      "de": "engine\\sagui",
+      "modo": "acrescentar",
+      "para": ["bindings"],
+      "descricao": {
+        "pt-BR": "O motor Sagui precisa também da pasta bindings, onde ficou a unit libsagui.",
+        "en-US": "The Sagui engine also needs the bindings folder, where the libsagui unit now lives.",
+        "es-ES": "El motor Sagui también necesita la carpeta bindings, donde quedó la unit libsagui."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, acrescente a pasta bindings ao caminho de units, ao lado de engine\\sagui.",
+        "en-US": "In %arquivo%, add the bindings folder to the unit search path, next to engine\\sagui.",
+        "es-ES": "En %arquivo%, agregue la carpeta bindings a la ruta de units, junto a engine\\sagui."
+      },
+      "wiki": "migrar-para-2.0.md#as-pastas-library-path"
+    },
+    {
+      "id": "2.0/pacote-dbfiredac",
+      "acao": "pacote-renomear",
+      "onde": ["dproj", "dpk"],
+      "ide": "delphi",
+      "de": "RALDBFireDACLink",
+      "para": "RALDBFireDACPackage",
+      "instalar-na-ide": "RALDBFireDACDsgn",
+      "descricao": {
+        "pt-BR": "O pacote RALDBFireDACLink passou a se chamar RALDBFireDACPackage (padrão novo: RAL<Categoria><Item>Package). O pacote de design RALDBFireDACDsgn é só da IDE e não entra no projeto.",
+        "en-US": "The package RALDBFireDACLink is now called RALDBFireDACPackage (new pattern: RAL<Category><Item>Package). The design package RALDBFireDACDsgn is IDE-only and does not go into the project.",
+        "es-ES": "El paquete RALDBFireDACLink pasó a llamarse RALDBFireDACPackage (patrón nuevo: RAL<Categoría><Ítem>Package). El paquete de diseño RALDBFireDACDsgn es solo del IDE y no entra en el proyecto."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque o pacote %de% por %para%. Instale %pacote% na IDE para ver os componentes na paleta.",
+        "en-US": "In %arquivo%, replace the package %de% with %para%. Install %pacote% in the IDE to see the components on the palette.",
+        "es-ES": "En %arquivo%, cambie el paquete %de% por %para%. Instale %pacote% en el IDE para ver los componentes en la paleta."
+      },
+      "wiki": "migrar-para-2.0.md#pacotes-renomeados"
+    },
+    {
+      "id": "2.0/pacote-dbfiredacdao",
+      "acao": "pacote-renomear",
+      "onde": ["dproj", "dpk"],
+      "ide": "delphi",
+      "de": "RALDBFireDACObjects",
+      "para": "RALDBFireDACDAOPackage",
+      "descricao": {
+        "pt-BR": "O pacote RALDBFireDACObjects (a unit RALDBFiredacDAO) passou a se chamar RALDBFireDACDAOPackage. É independente do pacote da memtable: quem tinha só um mantém só o seu.",
+        "en-US": "The package RALDBFireDACObjects (the RALDBFiredacDAO unit) is now called RALDBFireDACDAOPackage. It is independent of the memtable package: whoever had only one keeps only theirs.",
+        "es-ES": "El paquete RALDBFireDACObjects (la unit RALDBFiredacDAO) pasó a llamarse RALDBFireDACDAOPackage. Es independiente del paquete de la memtable: quien tenía solo uno mantiene solo el suyo."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque o pacote %de% por %para%.",
+        "en-US": "In %arquivo%, replace the package %de% with %para%.",
+        "es-ES": "En %arquivo%, cambie el paquete %de% por %para%."
+      },
+      "wiki": "migrar-para-2.0.md#pacotes-renomeados"
+    },
+    {
+      "id": "2.0/pacote-dbzeos",
+      "acao": "pacote-renomear",
+      "onde": ["dproj", "dpk", "lpi", "lpk", "lpr"],
+      "ide": "ambos",
+      "de": "RALDBZeosLink",
+      "para": "RALDBZeosPackage",
+      "de-lazarus": "raldbzeoslink",
+      "para-lazarus": "raldbzeospackage",
+      "no-uses": true,
+      "instalar-na-ide": "RALDBZeosDsgn",
+      "descricao": {
+        "pt-BR": "O pacote RALDBZeosLink (raldbzeoslink no Lazarus) passou a se chamar RALDBZeosPackage. No Lazarus a unit com o mesmo nome do pacote, citada no uses do .lpr, também muda. O pacote de design RALDBZeosDsgn é só da IDE.",
+        "en-US": "The package RALDBZeosLink (raldbzeoslink in Lazarus) is now called RALDBZeosPackage. In Lazarus the unit named like the package, listed in the .lpr uses clause, also changes. The design package RALDBZeosDsgn is IDE-only.",
+        "es-ES": "El paquete RALDBZeosLink (raldbzeoslink en Lazarus) pasó a llamarse RALDBZeosPackage. En Lazarus la unit con el mismo nombre del paquete, citada en el uses del .lpr, también cambia. El paquete de diseño RALDBZeosDsgn es solo del IDE."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque o pacote %de% por %para% (e, no .lpr do Lazarus, a unit de mesmo nome no uses). Instale %pacote% na IDE.",
+        "en-US": "In %arquivo%, replace the package %de% with %para% (and, in the Lazarus .lpr, the unit of the same name in the uses clause). Install %pacote% in the IDE.",
+        "es-ES": "En %arquivo%, cambie el paquete %de% por %para% (y, en el .lpr de Lazarus, la unit del mismo nombre en el uses). Instale %pacote% en el IDE."
+      },
+      "wiki": "migrar-para-2.0.md#pacotes-renomeados"
+    },
+    {
+      "id": "2.0/pacote-dbsqldb",
+      "acao": "pacote-renomear",
+      "onde": ["lpi", "lpk", "lpr"],
+      "ide": "lazarus",
+      "de": "raldbsqldblink",
+      "para": "raldbsqldbpackage",
+      "no-uses": true,
+      "instalar-na-ide": "raldbsqldbdsgn",
+      "descricao": {
+        "pt-BR": "O pacote raldbsqldblink do Lazarus passou a se chamar raldbsqldbpackage. A unit de mesmo nome no uses do .lpr também muda. O pacote de design raldbsqldbdsgn é só da IDE.",
+        "en-US": "The Lazarus package raldbsqldblink is now called raldbsqldbpackage. The unit of the same name in the .lpr uses clause also changes. The design package raldbsqldbdsgn is IDE-only.",
+        "es-ES": "El paquete raldbsqldblink de Lazarus pasó a llamarse raldbsqldbpackage. La unit del mismo nombre en el uses del .lpr también cambia. El paquete de diseño raldbsqldbdsgn es solo del IDE."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque o pacote %de% por %para% (e a unit de mesmo nome no uses do .lpr). Instale %pacote% na IDE.",
+        "en-US": "In %arquivo%, replace the package %de% with %para% (and the unit of the same name in the .lpr uses clause). Install %pacote% in the IDE.",
+        "es-ES": "En %arquivo%, cambie el paquete %de% por %para% (y la unit del mismo nombre en el uses del .lpr). Instale %pacote% en el IDE."
+      },
+      "wiki": "migrar-para-2.0.md#pacotes-renomeados"
+    },
+    {
+      "id": "2.0/pacote-bson",
+      "acao": "pacote-renomear",
+      "onde": ["dproj", "dpk", "lpi", "lpk", "lpr"],
+      "ide": "ambos",
+      "de": "RALBSONStorage",
+      "para": "RALStorageBSONPackage",
+      "de-lazarus": "raldbbson",
+      "para-lazarus": "ralstoragebsonpackage",
+      "no-uses": true,
+      "descricao": {
+        "pt-BR": "O pacote do BSON (RALBSONStorage no Delphi, raldbbson no Lazarus) passou a se chamar RALStorageBSONPackage. Ele exige RALStoragePackage.",
+        "en-US": "The BSON package (RALBSONStorage in Delphi, raldbbson in Lazarus) is now called RALStorageBSONPackage. It requires RALStoragePackage.",
+        "es-ES": "El paquete de BSON (RALBSONStorage en Delphi, raldbbson en Lazarus) pasó a llamarse RALStorageBSONPackage. Requiere RALStoragePackage."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque o pacote %de% por %para% e confira que RALStoragePackage também está nos pacotes exigidos.",
+        "en-US": "In %arquivo%, replace the package %de% with %para% and check that RALStoragePackage is also among the required packages.",
+        "es-ES": "En %arquivo%, cambie el paquete %de% por %para% y compruebe que RALStoragePackage también esté entre los paquetes requeridos."
+      },
+      "wiki": "migrar-para-2.0.md#pacotes-renomeados"
+    },
+    {
+      "id": "2.0/pacote-zstd",
+      "acao": "pacote-renomear",
+      "onde": ["dproj", "dpk", "lpi", "lpk", "lpr"],
+      "ide": "ambos",
+      "de": "RALZStdCompress",
+      "para": "RALCompressZStdPackage",
+      "de-lazarus": "ralzstdcompress",
+      "para-lazarus": "ralcompresszstdpackage",
+      "no-uses": true,
+      "descricao": {
+        "pt-BR": "O pacote de compressão ZStd passou a se chamar RALCompressZStdPackage.",
+        "en-US": "The ZStd compression package is now called RALCompressZStdPackage.",
+        "es-ES": "El paquete de compresión ZStd pasó a llamarse RALCompressZStdPackage."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque o pacote %de% por %para%.",
+        "en-US": "In %arquivo%, replace the package %de% with %para%.",
+        "es-ES": "En %arquivo%, cambie el paquete %de% por %para%."
+      },
+      "wiki": "migrar-para-2.0.md#pacotes-renomeados"
+    },
+    {
+      "id": "2.0/pacote-brotli",
+      "acao": "pacote-renomear",
+      "onde": ["dproj", "dpk", "lpi", "lpk", "lpr"],
+      "ide": "ambos",
+      "de": "RALBrotliCompress",
+      "para": "RALCompressBrotliPackage",
+      "de-lazarus": "ralbrotlicompress",
+      "para-lazarus": "ralcompressbrotlipackage",
+      "no-uses": true,
+      "descricao": {
+        "pt-BR": "O pacote de compressão Brotli passou a se chamar RALCompressBrotliPackage.",
+        "en-US": "The Brotli compression package is now called RALCompressBrotliPackage.",
+        "es-ES": "El paquete de compresión Brotli pasó a llamarse RALCompressBrotliPackage."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque o pacote %de% por %para%.",
+        "en-US": "In %arquivo%, replace the package %de% with %para%.",
+        "es-ES": "En %arquivo%, cambie el paquete %de% por %para%."
+      },
+      "wiki": "migrar-para-2.0.md#pacotes-renomeados"
+    },
+    {
+      "id": "2.0/pacote-wizard",
+      "acao": "pacote-renomear",
+      "onde": ["dproj", "dpk", "lpi", "lpk"],
+      "ide": "ambos",
+      "de": "RALWizard",
+      "para": "RALWizardDsgn",
+      "de-lazarus": "ralwizardpack",
+      "para-lazarus": "ralwizarddsgn",
+      "descricao": {
+        "pt-BR": "O pacote do assistente de projetos (RALWizard no Delphi, ralwizardpack no Lazarus) passou a se chamar RALWizardDsgn. É um pacote só da IDE.",
+        "en-US": "The project wizard package (RALWizard in Delphi, ralwizardpack in Lazarus) is now called RALWizardDsgn. It is an IDE-only package.",
+        "es-ES": "El paquete del asistente de proyectos (RALWizard en Delphi, ralwizardpack en Lazarus) pasó a llamarse RALWizardDsgn. Es un paquete solo del IDE."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, troque o pacote %de% por %para%. Um projeto normal não deveria exigir um pacote de IDE: confira se precisa dele.",
+        "en-US": "In %arquivo%, replace the package %de% with %para%. A normal project should not require an IDE package: check whether you need it.",
+        "es-ES": "En %arquivo%, cambie el paquete %de% por %para%. Un proyecto normal no debería requerir un paquete del IDE: compruebe si lo necesita."
+      },
+      "wiki": "migrar-para-2.0.md#pacotes-renomeados"
+    },
+    {
+      "id": "2.0/pacote-db",
+      "acao": "padrao-avisar",
+      "onde": [],
+      "padrao": { "tipo": "somente-relatorio" },
+      "descricao": {
+        "pt-BR": "O pacote RALDBPackage continua com o mesmo nome, mas agora exige RALStoragePackage, e o pacote de design RALDBDsgn (só da IDE) é novo. O migrador acrescenta RALStoragePackage quando o projeto usa as units dele.",
+        "en-US": "The package RALDBPackage keeps its name but now requires RALStoragePackage, and the design package RALDBDsgn (IDE-only) is new. The migrator adds RALStoragePackage when the project uses its units.",
+        "es-ES": "El paquete RALDBPackage conserva su nombre pero ahora requiere RALStoragePackage, y el paquete de diseño RALDBDsgn (solo del IDE) es nuevo. El migrador agrega RALStoragePackage cuando el proyecto usa sus units."
+      },
+      "manual": {
+        "pt-BR": "Instale RALDBDsgn na IDE e confira que RALDBPackage e RALStoragePackage estão entre os pacotes exigidos por %arquivo%.",
+        "en-US": "Install RALDBDsgn in the IDE and check that RALDBPackage and RALStoragePackage are among the packages required by %arquivo%.",
+        "es-ES": "Instale RALDBDsgn en el IDE y compruebe que RALDBPackage y RALStoragePackage estén entre los paquetes requeridos por %arquivo%."
+      },
+      "wiki": "migrar-para-2.0.md#pacotes-renomeados"
+    },
+    {
+      "id": "2.0/pacote-design-runtime",
+      "acao": "pacote-design-para-runtime",
+      "onde": ["dpk", "dproj"],
+      "ide": "delphi",
+      "de": "PascalRALDsgn",
+      "para": "PascalRAL",
+      "manter-se": ["designonly", "tem-register"],
+      "descricao": {
+        "pt-BR": "Na 1.x todos os pacotes de runtime exigiam PascalRALDsgn. Na 2.0 ele é só de design ({$DESIGNONLY}, exige designide): um pacote de runtime que o exija falha em tempo de execução, e o compilador não avisa. Num pacote de runtime, PascalRALDsgn vira PascalRAL (ou sai, se PascalRAL já consta). Pacote que registra componentes na IDE mantém PascalRALDsgn.",
+        "en-US": "In 1.x every runtime package required PascalRALDsgn. In 2.0 it is design-only ({$DESIGNONLY}, requires designide): a runtime package that requires it fails at run time, and the compiler does not warn. In a runtime package, PascalRALDsgn becomes PascalRAL (or is removed if PascalRAL is already there). A package that registers components in the IDE keeps PascalRALDsgn.",
+        "es-ES": "En la 1.x todos los paquetes de runtime requerían PascalRALDsgn. En la 2.0 es solo de diseño ({$DESIGNONLY}, requiere designide): un paquete de runtime que lo requiera falla en tiempo de ejecución y el compilador no avisa. En un paquete de runtime, PascalRALDsgn pasa a ser PascalRAL (o se elimina si PascalRAL ya está). Un paquete que registra componentes en el IDE conserva PascalRALDsgn."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%: o pacote exige PascalRALDsgn e parece registrar componentes na IDE (é {$DESIGNONLY} ou tem Register). Se for um pacote só de runtime, troque PascalRALDsgn por PascalRAL; se for de design, mantenha e lembre que ele exige designide.",
+        "en-US": "In %arquivo%: the package requires PascalRALDsgn and appears to register components in the IDE (it is {$DESIGNONLY} or has a Register). If it is a runtime-only package, replace PascalRALDsgn with PascalRAL; if it is a design package, keep it and remember that it requires designide.",
+        "es-ES": "En %arquivo%: el paquete requiere PascalRALDsgn y parece registrar componentes en el IDE (es {$DESIGNONLY} o tiene Register). Si es un paquete solo de runtime, cambie PascalRALDsgn por PascalRAL; si es de diseño, mantenga y recuerde que requiere designide."
+      },
+      "wiki": "migrar-para-2.0.md#seus-pacotes-e-projetos"
+    },
+    {
+      "id": "2.0/pacote-exigir-auth",
+      "acao": "pacote-exigir-se-unit",
+      "onde": ["dproj", "dpk", "lpi", "lpk"],
+      "ide": "ambos",
+      "units": ["RALAuthentication", "RALDigest", "RALOAuth2"],
+      "pacote": "RALPluginAuthPackage",
+      "pacote-lazarus": "ralpluginauthpackage",
+      "descricao": {
+        "pt-BR": "As autenticações (Basic, JWT, Digest, OAuth2) saíram do núcleo e foram para o pacote RALPluginAuthPackage. Um projeto que usa essas units e liga pacotes de runtime (Delphi) ou lista os pacotes exigidos (Lazarus) precisa exigi-lo.",
+        "en-US": "The authentications (Basic, JWT, Digest, OAuth2) left the core and moved to the RALPluginAuthPackage package. A project that uses these units and links runtime packages (Delphi) or lists required packages (Lazarus) must require it.",
+        "es-ES": "Las autenticaciones (Basic, JWT, Digest, OAuth2) salieron del núcleo y pasaron al paquete RALPluginAuthPackage. Un proyecto que usa esas units y enlaza paquetes de runtime (Delphi) o lista los paquetes requeridos (Lazarus) debe requerirlo."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, o projeto usa %unit%: acrescente o pacote %pacote% aos pacotes exigidos (sem ele, 'Class TRALServerJWTAuth not found' ao abrir o formulário).",
+        "en-US": "In %arquivo%, the project uses %unit%: add the package %pacote% to the required packages (without it: 'Class TRALServerJWTAuth not found' when opening the form).",
+        "es-ES": "En %arquivo%, el proyecto usa %unit%: agregue el paquete %pacote% a los paquetes requeridos (sin él: 'Class TRALServerJWTAuth not found' al abrir el formulario)."
+      },
+      "wiki": "migrar-para-2.0.md#seus-pacotes-e-projetos"
+    },
+    {
+      "id": "2.0/pacote-exigir-tls",
+      "acao": "pacote-exigir-se-unit",
+      "onde": ["dproj", "dpk", "lpi", "lpk"],
+      "ide": "ambos",
+      "units": ["RALSelfSigned"],
+      "pacote": "RALPluginTLSPackage",
+      "pacote-lazarus": "ralplugintlspackage",
+      "descricao": {
+        "pt-BR": "O certificado autoassinado (RALSelfSigned) saiu do núcleo e foi para o pacote RALPluginTLSPackage.",
+        "en-US": "The self-signed certificate (RALSelfSigned) left the core and moved to the RALPluginTLSPackage package.",
+        "es-ES": "El certificado autofirmado (RALSelfSigned) salió del núcleo y pasó al paquete RALPluginTLSPackage."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, o projeto usa %unit%: acrescente o pacote %pacote% aos pacotes exigidos.",
+        "en-US": "In %arquivo%, the project uses %unit%: add the package %pacote% to the required packages.",
+        "es-ES": "En %arquivo%, el proyecto usa %unit%: agregue el paquete %pacote% a los paquetes requeridos."
+      },
+      "wiki": "migrar-para-2.0.md#o-que-saiu-do-núcleo"
+    },
+    {
+      "id": "2.0/pacote-exigir-storage",
+      "acao": "pacote-exigir-se-unit",
+      "onde": ["dproj", "dpk", "lpi", "lpk"],
+      "ide": "ambos",
+      "units": ["RALStorageBIN", "RALStorageJSON", "RALStorageCSV", "RALStorage", "RALStorageTypes", "RALDBTypes"],
+      "pacote": "RALStoragePackage",
+      "pacote-lazarus": "ralstoragepackage",
+      "descricao": {
+        "pt-BR": "Os storages (BIN, JSON, CSV) e os tipos compartilhados (RALStorageTypes, antigo RALDBTypes) saíram do núcleo e foram para o pacote RALStoragePackage.",
+        "en-US": "The storages (BIN, JSON, CSV) and the shared types (RALStorageTypes, formerly RALDBTypes) left the core and moved to the RALStoragePackage package.",
+        "es-ES": "Los storages (BIN, JSON, CSV) y los tipos compartidos (RALStorageTypes, antes RALDBTypes) salieron del núcleo y pasaron al paquete RALStoragePackage."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, o projeto usa %unit%: acrescente o pacote %pacote% aos pacotes exigidos.",
+        "en-US": "In %arquivo%, the project uses %unit%: add the package %pacote% to the required packages.",
+        "es-ES": "En %arquivo%, el proyecto usa %unit%: agregue el paquete %pacote% a los paquetes requeridos."
+      },
+      "wiki": "migrar-para-2.0.md#seus-pacotes-e-projetos"
+    },
+    {
+      "id": "2.0/pacote-exigir-web",
+      "acao": "pacote-exigir-se-unit",
+      "onde": ["dproj", "dpk", "lpi", "lpk"],
+      "ide": "ambos",
+      "units": ["RALWebModule"],
+      "pacote": "RALModuleWebPackage",
+      "pacote-lazarus": "ralmodulewebpackage",
+      "descricao": {
+        "pt-BR": "O módulo Web (TRALWebModule) saiu do núcleo e foi para o pacote RALModuleWebPackage.",
+        "en-US": "The Web module (TRALWebModule) left the core and moved to the RALModuleWebPackage package.",
+        "es-ES": "El módulo Web (TRALWebModule) salió del núcleo y pasó al paquete RALModuleWebPackage."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, o projeto usa %unit%: acrescente o pacote %pacote% aos pacotes exigidos.",
+        "en-US": "In %arquivo%, the project uses %unit%: add the package %pacote% to the required packages.",
+        "es-ES": "En %arquivo%, el proyecto usa %unit%: agregue el paquete %pacote% a los paquetes requeridos."
+      },
+      "wiki": "migrar-para-2.0.md#seus-pacotes-e-projetos"
+    },
+    {
+      "id": "2.0/pacote-exigir-swagger",
+      "acao": "pacote-exigir-se-unit",
+      "onde": ["dproj", "dpk", "lpi", "lpk"],
+      "ide": "ambos",
+      "units": ["RALSwaggerModule", "RALSwaggerExporter", "RALPostmanExporter"],
+      "pacote": "RALModuleSwaggerPackage",
+      "pacote-lazarus": "ralmoduleswaggerpackage",
+      "descricao": {
+        "pt-BR": "O Swagger e o exportador do Postman saíram do núcleo e foram para o pacote RALModuleSwaggerPackage (que exige o pacote de autenticação).",
+        "en-US": "Swagger and the Postman exporter left the core and moved to the RALModuleSwaggerPackage package (which requires the authentication package).",
+        "es-ES": "Swagger y el exportador de Postman salieron del núcleo y pasaron al paquete RALModuleSwaggerPackage (que requiere el paquete de autenticación)."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, o projeto usa %unit%: acrescente o pacote %pacote% aos pacotes exigidos (ele traz junto o RALPluginAuthPackage).",
+        "en-US": "In %arquivo%, the project uses %unit%: add the package %pacote% to the required packages (it brings RALPluginAuthPackage along).",
+        "es-ES": "En %arquivo%, el proyecto usa %unit%: agregue el paquete %pacote% a los paquetes requeridos (trae consigo RALPluginAuthPackage)."
+      },
+      "wiki": "migrar-para-2.0.md#seus-pacotes-e-projetos"
+    },
+    {
+      "id": "2.0/pacote-exigir-core",
+      "acao": "pacote-exigir-se-unit",
+      "onde": ["lpi", "lpk"],
+      "ide": "lazarus",
+      "units": ["RALServer", "RALClient", "RALRoutes", "RALParams", "RALTypes", "RALRequest", "RALResponse", "RALDBPool", "RALDBConnection", "RALDBBase", "RALContent", "RALCORS", "RALSecurity", "RALPlugin"],
+      "pacote": "pascalral",
+      "descricao": {
+        "pt-BR": "No Lazarus, quem usa as units do núcleo precisa exigir o pacote pascalral explicitamente; os samples da 2.0 fazem isso até em projetos que só usam o pool de banco.",
+        "en-US": "In Lazarus, anyone who uses the core units must require the pascalral package explicitly; the 2.0 samples do so even in projects that only use the database pool.",
+        "es-ES": "En Lazarus, quien usa las units del núcleo debe requerir el paquete pascalral de forma explícita; los samples de la 2.0 lo hacen incluso en proyectos que solo usan el pool de base de datos."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, o projeto usa %unit%: acrescente o pacote %pacote% aos pacotes exigidos.",
+        "en-US": "In %arquivo%, the project uses %unit%: add the package %pacote% to the required packages.",
+        "es-ES": "En %arquivo%, el proyecto usa %unit%: agregue el paquete %pacote% a los paquetes requeridos."
+      },
+      "wiki": "migrar-para-2.0.md#seus-pacotes-e-projetos"
+    },
+    {
+      "id": "2.0/corpo-somente-leitura",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "conversao-tipo",
+        "tipo-alvo": "TMemoryStream",
+        "membro": "Content"
+      },
+      "trecho": "%variavel%.Content",
+      "descricao": {
+        "pt-BR": "O corpo recebido (Body.Content) pode não ser um TMemoryStream: acima de 8 MB ele vai para disco. E o corpo recebido é somente leitura. Código que converte para TMemoryStream ou escreve em Content/Memory quebra.",
+        "en-US": "The received body (Body.Content) may not be a TMemoryStream: above 8 MB it goes to disk. And the received body is read-only. Code that casts to TMemoryStream or writes to Content/Memory breaks.",
+        "es-ES": "El cuerpo recibido (Body.Content) puede no ser un TMemoryStream: por encima de 8 MB va a disco. Y el cuerpo recibido es de solo lectura. El código que convierte a TMemoryStream o escribe en Content/Memory se rompe."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: leia %trecho% como TStream (sem converter para TMemoryStream). Para escrever, use AsStream, que devolve uma cópia.",
+        "en-US": "In %arquivo%, line %linha%: read %trecho% as a TStream (without casting to TMemoryStream). To write, use AsStream, which returns a copy.",
+        "es-ES": "En %arquivo%, línea %linha%: lea %trecho% como TStream (sin convertir a TMemoryStream). Para escribir, use AsStream, que devuelve una copia."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    }
+  ],
+  "comportamento": [
+    {
+      "id": "2.0/sem-plugin-sem-recurso",
+      "descricao": {
+        "pt-BR": "Sem plugin, o servidor não comprime, não cifra, não manda CORS, não limita o pedido, não protege contra força bruta, flood e travessia de pastas, não manda cabeçalhos de segurança e só responde rotas.",
+        "en-US": "Without a plugin, the server does not compress, does not encrypt, sends no CORS headers, does not limit the request, does not protect against brute force, flood or path traversal, sends no security headers and only answers routes.",
+        "es-ES": "Sin un plugin, el servidor no comprime, no cifra, no envía CORS, no limita la petición, no protege contra fuerza bruta, flood ni recorrido de directorios, no envía encabezados de seguridad y solo responde rutas."
+      },
+      "fazer": {
+        "pt-BR": "Depois da migração, confira os plugins ligados a cada servidor (paleta RAL - Plugins). O migrador criou os que correspondiam às propriedades que você tinha.",
+        "en-US": "After the migration, check the plugins attached to each server (RAL - Plugins palette). The migrator created the ones that matched the properties you had.",
+        "es-ES": "Después de la migración, compruebe los plugins conectados a cada servidor (paleta RAL - Plugins). El migrador creó los que correspondían a las propiedades que tenía."
+      },
+      "wiki": "plugins.md"
+    },
+    {
+      "id": "2.0/dfm-1x-nao-abre",
+      "descricao": {
+        "pt-BR": "Um formulário com as propriedades antigas do servidor não abre na 2.0 ('Property CompressType does not exist').",
+        "en-US": "A form with the old server properties does not open in 2.0 ('Property CompressType does not exist').",
+        "es-ES": "Un formulario con las propiedades antiguas del servidor no abre en la 2.0 ('Property CompressType does not exist')."
+      },
+      "fazer": {
+        "pt-BR": "O migrador já tirou as linhas do .dfm/.lfm. Se abrir um formulário ainda não migrado: View as Text e apague as linhas, ou clique em Ignore em cada propriedade.",
+        "en-US": "The migrator already removed the lines from the .dfm/.lfm. If you open a form that was not migrated yet: View as Text and delete the lines, or click Ignore on each property.",
+        "es-ES": "El migrador ya quitó las líneas del .dfm/.lfm. Si abre un formulario que aún no se migró: View as Text y borre las líneas, o haga clic en Ignore en cada propiedad."
+      },
+      "wiki": "plugins.md#erros-comuns"
+    },
+    {
+      "id": "2.0/compress-ignora-comprimidos",
+      "descricao": {
+        "pt-BR": "Imagem, áudio, vídeo, zip, gzip, 7z, rar, pdf e fontes não são mais comprimidos (SkipCompressedTypes = True), porque já vêm comprimidos.",
+        "en-US": "Images, audio, video, zip, gzip, 7z, rar, pdf and fonts are no longer compressed (SkipCompressedTypes = True), because they are already compressed.",
+        "es-ES": "Imágenes, audio, video, zip, gzip, 7z, rar, pdf y fuentes ya no se comprimen (SkipCompressedTypes = True), porque ya vienen comprimidos."
+      },
+      "fazer": {
+        "pt-BR": "Quer comprimir tudo como antes? Defina SkipCompressedTypes := False no plugin de compressão. O migrador não escreve isso.",
+        "en-US": "Do you want to compress everything as before? Set SkipCompressedTypes := False on the compression plugin. The migrator does not write this.",
+        "es-ES": "¿Quiere comprimir todo como antes? Defina SkipCompressedTypes := False en el plugin de compresión. El migrador no escribe esto."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/corpo-somente-leitura",
+      "descricao": {
+        "pt-BR": "Body.Content pode não ser um TMemoryStream (acima de 8 MB vai para disco), e o corpo recebido é somente leitura.",
+        "en-US": "Body.Content may not be a TMemoryStream (above 8 MB it goes to disk), and the received body is read-only.",
+        "es-ES": "Body.Content puede no ser un TMemoryStream (por encima de 8 MB va a disco), y el cuerpo recibido es de solo lectura."
+      },
+      "fazer": {
+        "pt-BR": "Leia o conteúdo como TStream em vez de TMemoryStream(Param.Content).Memory. Para escrever, use AsStream (uma cópia).",
+        "en-US": "Read the content as a TStream instead of TMemoryStream(Param.Content).Memory. To write, use AsStream (a copy).",
+        "es-ES": "Lea el contenido como TStream en lugar de TMemoryStream(Param.Content).Memory. Para escribir, use AsStream (una copia)."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/responsetext-servidor",
+      "descricao": {
+        "pt-BR": "ResponseText, no OnResponse do servidor, é o texto respondido, não mais o conteúdo compactado (gzip).",
+        "en-US": "ResponseText, in the server's OnResponse, is the answered text, no longer the compressed (gzip) content.",
+        "es-ES": "ResponseText, en el OnResponse del servidor, es el texto respondido, ya no el contenido comprimido (gzip)."
+      },
+      "fazer": {
+        "pt-BR": "Na maioria dos casos, nada a fazer.",
+        "en-US": "In most cases, nothing to do.",
+        "es-ES": "En la mayoría de los casos, nada que hacer."
+      },
+      "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/classe-nao-encontrada",
+      "descricao": {
+        "pt-BR": "Autenticação, storages, módulo Web e Swagger saíram do núcleo. Sem o pacote novo, o formulário não abre: 'Class TRALServerJWTAuth not found'.",
+        "en-US": "Authentication, storages, the Web module and Swagger left the core. Without the new package, the form does not open: 'Class TRALServerJWTAuth not found'.",
+        "es-ES": "La autenticación, los storages, el módulo Web y Swagger salieron del núcleo. Sin el paquete nuevo, el formulario no abre: 'Class TRALServerJWTAuth not found'."
+      },
+      "fazer": {
+        "pt-BR": "Instale o pacote novo que guarda a classe (o instalador do RAL já faz isso).",
+        "en-US": "Install the new package that holds the class (the RAL installer already does this).",
+        "es-ES": "Instale el paquete nuevo que contiene la clase (el instalador de RAL ya lo hace)."
+      },
+      "wiki": "migrar-para-2.0.md#erros-comuns"
+    },
+    {
+      "id": "2.0/cors-multi-origem",
+      "descricao": {
+        "pt-BR": "AllowOrigin aceita uma lista de sites (separados por espaço ou vírgula), e AllowCredentials não funciona com '*'.",
+        "en-US": "AllowOrigin accepts a list of sites (separated by space or comma), and AllowCredentials does not work with '*'.",
+        "es-ES": "AllowOrigin acepta una lista de sitios (separados por espacio o coma), y AllowCredentials no funciona con '*'."
+      },
+      "fazer": {
+        "pt-BR": "Informativo: nada a fazer.",
+        "en-US": "Informational: nothing to do.",
+        "es-ES": "Informativo: nada que hacer."
+      },
+      "wiki": "plugins.md"
+    },
+    {
+      "id": "2.0/precisa-de-motor",
+      "descricao": {
+        "pt-BR": "Sem ao menos um motor (Indy, mORMot2, Sagui, fpHTTP, netHTTP...) o RAL não funciona; o instalador recusa uma instalação sem motor.",
+        "en-US": "Without at least one engine (Indy, mORMot2, Sagui, fpHTTP, netHTTP...) RAL does not work; the installer refuses an installation without an engine.",
+        "es-ES": "Sin al menos un motor (Indy, mORMot2, Sagui, fpHTTP, netHTTP...) RAL no funciona; el instalador rechaza una instalación sin motor."
+      },
+      "fazer": {
+        "pt-BR": "Instale pelo menos um motor junto com a 2.0.",
+        "en-US": "Install at least one engine together with 2.0.",
+        "es-ES": "Instale al menos un motor junto con la 2.0."
+      },
+      "wiki": "migrar-para-2.0.md#erros-comuns"
+    },
+    {
+      "id": "2.0/f2613",
+      "descricao": {
+        "pt-BR": "Compilando com os fontes, F2613 'Unit RALServer not found' (ou outra unit) quer dizer que o caminho de units ainda é o da 1.x.",
+        "en-US": "When compiling from the sources, F2613 'Unit RALServer not found' (or another unit) means the unit search path is still the 1.x one.",
+        "es-ES": "Al compilar con los fuentes, F2613 'Unit RALServer not found' (u otra unit) significa que la ruta de units todavía es la de la 1.x."
+      },
+      "fazer": {
+        "pt-BR": "Troque pelas pastas da 2.0 (core, common, plugins...). A tabela da wiki diz de qual pasta cada unit é.",
+        "en-US": "Replace them with the 2.0 folders (core, common, plugins...). The wiki table says which folder each unit lives in.",
+        "es-ES": "Cámbielas por las carpetas de la 2.0 (core, common, plugins...). La tabla de la wiki dice en qué carpeta está cada unit."
+      },
+      "wiki": "migrar-para-2.0.md#as-pastas-library-path"
+    }
+  ]
+}

@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="12"/>
+    <PathDelim Value="\"/>
+    <General>
+      <SessionStorage Value="InProjectDir"/>
+      <Title Value="RAL Migrator"/>
+      <ResourceType Value="res"/>
+      <UseXPManifest Value="True"/>
+      <XPManifest>
+        <DpiAware Value="True"/>
+      </XPManifest>
+      <Icon Value="0"/>
+      <Resources Count="21">
+        <Resource_0 FileName="../Assets/images/Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
+        <Resource_1 FileName="../Assets/images/Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
+        <Resource_2 FileName="../Assets/images/Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
+        <Resource_3 FileName="../Assets/images/Botão Azul.png" Type="RCDATA" ResourceName="DARKBTN"/>
+        <Resource_4 FileName="../Assets/images/Moon Symbol.png" Type="RCDATA" ResourceName="LIGHTICON"/>
+        <Resource_5 FileName="../Assets/images/Summer_White.png" Type="RCDATA" ResourceName="DARKICON"/>
+        <Resource_6 FileName="../Assets/images/Banner.png" Type="RCDATA" ResourceName="BANNER"/>
+        <Resource_7 FileName="../Assets/images/close_certo.png" Type="RCDATA" ResourceName="CLOSEICON"/>
+        <Resource_8 FileName="../Assets/images/united-states_90.png" Type="RCDATA" ResourceName="FLAG_US"/>
+        <Resource_9 FileName="../Assets/images/255-brazil_90.png" Type="RCDATA" ResourceName="FLAG_BR"/>
+        <Resource_10 FileName="../Assets/images/128-spain_90.png" Type="RCDATA" ResourceName="FLAG_ES"/>
+        <Resource_11 FileName="regras/v1.0-1.1.json" Type="RCDATA" ResourceName="REGRAS_1_0__1_1"/>
+        <Resource_12 FileName="regras/1.1-1.2.json" Type="RCDATA" ResourceName="REGRAS_1_1__1_2"/>
+        <Resource_13 FileName="regras/1.2-2.0.json" Type="RCDATA" ResourceName="REGRAS_1_2__2_0"/>
+        <Resource_14 FileName="api/api-v1.0.json" Type="RCDATA" ResourceName="API_V1_0"/>
+        <Resource_15 FileName="api/api-1.1.json" Type="RCDATA" ResourceName="API_1_1"/>
+        <Resource_16 FileName="api/api-dev.json" Type="RCDATA" ResourceName="API_DEV"/>
+        <Resource_17 FileName="api/api-2.0.json" Type="RCDATA" ResourceName="API_2_0"/>
+        <Resource_18 FileName="languages/ralmigrador.pt-BR.po" Type="RCDATA" ResourceName="PO_PT_BR"/>
+        <Resource_19 FileName="languages/ralmigrador.en-US.po" Type="RCDATA" ResourceName="PO_EN_US"/>
+        <Resource_20 FileName="languages/ralmigrador.es-ES.po" Type="RCDATA" ResourceName="PO_ES_ES"/>
+      </Resources>
+    </General>
+    <VersionInfo>
+      <UseVersionInfo Value="True"/>
+      <MinorVersionNr Value="9"/>
+      <StringTable CompanyName="Pascal RAL" FileDescription="Migrador do RAL" ProductName="RAL Migrator"/>
+    </VersionInfo>
+    <BuildModes>
+      <Item Name="Windows32" Default="True"/>
+      <Item Name="Windows64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="ralmigrador_w64"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+            <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <TargetCPU Value="x86_64"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <DebugInfoType Value="dsDwarf3"/>
+              <UseExternalDbgSyms Value="True"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item>
+      <Item Name="Linux32">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="ralmigrador_l32"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+            <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetCPU Value="i386"/>
+            <TargetOS Value="linux"/>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <DebugInfoType Value="dsDwarf3"/>
+              <UseExternalDbgSyms Value="True"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item>
+      <Item Name="Linux64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="ralmigrador_l64"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+            <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="linux"/>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <DebugInfoType Value="dsDwarf3"/>
+              <UseExternalDbgSyms Value="True"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item>
+      <Item Name="MacOS64">
+        <MacroValues Count="1">
+          <Macro1 Name="LCLWidgetType" Value="cocoa"/>
+        </MacroValues>
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="ralmigrador_m64"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+            <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="darwin"/>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item>
+      <Item Name="MacOSARM64">
+        <MacroValues Count="1">
+          <Macro1 Name="LCLWidgetType" Value="cocoa"/>
+        </MacroValues>
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="ralmigrador_marm64"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+            <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <TargetCPU Value="aarch64"/>
+            <TargetOS Value="darwin"/>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+            </Debugging>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item>
+      <SharedMatrixOptions Count="1">
+        <Item1 ID="436612174588" Modes="MacOS64,MacOSARM64" Type="IDEMacro" MacroName="LCLWidgetType" Value="cocoa"/>
+      </SharedMatrixOptions>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+    <RunParams>
+      <FormatVersion Value="2"/>
+    </RunParams>
+    <RequiredPackages>
+      <Item>
+        <PackageName Value="LCL"/>
+      </Item>
+    </RequiredPackages>
+    <Units>
+      <Unit>
+        <Filename Value="ralmigrador.lpr"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <PathDelim Value="\"/>
+    <Target>
+      <Filename Value="ralmigrador_w32"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+      <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+    <CodeGeneration>
+      <TargetCPU Value="i386"/>
+      <TargetOS Value="win32"/>
+    </CodeGeneration>
+    <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf3"/>
+        <UseExternalDbgSyms Value="True"/>
+      </Debugging>
+      <Options>
+        <Win32>
+          <GraphicApplication Value="True"/>
+        </Win32>
+      </Options>
+    </Linking>
+  </CompilerOptions>
+  <Debugging>
+    <Exceptions>
+      <Item>
+        <Name Value="EAbort"/>
+      </Item>
+      <Item>
+        <Name Value="ECodetoolError"/>
+      </Item>
+      <Item>
+        <Name Value="EFOpenError"/>
+      </Item>
+    </Exceptions>
+  </Debugging>
+</CONFIG>

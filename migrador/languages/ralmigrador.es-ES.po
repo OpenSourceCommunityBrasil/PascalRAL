@@ -1,0 +1,2784 @@
+msgid ""
+msgstr ""
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: RAL Migrator\n"
+
+#: ralmig.console.mensagens.emcliuso
+msgid "Uso: ralmigra detectar|previa|aplicar|desfazer|conferir|inventario <pasta> [opções]. Use ralmigra --ajuda para ver tudo."
+msgstr "Uso: ralmigra detectar|previa|aplicar|desfazer|conferir|inventario <carpeta> [opciones]. Use ralmigra --ajuda para verlo todo."
+
+#: ralmig.console.mensagens.emcliverbodesconhecido
+msgid "Comando desconhecido: %s"
+msgstr "Comando desconocido: %s"
+
+#: ralmig.console.mensagens.emclisempasta
+msgid "Informe a pasta do projeto."
+msgstr "Indique la carpeta del proyecto."
+
+#: ralmig.console.mensagens.cmajudatitulo
+msgid "ralmigra: migra projetos Delphi e Lazarus entre versões do PascalRAL."
+msgstr "ralmigra: migra proyectos de Delphi y Lazarus entre versiones de PascalRAL."
+
+#: ralmig.console.mensagens.cmajudacomandos
+msgid "Comandos:"
+msgstr "Comandos:"
+
+#: ralmig.console.mensagens.cmajudadetectar
+msgid "  detectar <pasta>    mostra a versão do RAL que o projeto usa e as pistas"
+msgstr "  detectar <carpeta>   muestra la versión de RAL que usa el proyecto y las pistas"
+
+#: ralmig.console.mensagens.cmajudaprevia
+msgid "  previa <pasta>      mostra o que mudaria e o relatório, sem gravar nada"
+msgstr "  previa <carpeta>     muestra lo que cambiaría y el informe, sin grabar nada"
+
+#: ralmig.console.mensagens.cmajudaaplicar
+msgid "  aplicar <pasta>     grava a migração e o relatório (MIGRACAO-RAL-<de>-<para>.md e .html)"
+msgstr "  aplicar <carpeta>    graba la migración y el informe (MIGRACAO-RAL-<de>-<para>.md y .html)"
+
+#: ralmig.console.mensagens.cmajudadesfazer
+msgid "  desfazer <pasta>    volta ao que havia antes, pela cópia de segurança"
+msgstr "  desfazer <carpeta>   vuelve a lo que había antes, mediante la copia de seguridad"
+
+#: ralmig.console.mensagens.cmajudaconferir
+msgid "  conferir <pasta>    compila o projeto migrado contra o RAL de destino"
+msgstr "  conferir <carpeta>   compila el proyecto migrado contra el RAL de destino"
+
+#: ralmig.console.mensagens.cmajudainventario
+msgid "  inventario          confere a cobertura das regras com a API de cada versão"
+msgstr "  inventario          comprueba la cobertura de las reglas con la API de cada versión"
+
+#: ralmig.console.mensagens.cmajudaopcoes
+msgid "Opções:"
+msgstr "Opciones:"
+
+#: ralmig.console.mensagens.cmajudade
+msgid "  --de=<versão>       versão de origem (sem ela, é detectada)"
+msgstr "  --de=<versión>       versión de origen (sin ella, se detecta)"
+
+#: ralmig.console.mensagens.cmajudapara
+msgid "  --para=<versão>     versão de destino (sem ela, a mais nova)"
+msgstr "  --para=<versión>     versión de destino (sin ella, la más nueva)"
+
+#: ralmig.console.mensagens.cmajudaidioma
+msgid "  --idioma=<idioma>   pt-BR, en-US ou es-ES (sem ele, o do sistema)"
+msgstr "  --idioma=<idioma>    pt-BR, en-US o es-ES (sin él, el del sistema)"
+
+#: ralmig.console.mensagens.cmajudabackup
+msgid "  --backup            aplicar: faz a cópia de segurança em _ral-migracao (sem ela não há desfazer)"
+msgstr "  --backup            aplicar: hace la copia de seguridad en _ral-migracao (sin ella no se puede deshacer)"
+
+#: ralmig.console.mensagens.cmajudaconverter
+msgid "  --converter-binarios  converte formulários binários para texto em vez de deixá-los de fora"
+msgstr "  --converter-binarios  convierte los formularios binarios a texto en lugar de dejarlos fuera"
+
+#: ralmig.console.mensagens.cmajudaforcar
+msgid "  --forcar-de         aplica os passos desde --de mesmo se o projeto já estiver mais novo"
+msgstr "  --forcar-de         aplica los pasos desde --de aunque el proyecto ya sea más nuevo"
+
+#: ralmig.console.mensagens.cmajudaignorarerros
+msgid "  --ignorar-erros     aplicar: grava mesmo se a migração teve erros"
+msgstr "  --ignorar-erros     aplicar: graba aunque la migración haya tenido errores"
+
+#: ralmig.console.mensagens.cmajudazip
+msgid "  --zip=<cópia>       desfazer: a cópia a restaurar (sem ela, a mais recente)"
+msgstr "  --zip=<copia>       desfazer: la copia que se restaura (sin ella, la más reciente)"
+
+#: ralmig.console.mensagens.cmajudaide
+msgid "  --ide=<raiz da IDE> conferir: a IDE que compila (sem ela, as dos recibos do instalador)"
+msgstr "  --ide=<raíz del IDE> conferir: el IDE que compila (sin él, los de los recibos del instalador)"
+
+#: ralmig.console.mensagens.cmajudaral
+msgid "  --ral=<raiz do RAL> conferir: os fontes do RAL de destino (com --ide); nos outros comandos, lê o ralmigracao.json dele (--raiz-ral)"
+msgstr "  --ral=<raíz de RAL> conferir: los fuentes del RAL de destino (con --ide); en los demás comandos, lee su ralmigracao.json (--raiz-ral)"
+
+#: ralmig.console.mensagens.cmajudasaida
+msgid "Código de saída: 0 nada a fazer à mão, 1 sobrou item manual, 2 erro, 3 recusado (o destino é mais velho que a origem)."
+msgstr "Código de salida: 0 nada que hacer a mano, 1 quedó un elemento manual, 2 error, 3 rechazado (el destino es más viejo que el origen)."
+
+#: ralmig.console.mensagens.cmcliconfalta
+msgid "alta"
+msgstr "alta"
+
+#: ralmig.console.mensagens.cmcliconfmedia
+msgid "média"
+msgstr "media"
+
+#: ralmig.console.mensagens.cmcliconfbaixa
+msgid "baixa"
+msgstr "baja"
+
+#: ralmig.console.mensagens.cmclidetectada
+msgid "Versão detectada: %s (confiança: %s)"
+msgstr "Versión detectada: %s (confianza: %s)"
+
+#: ralmig.console.mensagens.cmclinenhuma
+msgid "Nenhuma pista encontrada: informe a versão com --de=."
+msgstr "No se encontró ninguna pista: indique la versión con --de=."
+
+#: ralmig.console.mensagens.emclisemversao
+msgid "Não foi possível detectar a versão de origem; informe --de=."
+msgstr "No fue posible detectar la versión de origen; indíquela con --de=."
+
+#: ralmig.console.mensagens.cmcliprevianada
+msgid "Nada a mudar."
+msgstr "Nada que cambiar."
+
+#: ralmig.console.mensagens.cmclifora
+msgid "Fora da pasta (não entram sozinhos): %s"
+msgstr "Fuera de la carpeta (no entran solos): %s"
+
+#: ralmig.console.mensagens.wmclisemapi
+msgid "Sem a API da versão %s: o resultado não foi validado."
+msgstr "Sin la API de la versión %s: el resultado no fue validado."
+
+#: ralmig.console.mensagens.emcligravar
+msgid "Falha ao gravar: %s"
+msgstr "Error al grabar: %s"
+
+#: ralmig.console.mensagens.emclirelatorio
+msgid "Não foi possível gravar o relatório: %s"
+msgstr "No fue posible grabar el informe: %s"
+
+#: ralmig.console.mensagens.wmclisemcopia
+msgid "Sem cópia de segurança (--backup): não há como desfazer."
+msgstr "Sin copia de seguridad (--backup): no hay manera de deshacer."
+
+#: ralmig.console.mensagens.cmcligravados
+msgid "%d arquivo(s) gravado(s)."
+msgstr "%d archivo(s) grabado(s)."
+
+#: ralmig.console.mensagens.cmclirelatoriomd
+msgid "Relatório: %s"
+msgstr "Informe: %s"
+
+#: ralmig.console.mensagens.cmclirelatoriohtml
+msgid "Relatório (HTML): %s"
+msgstr "Informe (HTML): %s"
+
+#: ralmig.console.mensagens.cmclirelatoriomantido
+msgid "Nada foi alterado; o relatório da migração anterior foi mantido: %s"
+msgstr "No se cambió nada; se conservó el informe de la migración anterior: %s"
+
+#: ralmig.console.mensagens.wmclirelatoriosemregistro
+msgid "O relatório não foi registrado na cópia de segurança (o desfazer não o removerá): %s"
+msgstr "El informe no se registró en la copia de seguridad (deshacer no lo quitará): %s"
+
+#: ralmig.console.mensagens.cmclicopia
+msgid "Cópia de segurança: %s"
+msgstr "Copia de seguridad: %s"
+
+#: ralmig.console.mensagens.emclisemcopia
+msgid "Não há cópia de segurança em %s: não há como desfazer."
+msgstr "No hay copia de seguridad en %s: no hay manera de deshacer."
+
+#: ralmig.console.mensagens.wmclirelatoriomantido
+msgid "Relatório alterado depois da migração, mantido: %s"
+msgstr "Informe modificado después de la migración, conservado: %s"
+
+#: ralmig.console.mensagens.cmclidesfeito
+msgid "Migração desfeita com %s."
+msgstr "Migración deshecha con %s."
+
+#: ralmig.console.mensagens.cmcliinventariopasso
+msgid "[%s] %d diferenças, %d pendentes"
+msgstr "[%s] %d diferencias, %d pendientes"
+
+#: ralmig.console.mensagens.emcliconferirsemral
+msgid "Com --ide informe também --ral=<raiz do RAL de destino>."
+msgstr "Con --ide indique también --ral=<raíz del RAL de destino>."
+
+#: ralmig.console.mensagens.emcliconferirideinvalida
+msgid "Não é uma IDE, ou o RAL informado não tem a pasta src: %s"
+msgstr "No es un IDE, o el RAL indicado no tiene la carpeta src: %s"
+
+#: ralmig.console.mensagens.emcliconferirsemide
+msgid "Nenhuma IDE com o RAL %s nos recibos do instalador; informe --ide=<raiz da IDE> e --ral=<raiz do RAL>."
+msgstr "Ningún IDE con el RAL %s en los recibos del instalador; indique --ide=<raíz del IDE> y --ral=<raíz de RAL>."
+
+#: ralmig.console.mensagens.emcliconferirsemprojeto
+msgid "Nenhum projeto que %s compile em %s."
+msgstr "Ningún proyecto que %s compile en %s."
+
+#: ralmig.console.mensagens.cmcliconferircompilando
+msgid "Compilando %s com %s..."
+msgstr "Compilando %s con %s..."
+
+#: ralmig.console.mensagens.cmcliconferirok
+msgid "Compilou: %s"
+msgstr "Compiló: %s"
+
+#: ralmig.console.mensagens.cmcliconferirfalhou
+msgid "Não compilou: %s"
+msgstr "No compiló: %s"
+
+#: ralmig.console.mensagens.cmcliconferirresumo
+msgid "%d projeto(s) compilado(s), %d com erro."
+msgstr "%d proyecto(s) compilado(s), %d con errores."
+
+#: ralmig.acoes.projeto.emacaofalha
+msgid "Regra %s, arquivo %s: %s"
+msgstr "Regla %s, archivo %s: %s"
+
+#: ralmig.acoes.projeto.cmacaopacotetrocado
+msgid "Pacote %s trocado por %s"
+msgstr "Paquete %s reemplazado por %s"
+
+#: ralmig.acoes.projeto.cmacaopacoteacrescentado
+msgid "Pacote %s acrescentado (o projeto usa %s)"
+msgstr "Paquete %s agregado (el proyecto usa %s)"
+
+#: ralmig.acoes.projeto.cmacaocaminhotrocado
+msgid "Caminhos de busca: %s -> %s"
+msgstr "Rutas de búsqueda: %s -> %s"
+
+#: ralmig.acoes.projeto.cmacaocaminhodpk
+msgid "Caminho de %s: %s -> %s"
+msgstr "Ruta de %s: %s -> %s"
+
+#: ralmig.acoes.projeto.cmacaounittrocada
+msgid "Unit %s trocada por %s no uses (%d vez(es))"
+msgstr "Unit %s reemplazada por %s en el uses (%d vez/veces)"
+
+#: ralmig.acoes.projeto.cmacaounitacrescentada
+msgid "Unit %s acrescentada ao uses (o código usa %s)"
+msgstr "Unit %s agregada al uses (el código usa %s)"
+
+#: ralmig.acoes.projeto.cmacaodesignpararuntime
+msgid "Pacote %s trocado por %s (o pacote não registra componentes)"
+msgstr "Paquete %s reemplazado por %s (el paquete no registra componentes)"
+
+#: ralmig.acoes.formulario.serroform
+msgid "Formulário %s não pôde ser lido (linha %d): %s"
+msgstr "No se pudo leer el formulario %s (línea %d): %s"
+
+#: ralmig.acoes.formulario.sfeitocriado
+msgid "Criado %s (%s) ligado a %s"
+msgstr "Creado %s (%s) vinculado a %s"
+
+#: ralmig.acoes.formulario.sfeitoremovidas
+msgid "%s: removidas %s"
+msgstr "%s: quitadas %s"
+
+#: ralmig.acoes.formulario.sfeitorenomeada
+msgid "%s: propriedade %s renomeada para %s"
+msgstr "%s: propiedad %s renombrada a %s"
+
+#: ralmig.acoes.formulario.sfeitomaterializada
+msgid "%s: %s = %s escrito explicitamente"
+msgstr "%s: %s = %s escrito explícitamente"
+
+#: ralmig.acoes.formulario.sfeitocampo
+msgid "Campo %s: %s acrescentado à classe do formulário"
+msgstr "Campo %s: %s agregado a la clase del formulario"
+
+#: ralmig.acoes.formulario.sfeitouses
+msgid "Unit %s acrescentada ao uses"
+msgstr "Unit %s agregada al uses"
+
+#: ralmig.acoes.formulario.sprobdestinoexiste
+msgid "A propriedade %s já existe em %s: não foi renomeada."
+msgstr "La propiedad %s ya existe en %s: no se renombró."
+
+#: ralmig.acoes.formulario.sprobdescartavel
+msgid "A propriedade %s de %s tem o valor %s, que não é o padrão: não foi removida."
+msgstr "La propiedad %s de %s tiene el valor %s, que no es el predeterminado: no se quitó."
+
+#: ralmig.acoes.formulario.sprobsemancestral
+msgid "O formulário ancestral de %s não está no conjunto: a propriedade não foi tocada."
+msgstr "El formulario ancestro de %s no está en el conjunto: no se tocó la propiedad."
+
+#: ralmig.acoes.formulario.sprobvalordiferente
+msgid "Em %s a propriedade %s (%s) difere da do formulário ancestral e foi removida."
+msgstr "En %s la propiedad %s (%s) difiere de la del formulario ancestro y se quitó."
+
+#: ralmig.acoes.formulario.sprobpluginexiste
+msgid "O servidor %s já tem um plugin %s e ainda tem propriedades antigas: nada foi movido."
+msgstr "El servidor %s ya tiene un plugin %s y todavía tiene propiedades antiguas: no se movió nada."
+
+#: ralmig.acoes.formulario.sprobclassenaoprovada
+msgid "Não foi possível provar que a classe %s de %s descende de um servidor RAL."
+msgstr "No fue posible probar que la clase %s de %s desciende de un servidor RAL."
+
+#: ralmig.acoes.formulario.sprobansi
+msgid "O valor de %s tem caracteres fora do ASCII num arquivo ANSI: o plugin não foi criado."
+msgstr "El valor de %s tiene caracteres fuera de ASCII en un archivo ANSI: no se creó el plugin."
+
+#: ralmig.acoes.formulario.sprobsemclasse
+msgid "A classe %s não foi achada na unit do formulário: acrescente o campo à mão."
+msgstr "No se encontró la clase %s en la unit del formulario: agregue el campo a mano."
+
+#: ralmig.acoes.formulario.sprobsemunit
+msgid "O formulário %s não tem a unit par no conjunto: acrescente o campo e a unit à mão."
+msgstr "El formulario %s no tiene la unit par en el conjunto: agregue el campo y la unit a mano."
+
+#: ralmig.acoes.codigo.rscodrenomeado
+msgid "%de% is now %para%."
+msgstr "%de% ahora es %para%."
+
+#: ralmig.acoes.codigo.rscodclasseform
+msgid "The class of %nome% changed from %de% to %para%."
+msgstr "La clase de %nome% cambió de %de% a %para%."
+
+#: ralmig.acoes.codigo.rscodmovido
+msgid "%de% is now %para%."
+msgstr "%de% ahora es %para%."
+
+#: ralmig.acoes.codigo.rscodremovido
+msgid "%nome% no longer exists on the server; the line was removed."
+msgstr "%nome% ya no existe en el servidor; se quitó la línea."
+
+#: ralmig.acoes.codigo.rscodfazerplugin
+msgid "In %arquivo%, line %linha%: %variavel% no longer has these properties; create %componente% (unit %unit%) next to where the server is created, set its Server to %variavel% and move the values to it, then delete the old lines."
+msgstr "En %arquivo%, línea %linha%: %variavel% ya no tiene estas propiedades; cree %componente% (unit %unit%) junto a donde se crea el servidor, ponga su Server en %variavel%, mueva los valores a él y borre las líneas antiguas."
+
+#: ralmig.acoes.codigo.rscodfazerremover
+msgid "In %arquivo%, line %linha%: %nome% no longer exists on the server; delete this use."
+msgstr "En %arquivo%, línea %linha%: %nome% ya no existe en el servidor; borre este uso."
+
+#: ralmig.acoes.codigo.rscodfazerrenomear
+msgid "In %arquivo%, line %linha%: rename %de% to %para% if %variavel% is a %classe%."
+msgstr "En %arquivo%, línea %linha%: renombre %de% a %para% si %variavel% es un %classe%."
+
+#: ralmig.acoes.codigo.rscodsemtexto
+msgid "See the migration notes of the RAL."
+msgstr "Vea las notas de migración de RAL."
+
+#: ralmig.acoes.codigo.rscodsomenterelatorio
+msgid "See the report."
+msgstr "Vea el informe."
+
+#: ralmig.tela.mensagens.cmtitulojanela
+msgid "Migrador do RAL"
+msgstr "Migrador de RAL"
+
+#: ralmig.tela.mensagens.cmversaomigrador
+msgid "Migrador %s"
+msgstr "Migrador %s"
+
+#: ralmig.tela.mensagens.cmtemaclaro
+msgid "Claro"
+msgstr "Claro"
+
+#: ralmig.tela.mensagens.cmtemaescuro
+msgid "Escuro"
+msgstr "Oscuro"
+
+#: ralmig.tela.mensagens.cmavancar
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: ralmig.tela.mensagens.cmvoltar
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: ralmig.tela.mensagens.cmaplicar
+msgid "Aplicar"
+msgstr "Aplicar"
+
+#: ralmig.tela.mensagens.cmconferir
+msgid "Conferir >"
+msgstr "Comprobar >"
+
+#: ralmig.tela.mensagens.cmconcluir
+msgid "Concluir"
+msgstr "Finalizar"
+
+#: ralmig.tela.mensagens.cmsim
+msgid "Sim"
+msgstr "Sí"
+
+#: ralmig.tela.mensagens.cmnao
+msgid "Não"
+msgstr "No"
+
+#: ralmig.tela.mensagens.cmidiomatitulo
+msgid "Idioma"
+msgstr "Idioma"
+
+#: ralmig.tela.mensagens.cmidiomasub
+msgid "Escolha o idioma do migrador."
+msgstr "Elija el idioma del migrador."
+
+#: ralmig.tela.mensagens.cmprojetotitulo
+msgid "Projeto"
+msgstr "Proyecto"
+
+#: ralmig.tela.mensagens.cmprojetosub
+msgid "Escolha a pasta (ou o arquivo de projeto) que será migrada."
+msgstr "Elija la carpeta (o el archivo de proyecto) que se va a migrar."
+
+#: ralmig.tela.mensagens.cmprojetocaminho
+msgid "Pasta ou arquivo de projeto:"
+msgstr "Carpeta o archivo de proyecto:"
+
+#: ralmig.tela.mensagens.cmescolherpasta
+msgid "Pasta..."
+msgstr "Carpeta..."
+
+#: ralmig.tela.mensagens.cmescolherarquivo
+msgid "Arquivo..."
+msgstr "Archivo..."
+
+#: ralmig.tela.mensagens.cmescolherpastatitulo
+msgid "Pasta do projeto"
+msgstr "Carpeta del proyecto"
+
+#: ralmig.tela.mensagens.cmfiltroprojetos
+msgid "Projetos Delphi e Lazarus"
+msgstr "Proyectos de Delphi y Lazarus"
+
+#: ralmig.tela.mensagens.cmfiltrotodos
+msgid "Todos os arquivos"
+msgstr "Todos los archivos"
+
+#: ralmig.tela.mensagens.cmprojetosachados
+msgid "Projetos encontrados: %d"
+msgstr "Proyectos encontrados: %d"
+
+#: ralmig.tela.mensagens.cmsemprojetos
+msgid "Nenhum projeto ou unit Pascal foi encontrado neste caminho."
+msgstr "No se encontró ningún proyecto ni unit Pascal en esta ruta."
+
+#: ralmig.tela.mensagens.cmforatitulo
+msgid "Fora da pasta (marque o que deve entrar na migração):"
+msgstr "Fuera de la carpeta (marque lo que debe entrar en la migración):"
+
+#: ralmig.tela.mensagens.cmforaprojeto
+msgid "projeto: %s"
+msgstr "proyecto: %s"
+
+#: ralmig.tela.mensagens.cmforaunit
+msgid "units: %s"
+msgstr "units: %s"
+
+#: ralmig.tela.mensagens.cmcopiaanterior
+msgid "Esta pasta tem %d migração(ões) anterior(es) com cópia de segurança."
+msgstr "Esta carpeta tiene %d migración(es) anterior(es) con copia de seguridad."
+
+#: ralmig.tela.mensagens.cmdesfazeranterior
+msgid "Desfazer a última migração"
+msgstr "Deshacer la última migración"
+
+#: ralmig.tela.mensagens.cmdesfazertitulo
+msgid "Desfazer a migração"
+msgstr "Deshacer la migración"
+
+#: ralmig.tela.mensagens.cmdesfazerpergunta
+msgid "Os arquivos voltam ao que eram antes da última migração e os arquivos que ela criou são apagados. Continuar?"
+msgstr "Los archivos vuelven a ser lo que eran antes de la última migración y se borran los archivos que ella creó. ¿Continuar?"
+
+#: ralmig.tela.mensagens.cmversoestitulo
+msgid "Versões"
+msgstr "Versiones"
+
+#: ralmig.tela.mensagens.cmversoessub
+msgid "De que versão do RAL o projeto vem e para qual ele vai."
+msgstr "De qué versión de RAL viene el proyecto y a cuál va."
+
+#: ralmig.tela.mensagens.cmversaode
+msgid "Versão atual do projeto:"
+msgstr "Versión actual del proyecto:"
+
+#: ralmig.tela.mensagens.cmversaopara
+msgid "Migrar para:"
+msgstr "Migrar a:"
+
+#: ralmig.tela.mensagens.cmevidencias
+msgid "Evidências:"
+msgstr "Evidencias:"
+
+#: ralmig.tela.mensagens.cmforcarde
+msgid "Aplicar a partir da versão escolhida, mesmo que o projeto pareça já estar numa mais nova"
+msgstr "Aplicar desde la versión elegida, aunque el proyecto parezca estar ya en una más nueva"
+
+#: ralmig.tela.mensagens.cmnaodetectada
+msgid "Nenhuma pista da versão foi encontrada: escolha a versão de origem."
+msgstr "No se encontró ninguna pista de la versión: elija la versión de origen."
+
+#: ralmig.tela.mensagens.cmconfalta
+msgid "alta"
+msgstr "alta"
+
+#: ralmig.tela.mensagens.cmconfmedia
+msgid "média"
+msgstr "media"
+
+#: ralmig.tela.mensagens.cmconfbaixa
+msgid "baixa"
+msgstr "baja"
+
+#: ralmig.tela.mensagens.cmdetectada
+msgid "Versão detectada: %s (confiança: %s)"
+msgstr "Versión detectada: %s (confianza: %s)"
+
+#: ralmig.tela.mensagens.cmdeinformado
+msgid "(a origem escolhida é outra)"
+msgstr "(el origen elegido es otro)"
+
+#: ralmig.tela.mensagens.emescolhaversoes
+msgid "Escolha a versão de origem e a de destino."
+msgstr "Elija la versión de origen y la de destino."
+
+#: ralmig.tela.mensagens.emdestinomaisvelho
+msgid "O destino (RAL %s) é mais velho que a origem (RAL %s): o migrador não volta versões."
+msgstr "El destino (RAL %s) es más viejo que el origen (RAL %s): el migrador no retrocede versiones."
+
+#: ralmig.tela.mensagens.emmesmaversao
+msgid "A origem e o destino são a mesma versão: não há o que migrar."
+msgstr "El origen y el destino son la misma versión: no hay nada que migrar."
+
+#: ralmig.tela.mensagens.cmbintitulo
+msgid "Formulários binários"
+msgstr "Formularios binarios"
+
+#: ralmig.tela.mensagens.cmbinsub
+msgid "Alguns formulários estão salvos no formato binário."
+msgstr "Algunos formularios están guardados en formato binario."
+
+#: ralmig.tela.mensagens.cmbinexplicacao
+msgid "O migrador só edita formulários em texto. Estes formulários podem ser convertidos para texto agora, ou ficar de fora da migração."
+msgstr "El migrador solo edita formularios en texto. Estos formularios se pueden convertir a texto ahora, o quedar fuera de la migración."
+
+#: ralmig.tela.mensagens.cmbinconverter
+msgid "Converter para texto (recomendado)"
+msgstr "Convertir a texto (recomendado)"
+
+#: ralmig.tela.mensagens.cmbindeixar
+msgid "Deixar de fora (estes formulários não serão migrados)"
+msgstr "Dejar fuera (estos formularios no se migrarán)"
+
+#: ralmig.tela.mensagens.cmbinnota
+msgid "O formulário convertido tem o mesmo conteúdo, só muda a forma de gravar; a cópia de segurança guarda o binário original."
+msgstr "El formulario convertido tiene el mismo contenido, solo cambia la forma de grabarlo; la copia de seguridad guarda el binario original."
+
+#: ralmig.tela.mensagens.cmpreviatitulo
+msgid "Prévia"
+msgstr "Vista previa"
+
+#: ralmig.tela.mensagens.cmpreviasub
+msgid "Nada foi gravado ainda. Confira o que vai mudar."
+msgstr "Todavía no se grabó nada. Compruebe lo que va a cambiar."
+
+#: ralmig.tela.mensagens.cmignorarerros
+msgid "Ignorar os erros e aplicar assim mesmo"
+msgstr "Ignorar los errores y aplicar de todos modos"
+
+#: ralmig.tela.mensagens.cmitemfazer
+msgid "O que fazer: %s"
+msgstr "Qué hacer: %s"
+
+#: ralmig.tela.mensagens.cmitemwiki
+msgid "Wiki: %s"
+msgstr "Wiki: %s"
+
+#: ralmig.tela.mensagens.cmitemlocal
+msgid "%s (linha %d)"
+msgstr "%s (línea %d)"
+
+#: ralmig.tela.mensagens.cmpreviasemconjunto
+msgid "A migração não pôde ser simulada: veja os erros."
+msgstr "No se pudo simular la migración: vea los errores."
+
+#: ralmig.tela.mensagens.cmpreviaerros
+msgid "A simulação teve %d erro(s): corrija-os, ou marque para ignorar."
+msgstr "La simulación tuvo %d error(es): corríjalos, o marque para ignorar."
+
+#: ralmig.tela.mensagens.cmarquivonovo
+msgid "%s (novo)"
+msgstr "%s (nuevo)"
+
+#: ralmig.tela.mensagens.cmabaarquivos
+msgid "Arquivos (%d)"
+msgstr "Archivos (%d)"
+
+#: ralmig.tela.mensagens.cmabamanual
+msgid "Precisa de você (%d)"
+msgstr "Requiere su atención (%d)"
+
+#: ralmig.tela.mensagens.cmabacomportamento
+msgid "Comportamento (%d)"
+msgstr "Comportamiento (%d)"
+
+#: ralmig.tela.mensagens.cmabaerros
+msgid "Erros (%d)"
+msgstr "Errores (%d)"
+
+#: ralmig.tela.mensagens.cmnenhumalterado
+msgid "Nenhum arquivo precisa mudar."
+msgstr "Ningún archivo necesita cambiar."
+
+#: ralmig.tela.mensagens.cmaplicartitulo
+msgid "Aplicar"
+msgstr "Aplicar"
+
+#: ralmig.tela.mensagens.cmaplicarsub
+msgid "A migração só grava no disco quando você confirmar."
+msgstr "La migración solo graba en el disco cuando usted confirma."
+
+#: ralmig.tela.mensagens.cmaplicarresumo
+msgid "%d arquivo(s) serão gravados em %s"
+msgstr "Se grabarán %d archivo(s) en %s"
+
+#: ralmig.tela.mensagens.cmaplicarnada
+msgid "Nenhum arquivo muda: só o relatório será gravado."
+msgstr "Ningún archivo cambia: solo se grabará el informe."
+
+#: ralmig.tela.mensagens.cmfazercopia
+msgid "Fazer cópia de segurança antes de gravar (recomendado)"
+msgstr "Hacer una copia de seguridad antes de grabar (recomendado)"
+
+#: ralmig.tela.mensagens.cmcopiaonde
+msgid "A cópia fica em %s (um .zip por migração) e permite desfazer."
+msgstr "La copia queda en %s (un .zip por migración) y permite deshacer."
+
+#: ralmig.tela.mensagens.cmsemcopiaaviso
+msgid "Sem a cópia de segurança não há como desfazer a migração."
+msgstr "Sin la copia de seguridad no hay manera de deshacer la migración."
+
+#: ralmig.tela.mensagens.cmconfirmartitulo
+msgid "Aplicar a migração"
+msgstr "Aplicar la migración"
+
+#: ralmig.tela.mensagens.cmconfirmarcom
+msgid "Gravar %d arquivo(s) em %s? A cópia de segurança é feita antes."
+msgstr "¿Grabar %d archivo(s) en %s? La copia de seguridad se hace antes."
+
+#: ralmig.tela.mensagens.cmconfirmarsem
+msgid "Gravar %d arquivo(s) SEM cópia de segurança? Sem ela não há como desfazer."
+msgstr "¿Grabar %d archivo(s) SIN copia de seguridad? Sin ella no hay manera de deshacer."
+
+#: ralmig.tela.mensagens.emtelagravar
+msgid "Não foi possível gravar: %s"
+msgstr "No fue posible grabar: %s"
+
+#: ralmig.tela.mensagens.cmreltitulo
+msgid "Relatório"
+msgstr "Informe"
+
+#: ralmig.tela.mensagens.cmrelsub
+msgid "O que foi feito e o que ainda precisa de você."
+msgstr "Lo que se hizo y lo que todavía le necesita."
+
+#: ralmig.tela.mensagens.cmrelnaoaplicada
+msgid "A migração não está aplicada."
+msgstr "La migración no está aplicada."
+
+#: ralmig.tela.mensagens.cmrelmd
+msgid "Relatório: %s"
+msgstr "Informe: %s"
+
+#: ralmig.tela.mensagens.cmrelhtml
+msgid "Relatório (HTML): %s"
+msgstr "Informe (HTML): %s"
+
+#: ralmig.tela.mensagens.cmrelmantido
+msgid "Nada foi alterado; o relatório da migração anterior foi mantido: %s"
+msgstr "No se cambió nada; se conservó el informe de la migración anterior: %s"
+
+#: ralmig.tela.mensagens.cmrelcopia
+msgid "Cópia de segurança: %s"
+msgstr "Copia de seguridad: %s"
+
+#: ralmig.tela.mensagens.cmrelsemcopia
+msgid "Sem cópia de segurança: não há como desfazer."
+msgstr "Sin copia de seguridad: no hay manera de deshacer."
+
+#: ralmig.tela.mensagens.cmabrirrelatorio
+msgid "Abrir o relatório (HTML)"
+msgstr "Abrir el informe (HTML)"
+
+#: ralmig.tela.mensagens.cmdesfazer
+msgid "Desfazer a migração"
+msgstr "Deshacer la migración"
+
+#: ralmig.tela.mensagens.cmrelnota
+msgid "A próxima etapa é opcional: compilar o projeto migrado contra o RAL de destino. Pode fechar a janela se não quiser."
+msgstr "El siguiente paso es opcional: compilar el proyecto migrado contra el RAL de destino. Puede cerrar la ventana si no quiere."
+
+#: ralmig.tela.mensagens.cmconftitulo
+msgid "Conferir compilando"
+msgstr "Comprobar compilando"
+
+#: ralmig.tela.mensagens.cmconfsub
+msgid "Opcional: compila o projeto migrado numa pasta temporária."
+msgstr "Opcional: compila el proyecto migrado en una carpeta temporal."
+
+#: ralmig.tela.mensagens.cmconfdica
+msgid "Nada é registrado na IDE nem é gravado no projeto: a compilação usa uma cópia dele e os fontes do RAL de destino."
+msgstr "No se registra nada en el IDE ni se graba en el proyecto: la compilación usa una copia de él y los fuentes del RAL de destino."
+
+#: ralmig.tela.mensagens.cmconfides
+msgid "IDEs com o RAL %s instalado pelo instalador:"
+msgstr "IDEs con el RAL %s instalado por el instalador:"
+
+#: ralmig.tela.mensagens.cmconfnenhuma
+msgid "Nenhuma IDE com o RAL %s nos recibos do instalador. Escolha uma IDE e a pasta do RAL de destino."
+msgstr "Ningún IDE con el RAL %s en los recibos del instalador. Elija un IDE y la carpeta del RAL de destino."
+
+#: ralmig.tela.mensagens.cmconfoutraide
+msgid "Outra IDE..."
+msgstr "Otro IDE..."
+
+#: ralmig.tela.mensagens.cmconfprojeto
+msgid "Projeto a compilar:"
+msgstr "Proyecto a compilar:"
+
+#: ralmig.tela.mensagens.cmcompilar
+msgid "Compilar"
+msgstr "Compilar"
+
+#: ralmig.tela.mensagens.cmcompilando
+msgid "Compilando..."
+msgstr "Compilando..."
+
+#: ralmig.tela.mensagens.cmcompilou
+msgid "Compilou sem erros."
+msgstr "Compiló sin errores."
+
+#: ralmig.tela.mensagens.cmnaocompilou
+msgid "Não compilou. O primeiro erro de cada arquivo:"
+msgstr "No compiló. El primer error de cada archivo:"
+
+#: ralmig.tela.mensagens.cmescolherraizide
+msgid "Pasta de instalação da IDE"
+msgstr "Carpeta de instalación del IDE"
+
+#: ralmig.tela.mensagens.cmescolherraizral
+msgid "Pasta do RAL de destino (a que tem src e pkg)"
+msgstr "Carpeta del RAL de destino (la que tiene src y pkg)"
+
+#: ralmig.tela.mensagens.emconfsemide
+msgid "Escolha uma IDE na lista."
+msgstr "Elija un IDE de la lista."
+
+#: ralmig.tela.mensagens.emconfsemprojeto
+msgid "Esta IDE não tem projeto correspondente (Delphi: .dpr ou .dproj; Lazarus: .lpi)."
+msgstr "Este IDE no tiene proyecto correspondiente (Delphi: .dpr o .dproj; Lazarus: .lpi)."
+
+#: ralmig.tela.mensagens.emideinvalida
+msgid "Esta pasta não é uma IDE, ou a pasta do RAL não tem src."
+msgstr "Esta carpeta no es un IDE, o la carpeta de RAL no tiene src."
+
+#: ralmig.tela.mensagens.emtelasemcopia
+msgid "Não há cópia de segurança em %s: não há como desfazer."
+msgstr "No hay copia de seguridad en %s: no hay manera de deshacer."
+
+#: ralmig.tela.mensagens.cmteladesfeito
+msgid "Migração desfeita com %s."
+msgstr "Migración deshecha con %s."
+
+#: ralmig.tela.mensagens.emtelarelatorio
+msgid "Não foi possível gravar o relatório: %s"
+msgstr "No fue posible grabar el informe: %s"
+
+#: ralmig.regras.smsgversaodesconhecida
+msgid "A versão \"%s\" do RAL não é conhecida pelo migrador."
+msgstr "El migrador no conoce la versión \"%s\" de RAL."
+
+#: ralmig.regras.smsgretrocesso
+msgid "O migrador só migra para a frente: o destino (%s) é mais velho que a origem (%s). Um projeto antigo continua funcionando na versão antiga e não precisa de migração."
+msgstr "El migrador solo migra hacia adelante: el destino (%s) es más viejo que el origen (%s). Un proyecto antiguo sigue funcionando en la versión antigua y no necesita migración."
+
+#: ralmig.regras.smsgsempasso
+msgid "Não há regras de migração a partir da versão %s."
+msgstr "No hay reglas de migración a partir de la versión %s."
+
+#: ralmig.regras.smsgdestinonomeio
+msgid "A versão %s não é o fim de nenhum passo de migração (o passo %s vai até %s)."
+msgstr "La versión %s no es el fin de ningún paso de migración (el paso %s llega hasta %s)."
+
+#: ralmig.texto.sedicaoforadotexto
+msgid "Edit outside of the text (offset %d, size %d, text of %d bytes)"
+msgstr "Edición fuera del texto (desplazamiento %d, tamaño %d, texto de %d bytes)"
+
+#: ralmig.texto.sedicaosobreposta
+msgid "Overlapping edits: offset %d (line %d) with size %d overlaps an edit already made"
+msgstr "Ediciones superpuestas: el desplazamiento %d (línea %d) con tamaño %d se superpone a una edición ya hecha"
+
+#: ralmig.texto.slinhainvalida
+msgid "Line %d does not exist (the text has %d lines)"
+msgstr "La línea %d no existe (el texto tiene %d líneas)"
+
+#: ralinst.mensagens.cmorigemdisco
+msgid "disco"
+msgstr "disco"
+
+#: ralinst.mensagens.cmorigemmanual
+msgid "manual"
+msgstr "manual"
+
+#: ralinst.mensagens.cmorigemregistro
+msgid "registro"
+msgstr "registro"
+
+#: ralinst.mensagens.cmdelphinaoreconhecido
+msgid "Delphi não reconhecido"
+msgstr "Delphi no reconocido"
+
+#: ralinst.mensagens.wmdelphidesconhecido
+msgid "Versão do Delphi que este instalador não conhece: atualize o instalador."
+msgstr "Versión de Delphi que este instalador no conoce: actualice el instalador."
+
+#: ralinst.mensagens.wmdelphidivideregistro
+msgid "Divide a configuração do registro com %s: o que for instalado numa aparece na outra."
+msgstr "Comparte la configuración del registro con %s: lo que se instale en una aparece en la otra."
+
+#: ralinst.mensagens.wmdelphiforadoregistro
+msgid "Instalação fora do registro: ela usa a configuração de HKCU%s, que é compartilhada por toda instalação desta mesma versão."
+msgstr "Instalación fuera del registro: usa la configuración de HKCU%s, que comparten todas las instalaciones de esta misma versión."
+
+#: ralinst.mensagens.wmdelphinuncaaberta
+msgid "Esta versão nunca foi aberta nesta conta de usuário: abra a IDE uma vez antes de instalar nela. Compilar os pacotes funciona."
+msgstr "Esta versión nunca se abrió en esta cuenta de usuario: abra el IDE una vez antes de instalar en él. Compilar los paquetes funciona."
+
+#: ralinst.mensagens.wmdelphisufixo
+msgid "O compilador desta pasta tem sufixo %s, mas %s usa %s: confira se a pasta não mistura versões."
+msgstr "El compilador de esta carpeta tiene el sufijo %s, pero %s usa %s: verifique que la carpeta no mezcle versiones."
+
+#: ralinst.mensagens.cmprefixoaviso
+msgid "  aviso: "
+msgstr "  aviso: "
+
+#: ralinst.mensagens.cmprefixoerro
+msgid "ERRO: "
+msgstr "ERROR: "
+
+#: ralinst.mensagens.emarquivonaoexiste
+msgid "%s não existe"
+msgstr "%s no existe"
+
+#: ralinst.mensagens.emcriar
+msgid "não foi possível criar %s"
+msgstr "no se pudo crear %s"
+
+#: ralinst.mensagens.emlimpar
+msgid "não foi possível limpar %s"
+msgstr "no se pudo limpiar %s"
+
+#: ralinst.mensagens.cmbaixandoarquivo
+msgid "  baixando %s"
+msgstr "  descargando %s"
+
+#: ralinst.mensagens.cmextraindoem
+msgid "  extraindo %s em %s"
+msgstr "  extrayendo %s en %s"
+
+#: ralinst.mensagens.emextrasemrelease
+msgid "%s: o extra %s vem de um release, e a versão %s não é um release"
+msgstr "%s: el extra %s viene de un release, y la versión %s no es un release"
+
+#: ralinst.mensagens.emfalhabaixar
+msgid "%s: falha ao baixar %s: %s"
+msgstr "%s: falló la descarga de %s: %s"
+
+#: ralinst.mensagens.emformatoextra
+msgid "formato do extra não suportado (só .zip, .tgz, .tar.gz): %s"
+msgstr "formato de extra no soportado (solo .zip, .tgz, .tar.gz): %s"
+
+#: ralinst.mensagens.emsemdownload
+msgid "%s não tem download"
+msgstr "%s no tiene descarga"
+
+#: ralinst.mensagens.emsemreleaseextra
+msgid "%s: não achei release estável para o extra %s"
+msgstr "%s: no encontré un release estable para el extra %s"
+
+#: ralinst.mensagens.emsemversaoestavel
+msgid "%s: não achei versão estável em %s"
+msgstr "%s: no encontré una versión estable en %s"
+
+#: ralinst.mensagens.cmextraindo
+msgid "  extraindo %s"
+msgstr "  extrayendo %s"
+
+#: ralinst.mensagens.cmfontes
+msgid "Fontes: %s %s em %s"
+msgstr "Fuentes: %s %s en %s"
+
+#: ralinst.mensagens.cmfontesjanapasta
+msgid "  já está na pasta (commit %s)"
+msgstr "  ya está en la carpeta (commit %s)"
+
+#: ralinst.mensagens.cmfontespronto
+msgid "  pronto: commit %s, %d submódulo(s)"
+msgstr "  listo: commit %s, %d submódulo(s)"
+
+#: ralinst.mensagens.cmsubmodulo
+msgid "  submódulo %s: %s/%s @ %s"
+msgstr "  submódulo %s: %s/%s @ %s"
+
+#: ralinst.mensagens.empastadeoutro
+msgid "a pasta %s já existe e não foi criada pelo instalador; escolha outra pasta de instalação ou esvazie esta"
+msgstr "la carpeta %s ya existe y no fue creada por el instalador; elija otra carpeta de instalación o vacíe esta"
+
+#: ralinst.mensagens.emsubmoduloforagithub
+msgid "submódulo %s: endereço fora do GitHub (%s)"
+msgstr "submódulo %s: dirección fuera de GitHub (%s)"
+
+#: ralinst.mensagens.emsubmodulonaodeclarado
+msgid "a versão %s não declara o submódulo %s"
+msgstr "la versión %s no declara el submódulo %s"
+
+#: ralinst.mensagens.emsubmoduloscommit
+msgid "não deu para saber o commit dos submódulos: %s"
+msgstr "no fue posible saber el commit de los submódulos: %s"
+
+#: ralinst.mensagens.emsubstituirpasta
+msgid "não foi possível substituir %s (algum arquivo aberto? feche as IDEs). A versão nova ficou em %s"
+msgstr "no se pudo reemplazar %s (¿algún archivo abierto? cierre los IDE). La versión nueva quedó en %s"
+
+#: ralinst.mensagens.wmsubmodulonaoexiste
+msgid "  submódulo %s não existe na versão %s; fica de fora"
+msgstr "  el submódulo %s no existe en la versión %s; queda fuera"
+
+#: ralinst.mensagens.wmversaoanteriorficou
+msgid "  aviso: a versão anterior ficou em %s; pode ser apagada à mão"
+msgstr "  aviso: la versión anterior quedó en %s; se puede borrar a mano"
+
+#: ralinst.mensagens.cmhashconferido
+msgid "hash conferido: %s"
+msgstr "hash verificado: %s"
+
+#: ralinst.mensagens.ematuapagar
+msgid "não consegui apagar %s"
+msgstr "no pude borrar %s"
+
+#: ralinst.mensagens.ematudownload
+msgid "o download falhou: %s"
+msgstr "la descarga falló: %s"
+
+#: ralinst.mensagens.ematuhash
+msgid "o hash do arquivo baixado não confere com o SHA256SUMS do release"
+msgstr "el hash del archivo descargado no coincide con el SHA256SUMS del release"
+
+#: ralinst.mensagens.ematunenhumaversao
+msgid "nenhuma versão nova escolhida (chame Verificar antes)"
+msgstr "ninguna versión nueva elegida (llame a Verificar antes)"
+
+#: ralinst.mensagens.ematunovonaoexiste
+msgid "o arquivo novo não existe: %s"
+msgstr "el archivo nuevo no existe: %s"
+
+#: ralinst.mensagens.ematureiniciar
+msgid "não consegui reiniciar: %s"
+msgstr "no pude reiniciar: %s"
+
+#: ralinst.mensagens.ematurenomear
+msgid "não consegui renomear %s"
+msgstr "no pude renombrar %s"
+
+#: ralinst.mensagens.ematusembinario
+msgid "a versão %s não tem binário para este sistema (%s)"
+msgstr "la versión %s no tiene binario para este sistema (%s)"
+
+#: ralinst.mensagens.ematusemescrita
+msgid "sem permissão de escrita na pasta do instalador (%s): %s"
+msgstr "sin permiso de escritura en la carpeta del instalador (%s): %s"
+
+#: ralinst.mensagens.ematusomas
+msgid "não consegui baixar o SHA256SUMS do release: %s"
+msgstr "no pude descargar el SHA256SUMS del release: %s"
+
+#: ralinst.mensagens.ematusomassemasset
+msgid "o SHA256SUMS do release não tem %s"
+msgstr "el SHA256SUMS del release no tiene %s"
+
+#: ralinst.mensagens.ematutamanho
+msgid "o arquivo baixado não tem o tamanho do release"
+msgstr "el archivo descargado no tiene el tamaño del release"
+
+#: ralinst.mensagens.ematutrocar
+msgid "não consegui pôr o arquivo novo no lugar; o instalador continua o de antes"
+msgstr "no pude poner el archivo nuevo en su lugar; el instalador sigue siendo el anterior"
+
+#: ralinst.mensagens.ematuverificar
+msgid "não foi possível verificar: %s"
+msgstr "no fue posible verificar: %s"
+
+#: ralinst.mensagens.emgithubrespostainesperada
+msgid "resposta inesperada da API do GitHub"
+msgstr "respuesta inesperada de la API de GitHub"
+
+#: ralinst.mensagens.cmbuildcodigo
+msgid "dcc terminou com código %d"
+msgstr "dcc terminó con el código %d"
+
+#: ralinst.mensagens.cmbuilddependeausente
+msgid "depende de %s, que não existe em %s"
+msgstr "depende de %s, que no existe en %s"
+
+#: ralinst.mensagens.cmbuilddependefalhou
+msgid "depende de %s, que falhou"
+msgstr "depende de %s, que falló"
+
+#: ralinst.mensagens.cmbuilddesignwin32
+msgid "pacote de design-time: só existe em Win32"
+msgstr "paquete de design-time: solo existe en Win32"
+
+#: ralinst.mensagens.cmbuildsemdesignide
+msgid "exige o designide, que o Delphi não tem em %s (não há IDE de 64 bits)"
+msgstr "exige el designide, que Delphi no tiene en %s (no hay IDE de 64 bits)"
+
+#: ralinst.mensagens.cmbuilderrocompilacao
+msgid "erro de compilação: %s"
+msgstr "error de compilación: %s"
+
+#: ralinst.mensagens.cmbuildfalhou
+msgid "  FALHOU: %s"
+msgstr "  FALLÓ: %s"
+
+#: ralinst.mensagens.cmbuildfonteausente
+msgid "fonte ausente na árvore: %s"
+msgstr "fuente ausente en el árbol: %s"
+
+#: ralinst.mensagens.cmbuildplataformadproj
+msgid "o .dproj não habilita %s"
+msgstr "el .dproj no habilita %s"
+
+#: ralinst.mensagens.cmbuildpulado
+msgid "  pulado: %s"
+msgstr "  omitido: %s"
+
+#: ralinst.mensagens.cmbuildsemarquivo
+msgid "arquivo não encontrado: %s"
+msgstr "archivo no encontrado: %s"
+
+#: ralinst.mensagens.cmbuildsembpl
+msgid "compilou, mas o .bpl não apareceu em %s"
+msgstr "compiló, pero el .bpl no apareció en %s"
+
+#: ralinst.mensagens.cmbuildsemres
+msgid "não foi possível gerar o .res"
+msgstr "no fue posible generar el .res"
+
+#: ralinst.mensagens.cmbuildsemsubmodulo
+msgid "submódulo não baixado: %s"
+msgstr "submódulo no descargado: %s"
+
+#: ralinst.mensagens.cmbuildunidadeausente
+msgid "dependência externa ausente: unidade %s não foi encontrada"
+msgstr "dependencia externa ausente: no se encontró la unidad %s"
+
+#: ralinst.mensagens.cmcolunaobservacao
+msgid "observação"
+msgstr "observación"
+
+#: ralinst.mensagens.cmcolunapacote
+msgid "pacote"
+msgstr "paquete"
+
+#: ralinst.mensagens.cmcolunaresultado
+msgid "resultado"
+msgstr "resultado"
+
+#: ralinst.mensagens.cmcolunatamanho
+msgid "tamanho"
+msgstr "tamaño"
+
+#: ralinst.mensagens.cmcompilando
+msgid "Compilando %d pacote(s) em %s (%s)"
+msgstr "Compilando %d paquete(s) en %s (%s)"
+
+#: ralinst.mensagens.cmestadofalhou
+msgid "FALHOU"
+msgstr "FALLÓ"
+
+#: ralinst.mensagens.cmestadook
+msgid "ok"
+msgstr "ok"
+
+#: ralinst.mensagens.cmestadopulado
+msgid "pulado"
+msgstr "omitido"
+
+#: ralinst.mensagens.cmgerandores
+msgid "  gerando %s (não vem no repositório)"
+msgstr "  generando %s (no viene en el repositorio)"
+
+#: ralinst.mensagens.cmsimulacao
+msgid "simulação"
+msgstr "simulación"
+
+#: ralinst.mensagens.cmsimulacaocomando
+msgid "  (simulação) %s"
+msgstr "  (simulación) %s"
+
+#: ralinst.mensagens.embrcc32
+msgid "  ERRO: brcc32 não gerou %s"
+msgstr "  ERROR: brcc32 no generó %s"
+
+#: ralinst.mensagens.embuildcompiladorausente
+msgid "ERRO: compilador não encontrado: %s"
+msgstr "ERROR: compilador no encontrado: %s"
+
+#: ralinst.mensagens.embuildplataforma
+msgid "ERRO: %s não compila para %s"
+msgstr "ERROR: %s no compila para %s"
+
+#: ralinst.mensagens.embuildsemcommondir
+msgid "ERRO: não sei onde gravar .bpl/.dcp desta IDE (BDSCOMMONDIR vazio)."
+msgstr "ERROR: no sé dónde grabar los .bpl/.dcp de este IDE (BDSCOMMONDIR vacío)."
+
+#: ralinst.mensagens.embuildsemcompilador
+msgid "ERRO: %s não tem compilador de linha de comando utilizável."
+msgstr "ERROR: %s no tiene un compilador de línea de comandos utilizable."
+
+#: ralinst.mensagens.embuildsemfontes
+msgid "ERRO: os fontes do RAL precisam estar em disco para compilar."
+msgstr "ERROR: las fuentes del RAL deben estar en disco para compilar."
+
+#: ralinst.mensagens.wmbplgrande
+msgid "  AVISO: %s tem %d KB para %d unidade(s): confira o -LU, pode ter linkado biblioteca de terceiro dentro do pacote"
+msgstr "  AVISO: %s tiene %d KB para %d unidad(es): revise el -LU, puede haber enlazado una biblioteca de terceros dentro del paquete"
+
+#: ralinst.mensagens.wmbuildsemsubmodulo
+msgid ". O zip do GitHub não traz submódulo: baixe-o antes (o instalador faz isso na etapa de download)."
+msgstr ". El zip de GitHub no trae submódulos: descárguelo antes (el instalador lo hace en la etapa de descarga)."
+
+#: ralinst.mensagens.wmbuildunidadeausente
+msgid ". Instale a biblioteca do recurso, aponte a pasta dela, ou desmarque este pacote."
+msgstr ". Instale la biblioteca del recurso, indique su carpeta, o desmarque este paquete."
+
+#: ralinst.mensagens.wmsemdcp
+msgid "  AVISO: pacote exigido sem .dcp em disco: %s (o compilador vai linkar as unidades dele dentro do .bpl)"
+msgstr "  AVISO: paquete requerido sin .dcp en disco: %s (el compilador enlazará sus unidades dentro del .bpl)"
+
+#: ralinst.mensagens.cmcatalogobaixar
+msgid "  (não está na origem: baixar)"
+msgstr "  (no está en el origen: descargar)"
+
+#: ralinst.mensagens.cmcatalogocaminhobusca
+msgid "      caminho de busca: %s"
+msgstr "      ruta de búsqueda: %s"
+
+#: ralinst.mensagens.cmcatalogodepoisde
+msgid "      depois de: %s"
+msgstr "      después de: %s"
+
+#: ralinst.mensagens.cmcatalogodesconhecidos
+msgid "Pedidos que o catálogo não conhece: %s"
+msgstr "Pedidos que el catálogo no conoce: %s"
+
+#: ralinst.mensagens.cmcatalogoexternos
+msgid "Pacotes externos exigidos: %s"
+msgstr "Paquetes externos requeridos: %s"
+
+#: ralinst.mensagens.cmcatalogofontesausentes
+msgid "      FONTES AUSENTES: %s"
+msgstr "      FUENTES AUSENTES: %s"
+
+#: ralinst.mensagens.cmcatalogoimplicitos
+msgid "      implícitos (.dproj, fora do requires): %s"
+msgstr "      implícitos (.dproj, fuera del requires): %s"
+
+#: ralinst.mensagens.cmcatalogoplano
+msgid "Plano %s: %d pacote(s), a partir de %s"
+msgstr "Plan %s: %d paquete(s), a partir de %s"
+
+#: ralinst.mensagens.cmcatalogosubmodulo
+msgid "      submódulo: %s  <- %s"
+msgstr "      submódulo: %s  <- %s"
+
+#: ralinst.mensagens.cmcatalogosubmodulos
+msgid "Submódulos a baixar junto com o RAL: %s"
+msgstr "Submódulos a descargar junto con el RAL: %s"
+
+#: ralinst.mensagens.cmcatalogovariaveis
+msgid "      variáveis exigidas: %s"
+msgstr "      variables requeridas: %s"
+
+#: ralinst.mensagens.cmcatalogovazio
+msgid "      VAZIO: o pacote não contém nenhuma unidade"
+msgstr "      VACÍO: el paquete no contiene ninguna unidad"
+
+#: ralinst.mensagens.cmcompilarinstalar
+msgid "compilar e instalar"
+msgstr "compilar e instalar"
+
+#: ralinst.mensagens.cmsocompilar
+msgid "só compilar"
+msgstr "solo compilar"
+
+#: ralinst.mensagens.emcatalogociclo
+msgid "Dependência circular entre pacotes %s: %s"
+msgstr "Dependencia circular entre paquetes %s: %s"
+
+#: ralinst.mensagens.emcatalogosemnopackage
+msgid "%s: nó <Package> não encontrado"
+msgstr "%s: nodo <Package> no encontrado"
+
+#: ralinst.mensagens.emcatalogosempackage
+msgid "%s: cláusula \"package\" não encontrada"
+msgstr "%s: cláusula \"package\" no encontrada"
+
+#: ralinst.mensagens.cmmanifestodaversao
+msgid "ralinstaller.json de %s"
+msgstr "ralinstaller.json de %s"
+
+#: ralinst.mensagens.cmmanifestoembutido
+msgid "manifesto embutido"
+msgstr "manifiesto incorporado"
+
+#: ralinst.mensagens.cmmotivocomercial
+msgid "%s é comercial e não está instalado no %s"
+msgstr "%s es comercial y no está instalado en %s"
+
+#: ralinst.mensagens.cmmotivodepende
+msgid "depende de %s, que não cabe nesta IDE"
+msgstr "depende de %s, que no cabe en este IDE"
+
+#: ralinst.mensagens.cmmotivoexige
+msgid "exige %s"
+msgstr "requiere %s"
+
+#: ralinst.mensagens.cmmotivoinstaladanaocompila
+msgid "o %s instalado nesta IDE (%s) não compila aqui: %s"
+msgstr "el %s instalado en este IDE (%s) no compila aquí: %s"
+
+#: ralinst.mensagens.cmmotivosempacote
+msgid "o %s não tem o pacote %s"
+msgstr "%s no tiene el paquete %s"
+
+#: ralinst.mensagens.cmmotivosemunidade
+msgid "usa %s, que o %s não tem"
+msgstr "usa %s, que %s no tiene"
+
+#: ralinst.mensagens.emmanifestoformato
+msgid "formato %d desconhecido (este instalador lê o 1)"
+msgstr "formato %d desconocido (este instalador lee el 1)"
+
+#: ralinst.mensagens.emmanifestonaoobjeto
+msgid "%s: o manifesto deveria ser um objeto JSON"
+msgstr "%s: el manifiesto debería ser un objeto JSON"
+
+#: ralinst.mensagens.emmanifestorecusado
+msgid "%s: manifesto recusado: %s"
+msgstr "%s: manifiesto rechazado: %s"
+
+#: ralinst.mensagens.emmanifestosempacote
+msgid "regra de pacote sem \"pacote\""
+msgstr "regla de paquete sin \"pacote\""
+
+#: ralinst.mensagens.emmanifestosemreceita
+msgid "regra de dependência sem \"receita\""
+msgstr "regla de dependencia sin \"receita\""
+
+#: ralinst.mensagens.emsemautoinstall
+msgid "%s: sem StaticAutoInstallPackages"
+msgstr "%s: sin StaticAutoInstallPackages"
+
+#: ralinst.mensagens.cmbaixando
+msgid "baixando %s/%s @ %s"
+msgstr "descargando %s/%s @ %s"
+
+#: ralinst.mensagens.cmversaoestavel
+msgid "%s  —  estável"
+msgstr "%s  —  estable"
+
+#: ralinst.mensagens.cmversaoestavelrecente
+msgid "%s  —  estável mais recente"
+msgstr "%s  —  estable más reciente"
+
+#: ralinst.mensagens.cmversaoprelancamento
+msgid "%s  —  pré-lançamento"
+msgstr "%s  —  prelanzamiento"
+
+#: ralinst.mensagens.cmversaoramo
+msgid "%s  —  ramo (muda a cada commit)"
+msgstr "%s  —  rama (cambia con cada commit)"
+
+#: ralinst.mensagens.cmversaotag
+msgid "%s  —  tag"
+msgstr "%s  —  tag"
+
+#: ralinst.mensagens.emgithubarvore
+msgid "resposta inesperada da árvore de %s"
+msgstr "respuesta inesperada del árbol de %s"
+
+#: ralinst.mensagens.emgithubfalhabaixar
+msgid "falha ao baixar %s/%s @ %s: %s"
+msgstr "falló la descarga de %s/%s @ %s: %s"
+
+#: ralinst.mensagens.emgithubinvalida
+msgid "resposta inválida do GitHub: %s"
+msgstr "respuesta inválida de GitHub: %s"
+
+#: ralinst.mensagens.emgithublimite
+msgid "limite de pedidos à API do GitHub esgotado (volta em %d min; defina GITHUB_TOKEN para um limite maior)"
+msgstr "límite de pedidos a la API de GitHub agotado (vuelve en %d min; defina GITHUB_TOKEN para un límite mayor)"
+
+#: ralinst.mensagens.emgithubnaoexiste
+msgid "não existe no GitHub: %s"
+msgstr "no existe en GitHub: %s"
+
+#: ralinst.mensagens.emgithubnaozip
+msgid "o GitHub não devolveu um zip para %s/%s @ %s"
+msgstr "GitHub no devolvió un zip para %s/%s @ %s"
+
+#: ralinst.mensagens.emgithubrecusou
+msgid "a API do GitHub recusou o pedido (%s)"
+msgstr "la API de GitHub rechazó el pedido (%s)"
+
+#: ralinst.mensagens.emgithubsemaversao
+msgid "%s/%s não tem a versão %s"
+msgstr "%s/%s no tiene la versión %s"
+
+#: ralinst.mensagens.emgithubsemresposta
+msgid "sem resposta do GitHub: %s"
+msgstr "sin respuesta de GitHub: %s"
+
+#: ralinst.mensagens.emgithubsemversoes
+msgid "o repositório %s/%s não tem nenhuma versão publicada"
+msgstr "el repositorio %s/%s no tiene ninguna versión publicada"
+
+#: ralinst.mensagens.emgravar
+msgid "não foi possível gravar %s"
+msgstr "no fue posible grabar %s"
+
+#: ralinst.mensagens.wmgithubarvoretruncada
+msgid "a árvore de %s veio truncada pelo GitHub"
+msgstr "el árbol de %s llegó truncado por GitHub"
+
+#: ralinst.mensagens.wmgithubcache
+msgid "%s; usando a consulta guardada de %s"
+msgstr "%s; usando la consulta guardada el %s"
+
+#: ralinst.mensagens.cmerrocodigo
+msgid "%s (erro %d)"
+msgstr "%s (error %d)"
+
+#: ralinst.mensagens.cmconfigpadraosistema
+msgid "padrão do sistema"
+msgstr "predeterminada del sistema"
+
+#: ralinst.mensagens.cmlazarusversaodesconhecida
+msgid "Lazarus (versão desconhecida)"
+msgstr "Lazarus (versión desconocida)"
+
+#: ralinst.mensagens.wmlazarusconfigdeoutro
+msgid "A configuração em %s pertence a outro Lazarus (%s)."
+msgstr "La configuración en %s pertenece a otro Lazarus (%s)."
+
+#: ralinst.mensagens.wmlazarusdivideconfig
+msgid "Divide a pasta de configuração %s com %s: pacotes instalados numa entram na outra."
+msgstr "Comparte la carpeta de configuración %s con %s: los paquetes instalados en uno entran en el otro."
+
+#: ralinst.mensagens.wmlazarussemescrita
+msgid "Sem permissão de escrita na pasta do Lazarus: reconstruir a IDE vai exigir executar como administrador."
+msgstr "Sin permiso de escritura en la carpeta de Lazarus: reconstruir el IDE exigirá ejecutar como administrador."
+
+#: ralinst.mensagens.wmlazarussemfpc
+msgid "Compilador FPC não identificado: o lazbuild vai usar o que estiver configurado no ambiente."
+msgstr "Compilador FPC no identificado: lazbuild usará el que esté configurado en el entorno."
+
+#: ralinst.mensagens.cmarquivoem
+msgid "  %s em %s"
+msgstr "  %s en %s"
+
+#: ralinst.mensagens.cmcompilacontra
+msgid "  compila contra %s"
+msgstr "  compila contra %s"
+
+#: ralinst.mensagens.cmdepcomercial
+msgid "%s é comercial e não está instalado nesta IDE; instale-o (%s) e rode o instalador de novo"
+msgstr "%s es comercial y no está instalado en este IDE; instálelo (%s) y ejecute el instalador de nuevo"
+
+#: ralinst.mensagens.cmdependedefora
+msgid "depende de %s, que ficou de fora"
+msgstr "depende de %s, que quedó fuera"
+
+#: ralinst.mensagens.cmdependenciapara
+msgid "Dependência %s (para %s)"
+msgstr "Dependencia %s (para %s)"
+
+#: ralinst.mensagens.cmdepfalhou
+msgid "a instalação de %s falhou (detalhes acima)"
+msgstr "la instalación de %s falló (detalles arriba)"
+
+#: ralinst.mensagens.cmdepinstalandode
+msgid "  instalando de %s"
+msgstr "  instalando desde %s"
+
+#: ralinst.mensagens.cmdepjainstalada
+msgid "  já instalada, usando a que está lá: %s"
+msgstr "  ya instalada, usando la que está allí: %s"
+
+#: ralinst.mensagens.cmdepnaobaixada
+msgid "%s não está instalado nesta IDE e a versão %s não foi baixada"
+msgstr "%s no está instalado en este IDE y la versión %s no se descargó"
+
+#: ralinst.mensagens.cmdepsemacoes
+msgid "%s: a receita não diz como instalar no %s"
+msgstr "%s: la receta no dice cómo instalar en %s"
+
+#: ralinst.mensagens.cmficadefora
+msgid "%s fica de fora: %s"
+msgstr "%s queda fuera: %s"
+
+#: ralinst.mensagens.cmjatinhacaminhos
+msgid "  %s Search Path: já tinha todos os caminhos"
+msgstr "  %s Search Path: ya tenía todas las rutas"
+
+#: ralinst.mensagens.cmnadacompilou
+msgid "Nada compilou: o registro da IDE não foi alterado."
+msgstr "Nada compiló: el registro del IDE no se modificó."
+
+#: ralinst.mensagens.cmnaocompilounaoregistrado
+msgid "%s não compilou e não foi registrado; se havia uma versão anterior registrada, ela continua lá."
+msgstr "%s no compiló y no se registró; si había una versión anterior registrada, sigue allí."
+
+#: ralinst.mensagens.cmnenhumcabedelphi
+msgid "Nenhum pacote escolhido cabe nesta IDE: o registro não foi alterado."
+msgstr "Ningún paquete elegido cabe en este IDE: el registro no se modificó."
+
+#: ralinst.mensagens.cmnenhumsobrou
+msgid "Nenhum pacote sobrou para instalar: faltam as dependências acima."
+msgstr "No quedó ningún paquete para instalar: faltan las dependencias de arriba."
+
+#: ralinst.mensagens.cmnolibrarypath
+msgid "%s no library path (%s)"
+msgstr "%s en el library path (%s)"
+
+#: ralinst.mensagens.cmoutracopiaral
+msgid "%s: outra cópia do RAL no library path: %s"
+msgstr "%s: otra copia del RAL en el library path: %s"
+
+#: ralinst.mensagens.cmplanoaberta
+msgid "  ATENÇÃO: a IDE está aberta agora; feche antes de instalar"
+msgstr "  ATENCIÓN: el IDE está abierto ahora; ciérrelo antes de instalar"
+
+#: ralinst.mensagens.cmplanobplem
+msgid "  %s: .bpl em %s"
+msgstr "  %s: .bpl en %s"
+
+#: ralinst.mensagens.cmplanocompilar
+msgid "  compilar, na ordem:"
+msgstr "  compilar, en orden:"
+
+#: ralinst.mensagens.cmplanodepcomercial
+msgid "  FALTA %s (%s): é comercial; instale-o antes (%s). Sem ele, %s fica de fora"
+msgstr "  FALTA %s (%s): es comercial; instálelo antes (%s). Sin él, %s queda fuera"
+
+#: ralinst.mensagens.cmplanodepfalta
+msgid "  FALTA %s (%s): não está instalado. Sem ele, %s fica de fora"
+msgstr "  FALTA %s (%s): no está instalado. Sin él, %s queda fuera"
+
+#: ralinst.mensagens.cmplanodepinstalar
+msgid "  dependência %s %s (%s): instalar de %s"
+msgstr "  dependencia %s %s (%s): instalar desde %s"
+
+#: ralinst.mensagens.cmplanodepjainstalada
+msgid "  dependência %s (%s): já instalada — %s"
+msgstr "  dependencia %s (%s): ya instalada — %s"
+
+#: ralinst.mensagens.cmplanoficadefora
+msgid "    fica de fora: %s — %s"
+msgstr "    queda fuera: %s — %s"
+
+#: ralinst.mensagens.cmplanoinstalarnaide
+msgid "    %s  (instalar na IDE)"
+msgstr "    %s  (instalar en el IDE)"
+
+#: ralinst.mensagens.cmplanolibrarypath
+msgid "  library path (%s):"
+msgstr "  library path (%s):"
+
+#: ralinst.mensagens.cmplanonuncaaberta
+msgid "  ATENÇÃO: a IDE nunca foi aberta; abra e feche uma vez antes de instalar"
+msgstr "  ATENCIÓN: el IDE nunca se abrió; ábralo y ciérrelo una vez antes de instalar"
+
+#: ralinst.mensagens.cmplanoruntime
+msgid "    %s  (runtime)"
+msgstr "    %s  (runtime)"
+
+#: ralinst.mensagens.cmplanosomentelibrarypath
+msgid "  modo: somente library path (nenhum pacote compilado ou instalado)"
+msgstr "  modo: solo library path (ningún paquete compilado ni instalado)"
+
+#: ralinst.mensagens.cmplanovariavelmuda
+msgid "  ATENÇÃO: $(%s) hoje aponta para %s; os projetos que usam a variável passam a ver a pasta nova"
+msgstr "  ATENCIÓN: $(%s) hoy apunta a %s; los proyectos que usan la variable pasarán a ver la carpeta nueva"
+
+#: ralinst.mensagens.cmplataformaignorada
+msgid "%s não compila para %s; plataforma ignorada."
+msgstr "%s no compila para %s; plataforma ignorada."
+
+#: ralinst.mensagens.cmprefixoavisorelatorio
+msgid "AVISO: "
+msgstr "AVISO: "
+
+#: ralinst.mensagens.cmrecibo
+msgid "Recibo: %s"
+msgstr "Recibo: %s"
+
+#: ralinst.mensagens.cmregistro
+msgid "Registro: HKCU%s"
+msgstr "Registro: HKCU%s"
+
+#: ralinst.mensagens.cmregistroalteracoes
+msgid "Registro: %d alteração(ões) em HKCU%s%s"
+msgstr "Registro: %d cambio(s) en HKCU%s%s"
+
+#: ralinst.mensagens.cmsimulado
+msgid " (simulado)"
+msgstr " (simulado)"
+
+#: ralinst.mensagens.emdelphiaberto
+msgid "ERRO: %s está aberto. Feche a IDE antes de instalar: ela regrava o registro ao fechar e a instalação se perderia."
+msgstr "ERROR: %s está abierto. Cierre el IDE antes de instalar: reescribe el registro al cerrar y la instalación se perdería."
+
+#: ralinst.mensagens.emdelphinuncaaberto
+msgid "ERRO: %s nunca foi aberto (não há HKCU%s). Abra a IDE uma vez, feche, e rode o instalador de novo."
+msgstr "ERROR: %s nunca se abrió (no hay HKCU%s). Abra el IDE una vez, ciérrelo y ejecute el instalador de nuevo."
+
+#: ralinst.mensagens.emdepsemdpk
+msgid "ERRO: nenhum .dpk de %s em %s"
+msgstr "ERROR: ningún .dpk de %s en %s"
+
+#: ralinst.mensagens.emdepsempacotesbds
+msgid "ERRO: %s não tem pacotes para %s (BDS %s)"
+msgstr "ERROR: %s no tiene paquetes para %s (BDS %s)"
+
+#: ralinst.mensagens.emgravarrecibo
+msgid "não foi possível gravar o recibo: %s"
+msgstr "no fue posible grabar el recibo: %s"
+
+#: ralinst.mensagens.eminstalarsemfontes
+msgid "ERRO: os fontes do RAL precisam estar em disco para instalar."
+msgstr "ERROR: las fuentes del RAL deben estar en disco para instalar."
+
+#: ralinst.mensagens.emnenhumpacote
+msgid "ERRO: nenhum pacote escolhido."
+msgstr "ERROR: ningún paquete elegido."
+
+#: ralinst.mensagens.empacotesdesconhecidos
+msgid "ERRO: pacotes que não existem nesta versão do RAL: %s"
+msgstr "ERROR: paquetes que no existen en esta versión del RAL: %s"
+
+#: ralinst.mensagens.wmbuscaforadopath
+msgid "  AVISO: %s não está no library path da IDE; a compilação pode não achá-lo"
+msgstr "  AVISO: %s no está en el library path del IDE; la compilación puede no encontrarlo"
+
+#: ralinst.mensagens.cmconfiguracaodevolvida
+msgid "A configuração do Lazarus voltou ao que era antes desta rodada."
+msgstr "La configuración de Lazarus volvió a como estaba antes de esta ejecución."
+
+#: ralinst.mensagens.cmficadeforalinha
+msgid "fica de fora: %s"
+msgstr "queda fuera: %s"
+
+#: ralinst.mensagens.cmfonteausente
+msgid "fonte ausente: %s"
+msgstr "fuente ausente: %s"
+
+#: ralinst.mensagens.cmforalinha
+msgid "fora: %s"
+msgstr "fuera: %s"
+
+#: ralinst.mensagens.cmlazarusinstalado
+msgid "instalado"
+msgstr "instalado"
+
+#: ralinst.mensagens.cmlazarusmarcado
+msgid "marcado, IDE não reconstruída"
+msgstr "marcado, IDE no reconstruido"
+
+#: ralinst.mensagens.cmlazarusnaoinstalado
+msgid "não instalado (configuração devolvida ao que era)"
+msgstr "no instalado (configuración restaurada)"
+
+#: ralinst.mensagens.cmlazarusregistrado
+msgid "registrado"
+msgstr "registrado"
+
+#: ralinst.mensagens.cmlpknaoexiste
+msgid "%s: %s não existe na versão baixada"
+msgstr "%s: %s no existe en la versión descargada"
+
+#: ralinst.mensagens.cmnadaainstalarlazarus
+msgid "Nada a instalar: a configuração da IDE não foi alterada."
+msgstr "Nada que instalar: la configuración del IDE no se modificó."
+
+#: ralinst.mensagens.cmpacotejaregistrado
+msgid "pacote %s já registrado nesta IDE"
+msgstr "paquete %s ya registrado en este IDE"
+
+#: ralinst.mensagens.cmplanoconfiguracao
+msgid "  configuração: %s"
+msgstr "  configuración: %s"
+
+#: ralinst.mensagens.cmplanoficadeforalinha
+msgid "    fica de fora: %s"
+msgstr "    queda fuera: %s"
+
+#: ralinst.mensagens.cmplanopacotes
+msgid "  pacotes, na ordem:"
+msgstr "  paquetes, en orden:"
+
+#: ralinst.mensagens.cmplanoreconstroi
+msgid "  reconstrói a IDE no fim (lazbuild --build-ide)"
+msgstr "  reconstruye el IDE al final (lazbuild --build-ide)"
+
+#: ralinst.mensagens.cmplanosoregistrar
+msgid "    %s  (só registrar)"
+msgstr "    %s  (solo registrar)"
+
+#: ralinst.mensagens.cmsubmoduloausente
+msgid "submódulo ausente: %s"
+msgstr "submódulo ausente: %s"
+
+#: ralinst.mensagens.emdevolverconfiguracao
+msgid "ERRO: não consegui devolver a configuração: %s"
+msgstr "ERROR: no pude restaurar la configuración: %s"
+
+#: ralinst.mensagens.emlazarusaberto
+msgid "ERRO: %s está aberto. Feche a IDE antes de instalar: ela regrava a configuração ao fechar e a instalação se perderia."
+msgstr "ERROR: %s está abierto. Cierre el IDE antes de instalar: reescribe la configuración al cerrar y la instalación se perdería."
+
+#: ralinst.mensagens.emlazbuildausente
+msgid "ERRO: lazbuild não encontrado: %s"
+msgstr "ERROR: lazbuild no encontrado: %s"
+
+#: ralinst.mensagens.emlazbuildcodigo
+msgid "ERRO: lazbuild terminou com código %d"
+msgstr "ERROR: lazbuild terminó con el código %d"
+
+#: ralinst.mensagens.emlazbuildmarcar
+msgid "ERRO: falha ao marcar os pacotes para instalar."
+msgstr "ERROR: falló al marcar los paquetes para instalar."
+
+#: ralinst.mensagens.emlazbuildreconstruir
+msgid "ERRO: falha ao reconstruir a IDE (o erro do compilador está acima)."
+msgstr "ERROR: falló al reconstruir el IDE (el error del compilador está arriba)."
+
+#: ralinst.mensagens.emlazbuildregistrar
+msgid "ERRO: falha ao registrar os pacotes."
+msgstr "ERROR: falló al registrar los paquetes."
+
+#: ralinst.mensagens.wmidenaoreconstruida
+msgid "IDE não reconstruída: ela pede para reconstruir ao abrir."
+msgstr "IDE no reconstruido: pide reconstruir al abrirse."
+
+#: ralinst.mensagens.emexecutar
+msgid "ERRO: não foi possível executar %s: %s"
+msgstr "ERROR: no se pudo ejecutar %s: %s"
+
+#: ralinst.mensagens.cmfaixadea
+msgid "%s de %s a %s"
+msgstr "%s de %s a %s"
+
+#: ralinst.mensagens.cmfaixamax
+msgid "%s até %s"
+msgstr "%s hasta %s"
+
+#: ralinst.mensagens.cmfaixamin
+msgid "%s %s ou mais novo"
+msgstr "%s %s o más nuevo"
+
+#: ralinst.mensagens.cmfaixasistemas
+msgid "só em %s"
+msgstr "solo en %s"
+
+#: ralinst.mensagens.cmrecurso
+msgid "recurso %s"
+msgstr "recurso %s"
+
+#: ralinst.mensagens.emacaodesconhecida
+msgid "ação desconhecida \"%s\" em %s: o instalador não executa ação que não conhece"
+msgstr "acción desconocida \"%s\" en %s: el instalador no ejecuta una acción que no conoce"
+
+#: ralinst.mensagens.emacaodpk
+msgid "acao dpk sem \"pastas\" (versao do BDS -> pasta dos .dpk)"
+msgstr "acción dpk sin \"pastas\" (versión del BDS -> carpeta de los .dpk)"
+
+#: ralinst.mensagens.emacaolpk
+msgid "acao lpk sem arquivo"
+msgstr "acción lpk sin archivo"
+
+#: ralinst.mensagens.emacaovariavel
+msgid "acao variavel sem nome ou valor"
+msgstr "acción variavel sin nombre o valor"
+
+#: ralinst.mensagens.emcampodesconhecido
+msgid "campo desconhecido \"%s\" em %s"
+msgstr "campo desconocido \"%s\" en %s"
+
+#: ralinst.mensagens.emdelphidesconhecido
+msgid "versão do Delphi desconhecida: %s"
+msgstr "versión de Delphi desconocida: %s"
+
+#: ralinst.mensagens.emextrasemasset
+msgid "extra sem asset"
+msgstr "extra sin asset"
+
+#: ralinst.mensagens.emjsoninvalido
+msgid "%s: JSON inválido: %s"
+msgstr "%s: JSON inválido: %s"
+
+#: ralinst.mensagens.emreceitabusca
+msgid "busca só existe no Delphi (no Lazarus o .lpk da dependência já diz as pastas)"
+msgstr "busca solo existe en Delphi (en Lazarus el .lpk de la dependencia ya indica las carpetas)"
+
+#: ralinst.mensagens.emreceitaitemobjeto
+msgid "%s: cada item e um objeto"
+msgstr "%s: cada ítem es un objeto"
+
+#: ralinst.mensagens.emreceitalista
+msgid "%s deveria ser uma lista"
+msgstr "%s debería ser una lista"
+
+#: ralinst.mensagens.emreceitanaoobjeto
+msgid "%s: a receita deveria ser um objeto JSON"
+msgstr "%s: la receta debería ser un objeto JSON"
+
+#: ralinst.mensagens.emreceitaobjeto
+msgid "%s deveria ser um objeto"
+msgstr "%s debería ser un objeto"
+
+#: ralinst.mensagens.emreceitapacotesligados
+msgid "pacotes-ligados só existe no Delphi (é o -LU do dcc32)"
+msgstr "pacotes-ligados solo existe en Delphi (es el -LU de dcc32)"
+
+#: ralinst.mensagens.emreceitarecusada
+msgid "%s: receita recusada: %s"
+msgstr "%s: receta rechazada: %s"
+
+#: ralinst.mensagens.emreceitasemnome
+msgid "receita sem nome"
+msgstr "receta sin nombre"
+
+#: ralinst.mensagens.emregragithub
+msgid "%s: github deveria ser \"dono/repositorio\""
+msgstr "%s: github debería ser \"dueño/repositorio\""
+
+#: ralinst.mensagens.emregraversao
+msgid "%s: cada regra tem \"versao\" ou \"incompativel\", e só um dos dois"
+msgstr "%s: cada regla tiene \"versao\" o \"incompativel\", y solo uno de los dos"
+
+#: ralinst.mensagens.emsistemadesconhecido
+msgid "sistema desconhecido: %s (windows, linux, darwin)"
+msgstr "sistema desconocido: %s (windows, linux, darwin)"
+
+#: ralinst.mensagens.emverificacaoarquivo
+msgid "verificacao: o arquivo e relativo a raiz da dependencia: %s"
+msgstr "verificacao: el archivo es relativo a la raíz de la dependencia: %s"
+
+#: ralinst.mensagens.emverificacaoexpressao
+msgid "verificacao: expressao invalida: %s"
+msgstr "verificacao: expresión inválida: %s"
+
+#: ralinst.mensagens.emverificacaoincompleta
+msgid "verificacao sem arquivo, expressao ou aviso"
+msgstr "verificacao sin archivo, expresión o aviso"
+
+#: ralinst.mensagens.cmconfiguracaolimpa
+msgid "  configuração %s: links e pacotes da instalação removidos"
+msgstr "  configuración %s: enlaces y paquetes de la instalación eliminados"
+
+#: ralinst.mensagens.cmdesfazendo
+msgid "Desfazendo %s"
+msgstr "Deshaciendo %s"
+
+#: ralinst.mensagens.cmdesfeito
+msgid "Desfeito."
+msgstr "Deshecho."
+
+#: ralinst.mensagens.cmidenaoreconstruidadesinstalar
+msgid "  a IDE não foi reconstruída: ela pede para reconstruir ao abrir"
+msgstr "  el IDE no fue reconstruido: pide reconstruir al abrirse"
+
+#: ralinst.mensagens.cmmantidomudou
+msgid "  mantido (mudou depois da instalação): %s"
+msgstr "  conservado (cambió después de la instalación): %s"
+
+#: ralinst.mensagens.cmnenhumainstalacao
+msgid "Nenhuma instalação do RAL registrada para %s"
+msgstr "Ninguna instalación del RAL registrada para %s"
+
+#: ralinst.mensagens.cmrecibodesfeito
+msgid " [desfeito]"
+msgstr " [deshecho]"
+
+#: ralinst.mensagens.cmrecibojadesfeito
+msgid "Recibo já desfeito: %s"
+msgstr "Recibo ya deshecho: %s"
+
+#: ralinst.mensagens.cmrecibopacotes
+msgid " (%d pacote(s))"
+msgstr " (%d paquete(s))"
+
+#: ralinst.mensagens.emapagararquivo
+msgid "  ERRO: não consegui apagar %s (em uso?)"
+msgstr "  ERROR: no pude borrar %s (¿en uso?)"
+
+#: ralinst.mensagens.emideabertadesinstalar
+msgid "ERRO: %s está aberto; feche a IDE antes de desinstalar"
+msgstr "ERROR: %s está abierto; cierre el IDE antes de desinstalar"
+
+#: ralinst.mensagens.emrecibodelphiwindows
+msgid "ERRO: recibo do Delphi só se desfaz no Windows"
+msgstr "ERROR: un recibo de Delphi solo se deshace en Windows"
+
+#: ralinst.mensagens.emrecibomaisnovo
+msgid "ERRO: há uma instalação mais nova nesta IDE (%s); desfaça ela antes, ou desinstale a IDE inteira"
+msgstr "ERROR: hay una instalación más nueva en este IDE (%s); deshágala antes, o desinstale el IDE entero"
+
+#: ralinst.mensagens.emrecibosemlistas
+msgid "ERRO: recibo do Lazarus sem as listas da configuração"
+msgstr "ERROR: recibo de Lazarus sin las listas de la configuración"
+
+#: ralinst.mensagens.emrecibotipo
+msgid "ERRO: tipo de recibo desconhecido: %s"
+msgstr "ERROR: tipo de recibo desconocido: %s"
+
+#: ralinst.mensagens.emreconstrucaofalhou
+msgid "ERRO: a reconstrução da IDE falhou; a configuração já está sem os pacotes, e a IDE pede para reconstruir ao abrir"
+msgstr "ERROR: la reconstrucción del IDE falló; la configuración ya está sin los paquetes, y el IDE pide reconstruir al abrirse"
+
+#: ralinst.mensagens.cmregistroapagado
+msgid "  apagado: %s"
+msgstr "  borrado: %s"
+
+#: ralinst.mensagens.cmregistrojaregistrado
+msgid "  %s: %s já registrado"
+msgstr "  %s: %s ya registrado"
+
+#: ralinst.mensagens.cmregistrooutrapasta
+msgid "  %s -= %s  (mesmo pacote em outra pasta)"
+msgstr "  %s -= %s  (mismo paquete en otra carpeta)"
+
+#: ralinst.mensagens.cmregistrorestaurado
+msgid "  restaurado: %s"
+msgstr "  restaurado: %s"
+
+#: ralinst.mensagens.cmregistrorevertido
+msgid "  registro devolvido ao que era (%d valor(es))"
+msgstr "  registro devuelto a lo que era (%d valor(es))"
+
+#: ralinst.mensagens.cmregistrovariavel
+msgid "  variável $(%s) = %s"
+msgstr "  variable $(%s) = %s"
+
+#: ralinst.mensagens.cmregistrovariavelera
+msgid "  variável $(%s) = %s  (era %s)"
+msgstr "  variable $(%s) = %s  (era %s)"
+
+#: ralinst.mensagens.emregistroabrir
+msgid "ERRO: não foi possível abrir %s"
+msgstr "ERROR: no se pudo abrir %s"
+
+#: ralinst.mensagens.emregistrogravar
+msgid "ERRO: não foi possível gravar %s: %s"
+msgstr "ERROR: no se pudo grabar %s: %s"
+
+#: ralinst.mensagens.cmbaixandodep
+msgid "== Baixando %s"
+msgstr "== Descargando %s"
+
+#: ralinst.mensagens.cmbaixandoral
+msgid "== Baixando o PascalRAL %s"
+msgstr "== Descargando PascalRAL %s"
+
+#: ralinst.mensagens.cmdelphisowindows
+msgid "o Delphi só existe no Windows"
+msgstr "Delphi solo existe en Windows"
+
+#: ralinst.mensagens.cmdesinstalacaocomerro
+msgid "%s: a desinstalação terminou com erro"
+msgstr "%s: la desinstalación terminó con error"
+
+#: ralinst.mensagens.cmdesinstalado
+msgid "%s: desinstalado"
+msgstr "%s: desinstalado"
+
+#: ralinst.mensagens.cmnadaainstalar
+msgid "%s: nada a instalar"
+msgstr "%s: nada que instalar"
+
+#: ralinst.mensagens.cmnadaafazerrodada
+msgid "Nada a fazer: as IDEs já têm esta versão do RAL com estes recursos."
+msgstr "Nada que hacer: los IDE ya tienen esta versión de RAL con estos recursos."
+
+#: ralinst.mensagens.cmnenhumaidealterada
+msgid "Nenhuma IDE foi alterada."
+msgstr "Ningún IDE fue modificado."
+
+#: ralinst.mensagens.cmnenhumpedidoexiste
+msgid "%s: nenhum dos pacotes pedidos existe no %s"
+msgstr "%s: ninguno de los paquetes pedidos existe en %s"
+
+#: ralinst.mensagens.cmplanobaixardep
+msgid "Baixar %s %s%s para %s (para %s)"
+msgstr "Descargar %s %s%s en %s (para %s)"
+
+#: ralinst.mensagens.cmplanobaixarral
+msgid "Baixar o PascalRAL %s"
+msgstr "Descargar PascalRAL %s"
+
+#: ralinst.mensagens.cmplanocommit
+msgid " (commit %s)"
+msgstr " (commit %s)"
+
+#: ralinst.mensagens.cmplanode
+msgid " de %s"
+msgstr " de %s"
+
+#: ralinst.mensagens.cmplanoerrodep
+msgid "ERRO: %s — sem ela, %s fica de fora"
+msgstr "ERROR: %s — sin ella, %s queda fuera"
+
+#: ralinst.mensagens.cmplanofonteslocal
+msgid "Fontes do RAL: %s (pasta local, nada é baixado)"
+msgstr "Fuentes del RAL: %s (carpeta local, no se descarga nada)"
+
+#: ralinst.mensagens.cmplanonaoexistem
+msgid "ATENÇÃO: não existem nesta versão do RAL: %s"
+msgstr "ATENCIÓN: no existen en esta versión del RAL: %s"
+
+#: ralinst.mensagens.cmplanopara
+msgid " para %s"
+msgstr " en %s"
+
+#: ralinst.mensagens.cmplanosubmodulos
+msgid "  com os submódulos: %s"
+msgstr "  con los submódulos: %s"
+
+#: ralinst.mensagens.cmrelatorioavisos
+msgid "%s: %s; %d aviso(s): %s"
+msgstr "%s: %s; %d aviso(s): %s"
+
+#: ralinst.mensagens.cmterminoucomerro
+msgid "terminou com erro"
+msgstr "terminó con error"
+
+#: ralinst.mensagens.embaixadossempacotes
+msgid "os fontes baixados em %s não têm pacotes"
+msgstr "las fuentes descargadas en %s no tienen paquetes"
+
+#: ralinst.mensagens.emescolhaversaooupasta
+msgid "escolha a versão do RAL ou uma pasta local"
+msgstr "elija la versión del RAL o una carpeta local"
+
+#: ralinst.mensagens.emlerversao
+msgid "não foi possível ler a versão %s: %s"
+msgstr "no se pudo leer la versión %s: %s"
+
+#: ralinst.mensagens.emnenhumaide
+msgid "nenhuma IDE escolhida"
+msgstr "ningún IDE elegido"
+
+#: ralinst.mensagens.emsempacotesnapasta
+msgid "nenhum pacote do RAL em %s (a pasta deve conter pkg e src)"
+msgstr "ningún paquete del RAL en %s (la carpeta debe contener pkg y src)"
+
+#: ralinst.mensagens.emversaodesconhecida
+msgid "versão desconhecida: %s"
+msgstr "versión desconocida: %s"
+
+#: ralinst.mensagens.emversaosempacotes
+msgid "a versão %s não tem pacotes do RAL"
+msgstr "la versión %s no tiene paquetes del RAL"
+
+#: ralinst.mensagens.cmexistentesopaths
+msgid "só o library path"
+msgstr "solo el library path"
+
+#: ralinst.mensagens.cmfontesamao
+msgid "instalado à mão"
+msgstr "instalado a mano"
+
+#: ralinst.mensagens.cmfontesdapasta
+msgid "da pasta %s"
+msgstr "de la carpeta %s"
+
+#: ralinst.mensagens.cmmudancaatualizar
+msgid "Atualizar o RAL %s → %s"
+msgstr "Actualizar RAL %s → %s"
+
+#: ralinst.mensagens.cmmudancainstalar
+msgid "Instalar o RAL %s"
+msgstr "Instalar RAL %s"
+
+#: ralinst.mensagens.cmmudancamodificar
+msgid "Só mudar os recursos (continua o RAL %s)"
+msgstr "Solo cambiar los recursos (sigue RAL %s)"
+
+#: ralinst.mensagens.cmmudancanada
+msgid "Nada a fazer: já tem o RAL %s com estes recursos"
+msgstr "Nada que hacer: ya tiene RAL %s con estos recursos"
+
+#: ralinst.mensagens.cmmudancarecompilar
+msgid "Recompilar o RAL %s: os fontes mudaram desde a instalação"
+msgstr "Recompilar RAL %s: los fuentes cambiaron desde la instalación"
+
+#: ralinst.mensagens.cmmudancareinstalar
+msgid "Reinstalar o RAL %s (a pedido)"
+msgstr "Reinstalar RAL %s (a pedido)"
+
+#: ralinst.mensagens.cmmudancatrocar
+msgid "Trocar o RAL %s pelo %s"
+msgstr "Cambiar RAL %s por %s"
+
+#: ralinst.mensagens.cmmudancavoltar
+msgid "Voltar o RAL %s → %s (versão anterior)"
+msgstr "Volver RAL %s → %s (versión anterior)"
+
+#: ralinst.mensagens.cmlazarusjainstalado
+msgid "já instalado"
+msgstr "ya instalado"
+
+#: ralinst.mensagens.cmplanojainstalado
+msgid "    %s  (já instalado, fica como está)"
+msgstr "    %s  (ya instalado, queda como está)"
+
+#: ralinst.mensagens.cmplanopacotesparcial
+msgid "  pacotes (só o que falta é compilado):"
+msgstr "  paquetes (solo se compila lo que falta):"
+
+#: ralinst.mensagens.cmplanosaidaide
+msgid "    sai da IDE: %s — %s"
+msgstr "    sale del IDE: %s — %s"
+
+#: ralinst.mensagens.cmplanosoregistrarnaide
+msgid "    %s  (já compilado desta versão: só entra na IDE)"
+msgstr "    %s  (ya compilado de esta versión: solo entra en el IDE)"
+
+#: ralinst.mensagens.cmplanotirarlink
+msgid "    tirar o link: %s — %s"
+msgstr "    quitar el enlace: %s — %s"
+
+#: ralinst.mensagens.cmsaidaide
+msgid "  %s -= %s  (sai da IDE)"
+msgstr "  %s -= %s  (sale del IDE)"
+
+#: ralinst.mensagens.cmsainaoexiste
+msgid "não existe no RAL %s"
+msgstr "no existe en RAL %s"
+
+#: ralinst.mensagens.cmsainaomarcado
+msgid "não foi marcado"
+msgstr "no fue marcado"
+
+#: ralinst.mensagens.cmsaitrocado
+msgid "a 2.0 o trocou por %s"
+msgstr "en 2.0 fue reemplazado por %s"
+
+#: ralinst.mensagens.cmsaioutrapasta
+msgid "aponta para outra pasta"
+msgstr "apunta a otra carpeta"
+
+#: ralinst.mensagens.cmsituacao
+msgid "== %s"
+msgstr "== %s"
+
+#: ralinst.mensagens.cmapagarvariavel
+msgid "  apagar a variável $(PascalRAL) (%s)"
+msgstr "  borrar la variable $(PascalRAL) (%s)"
+
+#: ralinst.mensagens.cmbplsficam
+msgid "  os .bpl de uma instalação feita à mão ficam no disco"
+msgstr "  los .bpl de una instalación hecha a mano quedan en el disco"
+
+#: ralinst.mensagens.cmcaminhoremovido
+msgid "  %s: tirado do library path %s"
+msgstr "  %s: quitado del library path %s"
+
+#: ralinst.mensagens.cmdesfazerdesinstalacao
+msgid "  para desfazer: %s"
+msgstr "  para deshacer: %s"
+
+#: ralinst.mensagens.cmdesfazerrecibos
+msgid "  desfazer %d instalação(ões) feitas pelo instalador"
+msgstr "  deshacer %d instalación(es) hechas por el instalador"
+
+#: ralinst.mensagens.cmdesinstaladosemresto
+msgid "  nada mais do RAL na IDE"
+msgstr "  nada más de RAL en el IDE"
+
+#: ralinst.mensagens.cmdesinstalarnadaafazer
+msgid "  nenhum RAL instalado nesta IDE: nada a desinstalar"
+msgstr "  ningún RAL instalado en este IDE: nada que desinstalar"
+
+#: ralinst.mensagens.cmlinkremovido
+msgid "  link tirado: %s"
+msgstr "  enlace quitado: %s"
+
+#: ralinst.mensagens.cmoutrosusamral
+msgid "  continuam na IDE, e sem o RAL não carregam: %s"
+msgstr "  siguen en el IDE, y sin RAL no cargan: %s"
+
+#: ralinst.mensagens.cmoutrosusamralaviso
+msgid "continuam na IDE e sem o RAL não carregam: %s"
+msgstr "siguen en el IDE y sin RAL no cargan: %s"
+
+#: ralinst.mensagens.cmpacoteremovidolazarus
+msgid "  tirado da IDE: %s"
+msgstr "  quitado del IDE: %s"
+
+#: ralinst.mensagens.cmplanodesinstalar
+msgid "Desinstalar o RAL:"
+msgstr "Desinstalar RAL:"
+
+#: ralinst.mensagens.cmplanoide64
+msgid "  IDE de 64 bits: os pacotes de design também em Win64 (Known Packages x64)"
+msgstr "  IDE de 64 bits: los paquetes de diseño también en Win64 (Known Packages x64)"
+
+#: ralinst.mensagens.cmtirarcaminhos
+msgid "  tirar %d entrada(s) do RAL do library path"
+msgstr "  quitar %d entrada(s) de RAL del library path"
+
+#: ralinst.mensagens.cmtirardaide
+msgid "  tirar da IDE: %s"
+msgstr "  quitar del IDE: %s"
+
+#: ralinst.mensagens.cmtirardaide64
+msgid "  tirar da IDE de 64 bits: %s"
+msgstr "  quitar del IDE de 64 bits: %s"
+
+#: ralinst.mensagens.cmtirarlinks
+msgid "  tirar os links dos pacotes: %s"
+msgstr "  quitar los enlaces de los paquetes: %s"
+
+#: ralinst.mensagens.cmvariavelremovida
+msgid "  variável $(PascalRAL) apagada (%s)"
+msgstr "  variable $(PascalRAL) borrada (%s)"
+
+#: ralinst.mensagens.emtarabrir
+msgid "não foi possível abrir %s"
+msgstr "no se pudo abrir %s"
+
+#: ralinst.mensagens.emtartruncado
+msgid "tar truncado"
+msgstr "tar truncado"
+
+#: ralinst.mensagens.emtartruncadoem
+msgid "tar truncado em %s"
+msgstr "tar truncado en %s"
+
+#: ralinst.mensagens.wmtarentradasuspeita
+msgid "entrada suspeita no tar, ignorada: %s"
+msgstr "entrada sospechosa en el tar, ignorada: %s"
+
+#: ralinst.mensagens.emzipextrair
+msgid "não foi possível extrair %s: %s"
+msgstr "no se pudo extraer %s: %s"
+
+#: ralinst.mensagens.emzipnaoexiste
+msgid "%s não existe em %s"
+msgstr "%s no existe en %s"
+
+#: ralinst.mensagens.emzipnaolido
+msgid "%s não pôde ser lido de %s"
+msgstr "%s no se pudo leer de %s"
+
+#: ralinst.mensagens.wmzipentradasuspeita
+msgid "entrada suspeita no zip, ignorada: %s"
+msgstr "entrada sospechosa en el zip, ignorada: %s"
+
+#: ralinst.mensagens.emidesemmotorpossivel
+msgid "%s: nenhum motor do RAL cabe nesta IDE, então o RAL não pode ser instalado nela."
+msgstr "%s: ningún motor de RAL cabe en este IDE, por lo que RAL no puede instalarse en él."
+
+#: ralinst.mensagens.emsemmotor
+msgid "%s: nenhum motor escolhido. O RAL não funciona sem um; escolha ao menos um destes: %s."
+msgstr "%s: ningún motor elegido. RAL no funciona sin uno; elija al menos uno de estos: %s."
+
+#: ralinst.mensagens.cmconjuntofuncional
+msgid "%s; o resto é opcional"
+msgstr "%s; el resto es opcional"
+
+#: ralinst.mensagens.cmconjuntomotor
+msgid "um motor entre %s"
+msgstr "un motor entre %s"
+
+#: ralinst.mensagens.cmconjuntonaocompilou
+msgid "%s não compilou — %s"
+msgstr "%s no compiló — %s"
+
+#: ralinst.mensagens.cmconjuntonenhummotor
+msgid "nenhum motor compilou (%s)"
+msgstr "ningún motor compiló (%s)"
+
+#: ralinst.mensagens.cmconjuntoplataforma
+msgid "%s em %s"
+msgstr "%s en %s"
+
+#: ralinst.mensagens.cmconjuntosemmotivo
+msgid "veja o log"
+msgstr "vea el log"
+
+#: ralinst.mensagens.cmpromocaodesfeita
+msgid "  devolvido: %s"
+msgstr "  devuelto: %s"
+
+#: ralinst.mensagens.cmpromovidos
+msgid "  %d arquivo(s) trocados na pasta da IDE"
+msgstr "  %d archivo(s) cambiados en la carpeta de la IDE"
+
+#: ralinst.mensagens.empromocaodesfazer
+msgid "não foi possível devolver %s: renomeie à mão, tirando o \".anterior\""
+msgstr "no fue posible devolver %s: renómbrelo a mano, quitando el \".anterior\""
+
+#: ralinst.mensagens.empromovergravar
+msgid "não foi possível gravar %s (a IDE ou outro programa está com ele aberto?)"
+msgstr "no fue posible grabar %s (¿la IDE u otro programa lo tiene abierto?)"
+
+#: ralinst.mensagens.empromoverrenomear
+msgid "não foi possível renomear %s (a IDE ou outro programa está com ele aberto?)"
+msgstr "no fue posible renombrar %s (¿la IDE u otro programa lo tiene abierto?)"
+
+#: ralinst.mensagens.empromoversemarquivo
+msgid "o compilador não gravou %s"
+msgstr "el compilador no grabó %s"
+
+#: ralinst.mensagens.cmnadamudou
+msgid "Nada mudou nesta IDE: %s"
+msgstr "Nada cambió en esta IDE: %s"
+
+#: ralinst.mensagens.cmplanoconjunto
+msgid "  instala se compilar: %s"
+msgstr "  instala si compila: %s"
+
+#: ralinst.mensagens.cmplanoconjuntocopia
+msgid "  compila antes numa cópia da configuração; a verdadeira só muda se %s compilar"
+msgstr "  compila antes en una copia de la configuración; la verdadera solo cambia si %s compila"
+
+#: ralinst.mensagens.cmcompilandonacopia
+msgid "== compilando numa cópia da configuração (%s)"
+msgstr "== compilando en una copia de la configuración (%s)"
+
+#: ralinst.mensagens.cmcompilandopacotelazarus
+msgid "[lazbuild] %s"
+msgstr "[lazbuild] %s"
+
+#: ralinst.mensagens.cmplanosoruntimelazarus
+msgid "  modo: só runtime (os pacotes só são registrados: os projetos podem exigi-los; nada vai para a IDE, que não é reconstruída)"
+msgstr "  modo: solo runtime (los paquetes solo se registran: los proyectos pueden requerirlos; nada va a la IDE, que no se reconstruye)"
+
+#: ralinst.mensagens.emcopiaconfiguracao
+msgid "não foi possível copiar a configuração para %s"
+msgstr "no fue posible copiar la configuración a %s"
+
+#: ralinst.mensagens.emregistroincompleto
+msgid "uma escrita no registro falhou; o registro e os arquivos voltaram ao que eram"
+msgstr "una escritura en el registro falló; el registro y los archivos volvieron a lo que eran"
+
+#: ralinst.mensagens.cmplanoforadaplataforma
+msgid "    %s: sem %s (não serve nesta plataforma)"
+msgstr "    %s: sin %s (no sirve en esta plataforma)"
+
+#: ralinst.mensagens.cmplanoplataformasemchave
+msgid "  %s está instalada, mas a IDE ainda não foi aberta depois disso: abra a IDE uma vez e rode o instalador de novo para pôr o library path nela"
+msgstr "  %s está instalada, pero la IDE aún no se abrió desde entonces: abra la IDE una vez y ejecute el instalador de nuevo para poner el library path en ella"
+
+#: ralinst.mensagens.wmplataformasemchave
+msgid "%s instalada e sem library path na IDE: abra a IDE uma vez e rode o instalador de novo"
+msgstr "%s instalada y sin library path en la IDE: abra la IDE una vez y ejecute el instalador de nuevo"
+
+#: ralinst.mensagens.cmfontesdapastaversao
+msgid "RAL %s da pasta %s"
+msgstr "RAL %s de la carpeta %s"
+
+#: ralinst.mensagens.cmexistentesoruntime
+msgid "só runtime (nada na IDE)"
+msgstr "solo runtime (nada en la IDE)"
+
+#: ralinst.mensagens.cmforasoruntime
+msgid "só de design (instalação só runtime)"
+msgstr "solo de diseño (instalación solo runtime)"
+
+#: ralinst.mensagens.cmplanosoruntime
+msgid "  modo: só runtime (compila os pacotes, nada vai para a IDE)"
+msgstr "  modo: solo runtime (compila los paquetes, nada va a la IDE)"
+
+#: ralinst.mensagens.cmsaisoruntime
+msgid "instalação só runtime: sai da IDE, o .bpl fica"
+msgstr "instalación solo runtime: sale de la IDE, el .bpl queda"
+
+#: ralinst.mensagens.wmsoruntimedesignide
+msgid "%s exige o designide, que não é redistribuível: um programa compilado com pacotes de runtime não roda fora da máquina de desenvolvimento (é da 1.x; a 2.0 separou o design)"
+msgstr "%s requiere designide, que no es redistribuible: un programa compilado con paquetes de runtime no corre fuera de la máquina de desarrollo (es de la 1.x; la 2.0 separó el diseño)"
+
+#: ralinst.mensagens.wmredistcopiado
+msgid "%s — vai junto do executável do seu programa (o instalador não sabe onde ele fica)"
+msgstr "%s — va junto al ejecutable de su programa (el instalador no sabe dónde está)"
+
+#: ralinst.mensagens.cmcopiadoredist
+msgid "  copiado para %s"
+msgstr "  copiado a %s"
+
+#: ralinst.mensagens.cmplanodepplataformas
+msgid "      library path dela em: %s"
+msgstr "      su library path en: %s"
+
+#: ralinst.mensagens.emacaocopiar
+msgid "copiar-arquivo precisa de \"arquivos\" e \"plataforma\""
+msgstr "copiar-arquivo necesita \"arquivos\" y \"plataforma\""
+
+#: ralinst.mensagens.emcopiararquivo
+msgid "%s: não foi possível copiar %s para %s"
+msgstr "%s: no fue posible copiar %s a %s"
+
+#: ralinst.mensagens.emcopiarsemarquivo
+msgid "%s: nenhum arquivo casa com %s"
+msgstr "%s: ningún archivo coincide con %s"
+
+#: ralinst.mensagens.emlibpathplataformas
+msgid "\"plataformas\" no libpath só vale no bloco do Delphi"
+msgstr "\"plataformas\" en el libpath solo vale en el bloque de Delphi"
+
+#: ralinst.mensagens.cmmotivoversaobloqueada
+msgid "esta versão do RAL não serve nesta IDE: %s"
+msgstr "esta versión del RAL no sirve en esta IDE: %s"
+
+#: ralinst.mensagens.emversaonaoserve
+msgid "%s não recebe esta versão do RAL: %s"
+msgstr "%s no recibe esta versión del RAL: %s"
+
+#: ralinst.mensagens.emmanifestobloqueiosemmotivo
+msgid "um bloqueio precisa de \"motivo\""
+msgstr "un bloqueo necesita \"motivo\""
+
+#: ralinst.mensagens.cmsobraapagada
+msgid "  apagado: %s (%s)"
+msgstr "  borrado: %s (%s)"
+
+#: ralinst.mensagens.cmsobracache
+msgid "cache de downloads (zips das versões e das dependências)"
+msgstr "caché de descargas (zips de las versiones y dependencias)"
+
+#: ralinst.mensagens.cmsobrapreparo
+msgid "pasta de preparo de uma rodada interrompida"
+msgstr "carpeta de preparación de una ejecución interrumpida"
+
+#: ralinst.mensagens.ematusemmigrador
+msgid "a versão %s não tem o migrador deste sistema (%s): não conta como atualização"
+msgstr "la versión %s no tiene el migrador de este sistema (%s): no cuenta como actualización"
+
+#: ralinst.mensagens.emmigradorabrir
+msgid "não foi possível abrir o migrador: %s"
+msgstr "no fue posible abrir el migrador: %s"
+
+#: ralinst.mensagens.emmigradorausente
+msgid "o migrador dos projetos não está em %s: ele vem no mesmo release do instalador"
+msgstr "el migrador de proyectos no está en %s: viene en el mismo release del instalador"
+
+#: ralinst.mensagens.wmmigradortrocadepois
+msgid "%s está aberto: a versão nova fica ao lado dele e entra na próxima vez que o instalador abrir"
+msgstr "%s está abierto: la versión nueva queda a su lado y entra la próxima vez que se abra el instalador"
+
+#: ralinst.mensagens.cmfalhounavarredura
+msgid "não compilou na verificação do projeto (%s)"
+msgstr "no compiló en la verificación del proyecto (%s)"
+
+#: ralinst.mensagens.cmplanonaoverificada
+msgid "  esta versão do RAL não foi verificada nesta IDE (o projeto testa por amostragem); se não compilar, nada muda na IDE"
+msgstr "  esta versión del RAL no fue verificada en esta IDE (el proyecto prueba por muestreo); si no compila, nada cambia en la IDE"
+
+#: ralinst.mensagens.cmplanoverificada
+msgid "  verificada nesta IDE pelo projeto em %s"
+msgstr "  verificada en esta IDE por el proyecto el %s"
+
+#: ralinst.mensagens.cmverificadasembutida
+msgid "lista embutida de verificadas"
+msgstr "lista embebida de verificadas"
+
+#: ralinst.mensagens.emverificadasformato
+msgid "%s não é uma lista de verificadas (formato 1)"
+msgstr "%s no es una lista de verificadas (formato 1)"
+
+#: ralinst.mensagens.cmdelphimaisnovo
+msgid "Delphi (BDS %s, mais novo que o %s)"
+msgstr "Delphi (BDS %s, más nuevo que %s)"
+
+#: ralinst.mensagens.cmlazarusunleashed
+msgid "Lazarus %s (FPC Unleashed %s)"
+msgstr "Lazarus %s (FPC Unleashed %s)"
+
+#: ralinst.mensagens.wmdelphimaisnovo
+msgid "Delphi mais novo que este instalador conhece: instala com o que o disco diz (rsvars.bat, bin\\dcc*.exe); sem verificação nesta versão"
+msgstr "Delphi más nuevo de lo que este instalador conoce: instala con lo que dice el disco (rsvars.bat, bin\\dcc*.exe); sin verificación en esta versión"
+
+#: ralinst.mensagens.cmfaixavariante
+msgid "FPC %s"
+msgstr "FPC %s"
+
+#: ralinst.mensagens.emvariantedesconhecida
+msgid "fpc-variante desconhecida: %s (use oficial ou unleashed)"
+msgstr "fpc-variante desconocida: %s (use oficial o unleashed)"
+
+#: ralmig.uses.ssemsecao
+msgid "The section of the file where the unit would go was not found"
+msgstr "No se encontró la sección del archivo donde iría la unit"
+
+#: ralmig.uses.ssempontoevirgula
+msgid "The uses clause at line %d has no semicolon"
+msgstr "La cláusula uses de la línea %d no tiene punto y coma"
+
+#: ralmig.projetoxml.sxmlsemfim
+msgid "XML: the element \"%s\" (line %d) is never closed"
+msgstr "XML: el elemento \"%s\" (línea %d) nunca se cierra"
+
+#: ralmig.projetoxml.sxmltagerrada
+msgid "XML: line %d closes \"%s\" but \"%s\" was open"
+msgstr "XML: la línea %d cierra \"%s\" pero \"%s\" estaba abierto"
+
+#: ralmig.projetoxml.sxmlmalformado
+msgid "XML: malformed text at line %d"
+msgstr "XML: texto mal formado en la línea %d"
+
+#: ralmig.projetoxml.sxmlconteudo
+msgid "XML: the element \"%s\" has content that is not text"
+msgstr "XML: el elemento \"%s\" tiene contenido que no es texto"
+
+#: ralmig.projeto.emprojsemcaminho
+msgid "Não existe: %s"
+msgstr "No existe: %s"
+
+#: ralmig.projeto.emprojleitura
+msgid "Não foi possível ler %s: %s"
+msgstr "No fue posible leer %s: %s"
+
+#: ralmig.projeto.emprojbinario
+msgid "Formulário binário: converta para texto no Delphi (botão direito > Text DFM) ou deixe o migrador converter."
+msgstr "Formulario binario: conviértalo a texto en Delphi (clic derecho > Text DFM) o deje que el migrador lo convierta."
+
+#: ralmig.projeto.emprojforminvalido
+msgid "Formulário que não pode ser lido (linha %d): %s. Corrija na IDE e rode o migrador de novo."
+msgstr "Formulario que no se puede leer (línea %d): %s. Corríjalo en el IDE y ejecute el migrador de nuevo."
+
+#: ralmig.formulario.ssemfim
+msgid "Form line %d: the object \"%s\" has no matching \"end\""
+msgstr "Línea %d del formulario: el objeto \"%s\" no tiene el \"end\" correspondiente"
+
+#: ralmig.formulario.snaoehpropriedade
+msgid "Form line %d: this is not a property (no \"=\")"
+msgstr "Línea %d del formulario: esto no es una propiedad (falta el \"=\")"
+
+#: ralmig.formulario.svalorsemfim
+msgid "Form line %d: the value of the property \"%s\" never ends"
+msgstr "Línea %d del formulario: el valor de la propiedad \"%s\" nunca termina"
+
+#: ralmig.formulario.scabecalhoinvalido
+msgid "Form line %d: unexpected text outside of an object"
+msgstr "Línea %d del formulario: texto inesperado fuera de un objeto"
+
+#: ralmig.motor.emmotorsemclasse
+msgid "Regra %s: a ação %s não tem implementação nesta versão do migrador."
+msgstr "Regla %s: la acción %s no tiene implementación en esta versión del migrador."
+
+#: ralmig.motor.emmotorfalharegra
+msgid "Regra %s: %s"
+msgstr "Regla %s: %s"
+
+#: ralmig.motor.emmotorregras
+msgid "Regras inválidas ou ausentes: %s"
+msgstr "Reglas inválidas o ausentes: %s"
+
+#: ralmig.motor.cmmotorjaem
+msgid "O projeto já está no RAL %s (detectado com segurança): os passos a partir da %s que ele já tinha foram pulados."
+msgstr "El proyecto ya está en RAL %s (detectado con seguridad): se omitieron los pasos desde %s que ya tenía."
+
+#: ralmig.motor.cmmotorjaemfazer
+msgid "Nada a fazer. Se o projeto ainda não está nessa versão, rode de novo com --forcar-de (na janela: \"aplicar desde a versão escolhida\")."
+msgstr "Nada que hacer. Si el proyecto todavía no está en esa versión, ejecute de nuevo con --forcar-de (en la ventana: \"aplicar desde la versión elegida\")."
+
+#: ralmig.motor.emmotorsempasta
+msgid "Informe a pasta (ou o projeto) a migrar."
+msgstr "Indique la carpeta (o el proyecto) a migrar."
+
+#: ralmig.motor.emmotorforadapasta
+msgid "Arquivo fora da pasta do projeto, sem cópia de segurança possível: %s"
+msgstr "Archivo fuera de la carpeta del proyecto, sin copia de seguridad posible: %s"
+
+#: ralmig.motor.emmotorgravar
+msgid "Não foi possível gravar %s: %s"
+msgstr "No fue posible grabar %s: %s"
+
+#: ralmig.motor.wmmotorignorado
+msgid "O arquivo %s não foi migrado: %s"
+msgstr "El archivo %s no se migró: %s"
+
+#: ralmig.motor.cmmotorignoradofazer
+msgid "Converta o formulário para texto e rode o migrador de novo."
+msgstr "Convierta el formulario a texto y ejecute el migrador de nuevo."
+#: ralmig.motor.cmmotorignoradocorrigir
+msgid "Abra %s na IDE ou num editor, corrija o que o motivo aponta (linha %d) e rode o migrador de novo."
+msgstr "Abra %s en el IDE o en un editor, corrija lo que indica el motivo (línea %d) y ejecute el migrador de nuevo."
+
+
+#: ralmig.deteccao.cmdetclasse
+msgid "classe %s"
+msgstr "clase %s"
+
+#: ralmig.deteccao.cmdetpropriedade
+msgid "%s.%s"
+msgstr "%s.%s"
+
+#: ralmig.deteccao.cmdetmais
+msgid " (+%d)"
+msgstr " (+%d)"
+
+#: ralmig.deteccao.cmdetsemfaixa
+msgid "nenhuma"
+msgstr "ninguna"
+
+#: ralmig.mensagens.emcopiasempasta
+msgid "A pasta do projeto não existe: %s"
+msgstr "La carpeta del proyecto no existe: %s"
+
+#: ralmig.mensagens.emcopiasemarquivos
+msgid "Não há arquivos para guardar na cópia de segurança."
+msgstr "No hay archivos que guardar en la copia de seguridad."
+
+#: ralmig.mensagens.emcopiacaminhoinvalido
+msgid "Caminho fora da pasta do projeto, recusado: %s"
+msgstr "Ruta fuera de la carpeta del proyecto, rechazada: %s"
+
+#: ralmig.mensagens.emcopianaocriada
+msgid "Não foi possível criar a cópia de segurança %s: %s"
+msgstr "No fue posible crear la copia de seguridad %s: %s"
+
+#: ralmig.mensagens.emcopianaoexiste
+msgid "A cópia de segurança não existe: %s"
+msgstr "La copia de seguridad no existe: %s"
+
+#: ralmig.mensagens.emcopiailegivel
+msgid "A cópia de segurança %s não pôde ser lida: %s"
+msgstr "No se pudo leer la copia de seguridad %s: %s"
+
+#: ralmig.mensagens.emcopiasemmanifesto
+msgid "A cópia de segurança %s não tem a lista de arquivos (_manifesto.txt): não foi criada pelo migrador."
+msgstr "La copia de seguridad %s no tiene la lista de archivos (_manifesto.txt): no fue creada por el migrador."
+
+#: ralmig.mensagens.emcopianaorestaurada
+msgid "Não foi possível restaurar %s: %s"
+msgstr "No fue posible restaurar %s: %s"
+
+#: ralmig.mensagens.emcopiadiferente
+msgid "Depois de restaurar, %s não ficou igual ao original."
+msgstr "Después de restaurar, %s no quedó igual al original."
+
+#: ralmig.mensagens.emcopiasemregistro
+msgid "Não foi possível registrar o estado dos arquivos depois da migração: %s"
+msgstr "No fue posible registrar el estado de los archivos después de la migración: %s"
+
+#: ralmig.mensagens.wmcopiamudadodepois
+msgid "Este arquivo foi alterado depois da migração e a restauração o sobrescreveu: %s"
+msgstr "Este archivo fue modificado después de la migración y la restauración lo sobrescribió: %s"
+
+#: ralmig.mensagens.wmgitcommudancas
+msgid "A pasta está num repositório git com mudanças ainda não commitadas (%s). Faça o commit antes de migrar para poder comparar e desfazer pelo git."
+msgstr "La carpeta está en un repositorio git con cambios aún sin commit (%s). Haga el commit antes de migrar para poder comparar y deshacer con git."
+
+#: ralmig.mensagens.cmpreviasemmudanca
+msgid "Sem mudanças."
+msgstr "Sin cambios."
+
+#: ralmig.mensagens.cmpreviaresumo
+msgid "+%d linha(s) acrescentada(s), -%d linha(s) tirada(s)"
+msgstr "+%d línea(s) agregada(s), -%d línea(s) quitada(s)"
+
+#: ralmig.relatorio.rmtitulo
+msgid "Migração do RAL %s para %s"
+msgstr "Migración de RAL %s a %s"
+
+#: ralmig.relatorio.rmpasta
+msgid "Pasta"
+msgstr "Carpeta"
+
+#: ralmig.relatorio.rmdata
+msgid "Data"
+msgstr "Fecha"
+
+#: ralmig.relatorio.rmversoes
+msgid "Versões"
+msgstr "Versiones"
+
+#: ralmig.relatorio.rmversoesvalor
+msgid "RAL %s → RAL %s"
+msgstr "RAL %s → RAL %s"
+
+#: ralmig.relatorio.rmarquivos
+msgid "Arquivos alterados"
+msgstr "Archivos modificados"
+
+#: ralmig.relatorio.rmcontagens
+msgid "Contagens"
+msgstr "Conteos"
+
+#: ralmig.relatorio.rmcopia
+msgid "Cópia de segurança"
+msgstr "Copia de seguridad"
+
+#: ralmig.relatorio.rmdesfazer
+msgid "Para desfazer"
+msgstr "Para deshacer"
+
+#: ralmig.relatorio.rmsemcopia
+msgid "Sem cópia: não há como desfazer."
+msgstr "Sin copia: no hay manera de deshacer."
+
+#: ralmig.relatorio.rmprevia
+msgid "Prévia: nada foi gravado."
+msgstr "Vista previa: no se grabó nada."
+
+#: ralmig.relatorio.rmnadaalterado
+msgid "Nenhum arquivo foi alterado."
+msgstr "Ningún archivo fue modificado."
+
+#: ralmig.relatorio.rmresumo
+msgid "%d arquivo(s) alterado(s), %d alteração(ões), %d item(ns) para fazer à mão, %d comportamento(s) que mudou(aram), %d erro(s)."
+msgstr "%d archivo(s) modificado(s), %d cambio(s), %d elemento(s) para hacer a mano, %d comportamiento(s) que cambió/cambiaron, %d error(es)."
+
+#: ralmig.relatorio.rmsecerros
+msgid "Erros"
+msgstr "Errores"
+
+#: ralmig.relatorio.rmsecfeito
+msgid "Feito"
+msgstr "Hecho"
+
+#: ralmig.relatorio.rmsecmanual
+msgid "Precisa de você"
+msgstr "Requiere su atención"
+
+#: ralmig.relatorio.rmseccomportamento
+msgid "Comportamento que mudou"
+msgstr "Comportamiento que cambió"
+
+#: ralmig.relatorio.rmsecignorados
+msgid "Arquivos não migrados"
+msgstr "Archivos no migrados"
+
+#: ralmig.relatorio.rmnenhumfeito
+msgid "Nenhuma alteração foi feita."
+msgstr "No se hizo ningún cambio."
+
+#: ralmig.relatorio.rmnenhummanual
+msgid "Nada para fazer à mão."
+msgstr "Nada que hacer a mano."
+
+#: ralmig.relatorio.rmnenhumcomportamento
+msgid "Nenhum comportamento mudou entre estas versões."
+msgstr "Ningún comportamiento cambió entre estas versiones."
+
+#: ralmig.relatorio.rmalteracoes
+msgid "%d alteração(ões)"
+msgstr "%d cambio(s)"
+
+#: ralmig.relatorio.rmlinha
+msgid "linha %d"
+msgstr "línea %d"
+
+#: ralmig.relatorio.rmnovo
+msgid "(arquivo novo)"
+msgstr "(archivo nuevo)"
+
+#: ralmig.relatorio.rmsemitem
+msgid "Arquivo alterado."
+msgstr "Archivo modificado."
+
+#: ralmig.relatorio.rmprojeto
+msgid "(projeto)"
+msgstr "(proyecto)"
+
+#: ralmig.relatorio.rmproblema
+msgid "Problema"
+msgstr "Problema"
+
+#: ralmig.relatorio.rmfazer
+msgid "O que fazer"
+msgstr "Qué hacer"
+
+#: ralmig.relatorio.rmtrecho
+msgid "Trecho pronto"
+msgstr "Fragmento listo"
+
+#: ralmig.relatorio.rmwiki
+msgid "Wiki"
+msgstr "Wiki"
+
+#: ralmig.relatorio.rmrodape
+msgid "Este relatório foi gravado depois da migração e não faz parte do desfazer: ele continua aqui depois de desfazer; apague-o à mão se quiser."
+msgstr "Este informe se grabó después de la migración y no forma parte del deshacer: sigue aquí después de deshacer; bórrelo a mano si quiere."
+
+#: ralmig.validacao.cmvalclasse
+msgid "Class %s not found: a classe %s do objeto %s não existe no RAL %s."
+msgstr "Class %s not found: la clase %s del objeto %s no existe en RAL %s."
+
+#: ralmig.validacao.cmvalnaoregistrada
+msgid "Class %s not found: a classe %s do objeto %s existe no RAL %s, mas não está registrada na paleta, e a IDE não a cria."
+msgstr "Class %s not found: la clase %s del objeto %s existe en RAL %s, pero no está registrada en la paleta, y el IDE no la crea."
+
+#: ralmig.validacao.cmvalpropriedade
+msgid "Property %s does not exist: o objeto %s (%s) não tem a propriedade publicada %s no RAL %s."
+msgstr "Property %s does not exist: el objeto %s (%s) no tiene la propiedad publicada %s en RAL %s."
+
+#: ralmig.validacao.cmvalunit
+msgid "A unit %s é do RAL, mas não existe no RAL %s."
+msgstr "La unit %s es de RAL, pero no existe en RAL %s."
+
+#: ralmig.validacao.cmvalpacote
+msgid "O pacote %s é do RAL, mas não existe no RAL %s."
+msgstr "El paquete %s es de RAL, pero no existe en RAL %s."
+
+#: ralmig.validacao.cmvalfazer
+msgid "Provável regra faltando: informe ao projeto (qual propriedade, classe, unit ou pacote mudou e para quê) e acerte esta ocorrência à mão."
+msgstr "Probable regla faltante: infórmelo al proyecto (qué propiedad, clase, unit o paquete cambió y a qué) y corrija esta aparición a mano."
+
+#: ralmig.conferir.emconfprojetoausente
+msgid "O projeto não existe: %s"
+msgstr "El proyecto no existe: %s"
+
+#: ralmig.conferir.emconftipoerrado
+msgid "O projeto %s não é de uma IDE %s."
+msgstr "El proyecto %s no es de un IDE %s."
+
+#: ralmig.conferir.emconfsemcompilador
+msgid "Compilador da IDE não encontrado: %s"
+msgstr "No se encontró el compilador del IDE: %s"
+
+#: ralmig.conferir.emconfsemcopia
+msgid "Não foi possível criar a pasta temporária %s."
+msgstr "No fue posible crear la carpeta temporal %s."
+
+#: ralmig.conferir.emconfsemfonte
+msgid "Não achei o arquivo principal do projeto (.dpr) ao lado de %s."
+msgstr "No encontré el archivo principal del proyecto (.dpr) junto a %s."
+
+#: ralmig.conferir.emconfsemral
+msgid "Os fontes do RAL não estão em %s (falta a pasta src)."
+msgstr "Los fuentes de RAL no están en %s (falta la carpeta src)."
+
+#: ralmig.conferir.emconfsaida
+msgid "O compilador terminou com código %d e não disse o erro."
+msgstr "El compilador terminó con código %d y no dijo el error."
+
+#: ralmig.conferir.emconflinks
+msgid "lazbuild não registrou os pacotes do RAL na cópia da configuração: %s"
+msgstr "lazbuild no registró los paquetes de RAL en la copia de la configuración: %s"
+
+#: ralmig.conferir.emconfsowindows
+msgid "O Delphi só compila no Windows."
+msgstr "Delphi solo compila en Windows."
+
+#: ralmig.conferir.cmconforigemmanual
+msgid "manual"
+msgstr "manual"
+
+#: ralmig.conferir.cmconforigemrecibo
+msgid "recibo %s"
+msgstr "recibo %s"
+
+#: ralmig.conferir.cmconfdescricao
+msgid "%s, RAL em %s"
+msgstr "%s, RAL en %s"
+
+#: ralmig.acoes.codigo.rscodescrito
+msgid "Written right after the object is created: %trecho%"
+msgstr "Escrito justo después de crear el objeto: %trecho%"
+

@@ -1,0 +1,23 @@
+{
+  "nome": "brotli",
+  "descricao": "Brotli do Google: as DLLs da compressão Brotli no Win64 e nos Delphi que não ligam o .obj (antes do 10.1)",
+  "site": "https://github.com/google/brotli",
+  "fonte": { "github": "google/brotli", "versao": "estavel", "codigo": false,
+             "comentario": "a unidade Pascal vem com o RAL (submodulo pascal_brotli); daqui so as DLLs" },
+  "extras": [
+    { "asset": "brotli-x86-windows-dynamic.zip", "destino": "bin/win32" },
+    { "asset": "brotli-x64-windows-dynamic.zip", "destino": "bin/win64" }
+  ],
+  "pacotes-ral": ["RALBrotliCompress", "RALCompressBrotliPackage"],
+  "delphi": {
+    "comentario": "no Win32 o .obj COFF liga do 10.1 em diante: a DLL so antes dele. O Lazarus liga a libbrotli.a e nao precisa de DLL",
+    "acoes": [
+      { "acao": "copiar-arquivo", "plataforma": "win32", "delphi-max": "10",
+        "arquivos": ["bin/win32/brotlicommon.dll", "bin/win32/brotlidec.dll",
+                     "bin/win32/brotlienc.dll"] },
+      { "acao": "copiar-arquivo", "plataforma": "win64",
+        "arquivos": ["bin/win64/brotlicommon.dll", "bin/win64/brotlidec.dll",
+                     "bin/win64/brotlienc.dll"] }
+    ]
+  }
+}

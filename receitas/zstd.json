@@ -1,0 +1,28 @@
+{
+  "nome": "zstd",
+  "descricao": "Zstandard do Facebook: a libzstd.dll da compressão ZSTD no Windows",
+  "site": "https://github.com/facebook/zstd",
+  "fonte": { "github": "facebook/zstd", "versao": "estavel", "codigo": false,
+             "comentario": "a unidade Pascal vem com o RAL (submodulo ZSTD), que carrega a DLL em tempo de execucao" },
+  "extras": [
+    { "asset": "zstd-v{versao}-win32.zip", "destino": "bin/win32" },
+    { "asset": "zstd-v{versao}-win64.zip", "destino": "bin/win64" }
+  ],
+  "pacotes-ral": ["RALZStdCompress", "ralzstdcompress", "RALCompressZStdPackage",
+                  "ralcompresszstdpackage"],
+  "delphi": {
+    "acoes": [
+      { "acao": "copiar-arquivo", "plataforma": "win32", "arquivos": ["bin/win32/*/dll/libzstd.dll"] },
+      { "acao": "copiar-arquivo", "plataforma": "win64", "arquivos": ["bin/win64/*/dll/libzstd.dll"] }
+    ]
+  },
+  "lazarus": {
+    "comentario": "no Linux a libzstd vem do sistema",
+    "acoes": [
+      { "acao": "copiar-arquivo", "plataforma": "win32", "arquivos": ["bin/win32/*/dll/libzstd.dll"],
+        "sistemas": ["windows"] },
+      { "acao": "copiar-arquivo", "plataforma": "win64", "arquivos": ["bin/win64/*/dll/libzstd.dll"],
+        "sistemas": ["windows"] }
+    ]
+  }
+}

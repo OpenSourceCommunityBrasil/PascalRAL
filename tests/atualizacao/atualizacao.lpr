@@ -322,9 +322,16 @@ begin
     vPreso := TFileStream.Create(vMigrador, fmOpenRead or fmShareDenyNone);
     try
       Conferir(vAtu.BaixarMigrador(vNovo), 'baixado com o migrador aberto');
+      {$IFDEF MSWINDOWS}
       vOk := not vAtu.TrocarMigrador(vNovo) and vAtu.MigradorPendente and
              FileExists(vMigrador + '.novo');
       Conferir(vOk, 'migrador aberto: fica para a proxima abertura (' + vAtu.Erro + ')');
+      {$ELSE}
+      // fora do Windows o arquivo aberto pode ser renomeado: troca na hora
+      vOk := vAtu.TrocarMigrador(vNovo) and not vAtu.MigradorPendente and
+             (Ler(vMigrador) = Ler(vMigradorPub));
+      Conferir(vOk, 'migrador aberto: troca na hora fora do Windows (' + vAtu.Erro + ')');
+      {$ENDIF}
     finally
       vPreso.Free;
     end;

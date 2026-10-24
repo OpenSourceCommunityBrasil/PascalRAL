@@ -1,0 +1,363 @@
+{
+  "formato": 1,
+  "origem": "RAL",
+  "de": "1.0",
+  "para": "1.1",
+  "regras": [
+    {
+      "id": "1.1/caminho-plugins-modules",
+      "acao": "caminho-trocar",
+      "onde": ["dproj", "lpi"],
+      "de": "base",
+      "modo": "acrescentar",
+      "para": ["base\\plugins", "base\\modules"],
+      "descricao": {
+        "pt-BR": "O RAL 1.1 criou as pastas base\\plugins e base\\modules (antes tudo ficava em base). As duas entram no caminho de units do projeto, logo depois da pasta base.",
+        "en-US": "RAL 1.1 created the folders base\\plugins and base\\modules (everything used to live in base). Both are added to the project's unit search path, right after the base folder.",
+        "es-ES": "RAL 1.1 creó las carpetas base\\plugins y base\\modules (antes todo estaba en base). Ambas se agregan a la ruta de units del proyecto, justo después de la carpeta base."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, acrescente as pastas %pastas% ao caminho de units (Search path no Delphi, Other unit files no Lazarus), ao lado da pasta base do RAL.",
+        "en-US": "In %arquivo%, add the folders %pastas% to the unit search path (Search path in Delphi, Other unit files in Lazarus), next to the RAL base folder.",
+        "es-ES": "En %arquivo%, agregue las carpetas %pastas% a la ruta de units (Search path en Delphi, Other unit files en Lazarus), junto a la carpeta base de RAL."
+      },
+      "wiki": "atualizacao.md#10--11"
+    },
+    {
+      "id": "1.1/caminho-utils-modules",
+      "acao": "caminho-trocar",
+      "onde": ["dproj", "lpi"],
+      "de": "utils",
+      "modo": "acrescentar",
+      "para": [],
+      "para-se-unit": {
+        "base\\modules": ["RALSwaggerModule", "RALSwaggerExporter", "RALPostmanExporter", "RALExternalsLibraries", "RALWebModule"]
+      },
+      "descricao": {
+        "pt-BR": "Na 1.1, as units de Swagger, Postman, WebModule e RALExternalsLibraries saíram da pasta utils e foram para base\\modules. Quem usa alguma delas e só lista utils precisa da pasta nova.",
+        "en-US": "In 1.1 the units for Swagger, Postman, WebModule and RALExternalsLibraries moved from the utils folder to base\\modules. A project that uses one of them and only lists utils needs the new folder.",
+        "es-ES": "En la 1.1 las units de Swagger, Postman, WebModule y RALExternalsLibraries pasaron de la carpeta utils a base\\modules. Un proyecto que use alguna de ellas y solo liste utils necesita la carpeta nueva."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, o projeto usa %unit%, que mudou de utils para base\\modules: acrescente %pastas% ao caminho de units.",
+        "en-US": "In %arquivo%, the project uses %unit%, which moved from utils to base\\modules: add %pastas% to the unit search path.",
+        "es-ES": "En %arquivo%, el proyecto usa %unit%, que pasó de utils a base\\modules: agregue %pastas% a la ruta de units."
+      },
+      "wiki": "atualizacao.md#10--11"
+    },
+    {
+      "id": "1.1/criptotype-tipo",
+      "acao": "identificador-renomear",
+      "onde": ["pas"],
+      "mapa": { "TCriptoType": "TRALCriptoType" },
+      "descricao": {
+        "pt-BR": "O tipo de cifra TCriptoType passou a se chamar TRALCriptoType (todos os tipos do RAL levam o prefixo TRAL).",
+        "en-US": "The cipher type TCriptoType is now called TRALCriptoType (every RAL type carries the TRAL prefix).",
+        "es-ES": "El tipo de cifrado TCriptoType pasó a llamarse TRALCriptoType (todos los tipos de RAL llevan el prefijo TRAL)."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: troque o tipo %de% por %para% (variável, parâmetro ou campo).",
+        "en-US": "In %arquivo%, line %linha%: replace the type %de% with %para% (variable, parameter or field).",
+        "es-ES": "En %arquivo%, línea %linha%: cambie el tipo %de% por %para% (variable, parámetro o campo)."
+      },
+      "wiki": "atualizacao.md#10--11"
+    },
+    {
+      "id": "1.1/criptotype-valores",
+      "acao": "identificador-renomear",
+      "onde": ["pas"],
+      "mapa": { "ctAES128": "crAES128", "ctAES192": "crAES192", "ctAES256": "crAES256" },
+      "enumerado": "TRALCriptoType",
+      "descricao": {
+        "pt-BR": "Os valores da cifra AES mudaram de ctAES128/192/256 para crAES128/192/256. Só estes três mudam: ctNone, ctGZip, ctDeflate e ctZLib são da compressão (TRALCompressType) e ficam como estão.",
+        "en-US": "The AES cipher values changed from ctAES128/192/256 to crAES128/192/256. Only these three change: ctNone, ctGZip, ctDeflate and ctZLib belong to compression (TRALCompressType) and stay as they are.",
+        "es-ES": "Los valores del cifrado AES cambiaron de ctAES128/192/256 a crAES128/192/256. Solo cambian estos tres: ctNone, ctGZip, ctDeflate y ctZLib son de la compresión (TRALCompressType) y se quedan como están."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: troque %de% por %para%. Não mexa em ctNone, ctGZip, ctDeflate nem ctZLib.",
+        "en-US": "In %arquivo%, line %linha%: replace %de% with %para%. Do not touch ctNone, ctGZip, ctDeflate or ctZLib.",
+        "es-ES": "En %arquivo%, línea %linha%: cambie %de% por %para%. No toque ctNone, ctGZip, ctDeflate ni ctZLib."
+      },
+      "wiki": "atualizacao.md#10--11"
+    },
+    {
+      "id": "1.1/criptotype-uses",
+      "acao": "uses-adicionar",
+      "onde": ["pas"],
+      "unit": "RALTypes",
+      "quando-identificador": ["TRALCriptoType", "crAES128", "crAES192", "crAES256"],
+      "descricao": {
+        "pt-BR": "TRALCriptoType e crAES128/192/256 estão declarados na unit RALTypes: a unit que os usa precisa dela no uses.",
+        "en-US": "TRALCriptoType and crAES128/192/256 are declared in the RALTypes unit: any unit that uses them needs it in its uses clause.",
+        "es-ES": "TRALCriptoType y crAES128/192/256 están declarados en la unit RALTypes: la unit que los use la necesita en su cláusula uses."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, acrescente %unit% à cláusula uses.",
+        "en-US": "In %arquivo%, add %unit% to the uses clause.",
+        "es-ES": "En %arquivo%, agregue %unit% a la cláusula uses."
+      },
+      "wiki": "atualizacao.md#10--11"
+    },
+    {
+      "id": "1.1/jwt-eventos-of-object",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "atribuicao-propriedade",
+        "classe": "TRALServerJWTAuth",
+        "propriedade": ["OnGetToken", "OnValidate"]
+      },
+      "descricao": {
+        "pt-BR": "Os eventos OnGetToken e OnValidate do TRALServerJWTAuth agora são 'of object': só aceitam método de uma classe, não um procedimento solto. O formulário (.dfm/.lfm) não muda quando o evento já era método do formulário.",
+        "en-US": "The OnGetToken and OnValidate events of TRALServerJWTAuth are now 'of object': they only accept a method of a class, not a standalone procedure. The form file (.dfm/.lfm) does not change when the event was already a method of the form.",
+        "es-ES": "Los eventos OnGetToken y OnValidate de TRALServerJWTAuth ahora son 'of object': solo aceptan un método de una clase, no un procedimiento suelto. El archivo del formulario (.dfm/.lfm) no cambia cuando el evento ya era un método del formulario."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: %valor% é atribuído em código. Se for um procedimento solto (fora de uma classe), mova-o para dentro do formulário ou do DataModule, ou atribua-o a OnGetTokenGen / OnValidateGen, que ainda aceitam procedimento solto.",
+        "en-US": "In %arquivo%, line %linha%: %valor% is assigned in code. If it is a standalone procedure (outside a class), move it into the form or DataModule, or assign it to OnGetTokenGen / OnValidateGen, which still accept a standalone procedure.",
+        "es-ES": "En %arquivo%, línea %linha%: %valor% se asigna en código. Si es un procedimiento suelto (fuera de una clase), muévalo al formulario o al DataModule, o asígnelo a OnGetTokenGen / OnValidateGen, que todavía aceptan un procedimiento suelto."
+      },
+      "wiki": "atualizacao.md#10--11"
+    },
+    {
+      "id": "1.1/addcookie-obsoleto",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "chamada-metodo",
+        "classe": "TRALResponse",
+        "metodos": ["AddCookie"]
+      },
+      "descricao": {
+        "pt-BR": "TRALResponse.AddCookie(Nome, Valor) ficou obsoleto (deprecated): a forma nova recebe um TRALCookie. A chamada antiga ainda compila, só avisa.",
+        "en-US": "TRALResponse.AddCookie(Name, Value) is now deprecated: the new form takes a TRALCookie. The old call still compiles and only warns.",
+        "es-ES": "TRALResponse.AddCookie(Nombre, Valor) quedó obsoleto (deprecated): la forma nueva recibe un TRALCookie. La llamada antigua todavía compila, solo avisa."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: troque AddCookie(Nome, Valor) por AddCookie(ACookie), montando um TRALCookie com o nome e o valor. É só um aviso do compilador; nada quebra agora.",
+        "en-US": "In %arquivo%, line %linha%: replace AddCookie(Name, Value) with AddCookie(ACookie), building a TRALCookie with the name and the value. It is only a compiler warning; nothing breaks now.",
+        "es-ES": "En %arquivo%, línea %linha%: cambie AddCookie(Nombre, Valor) por AddCookie(ACookie), armando un TRALCookie con el nombre y el valor. Es solo un aviso del compilador; por ahora nada se rompe."
+      },
+      "wiki": "atualizacao.md#10--11"
+    },
+    {
+      "id": "1.1/dbbase-descendente",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": {
+        "tipo": "sobrescrita-metodo",
+        "ancestral": "TRALDBBase",
+        "metodo": ["DatabaseName", "PackageDependency"]
+      },
+      "descricao": {
+        "pt-BR": "Quem escreveu uma classe própria descendente de TRALDBBase: os métodos de classe DatabaseName e PackageDependency (abstratos) saíram, e entraram métodos virtuais não abstratos como Connect, Disconnect, IsConnected, ResetSession, TestConnection e ValidationSQL. É um caso raro.",
+        "en-US": "If you wrote your own class descending from TRALDBBase: the class methods DatabaseName and PackageDependency (abstract) are gone, and non-abstract virtual methods such as Connect, Disconnect, IsConnected, ResetSession, TestConnection and ValidationSQL were added. This is a rare case.",
+        "es-ES": "Si escribió una clase propia descendiente de TRALDBBase: los métodos de clase DatabaseName y PackageDependency (abstractos) desaparecieron y se agregaron métodos virtuales no abstractos como Connect, Disconnect, IsConnected, ResetSession, TestConnection y ValidationSQL. Es un caso raro."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: a classe sobrescreve %nome%, que não existe mais. Remova a sobrescrita e implemente os métodos virtuais novos que o seu banco precisa.",
+        "en-US": "In %arquivo%, line %linha%: the class overrides %nome%, which no longer exists. Remove the override and implement the new virtual methods your database needs.",
+        "es-ES": "En %arquivo%, línea %linha%: la clase sobrescribe %nome%, que ya no existe. Quite la sobrescritura e implemente los métodos virtuales nuevos que necesite su base de datos."
+      },
+      "wiki": "atualizacao.md#10--11"
+    }
+  ],
+  "comportamento": [
+    {
+      "id": "1.1/aes-cbc-incompativel",
+      "descricao": {
+        "pt-BR": "A criptografia AES virou CBC de verdade (IV aleatório de 16 bytes no início do corpo, PKCS#7 e HMAC-SHA256 no fim). A 1.0 e a 1.1 não se entendem com criptografia ligada, nem em TRALHashes/TRALCriptoAES usados fora da rede.",
+        "en-US": "AES encryption became real CBC (a random 16-byte IV at the start of the body, PKCS#7 and an HMAC-SHA256 at the end). 1.0 and 1.1 cannot talk to each other with encryption on, not even through TRALHashes/TRALCriptoAES used outside the network.",
+        "es-ES": "El cifrado AES pasó a ser CBC de verdad (IV aleatorio de 16 bytes al inicio del cuerpo, PKCS#7 y HMAC-SHA256 al final). La 1.0 y la 1.1 no se entienden con el cifrado activado, ni siquiera con TRALHashes/TRALCriptoAES usados fuera de la red."
+      },
+      "fazer": {
+        "pt-BR": "Atualize cliente e servidor juntos para a 1.1: um lado 1.0 e outro 1.1 não conseguem conversar com criptografia ligada. Dados que você cifrou com a 1.0 e guardou (arquivo, banco) não abrem na 1.1: decifre antes de atualizar e cifre de novo depois.",
+        "en-US": "Update client and server together to 1.1: a 1.0 side and a 1.1 side cannot talk with encryption on. Data you encrypted with 1.0 and stored (file, database) does not open in 1.1: decrypt it before updating and encrypt it again afterwards.",
+        "es-ES": "Actualice cliente y servidor juntos a la 1.1: un lado 1.0 y otro 1.1 no pueden comunicarse con el cifrado activado. Los datos que cifró con la 1.0 y guardó (archivo, base de datos) no se abren en la 1.1: descífrelos antes de actualizar y vuelva a cifrarlos después."
+      },
+      "wiki": "atualizacao.md#10--11"
+    },
+    {
+      "id": "1.1/hashes-string-base64",
+      "descricao": {
+        "pt-BR": "TRALHashes.Encrypt(string) agora devolve o cifrado em base64 e Decrypt(string) espera base64. Antes o texto era o byte cru, estragado pela conversão para UTF-8.",
+        "en-US": "TRALHashes.Encrypt(string) now returns the ciphertext in base64 and Decrypt(string) expects base64. Before, the text was the raw bytes, corrupted by the UTF-8 conversion.",
+        "es-ES": "TRALHashes.Encrypt(string) ahora devuelve el cifrado en base64 y Decrypt(string) espera base64. Antes el texto eran los bytes crudos, dañados por la conversión a UTF-8."
+      },
+      "fazer": {
+        "pt-BR": "Se você gravava ou comparava o texto cifrado, regrave. As sobrecargas com TStream continuam binárias.",
+        "en-US": "If you stored or compared the encrypted text, store it again. The overloads that take a TStream are still binary.",
+        "es-ES": "Si guardaba o comparaba el texto cifrado, vuelva a guardarlo. Las sobrecargas con TStream siguen siendo binarias."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.1/jwt-eventos-of-object",
+      "descricao": {
+        "pt-BR": "OnGetToken e OnValidate do TRALServerJWTAuth passaram a ser 'of object' (métodos de classe).",
+        "en-US": "OnGetToken and OnValidate of TRALServerJWTAuth became 'of object' (class methods).",
+        "es-ES": "OnGetToken y OnValidate de TRALServerJWTAuth pasaron a ser 'of object' (métodos de clase)."
+      },
+      "fazer": {
+        "pt-BR": "Um procedimento solto atribuído em código deixa de compilar: use OnGetTokenGen / OnValidateGen, ou mova o procedimento para o formulário.",
+        "en-US": "A standalone procedure assigned in code no longer compiles: use OnGetTokenGen / OnValidateGen, or move the procedure into the form.",
+        "es-ES": "Un procedimiento suelto asignado en código deja de compilar: use OnGetTokenGen / OnValidateGen, o mueva el procedimiento al formulario."
+      },
+      "wiki": "atualizacao.md#10--11"
+    },
+    {
+      "id": "1.1/jwt-sem-ongettoken",
+      "descricao": {
+        "pt-BR": "A rota de token do TRALServerJWTAuth sem OnGetToken responde 401 (antes assinava o JSON que o cliente mandasse). A renovação usa os claims originais; o corpo não reescreve mais o payload.",
+        "en-US": "The token route of TRALServerJWTAuth without OnGetToken answers 401 (before, it signed whatever JSON the client sent). Renewal uses the original claims; the body no longer rewrites the payload.",
+        "es-ES": "La ruta de token de TRALServerJWTAuth sin OnGetToken responde 401 (antes firmaba el JSON que el cliente enviara). La renovación usa los claims originales; el cuerpo ya no reescribe el payload."
+      },
+      "fazer": {
+        "pt-BR": "Atribua OnGetToken e confira usuário e senha ali; sem ele o servidor não emite token.",
+        "en-US": "Assign OnGetToken and check the user and password there; without it the server does not issue tokens.",
+        "es-ES": "Asigne OnGetToken y compruebe el usuario y la contraseña allí; sin él el servidor no emite tokens."
+      },
+      "wiki": "atualizacao.md#10--11"
+    },
+    {
+      "id": "1.1/jwt-claims-utc",
+      "descricao": {
+        "pt-BR": "exp, iat e nbf saíam em hora local tratada como UTC (um token emitido em UTC-3 expirava 3 horas antes). Agora saem em UTC correto, e tokens de outras bibliotecas passam a ser lidos certo.",
+        "en-US": "exp, iat and nbf were written in local time treated as UTC (a token issued in UTC-3 expired 3 hours early). They are now written in correct UTC, and tokens from other libraries are read correctly.",
+        "es-ES": "exp, iat y nbf salían en hora local tratada como UTC (un token emitido en UTC-3 expiraba 3 horas antes). Ahora salen en UTC correcto y los tokens de otras bibliotecas se leen bien."
+      },
+      "fazer": {
+        "pt-BR": "Tokens JWT emitidos pela 1.0 podem ter a expiração errada: peça novo login depois de atualizar.",
+        "en-US": "JWT tokens issued by 1.0 may have a wrong expiry: ask for a new login after updating.",
+        "es-ES": "Los tokens JWT emitidos por la 1.0 pueden tener la expiración equivocada: pida un nuevo inicio de sesión después de actualizar."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.1/jwt-cookie-raltoken",
+      "descricao": {
+        "pt-BR": "Com UseCookie, o servidor só lê o cookie chamado exatamente raltoken (antes pegava o primeiro cookie do cabeçalho, qualquer que fosse o nome). Vale para Sagui, Indy e fpHTTP.",
+        "en-US": "With UseCookie, the server only reads the cookie named exactly raltoken (before, it took the first cookie in the header, whatever its name). This applies to Sagui, Indy and fpHTTP.",
+        "es-ES": "Con UseCookie, el servidor solo lee la cookie llamada exactamente raltoken (antes tomaba la primera cookie del encabezado, tuviera el nombre que tuviera). Vale para Sagui, Indy y fpHTTP."
+      },
+      "fazer": {
+        "pt-BR": "Se você mandava o token em outro cookie, renomeie para raltoken.",
+        "en-US": "If you sent the token in another cookie, rename it to raltoken.",
+        "es-ES": "Si enviaba el token en otra cookie, renómbrela a raltoken."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.1/compress-servidor-vence",
+      "descricao": {
+        "pt-BR": "CompressType diferente de ctNone no servidor é uma decisão fixa: o cliente não consegue recusar. Só com ctNone o servidor segue o Accept-Encoding do cliente. O cliente passou a mandar Accept-Encoding sempre (antes saía vazio).",
+        "en-US": "A CompressType other than ctNone on the server is a fixed decision: the client cannot refuse it. Only with ctNone does the server follow the client's Accept-Encoding. The client now always sends Accept-Encoding (it used to be empty).",
+        "es-ES": "Un CompressType distinto de ctNone en el servidor es una decisión fija: el cliente no puede rechazarla. Solo con ctNone el servidor sigue el Accept-Encoding del cliente. El cliente ahora siempre envía Accept-Encoding (antes salía vacío)."
+      },
+      "fazer": {
+        "pt-BR": "Quer que o cliente decida? Deixe ctNone. Na 2.0 isso vira o plugin de compressão.",
+        "en-US": "Do you want the client to decide? Leave ctNone. In 2.0 this becomes the compression plugin.",
+        "es-ES": "¿Quiere que decida el cliente? Deje ctNone. En la 2.0 esto pasa a ser el plugin de compresión."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.1/deflate-bruto-delphi",
+      "descricao": {
+        "pt-BR": "No Delphi, ctDeflate passou a ser deflate bruto, como no FPC; antes enquadrava como gzip com cabeçalho 'deflate'. Só quebra a conversa com a 1.0 quando ctDeflate é pedido explicitamente.",
+        "en-US": "In Delphi, ctDeflate became raw deflate, like in FPC; before, it was framed as gzip with a 'deflate' header. It only breaks talking to 1.0 when ctDeflate is requested explicitly.",
+        "es-ES": "En Delphi, ctDeflate pasó a ser deflate crudo, como en FPC; antes se enmarcaba como gzip con encabezado 'deflate'. Solo rompe la comunicación con la 1.0 cuando se pide ctDeflate de forma explícita."
+      },
+      "fazer": {
+        "pt-BR": "Se você usa ctDeflate, atualize cliente e servidor Delphi juntos.",
+        "en-US": "If you use ctDeflate, update the Delphi client and server together.",
+        "es-ES": "Si usa ctDeflate, actualice juntos el cliente y el servidor Delphi."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.1/excecao-handler-500",
+      "descricao": {
+        "pt-BR": "Uma exceção em rota sem OnServerError nem RaiseError agora responde 500 com a mensagem; antes respondia 200 vazio.",
+        "en-US": "An exception in a route without OnServerError or RaiseError now answers 500 with the message; before, it answered an empty 200.",
+        "es-ES": "Una excepción en una ruta sin OnServerError ni RaiseError ahora responde 500 con el mensaje; antes respondía un 200 vacío."
+      },
+      "fazer": {
+        "pt-BR": "Se algum cliente seu tratava 200 vazio como 'deu certo', ele agora recebe 500. Trate a exceção na rota ou use OnServerError.",
+        "en-US": "If any of your clients treated an empty 200 as 'it worked', it now gets 500. Handle the exception in the route or use OnServerError.",
+        "es-ES": "Si algún cliente suyo trataba un 200 vacío como 'funcionó', ahora recibe 500. Maneje la excepción en la ruta o use OnServerError."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.1/verbo-fora-do-permitido-405",
+      "descricao": {
+        "pt-BR": "Um método HTTP fora de AllowedMethods respondia 403 e contava como tentativa de força bruta (três verbos errados bloqueavam o IP). Agora responde 405 e não conta.",
+        "en-US": "An HTTP method outside AllowedMethods used to answer 403 and counted as a brute-force attempt (three wrong verbs blocked the IP). It now answers 405 and does not count.",
+        "es-ES": "Un método HTTP fuera de AllowedMethods respondía 403 y contaba como intento de fuerza bruta (tres verbos erróneos bloqueaban la IP). Ahora responde 405 y no cuenta."
+      },
+      "fazer": {
+        "pt-BR": "Testes que esperavam 403 para verbo errado passam a esperar 405. O IP deixou de ser bloqueado por isso.",
+        "en-US": "Tests that expected 403 for a wrong verb should expect 405. The IP is no longer blocked for this.",
+        "es-ES": "Las pruebas que esperaban 403 para un verbo erróneo deben esperar 405. La IP ya no se bloquea por esto."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.1/forca-bruta-maxtry",
+      "descricao": {
+        "pt-BR": "Antes, uma única senha errada bloqueava o IP até ExpirationTime, ignorando MaxTry. Agora o bloqueio começa a partir de MaxTry falhas (padrão 3).",
+        "en-US": "Before, a single wrong password blocked the IP until ExpirationTime, ignoring MaxTry. Blocking now starts after MaxTry failures (default 3).",
+        "es-ES": "Antes, una sola contraseña errónea bloqueaba la IP hasta ExpirationTime, ignorando MaxTry. Ahora el bloqueo empieza a partir de MaxTry fallos (por defecto 3)."
+      },
+      "fazer": {
+        "pt-BR": "Se dependia do bloqueio na primeira falha, ponha MaxTry = 1.",
+        "en-US": "If you relied on blocking at the first failure, set MaxTry = 1.",
+        "es-ES": "Si dependía del bloqueo en el primer fallo, ponga MaxTry = 1."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.1/uploads-nome-arquivo",
+      "descricao": {
+        "pt-BR": "TRALParam.SaveToFile(pasta, nome) guarda só o último componente do nome: '..\\x' e 'C:\\x' não escapam mais da pasta.",
+        "en-US": "TRALParam.SaveToFile(folder, name) keeps only the last component of the name: '..\\x' and 'C:\\x' can no longer escape the folder.",
+        "es-ES": "TRALParam.SaveToFile(carpeta, nombre) guarda solo el último componente del nombre: '..\\x' y 'C:\\x' ya no escapan de la carpeta."
+      },
+      "fazer": {
+        "pt-BR": "Se você montava subpastas pelo nome do arquivo enviado, passe o caminho completo você mesmo.",
+        "en-US": "If you built subfolders from the uploaded file name, pass the full path yourself.",
+        "es-ES": "Si armaba subcarpetas con el nombre del archivo enviado, pase usted mismo la ruta completa."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.1/charral-delphi-xe3-101",
+      "descricao": {
+        "pt-BR": "Do Delphi XE3 ao 10.0, CharRAL passou a ser Char (UTF-16); antes era UTF8Char.",
+        "en-US": "From Delphi XE3 to 10.0, CharRAL became Char (UTF-16); before, it was UTF8Char.",
+        "es-ES": "Desde Delphi XE3 hasta el 10.0, CharRAL pasó a ser Char (UTF-16); antes era UTF8Char."
+      },
+      "fazer": {
+        "pt-BR": "Código seu que declara CharRAL ou PCharRAL nessas versões do Delphi precisa de revisão.",
+        "en-US": "Your code that declares CharRAL or PCharRAL on those Delphi versions needs review.",
+        "es-ES": "Su código que declara CharRAL o PCharRAL en esas versiones de Delphi necesita revisión."
+      },
+      "wiki": ""
+    },
+    {
+      "id": "1.1/db-modulo",
+      "descricao": {
+        "pt-BR": "TRALDBModule.GetFields recusa nome de tabela que não seja um identificador válido; o evento OnValidateSQL é novo (desligado enquanto não for atribuído); o pool de conexões vem desligado.",
+        "en-US": "TRALDBModule.GetFields refuses a table name that is not a valid identifier; the OnValidateSQL event is new (off until assigned); the connection pool is off by default.",
+        "es-ES": "TRALDBModule.GetFields rechaza un nombre de tabla que no sea un identificador válido; el evento OnValidateSQL es nuevo (apagado mientras no se asigne); el pool de conexiones viene apagado."
+      },
+      "fazer": {
+        "pt-BR": "Nada a fazer. Quem passava nome de tabela com espaço ou ponto e vírgula precisa passar um identificador válido.",
+        "en-US": "Nothing to do. If you passed table names with spaces or semicolons, pass a valid identifier instead.",
+        "es-ES": "Nada que hacer. Si pasaba nombres de tabla con espacios o punto y coma, pase un identificador válido."
+      },
+      "wiki": ""
+    }
+  ]
+}

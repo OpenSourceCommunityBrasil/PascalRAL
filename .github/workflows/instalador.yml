@@ -168,13 +168,8 @@ jobs:
           ./lib/testes/mig_validacao --testes
           ./lib/testes/mig_conferir --testes
           ./lib/testes/mig_traducao
-          # motor.lpr le a linha de comando por CmdLine, que so existe no
-          # Windows (RTL do Windows): em Linux nem compila. So la, ate o teste
-          # passar a usar ParamStr
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_motor" migrador/tests/motor/motor.lpr
-            ./lib/testes/mig_motor --testes
-          fi
+          fpc -B -Fumigrador/src -Fusrc/classes -FUlib/testes -o"lib/testes/mig_motor" migrador/tests/motor/motor.lpr
+          ./lib/testes/mig_motor --testes
 
       # M9: toda quebra nova traz a regra, preferencialmente (D-M7). O apidiff
       # AVISA (anotacoes ::warning::) as diferencas entre o ultimo release e o dev
