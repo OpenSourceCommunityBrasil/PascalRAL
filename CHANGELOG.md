@@ -720,6 +720,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+- **Merge branch 'dev' of https://github.com/OpenSourceCommunityBrasil/PascalRAL into dev** (2026-10-13 – mobius1qwe)
+
 - **Stop counting a client's first request as a flood, and answer 400 to a multipart body with no part** (2026-10-04 – tempraturbo)
   Flood protection measures an interval from a client's second request on. The
   first one measured zero against the stamp of the list entry made for it, so
@@ -828,6 +830,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: Correção de AV no RAD do Delphi** (2026-10-13 – mobius1qwe)
+
 - **fix: Erro de adição de cookie fix: Erro de JAR nos clientes fix: Erro de compilação Delphi seattle** (2026-10-08 – mobius1qwe)
 
 - **Fix the Fields Editor's fields of a FireDAC memtable not matching a native load** (2026-10-04 – tempraturbo)
