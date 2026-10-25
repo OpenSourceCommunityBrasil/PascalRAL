@@ -320,6 +320,17 @@ begin
   {$ENDIF}
 end;
 
+{ the code of the last failed system call: GetLastError is Windows only in
+  FPC, GetLastOSError is the same on every target }
+function LastOSError: integer;
+begin
+  {$IFDEF FPC}
+  Result := GetLastOSError;
+  {$ELSE}
+  Result := GetLastError;
+  {$ENDIF}
+end;
+
 { writes next to the file and then replaces it, so a reader never finds half
   a certificate }
 procedure WriteFileReplacing(const AFileName: string; const AData: TBytes;
@@ -336,11 +347,11 @@ begin
   begin
     DeleteFile(vTemp);
     raise Exception.CreateFmt(emSelfSignedWriteFailed, [AFileName,
-      SysErrorMessage(GetLastError)]);
+      SysErrorMessage(LastOSError)]);
   end;
   if not RenameFile(vTemp, AFileName) then
     raise Exception.CreateFmt(emSelfSignedWriteFailed, [AFileName,
-      SysErrorMessage(GetLastError)]);
+      SysErrorMessage(LastOSError)]);
 end;
 
 function RandomPassword: StringRAL;

@@ -469,9 +469,12 @@ type
     /// Module of AServer.
     constructor CreateFor(AServer: TRALServer);
 
-    /// A route of the server, or the status page at '/'.
+    /// A route of the server.
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
       override;
+    /// The status page, when ARequest is for '/' and ShowServerStatus is on;
+    /// nil otherwise. Asked only after every module and plugin.
+    function StatusRoute(ARequest: TRALRequest): TRALRoute;
   end;
 
 { TRALBaseModule }
@@ -507,7 +510,12 @@ begin
   Result := nil;
   if FServer.Routes.Count > 0 then
     Result := FServer.Routes.CanAnswerRoute(ARequest);
-  if (Result = nil) and FServer.ShowServerStatus and (ARequest.Query = '/') then
+end;
+
+function TRALBaseModule.StatusRoute(ARequest: TRALRequest): TRALRoute;
+begin
+  Result := nil;
+  if FServer.ShowServerStatus and (ARequest.Query = '/') then
     Result := FStatusRoute;
 end;
 
@@ -809,6 +817,14 @@ begin
     end;
   end;
   Result := inherited LookupRoute(ARequest, AResponse, AOwner);
+  { the status page is the last answer for '/', as in 1.x: asked before the
+    modules, it took '/' from a TRALWebModule, whose IndexFile never served }
+  if Result = nil then
+  begin
+    Result := TRALBaseModule(FBaseModule).StatusRoute(ARequest);
+    if Result <> nil then
+      AOwner := FBaseModule;
+  end;
 end;
 
 procedure TRALServer.SetIPConfig(const AValue: TRALIPConfig);
