@@ -50,6 +50,8 @@ type
     FProximaOrdem: integer;
     FResultado: AnsiString;
     FResultadoValido: boolean;
+    FId: QWord;
+    FGeracao: integer;
     function GetEdicaoCount: integer;
     function GetResultado: RawByteString;
     procedure Analisar;
@@ -108,6 +110,12 @@ type
     /// The original bytes (after RedefinirOriginal/Consolidar: the current ones)
     property Bytes: RawByteString read FBytes;
     property Caminho: string read FCaminho write FCaminho;
+    /// Unique per instance, never reused - unlike the address of the object,
+    /// which a later instance may get once this one is freed
+    property Id: QWord read FId;
+    /// Changes every time the original is (re)loaded or consolidated: what was
+    /// asked of an older original is not pending any more
+    property Geracao: integer read FGeracao;
     /// Settable, for text of a new file that has no clue
     property Codificacao: TCodificacao read FCodificacao write FCodificacao;
     property EdicaoCount: integer read GetEdicaoCount;
@@ -233,9 +241,14 @@ end;
 
 { TTextoOriginal }
 
+var
+  GProximoId: QWord = 0;
+
 constructor TTextoOriginal.Create;
 begin
   inherited Create;
+  Inc(GProximoId);
+  FId := GProximoId;
   FEdicoes := TObjectList.Create(True);
   FFimDeLinha := sLineBreak;
   FInicio := 1;
@@ -265,6 +278,7 @@ procedure TTextoOriginal.Analisar;
 var
   i, vLen, vIni: integer;
 begin
+  Inc(FGeracao);
   FLinhaCount := 0;
   FInicio := 1;
   if TemBom(FBytes) then

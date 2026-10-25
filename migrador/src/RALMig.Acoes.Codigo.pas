@@ -386,9 +386,15 @@ begin
 end;
 
 type
+  { a unit pedida a um texto que ainda nao foi consolidado: o editor de uses le'
+    o original e nao a ve. O texto e' identificado pelo Id e pela geracao, nunca
+    pelo endereco - um texto novo pode nascer no endereco de um liberado, e a
+    unit pedida ao antigo fazia o novo parecer servido (no Windows, o .pas de um
+    frame saia sem o RALCORS) }
   TRegistroUses = class
   public
-    Texto: TTextoOriginal;
+    Id: QWord;
+    Geracao: integer;
     Nome: string;
   end;
 
@@ -403,14 +409,15 @@ var
 begin
   if GUsesPedidas = nil then
     GUsesPedidas := TObjectList.Create(True);
-  if ATexto.EdicaoCount = 0 then
-    for vInt := GUsesPedidas.Count - 1 downto 0 do
-      if TRegistroUses(GUsesPedidas[vInt]).Texto = ATexto then
-        GUsesPedidas.Delete(vInt);
+  { o que foi pedido a uma geracao anterior deste texto ja' foi consolidado }
+  for vInt := GUsesPedidas.Count - 1 downto 0 do
+    if (TRegistroUses(GUsesPedidas[vInt]).Id = ATexto.Id) and
+       (TRegistroUses(GUsesPedidas[vInt]).Geracao <> ATexto.Geracao) then
+      GUsesPedidas.Delete(vInt);
   for vInt := 0 to GUsesPedidas.Count - 1 do
   begin
     vReg := TRegistroUses(GUsesPedidas[vInt]);
-    if (vReg.Texto = ATexto) and SameText(vReg.Nome, AUnit) then
+    if (vReg.Id = ATexto.Id) and SameText(vReg.Nome, AUnit) then
       Exit;
   end;
   vEd := TEditorUses.Create(ATexto);
@@ -419,7 +426,8 @@ begin
     begin
       vEd.Acrescentar(AUnit, ASecao);
       vReg := TRegistroUses.Create;
-      vReg.Texto := ATexto;
+      vReg.Id := ATexto.Id;
+      vReg.Geracao := ATexto.Geracao;
       vReg.Nome := AUnit;
       GUsesPedidas.Add(vReg);
     end;
