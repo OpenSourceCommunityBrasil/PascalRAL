@@ -80,7 +80,7 @@ Sizes of a healthy Win32 Release build with this recipe (Delphi 13), in KB:
 `PascalRAL` 670, `PascalRALDsgn` 76, `IndyRAL` 60, `NetHttpRAL` 51, `MsQuicRAL` 80,
 `SaguiRAL` 102, `SynopseRAL` 4873 (mORMot2 inside, on purpose), `RALPluginAuthPackage`
 126, `RALPluginTLSPackage` 48, `RALStoragePackage` 114, `RALStorageBSONPackage` 72,
-`RALDBPackage` 106, `RALDBFireDACPackage` 80, `RALDBFireDACDAOPackage` 85,
+`RALDBPackage` 162, `RALDBFireDACPackage` 88, `RALDBFireDACDAOPackage` 85,
 `RALModuleWebPackage` 54, `RALModuleSwaggerPackage` 56, `RALModuleXMLPackage` 162,
 `RALModuleSOAPPackage` 102, `RALCompressZStdPackage` 51, `RALCompressBrotliPackage` 835
 (libbrotli inside), `RALWizardDsgn` 137. `IndyRAL` at 1.5 MB means Indy got linked in.

@@ -416,6 +416,26 @@ the source address of the default route (IPv6: the stable address). CGI, Synopse
 - Memtables: `ApplyUpdates` and `ExecSQL` raise on failure; a statement that does not
   affect exactly one row is an error unless `CountUpdatedRecords` is off; persistent
   fields are kept on a native load; the schema is asked once per SQL text.
+- **The envelope is version 2** (`TRALDBSQLCache`): a direction byte per param, the
+  outputs and the result sets after the first in each answer, `etProc` (SQL holds the
+  procedure's name), a transaction flag. Version 1 is read, and answered in kind;
+  `RALLegacyWire` writes it and then refuses `etProc` and outputs.
+- **Transactions**: `TRALDBBase.StartTransaction`/`Commit`/`Rollback`/`InTransaction`
+  (base: `Commit`/`Rollback` do nothing, `StartTransaction` raises). Drivers commit a
+  statement unless a transaction `StartTransaction` opened is pending; `ResetSession`
+  undoes one left open. `TRALDBModule.AutoCommit` (default True) commits per statement;
+  False, or a cache with `Transaction` (the client queue,
+  `TRALDBConnection.StartTransaction`/`Commit`), makes the request all or nothing and
+  answers the others `emDBRolledBack`. Nothing is kept between requests.
+- **Stored procedures**: `ProcOptions.Enabled` adds one route, `<Route>/:ral_procname`
+  (removed when off). The catalog is the list (`GetProcInfo`, cached `CatalogLife`
+  minutes); `ExecProc` picks the syntax from database and kind; outputs go back in the
+  params, rows as result sets (`NextResultSet` on FireDAC). Rules in `CheckProc`:
+  Enabled, the name, `Filter`, catalog, `Schemas`, `OnValidateProc` (its values win).
+  A plain HTTP answer is the storage of `Accept`, `ProcOptions.Storage` or JSON; outputs
+  are a one-row dataset (`OutputsDataset`, each driver's memtable; JSON when there is
+  none); several datasets are `multipart/mixed` (`TRALMultipartEncoder.MediaType`).
+  Zeos binds through `ParamByName` (Zeos 8 has `TZParams`, not `TParams`).
 
 ### XML and SOAP (`src/modules/xml`, `src/modules/soap`)
 

@@ -4,13 +4,77 @@ unit RALDBModule;
 interface
 
 uses
-  Classes, SysUtils, DB,
+  Classes, SysUtils, DB, SyncObjs,
   RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
   RALConsts, RALTypes, RALStorage, RALBase64, RALRoutes, RALJson, RALStorageTypes,
   RALDBSQLCache, RALStream, RALDBPool;
 
 type
   TRALDBModule = class;
+
+  { Fired before TRALDBModule runs a stored procedure, with what the catalog says
+    of it and the params the call takes (typed by the catalog). AAllow starts
+    True: set it False to refuse the call. A value written to AParams replaces
+    what the client sent - a claim of the token, a header }
+  TRALDBOnValidateProc = procedure(ASender: TObject; ARequest: TRALRequest;
+    AProc: TRALDBProcInfo; AParams: TParams; var AAllow: Boolean) of object;
+
+  { ERALDBProcError }
+
+  /// A refused or failed stored procedure call, with the HTTP status it answers
+  ERALDBProcError = class(Exception)
+  private
+    FStatusCode: IntegerRAL;
+  public
+    constructor Create(AStatusCode: IntegerRAL; const AMessage: string);
+
+    /// HTTP status of the answer: 400, 403 or 404
+    property StatusCode: IntegerRAL read FStatusCode;
+  end;
+
+  { TRALDBProcOptions }
+
+  { How TRALDBModule exposes the stored procedures of its database: one route,
+    Route + '/:name', off until Enabled. The database is the list - nothing is
+    kept here - and the GRANT EXECUTE of the module's user is the real limit }
+  TRALDBProcOptions = class(TPersistent)
+  private
+    FCatalogLife: IntegerRAL;
+    FEnabled: boolean;
+    FFilter: TStrings;
+    FModule: TRALDBModule;
+    FRoute: StringRAL;
+    FSchemas: TStrings;
+    FStorage: TRALStorageLink;
+    function IsRouteStored: boolean;
+    procedure SetEnabled(AValue: boolean);
+    procedure SetFilter(AValue: TStrings);
+    procedure SetRoute(AValue: StringRAL);
+    procedure SetSchemas(AValue: TStrings);
+    procedure SetStorage(AValue: TRALStorageLink);
+  public
+    constructor Create(AModule: TRALDBModule);
+    destructor Destroy; override;
+
+    /// Whether AName passes Filter (case insensitive; * and ? masks)
+    function AllowsName(const AName: StringRAL): boolean;
+    /// Whether ASchema is one of Schemas; any when Schemas is empty
+    function AllowsSchema(const ASchema: StringRAL): boolean;
+    procedure Assign(ASource: TPersistent); override;
+  published
+    /// Minutes the module keeps what the catalog said of a procedure; 0 asks on every call
+    property CatalogLife: IntegerRAL read FCatalogLife write FCatalogLife default DEFAULTDBCATALOGLIFE;
+    /// Creates the route; off, the stored procedures are not reachable (also by the RAL datasets)
+    property Enabled: boolean read FEnabled write SetEnabled default False;
+    /// Name masks the route answers, one per line (API_*); empty takes every procedure
+    property Filter: TStrings read FFilter write SetFilter;
+    /// Prefix of the route: Route/name
+    property Route: StringRAL read FRoute write SetRoute stored IsRouteStored;
+    /// Schemas whose procedures are reachable, one per line; empty is the connection's default
+    property Schemas: TStrings read FSchemas write SetSchemas;
+    /// Storage of the answer to a plain HTTP client whose Accept names none; empty is JSON
+    property Storage: TRALStorageLink read FStorage write SetStorage;
+  end;
 
   { TRALDBRequest }
 
@@ -66,6 +130,9 @@ type
 
   TRALDBModule = class(TRALModuleRoutes)
   private
+    FAutoCommit: boolean;
+    FCatalog: TStringList;
+    FCatalogLock: TCriticalSection;
     FDatabase: StringRAL;
     FDatabaseLink: String;
     FDatabaseType: TRALDatabaseType;
@@ -76,18 +143,43 @@ type
     FPassword: StringRAL;
     FPool: TRALDBConnectionPool;
     FPort: IntegerRAL;
+    FProcOptions: TRALDBProcOptions;
+    FProcRoute: TRALDBRoute;
     FUsername: StringRAL;
 
     FOnBeforeConnect: TRALDBOnConnect;
     FOnAfterConnect: TRALDBOnConnect;
     FOnErrorConnect: TRALDBOnError;
     FOnErrorQuery: TRALDBOnError;
+    FOnValidateProc: TRALDBOnValidateProc;
     FOnValidateSQL: TRALDBOnValidateSQL;
     procedure SetConnectionParams(AValue: TStrings);
     procedure SetLibLocation(AValue: String);
+    procedure SetProcOptions(AValue: TRALDBProcOptions);
     /// Asks OnValidateSQL about a statement from the wire; raises when refused
     procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
   protected
+    { What the catalog says of AName, from the cache while CatalogLife lasts;
+      nil when there is no such procedure. A copy, freed by the caller }
+    function CachedProc(ADatabase: TRALDBBase; const AName: StringRAL;
+      AParamNames: TStrings): TRALDBProcInfo;
+    { The procedure AName of a call, after every rule: Enabled, the name, Filter,
+      the catalog, Schemas and OnValidateProc; raises ERALDBProcError otherwise.
+      AParams gets the catalog's types and directions. Freed by the caller }
+    function CheckProc(ADatabase: TRALDBBase; ARequest: TRALRequest;
+      const AName: StringRAL; AParams: TParams): TRALDBProcInfo;
+    /// Runs the stored procedure of ADBSQL (etProc) and fills its response
+    procedure ProcSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
+    /// The route of the stored procedures: Route/:ral_procname
+    procedure ExecProcRoute(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    { Saves AQuery for a client whose dataset is of AClientDriver: native when the
+      driver and the link allow, else in AStorage (raises without one) }
+    function SaveResultSet(ADatabase: TRALDBBase; AQuery: TDataSet;
+      AClientDriver: TRALDBDriverType; AStorage: TRALStorageLink; out ANative: boolean;
+      out AContentType: StringRAL): TMemoryStream;
+    /// Creates, renames or drops the route of the stored procedures
+    procedure UpdateProcRoute;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     /// Fills AResponse with the error, answering 429 when the pool timed out
     procedure AnswerException(AResponse: TRALResponse; AException: Exception); virtual;
     /// Factory handed to the pool, so it can open connections on its own
@@ -132,6 +224,8 @@ type
     /// A route answered by AReplyProc with the module's request and response
     function CreateDBRoute(const ARoute: StringRAL; AReplyProc: TRALDBOnReply;
       const ADescription: StringRAL = ''): TRALDBRoute;
+    /// Forgets what the catalog said: the next call asks the database again
+    procedure RefreshProcedures;
     /// Gives a connection taken by AcquireDatabase back to the pool
     procedure ReleaseDatabase(ADatabase: TRALDBBase);
 
@@ -139,6 +233,12 @@ type
       Pool.Prepare once the server is up }
     property Pool: TRALDBConnectionPool read FPool;
   published
+    { True (the default): every statement and call commits on its own, and one
+      that fails does not take the others. False: a request is one transaction -
+      all its statements commit at the end, or the first failure undoes them all,
+      the others answered as emDBRolledBack. A client may ask the same of one
+      request (TRALDBConnection.StartTransaction) }
+    property AutoCommit: boolean read FAutoCommit write FAutoCommit default True;
     { Name of the database this DBModule is connecting into }
     property Database: StringRAL read FDatabase write FDatabase;
     { DAO object that will be used to connect with the Database }
@@ -153,6 +253,8 @@ type
       Turning PoolOptions.Enabled on makes the module reuse open connections
       instead of opening one per request }
     property PoolOptions: TRALDBPoolOptions read GetPoolOptions write SetPoolOptions;
+    { The route of the stored procedures, off by default: see TRALDBProcOptions }
+    property ProcOptions: TRALDBProcOptions read FProcOptions write SetProcOptions;
     { Database server port }
     property Port: IntegerRAL read FPort write FPort;
     { Name of the database server user }
@@ -176,9 +278,281 @@ type
       which statements it accepts: set AAllow to False and the request gets
       a 500 with the reason, nothing reaches the database }
     property OnValidateSQL: TRALDBOnValidateSQL read FOnValidateSQL write FOnValidateSQL;
+    { Every stored procedure call, by the route or by a RAL dataset, after Filter
+      and the catalog: refuses it, audits it, fills params the client does not send }
+    property OnValidateProc: TRALDBOnValidateProc read FOnValidateProc write FOnValidateProc;
   end;
 
 implementation
+
+uses
+  RALTools, RALMultipartCoder;
+
+const
+  /// Name of the URI param of the stored procedure route: no procedure param takes it
+  cProcNameParam = 'ral_procname';
+
+type
+  { TRALDBProcCacheItem }
+
+  /// What the catalog said of a procedure, and when
+  TRALDBProcCacheItem = class
+  public
+    Info: TRALDBProcInfo;
+    Stamp: TDateTime;
+    destructor Destroy; override;
+  end;
+
+destructor TRALDBProcCacheItem.Destroy;
+begin
+  FreeAndNil(Info);
+  inherited Destroy;
+end;
+
+/// Whether AText matches AMask, * any run and ? any one character, ignoring case
+function MatchesMask(const AText, AMask: string): boolean;
+var
+  vText, vMask: string;
+  vT, vM, vStarT, vStarM: IntegerRAL;
+begin
+  vText := UpperCase(AText);
+  vMask := UpperCase(AMask);
+  vT := 1;
+  vM := 1;
+  vStarT := 0;
+  vStarM := 0;
+  while vT <= Length(vText) do
+  begin
+    if (vM <= Length(vMask)) and ((vMask[vM] = '?') or (vMask[vM] = vText[vT])) then
+    begin
+      Inc(vT);
+      Inc(vM);
+    end
+    else if (vM <= Length(vMask)) and (vMask[vM] = '*') then
+    begin
+      vStarM := vM;
+      vStarT := vT;
+      Inc(vM);
+    end
+    else if vStarM > 0 then
+    begin
+      // the last * takes one more character
+      vM := vStarM + 1;
+      Inc(vStarT);
+      vT := vStarT;
+    end
+    else
+    begin
+      Result := False;
+      Exit;
+    end;
+  end;
+  while (vM <= Length(vMask)) and (vMask[vM] = '*') do
+    Inc(vM);
+  Result := vM > Length(vMask);
+end;
+
+/// Whether AName is an identifier, schema.name allowed
+function ValidProcName(const AName: StringRAL): boolean;
+var
+  vInt: IntegerRAL;
+begin
+  Result := AName <> '';
+  for vInt := POSINISTR to RALHighStr(AName) do
+    if not (AName[vInt] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '$', '.']) then
+    begin
+      Result := False;
+      Exit;
+    end;
+end;
+
+{ Gives AParam, which came as text (JSON, a form, the query string), the type
+  ADataType of the catalog. A param that already has a type - from the RAL wire -
+  is left alone }
+procedure TypeParam(AParam: TParam; ADataType: TFieldType);
+var
+  vText: string;
+  vDate: TDateTime;
+begin
+  if not (AParam.DataType in [ftUnknown, ftString, ftWideString]) or
+     (ADataType in [ftUnknown, ftString, ftWideString, ftFixedChar, ftFixedWideChar]) then
+  begin
+    if AParam.DataType = ftUnknown then
+      AParam.DataType := ADataType;
+    Exit;
+  end;
+  if AParam.IsNull then
+  begin
+    AParam.DataType := ADataType;
+    Exit;
+  end;
+  vText := Trim(AParam.AsString);
+  case ADataType of
+    ftSmallint, ftInteger, ftWord:
+      begin
+        AParam.DataType := ADataType;
+        AParam.AsInteger := StrToInt(vText);
+      end;
+    ftLargeint, ftAutoInc:
+      AParam.AsLargeInt := StrToInt64(vText);
+    ftFloat, ftCurrency:
+      AParam.AsFloat := StrToFloat(vText, RALInvariantFormat);
+    ftBCD, ftFMTBcd:
+      AParam.AsFMTBCD := RALTextToBCD(StringRAL(vText));
+    ftBoolean:
+      AParam.AsBoolean := SameText(vText, 'true') or (vText = '1');
+    ftDate, ftTime, ftDateTime, ftTimeStamp:
+      begin
+        if not RALTryISO8601ToDateTime(StringRAL(vText), vDate) then
+          vDate := StrToDateTime(vText);
+        case ADataType of
+          ftDate: AParam.AsDate := vDate;
+          ftTime: AParam.AsTime := vDate;
+        else
+          AParam.AsDateTime := vDate;
+        end;
+      end;
+    ftBlob, ftBytes, ftVarBytes:
+      // binary goes as base64 in a text
+      AParam.AsBlob := TRALBase64.DecodeAsBytes(StringRAL(vText));
+    ftMemo, ftWideMemo:
+      AParam.DataType := ADataType;
+  else
+    AParam.DataType := ADataType;
+  end;
+end;
+
+{ ERALDBProcError }
+
+constructor ERALDBProcError.Create(AStatusCode: IntegerRAL; const AMessage: string);
+begin
+  inherited Create(AMessage);
+  FStatusCode := AStatusCode;
+end;
+
+{ TRALDBProcOptions }
+
+constructor TRALDBProcOptions.Create(AModule: TRALDBModule);
+begin
+  inherited Create;
+  FModule := AModule;
+  FCatalogLife := DEFAULTDBCATALOGLIFE;
+  FEnabled := False;
+  FFilter := TStringList.Create;
+  FRoute := DEFAULTDBPROCROUTE;
+  FSchemas := TStringList.Create;
+end;
+
+destructor TRALDBProcOptions.Destroy;
+begin
+  FreeAndNil(FFilter);
+  FreeAndNil(FSchemas);
+  inherited Destroy;
+end;
+
+function TRALDBProcOptions.AllowsName(const AName: StringRAL): boolean;
+var
+  vInt: IntegerRAL;
+begin
+  Result := True;
+  for vInt := 0 to Pred(FFilter.Count) do
+  begin
+    if Trim(FFilter[vInt]) = '' then
+      Continue;
+    Result := False;
+    if MatchesMask(string(AName), Trim(FFilter[vInt])) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
+function TRALDBProcOptions.AllowsSchema(const ASchema: StringRAL): boolean;
+var
+  vInt: IntegerRAL;
+begin
+  Result := True;
+  for vInt := 0 to Pred(FSchemas.Count) do
+  begin
+    if Trim(FSchemas[vInt]) = '' then
+      Continue;
+    Result := False;
+    if SameText(string(ASchema), Trim(FSchemas[vInt])) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
+procedure TRALDBProcOptions.Assign(ASource: TPersistent);
+begin
+  if ASource is TRALDBProcOptions then
+  begin
+    FCatalogLife := TRALDBProcOptions(ASource).CatalogLife;
+    FFilter.Assign(TRALDBProcOptions(ASource).Filter);
+    FSchemas.Assign(TRALDBProcOptions(ASource).Schemas);
+    Storage := TRALDBProcOptions(ASource).Storage;
+    FRoute := TRALDBProcOptions(ASource).Route;
+    FEnabled := TRALDBProcOptions(ASource).Enabled;
+    if FModule <> nil then
+      FModule.UpdateProcRoute;
+  end
+  else
+    inherited Assign(ASource);
+end;
+
+function TRALDBProcOptions.IsRouteStored: boolean;
+begin
+  Result := FRoute <> DEFAULTDBPROCROUTE;
+end;
+
+procedure TRALDBProcOptions.SetEnabled(AValue: boolean);
+begin
+  if FEnabled = AValue then
+    Exit;
+  FEnabled := AValue;
+  if FModule <> nil then
+    FModule.UpdateProcRoute;
+end;
+
+procedure TRALDBProcOptions.SetFilter(AValue: TStrings);
+begin
+  FFilter.Assign(AValue);
+end;
+
+procedure TRALDBProcOptions.SetRoute(AValue: StringRAL);
+begin
+  // the route alone: the name segment is the module's
+  while (AValue <> '') and (AValue[POSINISTR] = '/') do
+    Delete(AValue, POSINISTR, 1);
+  while (AValue <> '') and (AValue[RALHighStr(AValue)] = '/') do
+    Delete(AValue, RALHighStr(AValue), 1);
+  if AValue = '' then
+    AValue := DEFAULTDBPROCROUTE;
+  if FRoute = AValue then
+    Exit;
+  FRoute := AValue;
+  if FModule <> nil then
+    FModule.UpdateProcRoute;
+end;
+
+procedure TRALDBProcOptions.SetSchemas(AValue: TStrings);
+begin
+  FSchemas.Assign(AValue);
+end;
+
+procedure TRALDBProcOptions.SetStorage(AValue: TRALStorageLink);
+begin
+  if FStorage = AValue then
+    Exit;
+  if (FStorage <> nil) and (FModule <> nil) then
+    FStorage.RemoveFreeNotification(FModule);
+  FStorage := AValue;
+  if (FStorage <> nil) and (FModule <> nil) then
+    FStorage.FreeNotification(FModule);
+end;
 
 { TRALDBRequest }
 
@@ -251,9 +625,14 @@ end;
 procedure TRALDBModule.SetLibLocation(AValue: String);
 begin
   if FLibLocation = AValue then Exit;
+  { empty is "the driver finds it"; an absolute path stays as it is: both were
+    turned into a path under the executable's folder }
   if AValue = EmptyStr then
-    FLibLocation := EmptyStr;
-  FLibLocation := ExpandFileName(ExtractFilePath(ParamStr(0)) + AValue);
+    FLibLocation := EmptyStr
+  else if (ExtractFileDrive(AValue) <> '') or (AValue[1] = PathDelim) then
+    FLibLocation := AValue
+  else
+    FLibLocation := ExpandFileName(ExtractFilePath(ParamStr(0)) + AValue);
 end;
 
 procedure TRALDBModule.AnswerException(AResponse: TRALResponse; AException: Exception);
@@ -266,6 +645,12 @@ begin
   begin
     { RAL's own words, which say nothing of the database }
     AResponse.StatusCode := HTTP_TooManyRequests;
+    AResponse.Params.AddParam('Exception', AException.Message, rpkBODY);
+  end
+  else if AException is ERALDBProcError then
+  begin
+    { RAL's own words too: a refused or unknown procedure }
+    AResponse.StatusCode := ERALDBProcError(AException).StatusCode;
     AResponse.Params.AddParam('Exception', AException.Message, rpkBODY);
   end
   else
@@ -358,6 +743,583 @@ begin
   FPool.Release(ADatabase);
 end;
 
+procedure TRALDBModule.SetProcOptions(AValue: TRALDBProcOptions);
+begin
+  FProcOptions.Assign(AValue);
+end;
+
+procedure TRALDBModule.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  if (Operation = opRemove) and (FProcOptions <> nil) and
+     (AComponent = FProcOptions.Storage) then
+    FProcOptions.FStorage := nil;
+  inherited Notification(AComponent, Operation);
+end;
+
+procedure TRALDBModule.UpdateProcRoute;
+var
+  vParam: TRALRouteParam;
+begin
+  if csDestroying in ComponentState then
+    Exit;
+  FreeAndNil(FProcRoute);
+  if not FProcOptions.Enabled then
+    Exit;
+
+  FProcRoute := CreateDBRoute(FProcOptions.Route + '/:' + cProcNameParam,
+    {$IFDEF FPC}@{$ENDIF}ExecProcRoute);
+  FProcRoute.Name := FProcOptions.Route;
+  FProcRoute.AllowedMethods := [amPOST, amOPTIONS];
+  FProcRoute.Description.Add(cmDBProcDescription);
+
+  vParam := TRALRouteParam(FProcRoute.URIParams.Add);
+  vParam.Description.Text := cmDBProcName;
+  vParam.ParamName := cProcNameParam;
+  vParam.ParamType := prtString;
+  vParam.Required := True;
+end;
+
+procedure TRALDBModule.RefreshProcedures;
+begin
+  FCatalogLock.Enter;
+  try
+    while FCatalog.Count > 0 do
+    begin
+      FCatalog.Objects[FCatalog.Count - 1].Free;
+      FCatalog.Delete(FCatalog.Count - 1);
+    end;
+  finally
+    FCatalogLock.Leave;
+  end;
+end;
+
+function TRALDBModule.CachedProc(ADatabase: TRALDBBase; const AName: StringRAL;
+  AParamNames: TStrings): TRALDBProcInfo;
+var
+  vKey: string;
+  vNames: TStringList;
+  vPos: IntegerRAL;
+  vItem: TRALDBProcCacheItem;
+  vInfo: TRALDBProcInfo;
+begin
+  Result := nil;
+  // the names choose between PostgreSQL overloads: part of the key
+  vNames := TStringList.Create;
+  try
+    if AParamNames <> nil then
+      vNames.Assign(AParamNames);
+    vNames.Sort;
+    vKey := UpperCase(string(AName)) + '|' + UpperCase(vNames.CommaText);
+  finally
+    vNames.Free;
+  end;
+
+  FCatalogLock.Enter;
+  try
+    vPos := FCatalog.IndexOf(vKey);
+    if vPos >= 0 then
+    begin
+      vItem := TRALDBProcCacheItem(FCatalog.Objects[vPos]);
+      if (FProcOptions.CatalogLife > 0) and
+         (Now - vItem.Stamp < FProcOptions.CatalogLife / MinsPerDay) then
+      begin
+        Result := TRALDBProcInfo.Create;
+        Result.Assign(vItem.Info);
+        Exit;
+      end;
+      vItem.Free;
+      FCatalog.Delete(vPos);
+    end;
+  finally
+    FCatalogLock.Leave;
+  end;
+
+  // the database answers outside the lock; a procedure it does not know is not kept
+  vInfo := ADatabase.GetProcInfo(AName, AParamNames);
+  if vInfo = nil then
+    Exit;
+  Result := vInfo;
+  if FProcOptions.CatalogLife <= 0 then
+    Exit;
+
+  vItem := TRALDBProcCacheItem.Create;
+  vItem.Info := TRALDBProcInfo.Create;
+  vItem.Info.Assign(vInfo);
+  vItem.Stamp := Now;
+  FCatalogLock.Enter;
+  try
+    vPos := FCatalog.IndexOf(vKey);
+    if vPos >= 0 then
+    begin
+      FCatalog.Objects[vPos].Free;
+      FCatalog.Objects[vPos] := vItem;
+    end
+    else
+      FCatalog.AddObject(vKey, vItem);
+  finally
+    FCatalogLock.Leave;
+  end;
+end;
+
+function TRALDBModule.CheckProc(ADatabase: TRALDBBase; ARequest: TRALRequest;
+  const AName: StringRAL; AParams: TParams): TRALDBProcInfo;
+var
+  vNames: TStringList;
+  vInt: IntegerRAL;
+  vProcName, vSchema: StringRAL;
+  vProcParam, vParam: TParam;
+  vAllow: boolean;
+begin
+  if not FProcOptions.Enabled then
+    raise ERALDBProcError.Create(HTTP_Forbidden, emDBProcDisabled);
+  if not ValidProcName(AName) then
+    raise ERALDBProcError.Create(HTTP_BadRequest, emDBInvalidProcName);
+
+  vProcName := AName;
+  vInt := Pos(StringRAL('.'), vProcName);
+  if vInt > 0 then
+    Delete(vProcName, 1, vInt);
+  if not FProcOptions.AllowsName(vProcName) then
+    raise ERALDBProcError.Create(HTTP_NotFound, Format(emDBProcNotFound, [string(AName)]));
+
+  vNames := TStringList.Create;
+  try
+    for vInt := 0 to Pred(AParams.Count) do
+      if AParams.Items[vInt].ParamType in [ptUnknown, ptInput, ptInputOutput] then
+        vNames.Add(AParams.Items[vInt].Name);
+    Result := CachedProc(ADatabase, AName, vNames);
+  finally
+    vNames.Free;
+  end;
+  if Result = nil then
+    raise ERALDBProcError.Create(HTTP_NotFound, Format(emDBProcNotFound, [string(AName)]));
+
+  try
+    vSchema := Result.Schema;
+    if (vSchema <> '') and not FProcOptions.AllowsSchema(vSchema) then
+      raise ERALDBProcError.Create(HTTP_NotFound, Format(emDBProcNotFound, [string(AName)]));
+
+    // what came as text takes the catalog's type; the direction is the catalog's
+    for vInt := 0 to Pred(Result.Params.Count) do
+    begin
+      vProcParam := Result.Params.Items[vInt];
+      vParam := AParams.FindParam(vProcParam.Name);
+      if vParam = nil then
+        Continue;
+      TypeParam(vParam, vProcParam.DataType);
+      vParam.ParamType := vProcParam.ParamType;
+    end;
+
+    if Assigned(FOnValidateProc) then
+    begin
+      vAllow := True;
+      FOnValidateProc(Self, ARequest, Result, AParams, vAllow);
+      if not vAllow then
+        raise ERALDBProcError.Create(HTTP_Forbidden, emDBProcRejected);
+    end;
+  except
+    FreeAndNil(Result);
+    raise;
+  end;
+end;
+
+function TRALDBModule.SaveResultSet(ADatabase: TRALDBBase; AQuery: TDataSet;
+  AClientDriver: TRALDBDriverType; AStorage: TRALStorageLink; out ANative: boolean;
+  out AContentType: StringRAL): TMemoryStream;
+begin
+  // the link has the say when there is one: it knows which dataset reads the answer
+  ANative := ADatabase.CanExportNative;
+  if ANative then
+  begin
+    if AStorage <> nil then
+      ANative := AStorage.AllowNative(Ord(ADatabase.DriverType), Ord(AClientDriver))
+    else
+      ANative := AClientDriver = ADatabase.DriverType;
+  end;
+
+  Result := TMemoryStream.Create;
+  try
+    if ANative then
+    begin
+      if AStorage <> nil then
+        AContentType := AStorage.NativeContentType
+      else
+        AContentType := rctAPPLICATIONOCTETSTREAM;
+      ADatabase.SaveToStream(AQuery, Result, AContentType, ANative);
+    end
+    else
+    begin
+      { Answering without the native format takes the client's storage link,
+        and the client does not always send one: TRALDBSQLCache.CreateStorage
+        leaves it nil for rsfAuto, which is what a dataset with no Storage
+        assigned asks for. Using it blindly killed the whole server with an
+        access violation on an ordinary select - and the quickest way to get
+        here is a client on the other compiler, because a driver that differs
+        from the server's never takes the native path.
+
+        Raising is the honest answer: the client cannot read this response
+        either (LoadFromRALStorage raises emStorageClassNotFound with no link),
+        so inventing a format here would only move the failure. }
+      if AStorage = nil then
+        raise Exception.Create(emStorageNotFound);
+
+      ANative := False;
+      AContentType := AStorage.ContentType;
+      AStorage.SaveToStream(AQuery, Result);
+    end;
+    Result.Position := 0;
+  except
+    FreeAndNil(Result);
+    raise;
+  end;
+end;
+
+procedure TRALDBModule.ProcSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL;
+  AStorage: TRALStorageLink);
+var
+  vInfo: TRALDBProcInfo;
+  vQuery: TDataSet;
+  vRows: Int64RAL;
+  vInt: IntegerRAL;
+  vStream: TMemoryStream;
+  vNative, vFirst: boolean;
+  vContentType: StringRAL;
+begin
+  vInfo := CheckProc(ADatabase, ADatabase.Request, ADBSQL.SQL, ADBSQL.Params);
+  try
+    vRows := 0;
+    vQuery := ADatabase.ExecProc(vInfo, ADBSQL.Params, vRows);
+    try
+      ADBSQL.Response.Native := False;
+      ADBSQL.Response.ContentType := rctAPPLICATIONOCTETSTREAM;
+      ADBSQL.Response.RowsAffected := vRows;
+      ADBSQL.Response.LastId := 0;
+      for vInt := 0 to Pred(ADBSQL.Params.Count) do
+        if ADBSQL.Params.Items[vInt].ParamType in [ptOutput, ptInputOutput, ptResult] then
+          TParam(ADBSQL.Response.OutParams.Add).Assign(ADBSQL.Params.Items[vInt]);
+
+      { each result set as opensql answers one: native when the client's dataset
+        is of the server's library, else in its storage }
+      if vQuery <> nil then
+      begin
+        vFirst := True;
+        repeat
+          vStream := SaveResultSet(ADatabase, vQuery, ADBSQL.DriverType, AStorage, vNative,
+            vContentType);
+          if vFirst then
+          begin
+            ADBSQL.Response.Native := vNative;
+            ADBSQL.Response.ContentType := vContentType;
+            ADBSQL.Response.AdoptStream(vStream);
+            vFirst := False;
+          end
+          else
+            ADBSQL.Response.AddResultSet(vNative, vContentType, vStream);
+        until not ADatabase.NextResultSet(vQuery);
+      end;
+    finally
+      vQuery.Free;
+    end;
+  finally
+    vInfo.Free;
+  end;
+end;
+
+/// Runs ADBSQL as its ExecType says
+procedure RunStatement(AModule: TRALDBModule; ADatabase: TRALDBBase; ADBSQL: TRALDBSQL;
+  AStorage: TRALStorageLink);
+begin
+  case ADBSQL.ExecType of
+    etExecute: AModule.ExecSQLResponse(ADatabase, ADBSQL, AStorage);
+    etProc: AModule.ProcSQLResponse(ADatabase, ADBSQL, AStorage);
+  else
+    AModule.OpenSQLResponse(ADatabase, ADBSQL, AStorage);
+  end;
+end;
+
+{ The first statement of ACache alone: committed when it worked, undone when it
+  failed. Inside a transaction when AutoCommit is off or the client asked one }
+procedure RunAlone(AModule: TRALDBModule; ADatabase: TRALDBBase; ACache: TRALDBSQLCache);
+begin
+  if (not AModule.AutoCommit) or ACache.Transaction then
+    ADatabase.StartTransaction;
+  try
+    RunStatement(AModule, ADatabase, ACache.SQLList[0], ACache.Storage);
+    ADatabase.Commit;
+  except
+    try
+      ADatabase.Rollback;
+    except
+      // the error the client needs is the first one
+    end;
+    raise;
+  end;
+end;
+
+{ The storage of the answer to a plain HTTP client: the one its Accept names, the
+  module's ProcOptions.Storage, or JSON. AOwned when it was created here }
+function ProcStorage(AModule: TRALDBModule; ARequest: TRALRequest;
+  out AOwned: boolean): TRALStorageLink;
+var
+  vAccept: TStringList;
+  vInt, vPos: IntegerRAL;
+  vFormat: TRALStorageFormat;
+  vClass: TRALStorageLinkClass;
+  vType, vLinkType: string;
+begin
+  Result := nil;
+  AOwned := True;
+  vAccept := TStringList.Create;
+  try
+    vAccept.CommaText := LowerCase(string(ARequest.GetHeader('Accept')));
+    for vInt := 0 to Pred(vAccept.Count) do
+    begin
+      vType := vAccept[vInt];
+      vPos := Pos(';', vType);
+      if vPos > 0 then
+        vType := Copy(vType, 1, vPos - 1);
+      vType := Trim(vType);
+      if (vType = '') or (vType = '*/*') then
+        Continue;
+      for vFormat := Succ(rsfAuto) to High(TRALStorageFormat) do
+      begin
+        vClass := TRALStorageLink.GetStorageClass(vFormat);
+        if vClass = nil then
+          Continue;
+        Result := vClass.Create(nil);
+        vLinkType := LowerCase(string(Result.ContentType));
+        vPos := Pos(';', vLinkType);
+        if vPos > 0 then
+          vLinkType := Copy(vLinkType, 1, vPos - 1);
+        if Trim(vLinkType) = vType then
+          Exit;
+        FreeAndNil(Result);
+      end;
+    end;
+  finally
+    vAccept.Free;
+  end;
+
+  if AModule.ProcOptions.Storage <> nil then
+  begin
+    AOwned := False;
+    Result := AModule.ProcOptions.Storage;
+    Exit;
+  end;
+
+  vClass := TRALStorageLink.GetStorageClass(rsfJSON);
+  if vClass = nil then
+    raise Exception.Create(emStorageNotFound);
+  Result := vClass.Create(nil);
+end;
+
+/// The output params of AParams as a JSON object, for a driver without an in-memory dataset
+function OutputsJSON(AParams: TParams): TStream;
+var
+  vJSON: TRALJSONObject;
+  vInt: IntegerRAL;
+  vParam: TParam;
+begin
+  vJSON := TRALJSONObject.Create;
+  try
+    for vInt := 0 to Pred(AParams.Count) do
+    begin
+      vParam := AParams.Items[vInt];
+      if not (vParam.ParamType in [ptOutput, ptInputOutput, ptResult]) then
+        Continue;
+      if vParam.IsNull then
+        vJSON.Add(StringRAL(vParam.Name))
+      else
+        case vParam.DataType of
+          ftSmallint, ftInteger, ftWord, ftLargeint, ftAutoInc:
+            vJSON.Add(StringRAL(vParam.Name), Int64RAL(vParam.AsLargeInt));
+          ftFloat, ftCurrency:
+            vJSON.Add(StringRAL(vParam.Name), DoubleRAL(vParam.AsFloat));
+          ftBoolean:
+            vJSON.Add(StringRAL(vParam.Name), vParam.AsBoolean);
+          ftDate, ftTime, ftDateTime, ftTimeStamp:
+            vJSON.Add(StringRAL(vParam.Name), RALDateTimeToISO8601(vParam.AsDateTime, False));
+        else
+          vJSON.Add(StringRAL(vParam.Name), StringRAL(vParam.AsString));
+        end;
+    end;
+    Result := StringToStreamUTF8(vJSON.ToJson);
+  finally
+    vJSON.Free;
+  end;
+end;
+
+procedure TRALDBModule.ExecProcRoute(ARequest: TRALDBRequest; AResponse: TRALDBResponse);
+var
+  vDB: TRALDBBase;
+  vName: StringRAL;
+  vCache: TRALDBSQLCache;
+  vParams: TParams;
+  vParam: TParam;
+  vRALParam: TRALParam;
+  vJSON: TRALJSONValue;
+  vValue: TRALJSONValue;
+  vInfo: TRALDBProcInfo;
+  vQuery, vOut: TDataSet;
+  vRows: Int64RAL;
+  vInt, vData: IntegerRAL;
+  vStorage: TRALStorageLink;
+  vOwned, vNative: boolean;
+  vParts: TStringList;
+  vStream: TStream;
+  vContentType, vBody: StringRAL;
+  vEncoder: TRALMultipartEncoder;
+begin
+  vName := ARequest.ParamByName(cProcNameParam).AsString;
+  vDB := ARequest.Database;
+
+  { a RAL dataset sends the call as a DBWare cache (etProc), and reads the answer
+    in the same envelope: outputs and every result set }
+  if Pos(StringRAL(rctAPPLICATIONOCTETSTREAM), LowerCase(ARequest.Core.ContentType)) > 0 then
+  begin
+    vCache := ARequest.SQLCache;
+    if (vCache.Count = 0) or (vCache.SQLList[0].ExecType <> etProc) or
+       not SameText(string(vCache.SQLList[0].SQL), string(vName)) then
+      raise ERALDBProcError.Create(HTTP_BadRequest, Format(emDBProcNotFound, [string(vName)]));
+    vCache.SQLList[0].Response.Clear;
+    RunAlone(Self, vDB, vCache);
+    AResponse.Answer(vCache);
+    Exit;
+  end;
+
+  // a plain HTTP client: params from the query string, a form or a JSON object
+  vParams := TParams.Create;
+  vParts := TStringList.Create;
+  vInfo := nil;
+  vStorage := nil;
+  vOwned := False;
+  try
+    for vInt := 0 to Pred(ARequest.Params.Count) do
+    begin
+      vRALParam := ARequest.Params.Index[vInt];
+      if not (vRALParam.Kind in [rpkQUERY, rpkFIELD]) or
+         (Pos(StringRAL('ral_'), LowerCase(vRALParam.ParamName)) = 1) or
+         (vParams.FindParam(string(vRALParam.ParamName)) <> nil) then
+        Continue;
+      vParams.CreateParam(ftString, string(vRALParam.ParamName), ptInput).AsString :=
+        string(vRALParam.AsString);
+    end;
+
+    { a JSON object, also from a client that labels it text/plain; a form or a
+      multipart already came as fields }
+    vBody := '';
+    if Pos(StringRAL('multipart'), LowerCase(ARequest.Core.ContentType)) = 0 then
+      vBody := StringRAL(Trim(string(ARequest.Core.RequestText)));
+    if (Pos(StringRAL('json'), LowerCase(ARequest.Core.ContentType)) > 0) or
+       ((vBody <> '') and (vBody[POSINISTR] = '{')) then
+    begin
+      if vBody <> '' then
+      begin
+        vJSON := TRALJSON.ParseJSON(vBody);
+        try
+          if not (vJSON is TRALJSONObject) then
+            raise ERALDBProcError.Create(HTTP_BadRequest, emInvalidJSONFormat);
+          for vInt := 0 to Pred(TRALJSONObject(vJSON).Count) do
+          begin
+            if vParams.FindParam(string(TRALJSONObject(vJSON).GetName(vInt))) <> nil then
+              Continue;
+            vValue := TRALJSONObject(vJSON).Get(vInt);
+            vParam := vParams.CreateParam(ftString,
+              string(TRALJSONObject(vJSON).GetName(vInt)), ptInput);
+            if (vValue = nil) or vValue.IsNull then
+              vParam.Clear
+            else if vValue.JsonType in [rjtObject, rjtArray] then
+              vParam.AsString := string(vValue.ToJson)
+            else
+              vParam.AsString := string(vValue.AsString);
+          end;
+        finally
+          vJSON.Free;
+        end;
+      end;
+    end;
+
+    vInfo := CheckProc(vDB, ARequest.Core, vName, vParams);
+    vStorage := ProcStorage(Self, ARequest.Core, vOwned);
+
+    if (not FAutoCommit) then
+      vDB.StartTransaction;
+    try
+      vRows := 0;
+      vData := 0;
+      vQuery := vDB.ExecProc(vInfo, vParams, vRows);
+      try
+        // everything is written before the commit, which may close the cursor
+        vOut := vDB.OutputsDataset(vParams);
+        if vOut <> nil then
+          try
+            vParts.AddObject('params=' + string(vStorage.ContentType),
+              vStorage.SaveToStream(vOut));
+          finally
+            vOut.Free;
+          end
+        else if vInfo.HasOutput then
+          vParts.AddObject('params=' + rctAPPLICATIONJSON, OutputsJSON(vParams));
+
+        if vQuery <> nil then
+          repeat
+            vStream := SaveResultSet(vDB, vQuery, qtOther, vStorage, vNative, vContentType);
+            Inc(vData);
+            if vData = 1 then
+              vParts.AddObject('data=' + string(vContentType), vStream)
+            else
+              vParts.AddObject('data' + IntToStr(vData) + '=' + string(vContentType), vStream);
+          until not vDB.NextResultSet(vQuery);
+      finally
+        vQuery.Free;
+      end;
+      vDB.Commit;
+    except
+      try
+        vDB.Rollback;
+      except
+        // the error the client needs is the first one
+      end;
+      raise;
+    end;
+
+    if vParts.Count = 0 then
+      AResponse.Core.Answer(HTTP_NoContent)
+    else if vParts.Count = 1 then
+    begin
+      vStream := TStream(vParts.Objects[0]);
+      vParts.Objects[0] := nil;
+      AResponse.Core.Answer(HTTP_OK, vStream, StringRAL(vParts.ValueFromIndex[0]), True);
+    end
+    else
+    begin
+      { one part per dataset, in order: params, data, data2... - each with its
+        own Content-Type and Content-Disposition: inline; name="..." }
+      vEncoder := TRALMultipartEncoder.Create;
+      try
+        vEncoder.MediaType := rctMULTIPARTMIXED;
+        for vInt := 0 to Pred(vParts.Count) do
+        begin
+          vEncoder.AddPart(StringRAL(vParts.Names[vInt]), TStream(vParts.Objects[vInt]),
+            StringRAL(vParts.ValueFromIndex[vInt]), True);
+          vParts.Objects[vInt] := nil;
+        end;
+        AResponse.Core.Answer(HTTP_OK, vEncoder.AsStream, vEncoder.ContentType, True);
+      finally
+        vEncoder.Free;
+      end;
+    end;
+  finally
+    for vInt := 0 to Pred(vParts.Count) do
+      vParts.Objects[vInt].Free;
+    vParts.Free;
+    if vOwned then
+      vStorage.Free;
+    vInfo.Free;
+    vParams.Free;
+  end;
+end;
+
 procedure TRALDBModule.CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
 var
   vAllow: Boolean;
@@ -372,7 +1334,6 @@ end;
 
 procedure TRALDBModule.OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
 var
-  vResult: TStream;
   vQuery: TDataSet;
   vNative: Boolean;
   vContentType: StringRAL;
@@ -397,47 +1358,13 @@ begin
 
   // the dataset belongs to us: the drivers create it without an owner
   try
-    vResult := TMemoryStream.Create;
-    try
-      if vNative then
-      begin
-        if AStorage <> nil then
-          vContentType := AStorage.NativeContentType
-        else
-          vContentType := rctAPPLICATIONOCTETSTREAM;
-        ADatabase.SaveToStream(vQuery, vResult, vContentType, vNative);
-      end
-      else
-      begin
-        { Answering without the native format takes the client's storage link,
-          and the client does not always send one: TRALDBSQLCache.CreateStorage
-          leaves it nil for rsfAuto, which is what a dataset with no Storage
-          assigned asks for. Using it blindly killed the whole server with an
-          access violation on an ordinary select - and the quickest way to get
-          here is a client on the other compiler, because a driver that differs
-          from the server's never takes the native path.
-
-          Raising is the honest answer: the client cannot read this response
-          either (LoadFromRALStorage raises emStorageClassNotFound with no link),
-          so inventing a format here would only move the failure. }
-        if AStorage = nil then
-          raise Exception.Create(emStorageNotFound);
-
-        vNative := False;
-        vContentType := AStorage.ContentType;
-        AStorage.SaveToStream(vQuery, vResult);
-      end;
-
-      ADBSQL.Response.Native := vNative;
-      ADBSQL.Response.ContentType := vContentType;
-      ADBSQL.Response.RowsAffected := 0;
-      ADBSQL.Response.LastId := 0;
-      { handed over, not copied: Stream := held the result twice }
-      ADBSQL.Response.AdoptStream(TMemoryStream(vResult));
-      vResult := nil;
-    finally
-      FreeAndNil(vResult);
-    end;
+    { handed over, not copied: Stream := held the result twice }
+    ADBSQL.Response.AdoptStream(SaveResultSet(ADatabase, vQuery, ADBSQL.DriverType,
+      AStorage, vNative, vContentType));
+    ADBSQL.Response.Native := vNative;
+    ADBSQL.Response.ContentType := vContentType;
+    ADBSQL.Response.RowsAffected := 0;
+    ADBSQL.Response.LastId := 0;
   finally
     FreeAndNil(vQuery);
   end;
@@ -446,6 +1373,7 @@ end;
 procedure TRALDBModule.ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
 var
   vRowsAffect, vLastId: Int64RAL;
+  vInt: IntegerRAL;
 begin
   CheckSQL(ADatabase.Request, ADBSQL.SQL);
   ADatabase.ExecSQL(ADBSQL.SQL, ADBSQL.Params, vRowsAffect, vLastId);
@@ -454,6 +1382,10 @@ begin
   ADBSQL.Response.ContentType := rctAPPLICATIONOCTETSTREAM;
   ADBSQL.Response.RowsAffected := vRowsAffect;
   ADBSQL.Response.LastId := vLastId;
+  // a param marked as output - an execute procedure, a call - goes back
+  for vInt := 0 to Pred(ADBSQL.Params.Count) do
+    if ADBSQL.Params.Items[vInt].ParamType in [ptOutput, ptInputOutput, ptResult] then
+      TParam(ADBSQL.Response.OutParams.Add).Assign(ADBSQL.Params.Items[vInt]);
 end;
 
 function TRALDBModule.GetInfoFieldsStream(ADatabase: TRALDBBase;
@@ -549,7 +1481,7 @@ begin
   { the connection first: an exhausted pool answers 429 before the body is read }
   vDB := ARequest.Database;
   vSQLCache := ARequest.SQLCache;
-  OpenSQLResponse(vDB, vSQLCache.SQLList[0], vSQLCache.Storage);
+  RunAlone(Self, vDB, vSQLCache);
   AResponse.Answer(vSQLCache);
 end;
 
@@ -559,27 +1491,74 @@ var
   vDB: TRALDBBase;
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
-  vInt: IntegerRAL;
+  vInt, vFailed: IntegerRAL;
+  vTransaction: boolean;
+  vError: StringRAL;
 begin
   vDB := ARequest.Database;
   vSQLCache := ARequest.SQLCache;
+  { all or nothing when AutoCommit is off or the client asked it: the first
+    failure undoes the others, and nothing stays open past the request }
+  vTransaction := (not FAutoCommit) or vSQLCache.Transaction;
+  if vTransaction then
+    vDB.StartTransaction;
+  vFailed := -1;
   for vInt := 0 to Pred(vSQLCache.Count) do
   begin
     vDBSQL := vSQLCache.SQLList[vInt];
     vDBSQL.Response.Clear;
 
-    { each statement answers for itself: one failing does not lose the others }
     try
-      if vDBSQL.ExecType = etExecute then
-        ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage)
-      else
-        OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
+      RunStatement(Self, vDB, vDBSQL, vSQLCache.Storage);
+      if not vTransaction then
+        vDB.Commit;
     except
       { each statement's own failure, the driver's words - hidden like a
         500's with the server's HideErrorDetails }
       on e: Exception do
+      begin
         vDBSQL.Response.StrError := ErrorText(e);
+        if vTransaction then
+        begin
+          vFailed := vInt;
+          Break;
+        end;
+        { each statement answers for itself: one failing does not lose the others }
+        try
+          vDB.Rollback;
+        except
+        end;
+      end;
     end;
+  end;
+
+  if vTransaction then
+  begin
+    if vFailed >= 0 then
+    begin
+      try
+        vDB.Rollback;
+      except
+      end;
+      for vInt := 0 to Pred(vSQLCache.Count) do
+        if vInt <> vFailed then
+          vSQLCache.SQLList[vInt].Response.StrError := emDBRolledBack;
+    end
+    else
+      try
+        vDB.Commit;
+      except
+        on e: Exception do
+        begin
+          vError := ErrorText(e);
+          for vInt := 0 to Pred(vSQLCache.Count) do
+            vSQLCache.SQLList[vInt].Response.StrError := vError;
+          try
+            vDB.Rollback;
+          except
+          end;
+        end;
+      end;
   end;
   AResponse.Answer(vSQLCache);
 end;
@@ -594,7 +1573,7 @@ begin
   vSQLCache := ARequest.SQLCache;
   vDBSQL := vSQLCache.SQLList[0];
   vDBSQL.Response.Clear;
-  ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
+  RunAlone(Self, vDB, vSQLCache);
   AResponse.Answer(vSQLCache);
 end;
 
@@ -1077,7 +2056,12 @@ var
 begin
   inherited Create(AOwner);
 
+  FAutoCommit := True;
+  FCatalog := TStringList.Create;
+  FCatalog.Sorted := True;
+  FCatalogLock := TCriticalSection.Create;
   FConnectionParams := TStringList.Create;
+  FProcOptions := TRALDBProcOptions.Create(Self);
   FPool := TRALDBConnectionPool.Create;
   FPool.OnCreateConnection := {$IFDEF FPC}@{$ENDIF}CreatePoolConnection;
 
@@ -1155,6 +2139,12 @@ end;
 
 destructor TRALDBModule.Destroy;
 begin
+  RefreshProcedures;
+  FreeAndNil(FCatalog);
+  FreeAndNil(FCatalogLock);
+  // the route belongs to the routes of the module, freed with it
+  FProcRoute := nil;
+  FreeAndNil(FProcOptions);
   FreeAndNil(FPool);
   FreeAndNil(FConnectionParams);
   inherited Destroy;

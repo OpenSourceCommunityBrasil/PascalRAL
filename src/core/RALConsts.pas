@@ -110,6 +110,10 @@ const
   DEFAULTMAXREDIRECTS = 3;
   /// Default TRALWebModule.SessionTimeout: 30 minutes, in milliseconds.
   DEFAULTWEBSESSIONTIMEOUT = 1800000;
+  /// Default TRALDBModule.ProcOptions.Route, the prefix of the stored procedure route.
+  DEFAULTDBPROCROUTE = 'proc';
+  /// Default TRALDBModule.ProcOptions.CatalogLife, in minutes.
+  DEFAULTDBCATALOGLIFE = 5;
   /// Smallest TRALClient.KeepAliveInterval WinHTTP accepts, in milliseconds.
   MINKEEPALIVEMS = 5000;
   /// Attempts to obtain a token in the JWT and OAuth2 client authenticators.

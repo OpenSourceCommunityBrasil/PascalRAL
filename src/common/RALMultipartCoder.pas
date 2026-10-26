@@ -142,6 +142,7 @@ type
   private
     FBoundary: StringRAL;
     FFormData: TList;
+    FMediaType: StringRAL;
   protected
     procedure ClearItems;
     function GetBoundary: StringRAL;
@@ -162,6 +163,10 @@ type
     /// encoder, or moves into the stream AsConcatStream answers
     procedure AddStream(const AName: StringRAL; const AFileStream: TStream;
       const AFileName, AContentType: StringRAL; AOwned: boolean); overload;
+    { Adds AStream as an inline part of a multipart/mixed (MediaType): a body
+      part with its own Content-Type, named by AName; taken over when AOwned }
+    procedure AddPart(const AName: StringRAL; const AStream: TStream;
+      const AContentType: StringRAL; AOwned: boolean);
     /// Adds a file into the multipart based on the AFileName
     procedure AddFile(const AName: StringRAL; const AFileName: StringRAL;
       const AContentType: StringRAL = '');
@@ -178,6 +183,8 @@ type
   published
     property Boundary: StringRAL read GetBoundary write FBoundary;
     property ContentType: StringRAL read GetContentType;
+    /// The multipart type ContentType announces: multipart/form-data, or multipart/mixed
+    property MediaType: StringRAL read FMediaType write FMediaType;
   end;
 
 implementation
@@ -186,7 +193,7 @@ implementation
 
 function TRALMultipartEncoder.GetContentType: StringRAL;
 begin
-  Result := rctMULTIPARTFORMDATA + '; boundary=' + Boundary;
+  Result := FMediaType + '; boundary=' + Boundary;
 end;
 
 procedure TRALMultipartEncoder.ClearItems;
@@ -202,6 +209,7 @@ constructor TRALMultipartEncoder.Create;
 begin
   inherited;
   FFormData := TList.Create;
+  FMediaType := rctMULTIPARTFORMDATA;
 end;
 
 destructor TRALMultipartEncoder.Destroy;
@@ -253,6 +261,13 @@ begin
   AddStream(AName, AFileStream, AFileName, AContentType);
   if AOwned then
     TRALMultipartFormData(FFormData.Items[FFormData.Count - 1]).AdoptBuffer(AFileStream);
+end;
+
+procedure TRALMultipartEncoder.AddPart(const AName: StringRAL; const AStream: TStream;
+  const AContentType: StringRAL; AOwned: boolean);
+begin
+  AddStream(AName, AStream, '', AContentType, AOwned);
+  TRALMultipartFormData(FFormData.Items[FFormData.Count - 1]).Disposition := 'inline';
 end;
 
 procedure TRALMultipartEncoder.AddFile(const AName, AFileName: StringRAL;

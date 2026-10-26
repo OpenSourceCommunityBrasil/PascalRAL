@@ -62,6 +62,17 @@
   emDBRowsAffected = 'ApplyUpdates: um comando afetou %d registros em vez de 1 - o registro foi alterado ou excluído por outro usuário, ou o critério da atualização não identifica exatamente uma linha.';
   emDBStatusNoMessage = 'O servidor respondeu HTTP %d e não enviou mensagem.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL não pode estar vazio.';
+  emDBInvalidProcName = 'Nome de procedure inválido: só letras, dígitos, _, $ e . são aceitos.';
+  emDBLegacyWireProc = 'RALLegacyWire está ligado: o formato antigo não tem chamada de procedure nem parâmetros de saída.';
+  emDBNoQueue = 'Não há fila para confirmar ou desfazer: chame StartTransaction antes.';
+  emDBNoStoredProc = 'Este banco de dados não tem stored procedures.';
+  emDBNoTransaction = 'Este driver de banco não tem controle de transação.';
+  emDBProcAmbiguous = 'A procedure %s tem mais de uma assinatura que aceita estes parâmetros: envie os nomes que as distinguem.';
+  emDBProcDisabled = 'Stored procedures não estão habilitadas neste módulo (ProcOptions.Enabled).';
+  emDBProcNotFound = 'Procedure %s não encontrada, ou não permitida.';
+  emDBProcRejected = 'Chamada de procedure recusada pelo OnValidateProc.';
+  emDBQueueOpen = 'Indisponível enquanto a conexão enfileira comandos (StartTransaction): precisa de resposta na hora.';
+  emDBRolledBack = 'Desfeito: outro comando da mesma requisição falhou.';
   emInvalidFormat = 'Formato Inválido.';
   emInvalidJSONFormat = 'Formato JSON inválido.';
   emQueryVersionError = 'Versão de estrutura inválida.';
@@ -210,6 +221,8 @@
   cmDBBinary = 'Formato Binário.';
   cmDBSQL = 'SQL';
   cmDBTableName = 'Nome da tabela.';
+  cmDBProcDescription = 'Executa uma stored procedure do banco pelo nome.';
+  cmDBProcName = 'Nome da stored procedure.';
 
   // wizard messages
   emWizardDirEmpty = 'O diretório deve ser preenchido.';

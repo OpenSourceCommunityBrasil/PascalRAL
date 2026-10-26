@@ -62,6 +62,17 @@
   emDBRowsAffected = 'ApplyUpdates: una instrucción afectó %d registros en lugar de 1 - el registro fue modificado o eliminado por otro usuario, o el criterio de actualización no identifica exactamente una fila.';
   emDBStatusNoMessage = 'El servidor respondió HTTP %d y no envió ningún mensaje.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL no puede estar vacío.';
+  emDBInvalidProcName = 'Nombre de procedimiento inválido: solo letras, dígitos, _, $ y . son aceptados.';
+  emDBLegacyWireProc = 'RALLegacyWire está activo: el formato antiguo no tiene llamadas a procedimientos ni parámetros de salida.';
+  emDBNoQueue = 'No hay cola para confirmar o deshacer: llame a StartTransaction primero.';
+  emDBNoStoredProc = 'Esta base de datos no tiene procedimientos almacenados.';
+  emDBNoTransaction = 'Este controlador de base de datos no tiene control de transacciones.';
+  emDBProcAmbiguous = 'El procedimiento %s tiene más de una firma que acepta estos parámetros: envíe los nombres que las distinguen.';
+  emDBProcDisabled = 'Los procedimientos almacenados no están habilitados en este módulo (ProcOptions.Enabled).';
+  emDBProcNotFound = 'Procedimiento %s no encontrado, o no permitido.';
+  emDBProcRejected = 'Llamada al procedimiento rechazada por OnValidateProc.';
+  emDBQueueOpen = 'No disponible mientras la conexión pone instrucciones en cola (StartTransaction): necesita una respuesta inmediata.';
+  emDBRolledBack = 'Deshecho: otra instrucción de la misma petición falló.';
   emInvalidFormat = 'Formato no és válido.';
   emInvalidJSONFormat = 'Formato JSON no és válido.';
   emQueryVersionError = 'Versión de estructura no és válida.';
@@ -210,6 +221,8 @@
   cmDBBinary = 'Formato Binario.';
   cmDBSQL = 'SQL';
   cmDBTableName = 'Nombre de la tabla.';
+  cmDBProcDescription = 'Ejecuta un procedimiento almacenado de la base de datos por el nombre.';
+  cmDBProcName = 'Nombre del procedimiento almacenado.';
 
   // wizard messages
   emWizardDirEmpty = 'El directorio debe completarse.';

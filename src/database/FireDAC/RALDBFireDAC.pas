@@ -12,12 +12,12 @@ uses
   FireDAC.Phys.FB, FireDAC.Phys.SQLite, FireDAC.Phys.MySQL,
   FireDAC.Phys.PG, FireDAC.Dapt, FireDAC.Stan.Intf, FireDAC.Stan.StorageJSON,
   FireDAC.Stan.StorageBin, FireDAC.Stan.StorageXML, FireDAC.Stan.Def, FireDAC.Stan.Async,
-  FireDAC.Stan.Option,
+  FireDAC.Stan.Option, FireDAC.Stan.Param,
   {$ELSE}
   uADCompClient, uADCompDataSet, uADCompGUIx,
   uADPhysIntf,
   uADDAptIntf, uADStanIntf, uADStanStorage, uADStanStorageXML,
-  uADStanConst, uADStanUtil,
+  uADStanConst, uADStanUtil, uADStanParam,
   {$ENDIF}
   RALDBBase, RALTypes, RALMimeTypes;
 
@@ -35,7 +35,11 @@ type
     /// A query on this connection with ASQL and AParams in place - see there
     function NewQuery(const ASQL: StringRAL; AParams: TParams):
       {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
+    /// Copies the output params of AQuery back to AParams
+    procedure ReadOutputs(AQuery: {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
+      AParams: TParams);
 
+    function NewMemDataset(AParams: TParams): TDataSet; override;
     procedure OnConnBeforeConnect(ASender: TObject);
     procedure OnConnAfterConnect(ASender: TObject);
     // AnyDAC (XE2..XE4) hands the initiator as an interface, FireDAC as an object
@@ -50,9 +54,14 @@ type
     destructor Destroy; override;
 
     function CanExportNative: boolean; override;
+    procedure Commit; override;
     procedure Disconnect; override;
+    function InTransaction: boolean; override;
     function IsConnected: boolean; override;
+    function NextResultSet(ADataset: TDataSet): boolean; override;
     procedure ResetSession; override;
+    procedure Rollback; override;
+    procedure StartTransaction; override;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
@@ -239,6 +248,18 @@ begin
     FConnector.Rollback;
 end;
 
+function TRALDBFireDAC.NewMemDataset(AParams: TParams): TDataSet;
+begin
+  Result := {$IFDEF DELPHIXE4UP}TFDMemTable{$ELSE}TADMemTable{$ENDIF}.Create(nil);
+  try
+    AddOutputDefs(AParams, Result.FieldDefs);
+    {$IFDEF DELPHIXE4UP}TFDMemTable{$ELSE}TADMemTable{$ENDIF}(Result).CreateDataSet;
+  except
+    FreeAndNil(Result);
+    raise;
+  end;
+end;
+
 procedure TRALDBFireDAC.OnConnAfterConnect(ASender: TObject);
 begin
   if Assigned(OnAfterConnect) then
@@ -278,6 +299,7 @@ function TRALDBFireDAC.NewQuery(const ASQL: StringRAL; AParams: TParams):
   {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
 var
   vInt: integer;
+  vParam: {$IFDEF DELPHIXE4UP}TFDParam{$ELSE}TADParam{$ENDIF};
 begin
   Result := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}.Create(nil);
   try
@@ -287,9 +309,14 @@ begin
     if AParams <> nil then
       for vInt := 0 to Pred(AParams.Count) do
       begin
-        Result.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-        if not AParams.Items[vInt].IsNull then
-          Result.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+        vParam := Result.ParamByName(AParams.Items[vInt].Name);
+        vParam.DataType := AParams.Items[vInt].DataType;
+        // ptUnknown keeps what FireDAC assumes, as before directions travelled
+        if AParams.Items[vInt].ParamType <> ptUnknown then
+          vParam.ParamType := AParams.Items[vInt].ParamType;
+        if (not AParams.Items[vInt].IsNull) and
+           not (AParams.Items[vInt].ParamType in [ptOutput, ptResult]) then
+          vParam.Value := AParams.Items[vInt].Value;
       end;
   except
     Result.Free;
@@ -397,6 +424,7 @@ begin
     vQuery.ExecSQL;
 
     ARowsAffected := vQuery.RowsAffected;
+    ReadOutputs(vQuery, AParams);
 
     if DatabaseType = dtMySQL then
     begin
@@ -411,9 +439,67 @@ begin
       end;
     end;
 
-    FConnector.Commit;
+    // inside StartTransaction the statement waits for the Commit
+    if not FConnector.InTransaction then
+      FConnector.Commit;
   finally
     FreeAndNil(vQuery);
+  end;
+end;
+
+procedure TRALDBFireDAC.ReadOutputs(AQuery: {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
+  AParams: TParams);
+var
+  vInt: integer;
+  vNative: {$IFDEF DELPHIXE4UP}TFDParam{$ELSE}TADParam{$ENDIF};
+begin
+  if AParams = nil then
+    Exit;
+  for vInt := 0 to Pred(AParams.Count) do
+  begin
+    if not (AParams.Items[vInt].ParamType in [ptOutput, ptInputOutput, ptResult]) then
+      Continue;
+    vNative := AQuery.Params.FindParam(AParams.Items[vInt].Name);
+    if vNative = nil then
+      Continue;
+    if vNative.IsNull then
+      AParams.Items[vInt].Clear
+    else
+      AParams.Items[vInt].Value := vNative.Value;
+  end;
+end;
+
+procedure TRALDBFireDAC.StartTransaction;
+begin
+  Conectar;
+  FConnector.StartTransaction;
+end;
+
+procedure TRALDBFireDAC.Commit;
+begin
+  if FConnector.Connected and FConnector.InTransaction then
+    FConnector.Commit;
+end;
+
+procedure TRALDBFireDAC.Rollback;
+begin
+  if FConnector.Connected and FConnector.InTransaction then
+    FConnector.Rollback;
+end;
+
+function TRALDBFireDAC.InTransaction: boolean;
+begin
+  Result := FConnector.Connected and FConnector.InTransaction;
+end;
+
+function TRALDBFireDAC.NextResultSet(ADataset: TDataSet): boolean;
+begin
+  // a MySQL call with two selects, a PostgreSQL procedure answering refcursors
+  Result := False;
+  if ADataset is {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF} then
+  begin
+    {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}(ADataset).NextRecordSet;
+    Result := ADataset.Active;
   end;
 end;
 

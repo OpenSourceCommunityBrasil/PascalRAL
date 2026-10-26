@@ -61,6 +61,17 @@
   emDBRowsAffected = 'ApplyUpdates: a statement affected %d records instead of 1 - the record was changed or deleted by another user, or the update criteria do not identify exactly one row.';
   emDBStatusNoMessage = 'The server answered HTTP %d and sent no message.';
   emDBUpdateSQLMissing = 'SQL for UpdateTable/UpdateSQL cannot be empty.';
+  emDBInvalidProcName = 'Invalid stored procedure name: only letters, digits, _, $ and . are accepted.';
+  emDBLegacyWireProc = 'RALLegacyWire is on: the old wire format has no stored procedure calls nor output parameters.';
+  emDBNoQueue = 'There is no queue to commit or roll back: call StartTransaction first.';
+  emDBNoStoredProc = 'This database has no stored procedures.';
+  emDBNoTransaction = 'This database driver has no transaction control.';
+  emDBProcAmbiguous = 'Stored procedure %s has more than one signature taking these parameters: send the names that tell them apart.';
+  emDBProcDisabled = 'Stored procedures are not enabled on this module (ProcOptions.Enabled).';
+  emDBProcNotFound = 'Stored procedure %s not found, or not allowed.';
+  emDBProcRejected = 'Stored procedure call rejected by OnValidateProc.';
+  emDBQueueOpen = 'Not available while the connection queues statements (StartTransaction): it needs an answer at once.';
+  emDBRolledBack = 'Rolled back: another statement of the same request failed.';
   emHMACEmptyText = 'Input text must be provided.';
   emInvalidFormat = 'Invalid Format.';
   emInvalidJSONFormat = 'Invalid JSON Format.';
@@ -210,6 +221,8 @@
   cmDBParamSystemDescription = 'Include system tables';
   cmDBSQL = 'SQL';
   cmDBTableName = 'Table name';
+  cmDBProcDescription = 'Run a stored procedure of the database by name';
+  cmDBProcName = 'Name of the stored procedure';
 
   // wizard messages
   emWizardDirEmpty = 'The directory must be filled in.';

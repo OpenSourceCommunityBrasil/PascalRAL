@@ -10,6 +10,7 @@ interface
 uses
   Classes, SysUtils, DB,
   ZConnection, ZDataset, ZDbcIntfs, ZAbstractRODataset, ZMemTable,
+  {$IFDEF FPC}BufDataset,{$ENDIF}
   RALDBBase, RALTypes, RALMIMETypes;
 
 type
@@ -23,6 +24,9 @@ type
     procedure Conectar; override;
     function FindProtocol: StringRAL;
 
+    { On FPC a TBufDataset; on Delphi none (nil): the outputs then go as JSON
+      to a plain HTTP client }
+    function NewMemDataset(AParams: TParams): TDataSet; override;
     procedure OnConnBeforeConnect(ASender : TObject);
     procedure OnConnAfterConnect(ASender : TObject);
   public
@@ -30,9 +34,13 @@ type
     destructor Destroy; override;
 
     function CanExportNative: boolean; override;
+    procedure Commit; override;
     procedure Disconnect; override;
+    function InTransaction: boolean; override;
     function IsConnected: boolean; override;
     procedure ResetSession; override;
+    procedure Rollback; override;
+    procedure StartTransaction; override;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
@@ -53,6 +61,45 @@ type
   end;
 
 implementation
+
+{ Zeos 7 keeps TParams and Zeos 8 its own TZParams: both are reached through
+  ParamByName, never by the type of the list }
+
+/// AParams into the params of AQuery: type, direction and value
+procedure BindQuery(AQuery: TZAbstractRODataset; AParams: TParams);
+var
+  vInt: integer;
+begin
+  if AParams = nil then
+    Exit;
+  for vInt := 0 to Pred(AParams.Count) do
+  begin
+    AQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+    // ptUnknown keeps what Zeos assumes, as before directions travelled
+    if AParams.Items[vInt].ParamType <> ptUnknown then
+      AQuery.ParamByName(AParams.Items[vInt].Name).ParamType := AParams.Items[vInt].ParamType;
+    if (not AParams.Items[vInt].IsNull) and
+       not (AParams.Items[vInt].ParamType in [ptOutput, ptResult]) then
+      AQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+  end;
+end;
+
+/// The output params of AQuery back into AParams
+procedure ReadQueryOutputs(AQuery: TZAbstractRODataset; AParams: TParams);
+var
+  vInt: integer;
+begin
+  if AParams = nil then
+    Exit;
+  for vInt := 0 to Pred(AParams.Count) do
+    if AParams.Items[vInt].ParamType in [ptOutput, ptInputOutput, ptResult] then
+    begin
+      if AQuery.ParamByName(AParams.Items[vInt].Name).IsNull then
+        AParams.Items[vInt].Clear
+      else
+        AParams.Items[vInt].Value := AQuery.ParamByName(AParams.Items[vInt].Name).Value;
+    end;
+end;
 
 { TRALDBZeos }
 
@@ -151,15 +198,7 @@ begin
     vQuery.Connection := FConnector;
     vQuery.Close;
     vQuery.SQL.Text := ASQL;
-    if AParams <> nil then
-    begin
-      for vInt := 0 to Pred(AParams.Count) do
-      begin
-        vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-        if not AParams.Items[vInt].IsNull then
-          vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
-      end;
-    end;
+    BindQuery(vQuery, AParams);
     vQuery.Open;
 
     // aqui ocorre uma correcao dos fields devido vQuery ser TZReadOnlyQuery
@@ -256,6 +295,29 @@ begin
     FConnector.Rollback;
 end;
 
+procedure TRALDBZeos.StartTransaction;
+begin
+  Conectar;
+  FConnector.StartTransaction;
+end;
+
+procedure TRALDBZeos.Commit;
+begin
+  if FConnector.Connected and FConnector.InTransaction then
+    FConnector.Commit;
+end;
+
+procedure TRALDBZeos.Rollback;
+begin
+  if FConnector.Connected and FConnector.InTransaction then
+    FConnector.Rollback;
+end;
+
+function TRALDBZeos.InTransaction: boolean;
+begin
+  Result := FConnector.Connected and FConnector.InTransaction;
+end;
+
 function TRALDBZeos.CanExportNative: boolean;
 begin
   {$IFNDEF FPC}
@@ -277,6 +339,23 @@ begin
     {$ENDIF}
   {$ELSE}
     Result := TZAbstractMemTable.MethodAddress('SaveToStream') <> nil;
+  {$ENDIF}
+end;
+
+function TRALDBZeos.NewMemDataset(AParams: TParams): TDataSet;
+begin
+  {$IFDEF FPC}
+  Result := TBufDataset.Create(nil);
+  try
+    AddOutputDefs(AParams, Result.FieldDefs);
+    // CreateDataset opens it
+    TBufDataset(Result).CreateDataset;
+  except
+    FreeAndNil(Result);
+    raise;
+  end;
+  {$ELSE}
+  Result := nil;
   {$ENDIF}
 end;
 
@@ -308,15 +387,7 @@ begin
     vQuery.Connection := FConnector;
     vQuery.Close;
     vQuery.SQL.Text := ASQL;
-    if AParams <> nil then
-    begin
-      for vInt := 0 to Pred(AParams.Count) do
-      begin
-        vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-        if not AParams.Items[vInt].IsNull then
-          vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
-      end;
-    end;
+    BindQuery(vQuery, AParams);
     vQuery.Open;
 
     // aqui ocorre uma correcao dos fields devido vQuery ser TZReadOnlyQuery
@@ -345,7 +416,6 @@ procedure TRALDBZeos.ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffecte
                              var ALastInsertId: Int64RAL);
 var
   vQuery: TZQuery;
-  vInt: integer;
 begin
   Conectar;
 
@@ -358,18 +428,11 @@ begin
       vQuery.Connection := FConnector;
       vQuery.Close;
       vQuery.SQL.Text := ASQL;
-      if AParams <> nil then
-      begin
-        for vInt := 0 to Pred(AParams.Count) do
-        begin
-          vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-          if not AParams.Items[vInt].IsNull then
-            vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
-        end;
-      end;
+      BindQuery(vQuery, AParams);
       vQuery.ExecSQL;
 
       ARowsAffected := vQuery.RowsAffected;
+      ReadQueryOutputs(vQuery, AParams);
 
       if DatabaseType = dtMySQL then
       begin

@@ -14,7 +14,29 @@ uses
   RALStorage;
 
 type
-  TRALDBExecType = (etOpen, etExecute);
+  { What a statement of the cache does: etOpen answers rows, etExecute runs,
+    etProc calls the stored procedure named in SQL (wire version 2) }
+  TRALDBExecType = (etOpen, etExecute, etProc);
+
+  { TRALDBResultSet }
+
+  /// One result set of an answer after the first: native or in the storage, with its content type
+  TRALDBResultSet = class
+  private
+    FContentType: StringRAL;
+    FNative: boolean;
+    FStream: TMemoryStream;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    /// Content type of Stream
+    property ContentType: StringRAL read FContentType write FContentType;
+    /// Stream is in the native format of the server's driver
+    property Native: boolean read FNative write FNative;
+    /// The rows, owned
+    property Stream: TMemoryStream read FStream;
+  end;
 
   { TRALDBSQLResponse }
 
@@ -23,7 +45,9 @@ type
     FContentType: StringRAL;
     FError: boolean;
     FLastId: Int64RAL;
+    FMoreResultSets: TList;
     FNative: boolean;
+    FOutParams: TParams;
     FRowsAffected: Int64RAL;
     FStream: TStream;
   protected
@@ -35,10 +59,26 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    { Adds a result set after the first one, taking AStream: the first is
+      Stream, Native and ContentType themselves }
+    procedure AddResultSet(ANative: boolean; const AContentType: StringRAL;
+      AStream: TMemoryStream);
     { Takes AStream - a memory stream - as Stream, without copying it: the
       response frees it. Stream := copies, which held a result twice }
     procedure AdoptStream(AStream: TMemoryStream);
     procedure Clear;
+    /// Drops the result sets after the first
+    procedure ClearResultSets;
+    { The result set AIndex, 0 being Stream itself, with its format; nil past the
+      last. An error has none }
+    function GetResultSet(AIndex: IntegerRAL; out ANative: boolean;
+      out AContentType: StringRAL): TStream;
+    /// Count of result sets: 0 for an error or a statement that answered no rows
+    function ResultSetCount: IntegerRAL;
+
+    { Output params of the statement - a stored procedure call, a statement
+      with params marked ptOutput - with their values (wire version 2) }
+    property OutParams: TParams read FOutParams;
   published
     property ContentType: StringRAL read FContentType write FContentType;
     property Error: boolean read FError write FError;
@@ -81,6 +121,8 @@ type
   private
     FSQLList: TList;
     FStorage: TRALStorageLink;
+    FTransaction: boolean;
+    FVersion: byte;
   protected
     function GetQuerySQL(ADataset: TDataSet): StringRAL;
     function GetQueryParams(ADataset: TDataSet): TParams;
@@ -88,6 +130,12 @@ type
 
     procedure SetStorage(const AValue: TRALStorageLink);
     procedure CreateStorage(AWriter : TRALBinaryWriter);
+    /// Reads one param of the wire into AParams; AVersion 2 carries its direction
+    procedure ReadParam(AWriter: TRALBinaryWriter; AParams: TParams; AVersion: byte);
+    /// Raises emQueryVersionError for a version this unit does not read
+    procedure CheckVersion(AVersion: byte);
+    /// Writes AParam to the wire; AVersion 2 carries its direction
+    procedure WriteParam(AWriter: TRALBinaryWriter; AParam: TParam; AVersion: byte);
   public
     constructor Create;
     destructor Destroy; override;
@@ -118,16 +166,95 @@ type
     procedure ResponseFromStream(AStream: TStream);
     procedure ReponseFromFile(AFileName: StringRAL);
 
+    { The version this unit writes: 2, or 1 under RALLegacyWire. It reads both,
+      and answers a cache in the version the cache came in }
     function GetStructureVersion: byte;
 
     property SQLList[AIndex: IntegerRAL]: TRALDBSQL read GetSQLList;
+    { The client asks the statements to run as one transaction: all of them or
+      none (wire version 2; TRALDBConnection.StartTransaction sets it) }
+    property Transaction: boolean read FTransaction write FTransaction;
+    /// Version of the last cache read; GetStructureVersion before any
+    property Version: byte read FVersion;
   published
     property Storage: TRALStorageLink read FStorage write SetStorage;
   end;
 
 implementation
 
+{ TRALDBResultSet }
+
+constructor TRALDBResultSet.Create;
+begin
+  inherited Create;
+  FStream := TMemoryStream.Create;
+end;
+
+destructor TRALDBResultSet.Destroy;
+begin
+  FreeAndNil(FStream);
+  inherited Destroy;
+end;
+
 { TRALDBSQLResponse }
+
+procedure TRALDBSQLResponse.AddResultSet(ANative: boolean; const AContentType: StringRAL;
+  AStream: TMemoryStream);
+var
+  vSet: TRALDBResultSet;
+begin
+  vSet := TRALDBResultSet.Create;
+  vSet.Native := ANative;
+  vSet.ContentType := AContentType;
+  FreeAndNil(vSet.FStream);
+  vSet.FStream := AStream;
+  AStream.Position := 0;
+  FMoreResultSets.Add(vSet);
+end;
+
+procedure TRALDBSQLResponse.ClearResultSets;
+begin
+  while FMoreResultSets.Count > 0 do
+  begin
+    TObject(FMoreResultSets.Items[FMoreResultSets.Count - 1]).Free;
+    FMoreResultSets.Delete(FMoreResultSets.Count - 1);
+  end;
+end;
+
+function TRALDBSQLResponse.GetResultSet(AIndex: IntegerRAL; out ANative: boolean;
+  out AContentType: StringRAL): TStream;
+var
+  vSet: TRALDBResultSet;
+begin
+  Result := nil;
+  ANative := False;
+  AContentType := '';
+  if (AIndex < 0) or (AIndex >= ResultSetCount) then
+    Exit;
+  if AIndex = 0 then
+  begin
+    ANative := FNative;
+    AContentType := FContentType;
+    Result := FStream;
+  end
+  else
+  begin
+    vSet := TRALDBResultSet(FMoreResultSets.Items[AIndex - 1]);
+    ANative := vSet.Native;
+    AContentType := vSet.ContentType;
+    Result := vSet.Stream;
+  end;
+  Result.Position := 0;
+end;
+
+function TRALDBSQLResponse.ResultSetCount: IntegerRAL;
+begin
+  // the first one is Stream: an answer without rows leaves it empty
+  if FError or (FStream.Size = 0) then
+    Result := 0
+  else
+    Result := 1 + FMoreResultSets.Count;
+end;
 
 function TRALDBSQLResponse.GetStrError: StringRAL;
 begin
@@ -135,8 +262,12 @@ begin
   if (not FError) or (FStream.Size = 0) then
     Exit;
 
+  { from the start, every time: a second read went on from the end, and gave
+    back a text of zeros }
   SetLength(Result, FStream.Size);
+  FStream.Position := 0;
   FStream.Read(Result[POSINISTR], FStream.Size);
+  FStream.Position := 0;
 end;
 
 function TRALDBSQLResponse.GetStream: TStream;
@@ -168,11 +299,16 @@ constructor TRALDBSQLResponse.Create;
 begin
   inherited;
   FStream := TMemoryStream.Create;
+  FMoreResultSets := TList.Create;
+  FOutParams := TParams.Create;
   Clear;
 end;
 
 destructor TRALDBSQLResponse.Destroy;
 begin
+  ClearResultSets;
+  FreeAndNil(FMoreResultSets);
+  FreeAndNil(FOutParams);
   FreeAndNil(FStream);
   inherited Destroy;
 end;
@@ -186,6 +322,8 @@ begin
   FLastId := 0;
   FNative := False;
   FRowsAffected := 0;
+  FOutParams.Clear;
+  ClearResultSets;
 end;
 
 procedure TRALDBSQLResponse.SetStrError(AError: StringRAL);
@@ -327,6 +465,9 @@ begin
         parameter died here with ERangeError, while Release truncated silently
         and worked. }
       vParam.Size := GetOrdProp(vColetItem, 'Size');
+      // the direction travels from wire version 2 on: outputs come back
+      if IsPublishedProp(vColetItem, 'ParamType') then
+        vParam.ParamType := TParamType(GetOrdProp(vColetItem, 'ParamType'));
       vParam.Clear;
 
       vValue := GetVariantProp(vColetItem, 'Value');
@@ -341,6 +482,130 @@ begin
   inherited;
   FSQLList := TList.Create;
   FStorage := nil;
+  FVersion := GetStructureVersion;
+end;
+
+procedure TRALDBSQLCache.CheckVersion(AVersion: byte);
+begin
+  if (AVersion < 1) or (AVersion > 2) then
+    raise Exception.Create(emQueryVersionError);
+end;
+
+procedure TRALDBSQLCache.WriteParam(AWriter: TRALBinaryWriter; AParam: TParam; AVersion: byte);
+var
+  vStorType: TRALFieldType;
+begin
+  // name
+  AWriter.WriteString(AParam.Name);
+
+  // datatype
+  vStorType := TRALDB.FieldTypeToRALFieldType(AParam.DataType);
+  AWriter.WriteByte(Ord(vStorType));
+
+  // direction, from version 2 on
+  if AVersion >= 2 then
+    AWriter.WriteByte(Ord(AParam.ParamType));
+
+  // size - of a date and time param, which of the three it is
+  if vStorType = sftDateTime then
+    AWriter.WriteInteger(RALDateTimeKind(AParam.DataType))
+  else
+    AWriter.WriteInteger(AParam.Size);
+
+  // param null
+  AWriter.WriteBoolean(AParam.IsNull);
+
+  if not AParam.IsNull then begin
+    // values
+    case vStorType of
+      sftShortInt: AWriter.WriteShortint(AParam.AsInteger);
+      sftSmallInt: AWriter.WriteSmallint(AParam.AsInteger);
+      sftInteger : AWriter.WriteInteger(AParam.AsInteger);
+      sftInt64   : AWriter.WriteInt64(AParam.AsLargeInt);
+      sftByte    : AWriter.WriteByte(AParam.AsInteger);
+      sftWord    : AWriter.WriteWord(AParam.AsInteger);
+      {$IFDEF FPC}
+      sftCardinal: AWriter.WriteLongWord(AParam.AsLargeInt);
+      {$ELSE}
+      sftCardinal: AWriter.WriteLongWord(AParam.AsLongWord);
+      {$ENDIF}
+      sftQWord   : AWriter.WriteQWord(AParam.AsLargeInt);
+      sftDouble  : AWriter.WriteFloat(AParam.AsFloat);
+      sftBoolean : AWriter.WriteBoolean(AParam.AsBoolean);
+      sftString  : AWriter.WriteString(AParam.AsString);
+      sftBlob    : AWriter.WriteBytes(AParam.AsBlob);
+      sftMemo    : AWriter.WriteString(AParam.AsString);
+      sftDateTime: AWriter.WriteDateTime(AParam.AsDateTime);
+      sftBCD     : AWriter.WriteString(RALBCDToText(AParam.AsFMTBCD));
+    end;
+  end;
+end;
+
+procedure TRALDBSQLCache.ReadParam(AWriter: TRALBinaryWriter; AParams: TParams; AVersion: byte);
+var
+  vParam: TParam;
+  vStorType: TRALFieldType;
+  vSize: IntegerRAL;
+  vTypeByte: byte;
+begin
+  vParam := TParam(AParams.Add);
+
+  // name
+  vParam.Name := AWriter.ReadString;
+
+  // datatype - a byte of the request body, checked before it becomes
+  // an enum: the value below is read by a case over it, and on Win32
+  // a type from 128 up was folded onto another one (see RALStorageTypes)
+  vTypeByte := AWriter.ReadByte;
+  if not RALIsFieldTypeOrdinal(vTypeByte) then
+    raise Exception.Create(emStorageInvalidBinary);
+  vStorType := TRALFieldType(vTypeByte);
+  vParam.DataType := TRALDB.RALFieldTypeToFieldType(vStorType);
+
+  // direction, from version 2 on
+  if AVersion >= 2 then
+    vParam.ParamType := TParamType(AWriter.ReadEnum(Ord(High(TParamType))));
+
+  // size - of a date and time param, which of the three it is
+  vSize := AWriter.ReadInteger;
+  if vStorType = sftDateTime then
+    vParam.DataType := RALDateTimeKindType(vSize)
+  else
+    vParam.Size := vSize;
+  vParam.Clear;
+
+  // is null
+  if AWriter.ReadBoolean then
+    Exit;
+
+  // values
+  case vStorType of
+    sftShortInt: vParam.AsInteger := AWriter.ReadShortint;
+    sftSmallInt: vParam.AsInteger := AWriter.ReadSmallint;
+    sftInteger : vParam.AsInteger := AWriter.ReadInteger;
+    sftInt64   : vParam.AsLargeInt := AWriter.ReadInt64;
+    sftByte    : vParam.AsInteger := AWriter.ReadByte;
+    sftWord    : vParam.AsInteger := AWriter.ReadWord;
+    sftCardinal: vParam.AsLargeInt := AWriter.ReadLongWord;
+    sftQWord   : vParam.AsLargeInt := AWriter.ReadQWord;
+    sftDouble  : vParam.AsFloat := AWriter.ReadFloat;
+    sftBoolean : vParam.AsBoolean := AWriter.ReadBoolean;
+    sftString  : vParam.AsString := AWriter.ReadString;
+    sftBlob    : vParam.AsBlob := AWriter.ReadBytes;
+    { Value keeps the wide memo set above; AsMemo made it ftMemo,
+      which is ANSI on Delphi: an ideograph in a memo param was
+      bound as '?' - stored that way by an ExecSQL, and never found
+      by the WHERE of an ApplyUpdates, which then saved nothing }
+    sftMemo    : vParam.Value := string(AWriter.ReadString);
+    // AsDateTime would make every one of them ftDateTime again
+    sftDateTime: case vParam.DataType of
+                   ftDate: vParam.AsDate := AWriter.ReadDateTime;
+                   ftTime: vParam.AsTime := AWriter.ReadDateTime;
+                 else
+                   vParam.AsDateTime := AWriter.ReadDateTime;
+                 end;
+    sftBCD     : vParam.AsFMTBCD := RALTextToBCD(AWriter.ReadString);
+  end;
 end;
 
 procedure TRALDBSQLCache.CreateStorage(AWriter: TRALBinaryWriter);
@@ -420,13 +685,30 @@ var
   vDBSQL: TRALDBSQL;
   vStrSQLList: TStringList;
   vWriter: TRALBinaryWriter;
-  vStorType: TRALFieldType;
   vInt1, vInt2: IntegerRAL;
+  vVersion: byte;
 begin
+  vVersion := GetStructureVersion;
+  // version 1 has no calls by name and no directions: refused rather than lost
+  if vVersion < 2 then
+    for vInt1 := 0 to Pred(FSQLList.Count) do
+    begin
+      vDBSQL := TRALDBSQL(FSQLList.Items[vInt1]);
+      if vDBSQL.ExecType = etProc then
+        raise Exception.Create(emDBLegacyWireProc);
+      for vInt2 := 0 to Pred(vDBSQL.Params.Count) do
+        if vDBSQL.Params.Items[vInt2].ParamType in [ptOutput, ptInputOutput, ptResult] then
+          raise Exception.Create(emDBLegacyWireProc);
+    end;
+
   vWriter := TRALBinaryWriter.Create(AStream);
   try
     // versao da estrutura
-    vWriter.WriteByte(GetStructureVersion);
+    vWriter.WriteByte(vVersion);
+
+    // flags, from version 2 on: bit 0 asks for one transaction
+    if vVersion >= 2 then
+      vWriter.WriteByte(Ord(FTransaction));
 
     if FStorage <> nil then
       FStorage.SavePropsToStream(vWriter)
@@ -476,48 +758,7 @@ begin
       vWriter.WriteByte(vDBSQL.Params.Count);
 
       for vInt2 := 0 to Pred(vDBSQL.Params.Count) do
-      begin
-        // name
-        vWriter.WriteString(vDBSQL.Params.Items[vInt2].Name);
-
-        // datatype
-        vStorType := TRALDB.FieldTypeToRALFieldType(vDBSQL.Params.Items[vInt2].DataType);
-        vWriter.WriteByte(Ord(vStorType));
-
-        // size - of a date and time param, which of the three it is
-        if vStorType = sftDateTime then
-          vWriter.WriteInteger(RALDateTimeKind(vDBSQL.Params.Items[vInt2].DataType))
-        else
-          vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].Size);
-
-        // param null
-        vWriter.WriteBoolean(vDBSQL.Params.Items[vInt2].IsNull);
-
-        if not vDBSQL.Params.Items[vInt2].IsNull then begin
-          // values
-          case vStorType of
-            sftShortInt: vWriter.WriteShortint(vDBSQL.Params.Items[vInt2].AsInteger);
-            sftSmallInt: vWriter.WriteSmallint(vDBSQL.Params.Items[vInt2].AsInteger);
-            sftInteger : vWriter.WriteInteger(vDBSQL.Params.Items[vInt2].AsInteger);
-            sftInt64   : vWriter.WriteInt64(vDBSQL.Params.Items[vInt2].AsLargeInt);
-            sftByte    : vWriter.WriteByte(vDBSQL.Params.Items[vInt2].AsInteger);
-            sftWord    : vWriter.WriteWord(vDBSQL.Params.Items[vInt2].AsInteger);
-            {$IFDEF FPC}
-            sftCardinal: vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
-            {$ELSE}
-            sftCardinal: vWriter.WriteLongWord(vDBSQL.Params.Items[vInt2].AsLongWord);
-            {$ENDIF}
-            sftQWord   : vWriter.WriteQWord(vDBSQL.Params.Items[vInt2].AsLargeInt);
-            sftDouble  : vWriter.WriteFloat(vDBSQL.Params.Items[vInt2].AsFloat);
-            sftBoolean : vWriter.WriteBoolean(vDBSQL.Params.Items[vInt2].AsBoolean);
-            sftString  : vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
-            sftBlob    : vWriter.WriteBytes(vDBSQL.Params.Items[vInt2].AsBlob);
-            sftMemo    : vWriter.WriteString(vDBSQL.Params.Items[vInt2].AsString);
-            sftDateTime: vWriter.WriteDateTime(vDBSQL.Params.Items[vInt2].AsDateTime);
-            sftBCD     : vWriter.WriteString(RALBCDToText(vDBSQL.Params.Items[vInt2].AsFMTBCD));
-          end;
-        end;
-      end;
+        WriteParam(vWriter, vDBSQL.Params.Items[vInt2], vVersion);
     end;
   finally
     FreeAndNil(vWriter);
@@ -560,12 +801,14 @@ var
   vDBSQL: TRALDBSQL;
   vWriter: TRALBinaryWriter;
 
-  vInt: IntegerRAL;
+  vInt, vInt2: IntegerRAL;
+  vSet: TRALDBResultSet;
 begin
   vWriter := TRALBinaryWriter.Create(AStream);
   try
-    // versao da estrutura
-    vWriter.WriteByte(GetStructureVersion);
+    { the version the cache came in: a client of version 1 reads nothing else.
+      What only version 2 holds - outputs, more result sets - is left out }
+    vWriter.WriteByte(FVersion);
 
     // tamanhos do cache
     vWriter.WriteInteger(FSQLList.Count);
@@ -581,6 +824,24 @@ begin
       vWriter.WriteInt64(vDBSQL.Response.RowsAffected);
       vWriter.WriteInt64(vDBSQL.Response.LastId);
       vWriter.WriteStream(vDBSQL.Response.Stream);
+
+      if FVersion >= 2 then
+      begin
+        // output params
+        vWriter.WriteByte(vDBSQL.Response.OutParams.Count);
+        for vInt2 := 0 to Pred(vDBSQL.Response.OutParams.Count) do
+          WriteParam(vWriter, vDBSQL.Response.OutParams.Items[vInt2], FVersion);
+
+        // the result sets after the first, which is Stream
+        vWriter.WriteInteger(vDBSQL.Response.FMoreResultSets.Count);
+        for vInt2 := 0 to Pred(vDBSQL.Response.FMoreResultSets.Count) do
+        begin
+          vSet := TRALDBResultSet(vDBSQL.Response.FMoreResultSets.Items[vInt2]);
+          vWriter.WriteBoolean(vSet.Native);
+          vWriter.WriteString(vSet.ContentType);
+          vWriter.WriteStream(vSet.Stream);
+        end;
+      end;
     end;
   finally
     FreeAndNil(vWriter);
@@ -611,22 +872,25 @@ procedure TRALDBSQLCache.LoadFromStream(AStream: TStream);
 var
   vStrSQLList: TStringList;
   vDBSQL: TRALDBSQL;
-  vParam: TParam;
-  vStorType: TRALFieldType;
   vWriter: TRALBinaryWriter;
 
-  vInt1, vInt2, vInt3, vSize: IntegerRAL;
-  vByte, vTypeByte: byte;
-  vBoolean: boolean;
+  vInt1, vInt2, vInt3: IntegerRAL;
+  vByte: byte;
 begin
   Clear;
   AStream.Position := 0;
 
   vWriter := TRALBinaryWriter.Create(AStream);
   try
-    // version
-    if vWriter.ReadByte <> GetStructureVersion then
-      raise Exception.Create(emQueryVersionError);
+    // version: 1 and 2 are read; the answer goes in the same one
+    vByte := vWriter.ReadByte;
+    CheckVersion(vByte);
+    FVersion := vByte;
+
+    // flags
+    FTransaction := False;
+    if FVersion >= 2 then
+      FTransaction := (vWriter.ReadByte and 1) <> 0;
 
     CreateStorage(vWriter);
 
@@ -666,63 +930,7 @@ begin
         vByte := vWriter.ReadByte;
 
         for vInt3 := 1 to vByte do
-        begin
-          vParam := TParam(vDBSQL.Params.Add);
-
-          // name
-          vParam.Name := vWriter.ReadString;
-
-          // datatype - a byte of the request body, checked before it becomes
-          // an enum: the value below is read by a case over it, and on Win32
-          // a type from 128 up was folded onto another one (see RALStorageTypes)
-          vTypeByte := vWriter.ReadByte;
-          if not RALIsFieldTypeOrdinal(vTypeByte) then
-            raise Exception.Create(emStorageInvalidBinary);
-          vStorType := TRALFieldType(vTypeByte);
-          vParam.DataType := TRALDB.RALFieldTypeToFieldType(vStorType);
-
-          // size - of a date and time param, which of the three it is
-          vSize := vWriter.ReadInteger;
-          if vStorType = sftDateTime then
-            vParam.DataType := RALDateTimeKindType(vSize)
-          else
-            vParam.Size := vSize;
-          vParam.Clear;
-
-          // is null
-          vBoolean := vWriter.ReadBoolean;
-
-          if not vBoolean then begin
-            // values
-            case vStorType of
-              sftShortInt: vParam.AsInteger := vWriter.ReadShortint;
-              sftSmallInt: vParam.AsInteger := vWriter.ReadSmallint;
-              sftInteger : vParam.AsInteger := vWriter.ReadInteger;
-              sftInt64   : vParam.AsLargeInt := vWriter.ReadInt64;
-              sftByte    : vParam.AsInteger := vWriter.ReadByte;
-              sftWord    : vParam.AsInteger := vWriter.ReadWord;
-              sftCardinal: vParam.AsLargeInt := vWriter.ReadLongWord;
-              sftQWord   : vParam.AsLargeInt := vWriter.ReadQWord;
-              sftDouble  : vParam.AsFloat := vWriter.ReadFloat;
-              sftBoolean : vParam.AsBoolean := vWriter.ReadBoolean;
-              sftString  : vParam.AsString := vWriter.ReadString;
-              sftBlob    : vParam.AsBlob := vWriter.ReadBytes;
-              { Value keeps the wide memo set above; AsMemo made it ftMemo,
-                which is ANSI on Delphi: an ideograph in a memo param was
-                bound as '?' - stored that way by an ExecSQL, and never found
-                by the WHERE of an ApplyUpdates, which then saved nothing }
-              sftMemo    : vParam.Value := string(vWriter.ReadString);
-              // AsDateTime would make every one of them ftDateTime again
-              sftDateTime: case vParam.DataType of
-                             ftDate: vParam.AsDate := vWriter.ReadDateTime;
-                             ftTime: vParam.AsTime := vWriter.ReadDateTime;
-                           else
-                             vParam.AsDateTime := vWriter.ReadDateTime;
-                           end;
-              sftBCD     : vParam.AsFMTBCD := RALTextToBCD(vWriter.ReadString);
-            end;
-          end;
-        end;
+          ReadParam(vWriter, vDBSQL.Params, FVersion);
       end;
     finally
       FreeAndNil(vStrSQLList);
@@ -749,15 +957,19 @@ var
   vDBSQL: TRALDBSQL;
   vWriter: TRALBinaryWriter;
 
-  vInt1, vInt2: IntegerRAL;
+  vInt1, vInt2, vInt3, vCount: IntegerRAL;
+  vVersion: byte;
+  vNative: boolean;
+  vContentType: StringRAL;
+  vStream: TMemoryStream;
 begin
   AStream.Position := 0;
 
   vWriter := TRALBinaryWriter.Create(AStream);
   try
     // version
-    if vWriter.ReadByte <> GetStructureVersion then
-      raise Exception.Create(emQueryVersionError);
+    vVersion := vWriter.ReadByte;
+    CheckVersion(vVersion);
 
     // tamanho do dados
     vInt1 := vWriter.ReadInteger;
@@ -786,6 +998,30 @@ begin
         shorter or an empty answer kept the old one's tail }
       vDBSQL.Response.Stream.Size := 0;
       vWriter.ReadStream(vDBSQL.Response.Stream);
+
+      vDBSQL.Response.OutParams.Clear;
+      vDBSQL.Response.ClearResultSets;
+      if vVersion >= 2 then
+      begin
+        vCount := vWriter.ReadByte;
+        for vInt3 := 1 to vCount do
+          ReadParam(vWriter, vDBSQL.Response.OutParams, vVersion);
+
+        vCount := vWriter.ReadInteger;
+        for vInt3 := 1 to vCount do
+        begin
+          vNative := vWriter.ReadBoolean;
+          vContentType := vWriter.ReadString;
+          vStream := TMemoryStream.Create;
+          try
+            vWriter.ReadStream(vStream);
+          except
+            vStream.Free;
+            raise;
+          end;
+          vDBSQL.Response.AddResultSet(vNative, vContentType, vStream);
+        end;
+      end;
     end;
   finally
     FreeAndNil(vWriter);
@@ -806,7 +1042,10 @@ end;
 
 function TRALDBSQLCache.GetStructureVersion: byte;
 begin
-  Result := 1;
+  if RALLegacyWire then
+    Result := 1
+  else
+    Result := 2;
 end;
 
 end.

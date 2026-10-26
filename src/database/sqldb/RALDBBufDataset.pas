@@ -42,6 +42,13 @@ type
     { the first failure of the running ApplyUpdates or ExecSQL, which the call
       raises when it returns }
     FFailure: StringRAL;
+    FLoadingProc: boolean;
+    { the last answer of ExecProc, kept for NextRecordSet, and the result set
+      the dataset shows }
+    FProcAnswer: TRALDBSQLCache;
+    FProcSet: IntegerRAL;
+    FResultSets: TRALDBResultSetLinks;
+    FStoredProcName: StringRAL;
 
     FOnError: TRALDBTableOnError;
   protected
@@ -74,7 +81,21 @@ type
 
     procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
+    procedure OnExecProcResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     procedure OnApplyUpdates(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
+    { The answers of ApplyUpdates, statements AFirst to AFirst + ACount - 1 of
+      ACache: the direct call and the queue of TRALDBConnection read them alike }
+    procedure ApplyAnswers(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+    /// The answer of ExecSQL: rows affected, last id and outputs
+    procedure ExecAnswer(AResponse: TRALDBSQLResponse);
+    /// The answer of ExecProc: outputs to Params, the rows to the dataset and to ResultSets
+    procedure ProcAnswer(ACache: TRALDBSQLCache; AIndex: IntegerRAL);
+    /// Loads a DBWare answer into the dataset: native, or through Storage
+    procedure LoadAnswer(ANative: boolean; const AContentType: StringRAL; AStream: TStream);
+    procedure QueuedApply(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+    procedure QueuedExec(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+    procedure QueuedProc(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+    procedure SetResultSets(AValue: TRALDBResultSetLinks);
 
     procedure Clear;
     procedure CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType = etExecute);
@@ -96,6 +117,18 @@ type
     /// are read on the next line. A failure is reported through OnError and
     /// then raised, as the DAO's ExecSQLRemote does.
     procedure ExecSQL;
+    { Calls StoredProcName on the server with Params: the outputs come back to
+      Params, and the rows, when the procedure answers some, open the dataset;
+      the result sets after the first go to ResultSets. A failure is reported
+      through OnError and then raised. Inside TRALDBConnection.StartTransaction
+      it is queued and answered when Commit returns }
+    procedure ExecProc;
+    { Loads into the dataset the result set AIndex of AResponse (0 is the
+      first), natively or through Storage }
+    procedure LoadProcResultSet(AResponse: TRALDBSQLResponse; AIndex: IntegerRAL);
+    { Shows the next result set of the last ExecProc; False, and the dataset as
+      it was, when there is none }
+    function NextRecordSet: boolean;
     //    procedure Open; reintroduce;
 
     function ParamByName(const AValue: StringRAL): TParam; reintroduce;
@@ -111,6 +144,12 @@ type
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
+    { The result sets of a stored procedure after the first, in order, each into
+      the dataset of its item: another RAL dataset or any TDataSet (Storage) }
+    property ResultSets: TRALDBResultSetLinks read FResultSets write SetResultSets;
+    { A stored procedure of the server: Open and ExecProc call it by name, with
+      Params, instead of running SQL }
+    property StoredProcName: StringRAL read FStoredProcName write FStoredProcName;
     /// Whether ApplyUpdates takes an UPDATE or DELETE that did not affect
     /// exactly one record as an error, as FireDAC's CountUpdatedRecords does.
     /// Off for an UpdateSQL whose statements do not report one record each -
@@ -150,7 +189,8 @@ var
   vType: TRALFieldType;
   vTables: TStringList;
 begin
-  if FLoadingNative then
+  // a native answer and the rows of a procedure bring their own fields
+  if FLoadingNative or FLoadingProc then
     Exit;
   vTables := TStringList.Create;
 
@@ -273,7 +313,9 @@ begin
   if (Operation = opRemove) and (AComponent = FRALConnection) then
     FRALConnection := nil
   else if (Operation = opRemove) and (AComponent = FStorage) then
-    FStorage := nil;
+    FStorage := nil
+  else if (Operation = opRemove) and (AComponent is TDataSet) and (FResultSets <> nil) then
+    FResultSets.Remove(TDataSet(AComponent));
   inherited;
 end;
 
@@ -417,7 +459,6 @@ var
   vException: StringRAL;
   vDBSQL: TRALDBSQL;
   vSQLCache: TRALDBSQLCache;
-  vInt: IntegerRAL;
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
@@ -436,29 +477,8 @@ begin
         vSQLCache := TRALDBSQLCache.Create;
         vSQLCache.ResponseFromStream(vMem);
         vDBSQL := vSQLCache.SQLList[0];
-
-        if vDBSQL.Response.Native then
-        begin
-          { the stream carries the real schema: the defs guessed from the RAL type
-            map and the fields the dataset made for itself give way to it }
-          FLoadingNative := True;
-          try
-            if Self.Active then
-              Self.Close;
-            Self.FieldDefs.Clear;
-            for vInt := Pred(Self.Fields.Count) downto 0 do
-              if Self.Fields[vInt].Owner = Self then
-                Self.Fields[vInt].Free;
-            Self.LoadFromStream(vDBSQL.Response.Stream,
-              NativePacketFormat(vDBSQL.Response.ContentType));
-          finally
-            FLoadingNative := False;
-          end;
-        end
-        else
-          LoadFromRALStorage(Self, vDBSQL.Response.Stream);
-
-        Self.First;
+        LoadAnswer(vDBSQL.Response.Native, vDBSQL.Response.ContentType,
+          vDBSQL.Response.Stream);
       except
         on e: Exception do
         begin
@@ -515,9 +535,7 @@ begin
     try
       vSQLCache.ResponseFromStream(vMem);
       vDBSQL := vSQLCache.SQLList[0];
-
-      FRowsAffected := vDBSQL.Response.RowsAffected;
-      FLastId := vDBSQL.Response.LastId;
+      ExecAnswer(vDBSQL.Response);
     finally
       FreeAndNil(vSQLCache);
     end;
@@ -539,57 +557,12 @@ procedure TRALDBBufDataset.OnApplyUpdates(Sender: TObject; AResponse: TRALRespon
   AException: StringRAL);
 var
   vException: StringRAL;
-  vMem: TStream;
-  vDBSQL: TRALDBSQL;
-  vInt1, vInt2: IntegerRAL;
-  vTable: TBufDataset;
-  vField: TField;
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
     { the body where it is: AsStream copied the whole answer first }
-    vMem := AResponse.Body.Content;
-    FSQLCache.ResponseFromStream(vMem);
-    for vInt1 := 0 to Pred(FSQLCache.Count) do
-    begin
-      vDBSQL := FSQLCache.SQLList[vInt1];
-      if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
-        (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
-      begin
-        Self.GotoBookmark(vDBSQL.BookMark);
-
-        vTable := TBufDataset.Create(nil);
-        try
-          try
-            if vDBSQL.Response.Native then
-              vTable.LoadFromStream(vDBSQL.Response.Stream,
-                NativePacketFormat(vDBSQL.Response.ContentType))
-            else
-              LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
-
-            Self.Edit;
-            for vInt2 := 0 to Pred(vTable.FieldCount) do
-            begin
-              vField := Self.FindField(vTable.Fields[vInt2].FieldName);
-              if vField <> nil then
-                vField.Value := vTable.Fields[vInt2].Value;
-            end;
-            Self.Post;
-          except
-
-          end;
-        finally
-          FreeAndNil(vTable);
-        end;
-      end
-      else if vDBSQL.Response.Error then
-        CallFailed(vDBSQL.Response.StrError)
-      { an UPDATE or DELETE that changed no record, or several - see
-        TRALDBFDMemTable.OnApplyUpdates }
-      else if (vDBSQL.ExecType = etExecute) and FCountUpdatedRecords and
-              (vDBSQL.Response.RowsAffected >= 0) and (vDBSQL.Response.RowsAffected <> 1) then
-        CallFailed(StringRAL(Format(emDBRowsAffected, [vDBSQL.Response.RowsAffected])));
-    end;
+    FSQLCache.ResponseFromStream(AResponse.Body.Content);
+    ApplyAnswers(FSQLCache, 0, FSQLCache.Count);
     FSQLCache.Clear;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
@@ -603,6 +576,261 @@ begin
       vException := RALDBResponseError(AResponse);
     CallFailed(Trim('HTTP ' + IntToStr(AResponse.StatusCode) + ' ' + vException));
   end;
+end;
+
+procedure TRALDBBufDataset.ApplyAnswers(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+var
+  vDBSQL: TRALDBSQL;
+  vInt1, vInt2: IntegerRAL;
+  vTable: TBufDataset;
+  vField: TField;
+begin
+  for vInt1 := AFirst to AFirst + ACount - 1 do
+  begin
+    vDBSQL := ACache.SQLList[vInt1];
+    if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
+      (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
+    begin
+      Self.GotoBookmark(vDBSQL.BookMark);
+
+      vTable := TBufDataset.Create(nil);
+      try
+        try
+          if vDBSQL.Response.Native then
+            vTable.LoadFromStream(vDBSQL.Response.Stream,
+              NativePacketFormat(vDBSQL.Response.ContentType))
+          else
+            LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
+
+          Self.Edit;
+          for vInt2 := 0 to Pred(vTable.FieldCount) do
+          begin
+            vField := Self.FindField(vTable.Fields[vInt2].FieldName);
+            if vField <> nil then
+              vField.Value := vTable.Fields[vInt2].Value;
+          end;
+          Self.Post;
+        except
+
+        end;
+      finally
+        FreeAndNil(vTable);
+      end;
+    end
+    else if vDBSQL.Response.Error then
+      CallFailed(vDBSQL.Response.StrError)
+    { an UPDATE or DELETE that changed no record, or several - see
+      TRALDBFDMemTable.OnApplyUpdates }
+    else if (vDBSQL.ExecType = etExecute) and FCountUpdatedRecords and
+            (vDBSQL.Response.RowsAffected >= 0) and (vDBSQL.Response.RowsAffected <> 1) then
+      CallFailed(StringRAL(Format(emDBRowsAffected, [vDBSQL.Response.RowsAffected])));
+  end;
+end;
+
+procedure TRALDBBufDataset.ExecAnswer(AResponse: TRALDBSQLResponse);
+begin
+  if AResponse.Error then
+  begin
+    CallFailed(AResponse.StrError);
+    Exit;
+  end;
+  FRowsAffected := AResponse.RowsAffected;
+  FLastId := AResponse.LastId;
+  RALDBCopyOutputs(AResponse, FParams);
+end;
+
+procedure TRALDBBufDataset.LoadAnswer(ANative: boolean; const AContentType: StringRAL;
+  AStream: TStream);
+var
+  vInt: IntegerRAL;
+begin
+  if ANative then
+  begin
+    { the stream carries the real schema: the defs guessed from the RAL type
+      map and the fields the dataset made for itself give way to it }
+    FLoadingNative := True;
+    try
+      if Self.Active then
+        Self.Close;
+      Self.FieldDefs.Clear;
+      for vInt := Pred(Self.Fields.Count) downto 0 do
+        if Self.Fields[vInt].Owner = Self then
+          Self.Fields[vInt].Free;
+      Self.LoadFromStream(AStream, NativePacketFormat(AContentType));
+    finally
+      FLoadingNative := False;
+    end;
+  end
+  else
+    LoadFromRALStorage(Self, AStream);
+
+  Self.First;
+end;
+
+procedure TRALDBBufDataset.LoadProcResultSet(AResponse: TRALDBSQLResponse; AIndex: IntegerRAL);
+var
+  vInt: IntegerRAL;
+  vStream: TStream;
+  vNative: boolean;
+  vContentType: StringRAL;
+begin
+  vStream := AResponse.GetResultSet(AIndex, vNative, vContentType);
+  if vStream = nil then
+    Exit;
+  if Self.Active then
+    Self.Close;
+  { each result set has its own fields: the ones the dataset made for the last
+    one go (those declared at design time belong to the form and stay) }
+  Self.FieldDefs.Clear;
+  for vInt := Pred(Self.Fields.Count) downto 0 do
+    if Self.Fields[vInt].Owner = Self then
+      Self.Fields[vInt].Free;
+  // the open that the storage asks for must not go to the server again
+  FOpening := True;
+  FOpened := False;
+  FLoading := True;
+  FLoadingProc := True;
+  try
+    LoadAnswer(vNative, vContentType, vStream);
+  finally
+    FLoadingProc := False;
+    FLoading := False;
+    if Self.Active then
+      MergeChangeLog
+    else
+      FOpening := False;
+  end;
+end;
+
+procedure TRALDBBufDataset.ProcAnswer(ACache: TRALDBSQLCache; AIndex: IntegerRAL);
+var
+  vResponse: TRALDBSQLResponse;
+  vInt: IntegerRAL;
+  vLink: TDataSet;
+begin
+  vResponse := ACache.SQLList[AIndex].Response;
+  if vResponse.Error then
+  begin
+    CallFailed(vResponse.StrError);
+    Exit;
+  end;
+  FRowsAffected := vResponse.RowsAffected;
+  RALDBCopyOutputs(vResponse, FParams);
+  if vResponse.ResultSetCount = 0 then
+    Exit;
+
+  FProcSet := 0;
+  LoadProcResultSet(vResponse, 0);
+  for vInt := 0 to Pred(FResultSets.Count) do
+  begin
+    vLink := FResultSets[vInt].DataSet;
+    if vLink = nil then
+      Continue;
+    if vLink is TRALDBBufDataset then
+      TRALDBBufDataset(vLink).LoadProcResultSet(vResponse, vInt + 1)
+    else
+      RALDBLoadResultSet(vResponse, vInt + 1, vLink, FStorage);
+  end;
+end;
+
+procedure TRALDBBufDataset.OnExecProcResponse(Sender: TObject; AResponse: TRALResponse;
+  AException: StringRAL);
+var
+  vException: StringRAL;
+begin
+  if AResponse.StatusCode = HTTP_OK then
+  begin
+    FreeAndNil(FProcAnswer);
+    FProcAnswer := TRALDBSQLCache.Create;
+    try
+      FProcAnswer.ResponseFromStream(AResponse.Body.Content);
+      ProcAnswer(FProcAnswer, 0);
+    except
+      on e: Exception do
+        CallFailed(StringRAL(e.Message));
+    end;
+  end
+  else if AResponse.StatusCode = HTTP_InternalError then
+    CallFailed(RALDBResponseError(AResponse))
+  else
+  begin
+    vException := AException;
+    if vException = '' then
+      vException := RALDBResponseError(AResponse);
+    CallFailed(Trim('HTTP ' + IntToStr(AResponse.StatusCode) + ' ' + vException));
+  end;
+end;
+
+procedure TRALDBBufDataset.QueuedApply(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+begin
+  ApplyAnswers(ACache, AFirst, ACount);
+end;
+
+procedure TRALDBBufDataset.QueuedExec(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+begin
+  ExecAnswer(ACache.SQLList[AFirst].Response);
+end;
+
+procedure TRALDBBufDataset.QueuedProc(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+begin
+  ProcAnswer(ACache, AFirst);
+end;
+
+procedure TRALDBBufDataset.SetResultSets(AValue: TRALDBResultSetLinks);
+begin
+  FResultSets.Assign(AValue);
+end;
+
+function TRALDBBufDataset.NextRecordSet: boolean;
+var
+  vResponse: TRALDBSQLResponse;
+begin
+  Result := False;
+  if (FProcAnswer = nil) or (FProcAnswer.Count = 0) then
+    Exit;
+  vResponse := FProcAnswer.SQLList[0].Response;
+  if FProcSet + 1 >= vResponse.ResultSetCount then
+    Exit;
+  Inc(FProcSet);
+  LoadProcResultSet(vResponse, FProcSet);
+  Result := True;
+end;
+
+procedure TRALDBBufDataset.ExecProc;
+var
+  vCache: TRALDBSQLCache;
+  vReader: TDataSet;
+begin
+  if FRALConnection = nil then
+    raise Exception.Create(emDBConnectionUndefined);
+  if Self.Active then
+    Close;
+  Clear;
+  FFailure := '';
+  FreeAndNil(FProcAnswer);
+
+  // native only when every dataset that gets rows reads this dataset's format
+  vReader := Self;
+  if FResultSets.HasForeign(TRALDBBufDataset) then
+    vReader := nil;
+
+  if FRALConnection.InTransaction then
+  begin
+    vCache := TRALDBSQLCache.Create;
+    try
+      vCache.Storage := FStorage;
+      if (vReader <> nil) and (vCache.Storage <> nil) then
+        vCache.Storage.PrepareForDataSet(vReader);
+      vCache.Add(FStoredProcName, FParams, nil, etProc, vCache.GetQueryClass(Self));
+      FRALConnection.Enqueue(vCache, @QueuedProc);
+    finally
+      vCache.Free;
+    end;
+    Exit;
+  end;
+
+  FRALConnection.ExecProcRemote(FStoredProcName, FParams, FStorage, @OnExecProcResponse, vReader);
+  RaiseFailure;
 end;
 
 procedure TRALDBBufDataset.CallFailed(const AMessage: StringRAL);
@@ -699,6 +927,7 @@ begin
   FUpdateMode := upWhereAll;
   FStorage := nil;
   FCountUpdatedRecords := True;
+  FResultSets := TRALDBResultSetLinks.Create(Self);
 
   FOpening := False;
   FLoading := False;
@@ -712,6 +941,8 @@ begin
   if (FRALConnection <> nil) and (FRALConnection.Client <> nil) then
     FRALConnection.Client.DropCallbacks(Self);
   DropSchema;
+  FreeAndNil(FProcAnswer);
+  FreeAndNil(FResultSets);
   FreeAndNil(FSQL);
   FreeAndNil(FParams);
   FreeAndNil(FUpdateSQL);
@@ -725,6 +956,13 @@ begin
     raise Exception.Create(emDBConnectionUndefined);
 
   FFailure := '';
+  if FRALConnection.InTransaction then
+  begin
+    // sent with the others by Commit, which hands the answers back
+    FRALConnection.Enqueue(FSQLCache, @QueuedApply);
+    FSQLCache.Clear;
+    Exit;
+  end;
   FRALConnection.ApplyUpdatesRemote(FSQLCache, @OnApplyUpdates);
   RaiseFailure;
 end;
@@ -744,6 +982,15 @@ begin
       (not (csLoading in ComponentState)) then
       raise Exception.Create(emDBConnectionUndefined);
 
+    if (FRALConnection <> nil) and FRALConnection.InTransaction and
+       not (csLoading in ComponentState) then
+      raise Exception.Create(emDBQueueOpen);
+    // a stored procedure opens with its rows
+    if (FRALConnection <> nil) and (FStoredProcName <> '') then
+    begin
+      ExecProc;
+      Exit;
+    end;
     if FRALConnection <> nil then
     begin
       FOpening := True;
@@ -772,6 +1019,8 @@ begin
 end;
 
 procedure TRALDBBufDataset.ExecSQL;
+var
+  vCache: TRALDBSQLCache;
 begin
   if Self.Active then
     Close;
@@ -783,6 +1032,18 @@ begin
     raise Exception.Create(emDBConnectionUndefined);
 
   FFailure := '';
+  if FRALConnection.InTransaction then
+  begin
+    vCache := TRALDBSQLCache.Create;
+    try
+      vCache.Storage := FStorage;
+      vCache.Add(Self, etExecute);
+      FRALConnection.Enqueue(vCache, @QueuedExec);
+    finally
+      vCache.Free;
+    end;
+    Exit;
+  end;
   FRALConnection.ExecSQLRemote(Self, FStorage, @OnExecSQLResponse);
   RaiseFailure;
 end;

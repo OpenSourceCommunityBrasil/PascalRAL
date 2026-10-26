@@ -19,19 +19,26 @@ type
     FConnector: TSQLConnector;
     FTransaction: TSQLTransaction;
     FLibLocator: TSQLDBLibraryLoader;
+    /// A transaction StartTransaction opened, which only Commit or Rollback end
+    FExplicit: boolean;
   protected
     procedure Conectar; override;
     function FindProtocol: StringRAL;
 
+    function NewMemDataset(AParams: TParams): TDataSet; override;
     procedure OnConnBeforeConnect(ASender : TObject);
     procedure OnConnAfterConnect(ASender : TObject);
   public
     constructor Create; override;
     destructor Destroy; override;
 
+    procedure Commit; override;
     procedure Disconnect; override;
+    function InTransaction: boolean; override;
     function IsConnected: boolean; override;
     procedure ResetSession; override;
+    procedure Rollback; override;
+    procedure StartTransaction; override;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
@@ -156,6 +163,19 @@ begin
   end;
 end;
 
+function TRALDBSQLDB.NewMemDataset(AParams: TParams): TDataSet;
+begin
+  Result := TBufDataset.Create(nil);
+  try
+    AddOutputDefs(AParams, Result.FieldDefs);
+    // CreateDataset opens it
+    TBufDataset(Result).CreateDataset;
+  except
+    FreeAndNil(Result);
+    raise;
+  end;
+end;
+
 procedure TRALDBSQLDB.OnConnBeforeConnect(ASender: TObject);
 begin
   if Assigned(OnBeforeConnect) then
@@ -243,8 +263,55 @@ begin
   Result := FConnector.Connected;
 end;
 
+procedure TRALDBSQLDB.StartTransaction;
+begin
+  Conectar;
+  { what the statements before left retained is committed already
+    (CommitRetaining); closing it lets the next one start clean }
+  if FTransaction.Active then
+    FTransaction.Commit;
+  FTransaction.StartTransaction;
+  FExplicit := True;
+end;
+
+procedure TRALDBSQLDB.Commit;
+begin
+  if FExplicit then
+  begin
+    FExplicit := False;
+    FTransaction.Commit;
+  end
+  else if FTransaction.Active then
+    FTransaction.CommitRetaining;
+end;
+
+procedure TRALDBSQLDB.Rollback;
+begin
+  if FExplicit then
+  begin
+    FExplicit := False;
+    FTransaction.Rollback;
+  end
+  else if FTransaction.Active then
+    FTransaction.RollbackRetaining;
+end;
+
+function TRALDBSQLDB.InTransaction: boolean;
+begin
+  Result := FExplicit;
+end;
+
 procedure TRALDBSQLDB.ResetSession;
 begin
+  { a transaction StartTransaction opened and nobody closed is undone, as on
+    the other drivers }
+  if FExplicit then
+  begin
+    FExplicit := False;
+    if FTransaction.Active then
+      FTransaction.Rollback;
+    Exit;
+  end;
   { unlike Zeos and FireDAC there is an explicit transaction here. ExecSQL
     commits its own statements now; what closing it (Action, caCommitRetaining)
     still persists is whatever a route wrote through GetNativeConnection, which
@@ -258,7 +325,6 @@ end;
 function TRALDBSQLDB.OpenNative(ASQL : StringRAL; AParams : TParams) : TDataset;
 var
   vQuery: TSQLQuery;
-  vInt: integer;
 begin
   Result := nil;
 
@@ -271,15 +337,7 @@ begin
     vQuery.DataBase := FConnector;
     vQuery.Close;
     vQuery.SQL.Text := ASQL;
-    if AParams <> nil then
-    begin
-      for vInt := 0 to Pred(AParams.Count) do
-      begin
-        vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-        if not AParams.Items[vInt].IsNull then
-          vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
-      end;
-    end;
+    BindParams(AParams, vQuery.Params);
     vQuery.Open;
 
     Result := vQuery;
@@ -331,7 +389,6 @@ end;
 function TRALDBSQLDB.OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset;
 var
   vQuery: TSQLQuery;
-  vInt: integer;
 begin
   Result := nil;
 
@@ -343,15 +400,7 @@ begin
     vQuery.DataBase := FConnector;
     vQuery.Close;
     vQuery.SQL.Text := ASQL;
-    if AParams <> nil then
-    begin
-      for vInt := 0 to Pred(AParams.Count) do
-      begin
-        vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-        if not AParams.Items[vInt].IsNull then
-          vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
-      end;
-    end;
+    BindParams(AParams, vQuery.Params);
     vQuery.Open;
 
     Result := vQuery;
@@ -372,7 +421,6 @@ procedure TRALDBSQLDB.ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffect
                               var ALastInsertId: Int64RAL);
 var
   vQuery: TSQLQuery;
-  vInt: integer;
 begin
   Conectar;
 
@@ -385,24 +433,18 @@ begin
       vQuery.DataBase := FConnector;
       vQuery.Close;
       vQuery.SQL.Text := ASQL;
-      if AParams <> nil then
-      begin
-        for vInt := 0 to Pred(AParams.Count) do
-        begin
-          vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-          if not AParams.Items[vInt].IsNull then
-            vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
-        end;
-      end;
+      BindParams(AParams, vQuery.Params);
       vQuery.ExecSQL;
 
       ARowsAffected := vQuery.RowsAffected;
+      ReadOutputParams(vQuery.Params, AParams);
 
       { persisted HERE, statement by statement, as FireDAC and Zeos do with
         AutoCommit. Left to ResetSession, the commit ran after the answer was
         built, and one that failed - a deferred constraint, a serialization
         conflict - was swallowed while the client read 200 and RowsAffected }
-      FTransaction.CommitRetaining;
+      if not FExplicit then
+        FTransaction.CommitRetaining;
 
       if DatabaseType = dtMySQL then
       begin
@@ -425,10 +467,11 @@ begin
           back the statements that had worked. A rollback that fails too means
           a dead connection, which the pool's test drops; the error the caller
           needs is this one }
-        try
-          FTransaction.RollbackRetaining;
-        except
-        end;
+        if not FExplicit then
+          try
+            FTransaction.RollbackRetaining;
+          except
+          end;
         if Assigned(OnErrorQuery) then
           OnErrorQuery(vQuery, e.Message, Request);
         raise;
