@@ -19,7 +19,8 @@ uses
   RALHttpSysCert,
   {$ENDIF}
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALBase64, RALRSA, RALX509, RALNetwork, RALStream;
+  RALParams, RALTools, RALBase64, RALRSA, RALX509, RALNetwork, RALStream,
+  RALResponseStream, RALCustomObjects;
 
 type
 
@@ -128,6 +129,9 @@ type
     /// Hands MaxConnections to whichever server object this mode created, if
     /// that object has anywhere to put it - see the property.
     procedure ApplyMaxConnections;
+    { The headers of AResponse into mORMot2's request, after TakeWireStream said
+      what was done to the body }
+    procedure FillHeaders(AResponse: TRALResponse; AContext: THttpServerRequestAbstract);
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
     procedure OnHttpTerminate(ASender: TObject);
   public
@@ -146,6 +150,11 @@ type
     /// smHttpSys reads HttpSysDomain too: 'localhost' is the loopback, an
     /// address literal is that address - see the base
     function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
+    { The writer of a stream: mORMot2's chunked response, in smThreads with a
+      mORMot2 that has it (BeginChunkedResponse); smAsync and smHttpSys keep the
+      pieces and send them when the handler returns }
+    function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
+    class function SupportsLiveStream: boolean; override;
   published
     /// smHttpSys only: which host part of the URL to listen on, and it has to
     /// be the SAME text the reservation used. http.sys matches prefixes
@@ -670,6 +679,63 @@ end;
 
 { the Range header a socket server parsed into the context and left out of
   the list - see OnCommandProcess }
+{$IF DECLARED(THttpServerChunkedState)}
+type
+  { what the stream writer needs of the request being answered }
+  TRALSynopseStreamContext = class
+  public
+    Request: THttpServerRequest;
+    Server: TRALSynopseServer;
+  end;
+
+  { TRALSynopseStreamWriter }
+
+  { The pieces go through mORMot2's chunked response (BeginChunkedResponse,
+    SendChunk), which frames them itself }
+  TRALSynopseStreamWriter = class(TRALStreamWriter)
+  private
+    FContext: TRALSynopseStreamContext;
+  public
+    constructor Create(AContext: TRALSynopseStreamContext);
+    function Alive: boolean; override;
+    procedure WriteEnd(AAborted: boolean); override;
+    procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); override;
+    function WriteRaw(const ABuffer; ASize: IntegerRAL): boolean; override;
+  end;
+
+{ TRALSynopseStreamWriter }
+
+constructor TRALSynopseStreamWriter.Create(AContext: TRALSynopseStreamContext);
+begin
+  inherited Create;
+  FContext := AContext;
+end;
+
+function TRALSynopseStreamWriter.Alive: boolean;
+begin
+  Result := FContext.Request.ChunkedConnected;
+end;
+
+procedure TRALSynopseStreamWriter.WriteEnd(AAborted: boolean);
+begin
+  FContext.Request.EndChunkedResponse(AAborted);
+end;
+
+procedure TRALSynopseStreamWriter.WriteHead(AResponse: TRALHTTPHeaderInfo;
+  AStatusCode: IntegerRAL);
+begin
+  FContext.Server.FillHeaders(TRALResponse(AResponse), FContext.Request);
+  FContext.Request.RespStatus := AStatusCode;
+  FContext.Request.OutContent := '';
+  FContext.Request.BeginChunkedResponse;
+end;
+
+function TRALSynopseStreamWriter.WriteRaw(const ABuffer; ASize: IntegerRAL): boolean;
+begin
+  Result := FContext.Request.SendChunk(@ABuffer, ASize);
+end;
+{$IFEND}
+
 function RangeHeaderOf(const AContext: THttpRequestContext): StringRAL;
 begin
   Result := 'bytes=' + StringRAL(IntToStr(AContext.RangeOffset)) + '-';
@@ -677,13 +743,60 @@ begin
     Result := Result + StringRAL(IntToStr(AContext.RangeOffset + AContext.RangeLength - 1));
 end;
 
+class function TRALSynopseServer.SupportsLiveStream: boolean;
+begin
+  {$IF DECLARED(THttpServerChunkedState)}
+  Result := True;
+  {$ELSE}
+  Result := False;
+  {$IFEND}
+end;
+
+function TRALSynopseServer.CreateStreamWriter(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALStreamWriter;
+begin
+  Result := nil;
+  {$IF DECLARED(THttpServerChunkedState)}
+  // only the threads mode sends the pieces as they come (THttpServer)
+  if (FMode <> smThreads) or not (AResponse.EngineContext is TRALSynopseStreamContext) then
+    Exit;
+  Result := TRALSynopseStreamWriter.Create(TRALSynopseStreamContext(AResponse.EngineContext));
+  Result.FramesItself := True;
+  Result.HeadOnly := ARequest.Method = amHEAD;
+  {$IFEND}
+end;
+
+procedure TRALSynopseServer.FillHeaders(AResponse: TRALResponse;
+  AContext: THttpServerRequestAbstract);
+var
+  vHeaders: StringRAL;
+begin
+  AResponse.Params.AddParam('Content-Disposition', AResponse.ContentDisposition, rpkHEADER);
+  AResponse.Params.AddParam('Content-Encoding', AResponse.ContentEncoding, rpkHEADER);
+  AResponse.Params.AddParam('Accept-Encoding', AResponse.AcceptEncoding, rpkHEADER);
+  AResponse.Params.AddParam('Content-Encription', AResponse.ContentEncription, rpkHEADER);
+
+  vHeaders := AResponse.Params.AssignParamsListText(rpkHEADER, ': ');
+  { Set-Cookie lines, like Indy, fpHTTP and Sagui send them: a cookie
+    param used to go out as a header NAMED after the cookie }
+  if AResponse.Params.Count(rpkCOOKIE) > 0 then
+    vHeaders := vHeaders + HTTPLineBreak +
+      AResponse.GetParamsCookiesText(IncMinute(Now, CookieLife));
+
+  AContext.OutCustomHeaders := Trim(vHeaders);
+  if AContext.OutContentType = '' then
+    AContext.OutContentType := AResponse.ContentType;
+end;
+
 function TRALSynopseServer.OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
-  vHeaders: StringRAL;
   vStream: TStream;
   vHasRange: boolean;
+  {$IF DECLARED(THttpServerChunkedState)}
+  vContext: TRALSynopseStreamContext;
+  {$IFEND}
   {$IFDEF RALWindows}
   vApiReq: PHTTP_REQUEST;
   vPeer: PNetAddr;
@@ -692,6 +805,9 @@ var
   vInt: IntegerRAL;
   {$ENDIF}
 begin
+  {$IF DECLARED(THttpServerChunkedState)}
+  vContext := nil;
+  {$IFEND}
   vRequest := CreateRequest;
   vResponse := CreateResponse;
 
@@ -882,7 +998,24 @@ begin
         AContext.InHeaders := EmptyStr;
       end;
 
+      {$IF DECLARED(THttpServerChunkedState)}
+      { what a stream writer needs, should the handler call Send }
+      if AContext is THttpServerRequest then
+      begin
+        vContext := TRALSynopseStreamContext.Create;
+        vContext.Request := THttpServerRequest(AContext);
+        vContext.Server := Self;
+        vResponse.EngineContext := vContext;
+      end;
+      {$IFEND}
       ProcessCommands(vRequest, vResponse);
+      { a stream already went out: it ends now, or waits here while a Detach
+        holds it }
+      if FinishStream(vRequest, vResponse) then
+      begin
+        Result := vResponse.StatusCode;
+        Exit;
+      end;
 
       { mORMot2 cuts any answer to the request's Range on its own, whatever its
         status - so a part of the part the WebModule answered, and a slice of
@@ -935,26 +1068,7 @@ begin
           the concurrency limit - goes back now, before the bytes go out }
         vRequest.Finish;
 
-        //if (vResponse.ContentDisposition <> EmptyStr) then
-          vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);
-
-        //if vResponse.ContentEncoding <> EmptyStr then
-          vResponse.Params.AddParam('Content-Encoding', vResponse.ContentEncoding, rpkHEADER);
-
-        //if vResponse.AcceptEncoding <> EmptyStr then
-          vResponse.Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
-
-        //if vResponse.ContentEncription <> EmptyStr then
-          vResponse.Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
-
-        vHeaders := vResponse.Params.AssignParamsListText(rpkHEADER, ': ');
-        { Set-Cookie lines, like Indy, fpHTTP and Sagui send them: a cookie
-          param used to go out as a header NAMED after the cookie }
-        if vResponse.Params.Count(rpkCOOKIE) > 0 then
-          vHeaders := vHeaders + HTTPLineBreak +
-            vResponse.GetParamsCookiesText(IncMinute(Now, CookieLife));
-
-        AContext.OutCustomHeaders := Trim(vHeaders);
+        FillHeaders(vResponse, AContext);
 
         Result := vResponse.StatusCode;
       end;
@@ -979,6 +1093,9 @@ begin
   finally
     FreeAndNil(vResponse);
     FreeAndNil(vRequest);
+    {$IF DECLARED(THttpServerChunkedState)}
+    FreeAndNil(vContext);
+    {$IFEND}
   end;
 end;
 

@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Core"/>
     <Version Major="2"/>
-    <Files Count="48">
+    <Files Count="50">
       <Item1>
         <Filename Value="..\..\src\core\RALTypes.pas"/>
         <UnitName Value="RALTypes"/>
@@ -219,6 +219,14 @@
         <Filename Value="..\..\src\core\PascalRAL.inc"/>
         <Type Value="Include"/>
       </Item48>
+      <Item49>
+        <Filename Value="..\..\src\core\RALResponseStream.pas"/>
+        <UnitName Value="RALResponseStream"/>
+      </Item49>
+      <Item50>
+        <Filename Value="..\..\src\common\RALSSE.pas"/>
+        <UnitName Value="RALSSE"/>
+      </Item50>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

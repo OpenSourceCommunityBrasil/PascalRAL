@@ -49,6 +49,8 @@ type
                          var Handled: boolean; var VMethod: TIdHTTPMethod);
   protected
     class function NewCookieJar: TObject; override;
+    /// The head TIdHTTP parsed, which it has before the first piece of the body.
+    procedure ReadStreamHead(AResponse: TRALResponse); override;
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -263,11 +265,21 @@ begin
   inherited;
 end;
 
+procedure TRALIndyClientHTTP.ReadStreamHead(AResponse: TRALResponse);
+begin
+  AResponse.StatusCode := FHttp.ResponseCode;
+  AResponse.ContentType := FHttp.Response.ContentType;
+  AResponse.ContentEncoding := FHttp.Response.ContentEncoding;
+  AResponse.ContentEncription := FHttp.Response.RawHeaders.Values['Content-Encription'];
+end;
+
 procedure TRALIndyClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
   vSource: TStream;
   vResult: TRALBodyStream;
+  vSink: TRALClientStreamSink;
+  vDest: TStream;
   vCookieText: StringRAL;
   vURI: TIdURI;
   vAcceptPos: Integer;
@@ -415,6 +427,11 @@ begin
   { where Indy writes the answer: memory, blocks above RALChunkAbove, a file
     above SpoolAbove - and the response adopts it, no copy }
   vResult := TRALBodyStream.Create(-1, Parent.SpoolAbove);
+  { read in pieces: TIdHTTP writes each chunk into the sink as it reads it }
+  vSink := NewResponseSink(AResponse, vResult);
+  vDest := vResult;
+  if vSink <> nil then
+    vDest := vSink;
   try
     { These three are state of the TIdHTTP OBJECT, not of this call, and they
       survive until the next one overwrites them. Harmless while each engine
@@ -434,21 +451,21 @@ begin
     try
       case AMethod of
         amGET:
-          FHttp.Get(AURL, vResult);
+          FHttp.Get(AURL, vDest);
         amPOST:
-          FHttp.Post(AURL, vSource, vResult);
+          FHttp.Post(AURL, vSource, vDest);
         amPUT:
-          FHttp.Put(AURL, vSource, vResult);
+          FHttp.Put(AURL, vSource, vDest);
         amPATCH:
-          FHttp.Patch(AURL, vSource, vResult);
+          FHttp.Patch(AURL, vSource, vDest);
         amDELETE:
-          FHttp.Delete(AURL, vResult);
+          FHttp.Delete(AURL, vDest);
         amTRACE:
-          FHttp.Trace(AURL, vResult);
+          FHttp.Trace(AURL, vDest);
         amHEAD:
           FHttp.Head(AURL);
         amOPTIONS:
-          FHttp.Options(AURL, vResult);
+          FHttp.Options(AURL, vDest);
       end;
       AResponse.Params.AppendParams(FHttp.Response.RawHeaders, rpkHEADER);
       AResponse.Params.AppendParams(FHttp.Response.CustomHeaders, rpkHEADER);
@@ -473,12 +490,19 @@ begin
         pv1_1: AResponse.ProtocolVersion := rhv11;
       end;
 
+      { the end of a body read in pieces: the decoder checks it, and what was
+        kept is decoded already }
+      if vSink <> nil then
+        vSink.Finish;
       AResponse.SetWireBody(vResult.Detach, boOwned);
     except
       // the timeouts come first on purpose: they are the two that must not be
       // told apart by a numeric code, since Indy reports both as 10060 and
       // only one of them (the read one) means the server already has the
       // request and may have run it.
+      // a stream handler cancelled: the socket is dropped below
+      on e: ERALStreamCancelled do
+        SetTransportError(AResponse, rteCancelled, -1, e.Message);
       on e: EIdConnectTimeout do
         SetTransportError(AResponse, rteConnect, 10060, e.Message);
       on e: EIdReadTimeout do
@@ -519,6 +543,7 @@ begin
       end;
   finally
     FCurrent := nil;
+    FreeAndNil(vSink);
     FreeAndNil(vResult);
     FreeAndNil(vSource);
   end;

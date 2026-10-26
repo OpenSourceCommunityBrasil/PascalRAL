@@ -318,6 +318,44 @@ without copies and transforms happen at the edge, writing into the stream that g
   more than one piece (base64, hashes, CRC). `Pointer(S)^`, not `S[1]`, to avoid a copy
   of a shared string on Delphi.
 
+### Response streaming (`RALResponseStream`, `RALSSE`)
+
+- **The first `Send` commits** the response (`Send`, `SendEvent`, `BeginStream`): status
+  and headers go out, the body set before it is the first piece. From then on `Answer`,
+  `StatusCode`, `AddHeader`, `AddCookie` and `ResponseText` raise `ERALResponseCommitted`
+  while the handler runs (`ProcessCommands` unguards when it returns). `OnResponse` fires
+  once, at the commit. `SendEvent`/`BeginStream(True)` make the default JSON type
+  `text/event-stream` and add `Cache-Control: no-cache` and `X-Accel-Buffering: no`.
+- **Channel and writer**: `TRALResponseStream` (ref-counted, `IRALResponseStream`) holds
+  the lock, the chunked framing and an optional compressor; each engine gives a
+  `TRALStreamWriter` (`WriteHead`, `WriteRaw`, `WriteEnd`, `Alive`, `Flush`; `Chunked`,
+  `FramesItself`, `HeadOnly`, `SendTimeout`) through `CreateStreamWriter` and says
+  `SupportsLiveStream`. No writer = **buffered**: the pieces go out whole at the end.
+  Live: fpHTTP, Indy, Sagui, CGI (FPC), Synopse `smThreads` with a mORMot2 that has
+  `BeginChunkedResponse` (`{$IF DECLARED(THttpServerChunkedState)}`; the change is in
+  `.agents/MORMOT2_PR_STREAMING.md`). Buffered: Synopse `smAsync`/`smHttpSys`, UniGUI,
+  MsQuic, Kwik, Delphi CGI.
+- After the handler, the engine calls `FinishStream`: it releases the request
+  (`Finish`, the concurrency slot), then ends the stream, or waits while `Detach` holds it
+  (SSE pings every `StreamKeepAlive`). `AWait=False` is for a **pull** engine (Sagui:
+  libmicrohttpd pulls from a queue; a route marked `Streaming` runs on its own thread,
+  the callback waits only for the commit).
+- An error after the commit sends `event: error` on SSE, then aborts without the last
+  chunk (how HTTP says the body was cut). The cipher refuses a stream (500);
+  `TRALConcurrencyPlugin.MaxStreams` is a 503; `Active := False` closes open streams.
+- **Compression** only with `TRALCompressPlugin.CompressStreams` (default off): gzip or
+  deflate flushed per piece (`TRALStreamCoder`, `CreateStreamEncoder`; window 12 /
+  memLevel 5, ~30 KB per open stream; nil before Delphi XE2).
+- **Client**: `OnReceiveData` / `OnServerEvent` (and `Get`/`Post` overloads taking one)
+  read a 2xx answer in pieces through `TRALClientStreamSink`, which the engine writes
+  into instead of its body stream and which reads the head at the first piece
+  (`ReadStreamHead`). Decoding is piecewise (`CreateStreamDecoder`; the offer drops zstd
+  and brotli), the body is not kept unless `KeepStreamBody`, a call that handed a piece
+  over is never resent, `ACancel` fails it with `rteCancelled`, and `RequestTimeout` is
+  time without data (mORMot2's client waits a read for its connect timeout). Live: Indy,
+  fpHTTP, mORMot2; netHTTP, OkHttp, MsQuic and Kwik hand the body over whole at the end
+  (netHTTP exposes no response before `Execute` returns).
+
 ### Params, compression, cookies
 
 - `TRALParams` holds query, header, body, field, cookie and file params, with a name

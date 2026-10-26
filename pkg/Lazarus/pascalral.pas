@@ -16,7 +16,7 @@ uses
   RALHashBase, RALHashes, RALMD5, RALSHA1, RALSHA2_32, RALSHA2_64, RALCRC32, 
   RALCripto, RALCriptoAES, RALCriptoOpenSSL, RALOpenSSL, RALBigInt, RALASN1, 
   RALRSA, RALX509, RALJWS, RALToken, RALSecurity, RALCORS, RALContent, 
-  RALConcurrency;
+  RALConcurrency, RALResponseStream, RALSSE;
 
 implementation
 

@@ -112,6 +112,7 @@ type
     FGate: TRALConcurrencyGate;
     FMaxConcurrent: IntegerRAL;
     FMaxQueueWait: IntegerRAL;
+    FMaxStreams: IntegerRAL;
     FRetryAfter: IntegerRAL;
     function GetInUse: IntegerRAL;
     function GetLimit: IntegerRAL;
@@ -157,11 +158,19 @@ type
     /// server could otherwise wait for ever
     property MaxQueueWait: IntegerRAL read FMaxQueueWait write SetMaxQueueWait
       default 30000;
+    { Streamed responses (TRALResponse.Send) open at once; past it a new stream is
+      answered 503 before its first byte. 0, the default, is no limit. A stream
+      holds a slot of MaxConcurrent only while its handler runs, but on Indy,
+      fpHTTP and Sagui each open stream holds a thread: set it there }
+    property MaxStreams: IntegerRAL read FMaxStreams write FMaxStreams default 0;
     /// Seconds in the Retry-After of a 503; 0 sends no Retry-After
     property RetryAfter: IntegerRAL read FRetryAfter write SetRetryAfter default 1;
   end;
 
 implementation
+
+uses
+  RALServer;
 
 const
   { a waiter wakes on its own at least this often - the signal of a freed slot
@@ -476,6 +485,9 @@ end;
 procedure TRALConcurrencyPlugin.ValidateRequest(ARequest: TRALRequest;
   AResponse: TRALResponse);
 begin
+  // the commit of a stream checks it against the streams open on the server
+  if Host is TRALServer then
+    TRALServer(Host).StreamLimit := FMaxStreams;
   case FGate.Enter(FMaxQueueWait) of
     grEntered:
       ARequest.AddFinishHandler({$IFDEF FPC}@{$ENDIF}FGate.Leave);

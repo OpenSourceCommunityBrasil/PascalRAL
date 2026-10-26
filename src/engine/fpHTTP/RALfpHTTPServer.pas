@@ -9,7 +9,7 @@ uses
   fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient, opensslsockets,
   ssockets, HTTPDefs, DateUtils,
   RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
-  RALParams, RALMultipartCoder, RALTools;
+  RALParams, RALMultipartCoder, RALTools, RALResponseStream, RALCustomObjects;
 
 { fcl-web 3.3 gives each connection to a TFPHTTPServerConnectionHandler, where 3.2
   asks CreateConnectionThread for a thread. It also keeps the request body as TBytes
@@ -156,6 +156,10 @@ type
     procedure SetSessionTimeout(const AValue: IntegerRAL);
 
     procedure DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult: TRALRequest);
+    { The status, headers and cookies of AResponse into fcl-web's response, after
+      TakeWireStream said what was done to the body }
+    procedure FillHeaders(ARequest: TRALRequest; AResponse: TRALResponse;
+      AHttpResponse: TFPHTTPConnectionResponse);
 
     procedure OnCommandProcess(Sender: TObject; var ARequest: TFPHTTPConnectionRequest;
                                var AResponse: TFPHTTPConnectionResponse);
@@ -194,6 +198,12 @@ type
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     function CreateRALSSL: TRALSSL; override;
   public
+    { The writer of a stream: headers by fcl-web, without Content-Length, then the
+      body straight on the socket, chunked on HTTP/1.1 }
+    function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
+    class function SupportsLiveStream: boolean; override;
+  protected
+  public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
@@ -220,10 +230,121 @@ uses
   // units usadas para capturar a constante SOMAXCONN
   {$IFDEF RALWINDOWS}
     WinSock2,
+  {$ELSE}
+    // select and recv of the stream writer - before sockets, whose names must win
+    BaseUnix,
   {$ENDIF}
   // CloseSocket for the handlers still open past the wait
   sockets,
   RALMIMETypes;
+
+type
+  { what the stream writer needs of one request, kept for as long as its callback runs }
+  TRALfpHttpStreamContext = class
+  public
+    HttpRequest: TFPHTTPConnectionRequest;
+    HttpResponse: TFPHTTPConnectionResponse;
+    Request: TRALRequest;
+    Thread: TRALfpHttpServerThread;
+  end;
+
+  { TRALfpHttpStreamWriter }
+
+  TRALfpHttpStreamWriter = class(TRALStreamWriter)
+  private
+    FContext: TRALfpHttpStreamContext;
+  public
+    constructor Create(AContext: TRALfpHttpStreamContext);
+    function Alive: boolean; override;
+    procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); override;
+    function WriteRaw(const ABuffer; ASize: IntegerRAL): boolean; override;
+  end;
+
+{ TRALfpHttpStreamWriter }
+
+constructor TRALfpHttpStreamWriter.Create(AContext: TRALfpHttpStreamContext);
+begin
+  inherited Create;
+  FContext := AContext;
+end;
+
+function TRALfpHttpStreamWriter.Alive: boolean;
+var
+  vHandle: LongInt;
+  vByte: Byte;
+  {$IFDEF RALWindows}
+  vSet: WinSock2.TFDSet;
+  vTime: WinSock2.TTimeVal;
+  {$ELSE}
+  vSet: TFDSet;
+  vTime: TTimeVal;
+  {$ENDIF}
+begin
+  Result := True;
+  if (FContext.HttpRequest.Connection = nil) or
+     (FContext.HttpRequest.Connection.Socket = nil) then
+    Exit;
+  vHandle := FContext.HttpRequest.Connection.Socket.Handle;
+  { the client sends nothing more on this connection: readable means it closed
+    (recv answers 0) or broke }
+  vTime.tv_sec := 0;
+  vTime.tv_usec := 0;
+  {$IFDEF RALWindows}
+  WinSock2.FD_ZERO(vSet);
+  WinSock2.FD_SET(WinSock2.TSocket(vHandle), vSet);
+  if WinSock2.select(0, @vSet, nil, nil, @vTime) > 0 then
+    Result := WinSock2.recv(WinSock2.TSocket(vHandle), vByte, 1, MSG_PEEK) > 0;
+  {$ELSE}
+  fpFD_ZERO(vSet);
+  fpFD_SET(vHandle, vSet);
+  if fpSelect(vHandle + 1, @vSet, nil, nil, @vTime) > 0 then
+    Result := fpRecv(vHandle, @vByte, 1, MSG_PEEK) > 0;
+  {$ENDIF}
+end;
+
+procedure TRALfpHttpStreamWriter.WriteHead(AResponse: TRALHTTPHeaderInfo;
+  AStatusCode: IntegerRAL);
+var
+  vMs: LongInt;
+  {$IFNDEF RALWindows}
+  vTime: TTimeVal;
+  {$ENDIF}
+begin
+  FContext.Thread.FillHeaders(FContext.Request, TRALResponse(AResponse), FContext.HttpResponse);
+  FContext.HttpResponse.Code := AStatusCode;
+  if Chunked then
+    FContext.HttpResponse.CustomHeaders.Add('Transfer-Encoding=chunked');
+  // a client that stops reading cannot hold a Send for good
+  if (SendTimeout > 0) and (FContext.HttpRequest.Connection <> nil) and
+     (FContext.HttpRequest.Connection.Socket <> nil) then
+  begin
+    vMs := SendTimeout;
+    {$IFDEF RALWindows}
+    fpsetsockopt(FContext.HttpRequest.Connection.Socket.Handle, SOL_SOCKET, SO_SNDTIMEO,
+      @vMs, SizeOf(vMs));
+    {$ELSE}
+    vTime.tv_sec := vMs div 1000;
+    vTime.tv_usec := (vMs mod 1000) * 1000;
+    fpsetsockopt(FContext.HttpRequest.Connection.Socket.Handle, SOL_SOCKET, SO_SNDTIMEO,
+      @vTime, SizeOf(vTime));
+    {$ENDIF}
+  end;
+  // no ContentStream was given, so fcl-web writes no Content-Length
+  FContext.HttpResponse.SendHeaders;
+end;
+
+function TRALfpHttpStreamWriter.WriteRaw(const ABuffer; ASize: IntegerRAL): boolean;
+begin
+  Result := (FContext.HttpRequest.Connection <> nil) and
+    (FContext.HttpRequest.Connection.Socket <> nil);
+  if not Result then
+    Exit;
+  try
+    FContext.HttpRequest.Connection.Socket.WriteBuffer(ABuffer, ASize);
+  except
+    Result := False;
+  end;
+end;
 
 {$IFDEF RALFPHTTPHANDLER}
 type
@@ -688,12 +809,12 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vInt: integer;
-  vCookies: TStringList;
-  vParam: TRALParam;
+  vContext: TRALfpHttpStreamContext;
   {$IFDEF RALFPHTTPBYTES}
   vBody: TBytes;
   {$ENDIF}
 begin
+  vContext := nil;
   vRequest := FParent.CreateRequest;
   vResponse := FParent.CreateResponse;
   try
@@ -815,7 +936,18 @@ begin
         end;
       end;
 
+      { what a stream writer needs, should the handler call Send }
+      vContext := TRALfpHttpStreamContext.Create;
+      vContext.HttpRequest := ARequest;
+      vContext.HttpResponse := AResponse;
+      vContext.Request := vRequest;
+      vContext.Thread := Self;
+      vResponse.EngineContext := vContext;
       FParent.ProcessCommands(vRequest, vResponse);
+      { a stream already went out: it ends now, or waits here while a Detach
+        holds it; fcl-web then finds the headers sent and adds nothing }
+      if FParent.FinishStream(vRequest, vResponse) then
+        Exit;
       with vResponse do
       begin
         { the body first, handed to fcl-web at once so nothing can leak it:
@@ -826,74 +958,20 @@ begin
         { the answer is built: what a plugin took for the request - a slot of
           the concurrency limit - goes back now, before the bytes go out }
         vRequest.Finish;
-
-        AResponse.Code := StatusCode;
-
-        if ContentEncoding <> '' then
-          AResponse.ContentEncoding := ContentEncoding;
-
-        if AcceptEncoding <> '' then
-          Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
-
-        if ContentEncription <> '' then
-          Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
-
-        vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
-        if vParam <> nil then
-        begin
-          AResponse.WWWAuthenticate := RALSafeHeaderText(vParam.AsString);
-          vResponse.Params.DelParam('WWW-Authenticate');
-        end;
-
-        AResponse.Server := 'RAL_fpHTTP';
-        { Always, whatever the client asked for: this server answers ONE
-          request per connection (TRALfpHttpWorker.Execute calls
-          HandleRequest once per connection, whatever keep-alive fcl-web could offer) and
-          closes the socket right after - and RFC 9112 9.6 says a server that
-          does not keep the connection MUST send "close". It is set here, after
-          ProcessCommands, so a request ValidateRequest refused says it too. }
-        AResponse.Connection := 'close';
-
-        { every cookie whole, on its own Set-Cookie line, from the builder all
-          engines share. fcl-web's TCookie writes Expires through FormatDateTime
-          with the colons unquoted (HTTPDateFmt), so a locale whose time
-          separator is not ':' sent an invalid date; and a TCookie made a cookie
-          CALLED Set-Cookie out of an AddCookie(TRALCookie) one }
-        vCookies := TStringList.Create;
-        try
-          GetParamsCookies(vCookies, IncMinute(Now, FParent.CookieLife));
-          for vInt := 0 to Pred(vCookies.Count) do
-            AResponse.CustomHeaders.Add('Set-Cookie=' + vCookies[vInt]);
-        finally
-          FreeAndNil(vCookies);
-        end;
-
-        AResponse.ContentType := ContentType;
-
-        if ContentDisposition <> '' then
-          Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
-
-        { '=' and not ': ': TResponse.CustomHeaders is a name=value list, and
-          FPC writes each entry out as Names[i] + ': ' + Values[i]. Storing a
-          ready-made 'Name: Value' line here left no '=' for it to split on, so
-          the whole line landed in the value and every custom header went out
-          prefixed with a stray ': ' - which is why the client never found
-          Content-Encription and handed still-encrypted bodies to the multipart
-          decoder. }
-        Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
-
-        if vRequest.Method = amHEAD then
-        begin
-          { the headers alone, with the length the GET would send - fcl-web
-            sent the body with them. Its stream is let go once they are out,
-            so what fcl-web sends as the content afterwards is nothing }
-          AResponse.SendHeaders;
-          AResponse.ContentStream := nil;
-          AResponse.SendContent;
-        end
-        else
-          AResponse.SendContent;
       end;
+      FillHeaders(vRequest, vResponse, AResponse);
+
+      if vRequest.Method = amHEAD then
+      begin
+        { the headers alone, with the length the GET would send - fcl-web
+          sent the body with them. Its stream is let go once they are out,
+          so what fcl-web sends as the content afterwards is nothing }
+        AResponse.SendHeaders;
+        AResponse.ContentStream := nil;
+        AResponse.SendContent;
+      end
+      else
+        AResponse.SendContent;
     except
       on e: exception do
       begin
@@ -907,6 +985,73 @@ begin
   finally
     FreeAndNil(vResponse);
     FreeAndNil(vRequest);
+    FreeAndNil(vContext);
+  end;
+end;
+
+procedure TRALfpHttpServerThread.FillHeaders(ARequest: TRALRequest;
+  AResponse: TRALResponse; AHttpResponse: TFPHTTPConnectionResponse);
+var
+  vInt: integer;
+  vCookies: TStringList;
+  vParam: TRALParam;
+begin
+  with AResponse do
+  begin
+    AHttpResponse.Code := StatusCode;
+
+    if ContentEncoding <> '' then
+      AHttpResponse.ContentEncoding := ContentEncoding;
+
+    if AcceptEncoding <> '' then
+      Params.AddParam('Accept-Encoding', AcceptEncoding, rpkHEADER);
+
+    if ContentEncription <> '' then
+      Params.AddParam('Content-Encription', ContentEncription, rpkHEADER);
+
+    vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
+    if vParam <> nil then
+    begin
+      AHttpResponse.WWWAuthenticate := RALSafeHeaderText(vParam.AsString);
+      AResponse.Params.DelParam('WWW-Authenticate');
+    end;
+
+    AHttpResponse.Server := 'RAL_fpHTTP';
+    { Always, whatever the client asked for: this server answers ONE
+      request per connection (TRALfpHttpWorker.Execute calls
+      HandleRequest once per connection, whatever keep-alive fcl-web could offer) and
+      closes the socket right after - and RFC 9112 9.6 says a server that
+      does not keep the connection MUST send "close". It is set here, after
+      ProcessCommands, so a request ValidateRequest refused says it too. }
+    AHttpResponse.Connection := 'close';
+
+    { every cookie whole, on its own Set-Cookie line, from the builder all
+      engines share. fcl-web's TCookie writes Expires through FormatDateTime
+      with the colons unquoted (HTTPDateFmt), so a locale whose time
+      separator is not ':' sent an invalid date; and a TCookie made a cookie
+      CALLED Set-Cookie out of an AddCookie(TRALCookie) one }
+    vCookies := TStringList.Create;
+    try
+      GetParamsCookies(vCookies, IncMinute(Now, FParent.CookieLife));
+      for vInt := 0 to Pred(vCookies.Count) do
+        AHttpResponse.CustomHeaders.Add('Set-Cookie=' + vCookies[vInt]);
+    finally
+      FreeAndNil(vCookies);
+    end;
+
+    AHttpResponse.ContentType := ContentType;
+
+    if ContentDisposition <> '' then
+      Params.AddParam('Content-Disposition', ContentDisposition, rpkHEADER);
+
+    { '=' and not ': ': TResponse.CustomHeaders is a name=value list, and
+      FPC writes each entry out as Names[i] + ': ' + Values[i]. Storing a
+      ready-made 'Name: Value' line here left no '=' for it to split on, so
+      the whole line landed in the value and every custom header went out
+      prefixed with a stray ': ' - which is why the client never found
+      Content-Encription and handed still-encrypted bodies to the multipart
+      decoder. }
+    Params.AssignParams(AHttpResponse.CustomHeaders, rpkHEADER, '=');
   end;
 end;
 
@@ -1178,6 +1323,24 @@ begin
     Exit;
   end;
   vCore.ReplaceCertificateData(SSL.SSLOptions);
+end;
+
+class function TRALfpHttpServer.SupportsLiveStream: boolean;
+begin
+  Result := True;
+end;
+
+function TRALfpHttpServer.CreateStreamWriter(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALStreamWriter;
+begin
+  Result := nil;
+  if not (AResponse.EngineContext is TRALfpHttpStreamContext) then
+    Exit;
+  Result := TRALfpHttpStreamWriter.Create(TRALfpHttpStreamContext(AResponse.EngineContext));
+  // HTTP/1.0 knows no chunked: the end of the body is the end of the connection
+  Result.Chunked := ARequest.ProtocolVersion <> rhv10;
+  Result.HeadOnly := ARequest.Method = amHEAD;
+  Result.SendTimeout := StreamSendTimeout;
 end;
 
 function TRALfpHttpServer.CreateRALSSL: TRALSSL;

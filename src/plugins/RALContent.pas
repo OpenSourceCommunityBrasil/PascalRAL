@@ -56,6 +56,7 @@ type
   /// read (415) or answer (406)
   TRALCompressPlugin = class(TRALPlugin)
   private
+    FCompressStreams: boolean;
     FCompressType: TRALCompressType;
     FSkipCompressedTypes: boolean;
     FSkipContentTypes: TStrings;
@@ -78,6 +79,13 @@ type
     /// to what is registered
     property CompressType: TRALCompressType read FCompressType write FCompressType
       default ctNone;
+    { Compresses streamed responses (Send) too, with gzip or deflate flushed at
+      every piece. Before turning it on: small pieces can grow (~5 bytes each);
+      each open stream holds ~30 KB of compressor; a proxy or antivirus that
+      waits for the whole compressed body holds every piece back; and a secret
+      mixed with text an attacker controls leaks through the sizes (BREACH) }
+    property CompressStreams: boolean read FCompressStreams write FCompressStreams
+      default False;
     { A response whose type is already compressed - images (not SVG), audio,
       video, zip, gzip, 7z, rar, pdf, fonts - goes out as it is, with no
       Content-Encoding: compressing it again costs CPU and a buffer the size
@@ -222,6 +230,11 @@ begin
     AResponse.ContentCompress := FCompressType
   else
     AResponse.ContentCompress := ARequest.AcceptCompress;
+  // what a stream may use, should the handler send in pieces
+  if FCompressStreams then
+    AResponse.StreamCompress := AResponse.ContentCompress
+  else
+    AResponse.StreamCompress := ctNone;
 
   { applied when the body is built for the wire, after the handler: only then
     is its type known }

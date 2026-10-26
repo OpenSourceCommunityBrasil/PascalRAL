@@ -6,7 +6,7 @@ interface
 uses
   Classes, SysUtils,
   RALTypes, RALParams, RALMIMETypes, RALCustomObjects, RALStream, RALConsts,
-  RALCompress, RALTools;
+  RALCompress, RALTools, RALResponseStream;
 
 type
   /// A response: status, headers, cookies and body.
@@ -14,10 +14,29 @@ type
   private
     /// Stream handed out by BodyStream while it is the body.
     FBodyStream: TStream;
+    FCommitted: boolean;
     FContentEncoded: boolean;
+    FDetached: boolean;
+    FEngineContext: TObject;
     FErrorCode: IntegerRAL;
+    FEventStream: boolean;
+    { while True, a change to a committed response raises: on from the commit until
+      the handler returns (TRALServer.ProcessCommands turns it off) }
+    FGuarded: boolean;
+    FResponseNotified: boolean;
     FStatusCode: IntegerRAL;
+    FChannel: TRALResponseStream;
+    /// Holds the channel by reference, so it outlives nobody's interest in it.
+    FChannelRef: IRALResponseStream;
+    FStreamCompress: TRALCompressType;
+    FStreamRequest: TObject;
     FTransportError: TRALTransportError;
+
+    /// Raises ERALResponseCommitted when the response is committed and guarded.
+    procedure CheckNotCommitted;
+    /// The commit (D1 of the plan): headers out, the body so far as the first piece.
+    procedure Commit;
+    procedure SetStatusCode(const AValue: IntegerRAL);
   protected
     function GetResponseStream: TStream;
     function GetResponseText: StringRAL;
@@ -56,11 +75,23 @@ type
     procedure Answer(AStatusCode: IntegerRAL); overload;
     /// Answers with the file AFileName, inline unless DispositionInline is False.
     procedure Answer(const AFileName: StringRAL; const DispositionInline: boolean = true); overload;
+    { Commits the response without a body piece yet: status and headers go out now
+      (an SSE stream shows up at once). With no content type chosen, a stream begun
+      here is text/event-stream }
+    procedure BeginStream; overload;
+    /// Commits with AStatusCode and AContentType.
+    procedure BeginStream(AStatusCode: IntegerRAL; const AContentType: StringRAL); overload;
     { A stream to write the body into, owned by the response and sent as it is;
       asking again returns the same stream while it is still the body. }
     function BodyStream: TStream;
     /// Empties the response and restores its defaults.
     procedure Clear; override;
+    { Keeps the stream open after the handler returns, for another thread to send
+      on (an MCP GET, a notification feed); commits first. Raises on an engine that
+      does not stream live (TRALServer.SupportsLiveStream) }
+    function Detach: IRALResponseStream;
+    /// Ends the body now (the last chunk); implicit when the handler returns, unless Detach.
+    procedure EndStream;
     /// Adds the Set-Cookie values to ADest; ADateTime expires the plain cookies.
     procedure GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
     /// The Set-Cookie header lines of the cookies, each starting with AHeader.
@@ -69,8 +100,48 @@ type
     function GetResponseEncStream(const AEncode: boolean = true): TStream; virtual; abstract;
     /// The body as text, encoded for the wire when AEncode.
     function GetResponseEncText(const AEncode: boolean = true): StringRAL; virtual; abstract;
+    { Sends a piece of the body to the client now. The first call commits the
+      response: status and headers go out, with the body set so far as the first
+      piece, and nothing of them can change afterwards (ERALResponseCommitted).
+      False when the client is gone or the stream was closed - a disconnect is
+      normal in a stream and never raises. On an engine that does not stream live
+      the pieces are kept and go out together when the handler returns }
+    function Send(const AText: StringRAL): boolean; overload;
+    function Send(const ABuffer; ASize: IntegerRAL): boolean; overload;
+    /// Sends AStream from its start; with AOwnsStream it is freed afterwards.
+    function Send(AStream: TStream; AOwnsStream: boolean = True): boolean; overload;
+    { Sends one Server-Sent Event (RALSSEEvent): AData as data: lines, with event,
+      id and retry when given. With no content type chosen the stream is
+      text/event-stream }
+    function SendEvent(const AData: StringRAL; const AEvent: StringRAL = '';
+      const AId: StringRAL = ''; ARetry: IntegerRAL = -1): boolean;
+    { ENGINE API: True when the response went out as a live stream, so the engine
+      sends nothing more and calls TRALServer.FinishStream }
+    function StreamLive: boolean;
     function TakeWireStream: TStream; override;
     function TakeWireString: RawByteString; override;
+    { ENGINE API: called by TRALServer.ProcessCommands when the handler returned;
+      a committed response accepts the engine's own changes from here }
+    procedure Unguard;
+
+    /// True once Send, SendEvent, BeginStream or Detach committed the response.
+    property Committed: boolean read FCommitted;
+    /// The best answer the engine can give on whether the client is still there.
+    function Connected: boolean;
+    /// True once Detach kept the stream past the handler.
+    property Detached: boolean read FDetached;
+    { ENGINE API: what the engine needs to build its stream writer (its connection,
+      its response object), set before ProcessCommands; owned by the engine }
+    property EngineContext: TObject read FEngineContext write FEngineContext;
+    /// True when the stream was begun as text/event-stream.
+    property EventStream: boolean read FEventStream;
+    /// The channel of a live stream; nil before the commit or when it is kept in memory.
+    property Stream: TRALResponseStream read FChannel;
+    /// The request this response answers, set by TRALServer.ProcessCommands.
+    property StreamRequest: TObject read FStreamRequest write FStreamRequest;
+    { How a streamed response is compressed: set by TRALCompressPlugin when
+      CompressStreams is on (gzip and deflate only); ctNone sends it as it is }
+    property StreamCompress: TRALCompressType read FStreamCompress write FStreamCompress;
 
     /// The body is already coded as ContentEncoding says, and is not compressed again.
     property ContentEncoded: boolean read FContentEncoded write FContentEncoded;
@@ -82,7 +153,7 @@ type
     /// Error of the transport on a client, 0 when an HTTP response arrived.
     property ErrorCode: IntegerRAL read FErrorCode write FErrorCode;
     /// HTTP status code.
-    property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
+    property StatusCode: IntegerRAL read FStatusCode write SetStatusCode;
     /// How the send attempt ended for the transport; rteNone when a response arrived.
     property TransportError: TRALTransportError read FTransportError
                                                 write FTransportError;
@@ -121,13 +192,14 @@ type
 implementation
 
 uses
-  RALServer;
+  RALServer, RALRequest, RALSSE;
 
 { TRALResponse }
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
   const AContentType: StringRAL);
 begin
+  CheckNotCommitted;
   StatusCode := AStatusCode;
   ContentType := AContentType;
   ResponseText := AMessage;
@@ -136,6 +208,7 @@ end;
 procedure TRALResponse.Answer(const AFileName: StringRAL;
   const DispositionInline: boolean);
 begin
+  CheckNotCommitted;
   AddFile(AFileName);
   ContentDispositionInline := DispositionInline;
 end;
@@ -143,6 +216,7 @@ end;
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL; const AStream: TStream;
   const AContentType: StringRAL);
 begin
+  CheckNotCommitted;
   StatusCode := AStatusCode;
   ContentType := AContentType;
   ResponseStream := AStream;
@@ -157,6 +231,11 @@ begin
   begin
     Answer(AStatusCode, AStream, AContentType);
     Exit;
+  end;
+  if FGuarded then
+  begin
+    AStream.Free;
+    CheckNotCommitted;
   end;
 
   StatusCode := AStatusCode;
@@ -291,6 +370,13 @@ procedure TRALResponse.Clear;
 begin
   inherited Clear;
   FBodyStream := nil;
+  FCommitted := False;
+  FDetached := False;
+  FEventStream := False;
+  FGuarded := False;
+  FResponseNotified := False;
+  FChannel := nil;
+  FChannelRef := nil;
   FStatusCode := -1;
   FErrorCode := 0;
   FTransportError := rteNone;
@@ -301,6 +387,7 @@ procedure TRALResponse.Answer(AStatusCode: IntegerRAL);
 var
   vResp: StringRAL;
 begin
+  CheckNotCommitted;
   FStatusCode := AStatusCode;
   if AStatusCode >= HTTP_BadRequest then
     ContentType := rctTEXTHTML;
@@ -314,6 +401,7 @@ end;
 
 function TRALResponse.AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALResponse;
 begin
+  CheckNotCommitted;
   inherited AddHeader(AName, AValue);
   Result := Self;
 end;
@@ -335,12 +423,14 @@ end;
 function TRALResponse.AddCookie(const AName: StringRAL; const AValue: StringRAL
   ): TRALResponse;
 begin
+  CheckNotCommitted;
   inherited AddCookie(AName, AValue);
   Result := Self;
 end;
 
 function TRALResponse.AddCookie(const ACookie: TRALCookie): TRALResponse;
 begin
+  CheckNotCommitted;
   inherited AddCookie(ACookie);
   Result := Self;
 end;
@@ -365,7 +455,240 @@ end;
 
 destructor TRALResponse.Destroy;
 begin
+  // the channel lives on while a Detach holder keeps it
+  FChannel := nil;
+  FChannelRef := nil;
   inherited;
+end;
+
+procedure TRALResponse.SetStatusCode(const AValue: IntegerRAL);
+begin
+  if AValue <> FStatusCode then
+    CheckNotCommitted;
+  FStatusCode := AValue;
+end;
+
+procedure TRALResponse.CheckNotCommitted;
+begin
+  if FGuarded then
+    raise ERALResponseCommitted.Create(emResponseCommitted);
+end;
+
+procedure TRALResponse.Unguard;
+begin
+  FGuarded := False;
+end;
+
+function TRALResponse.StreamLive: boolean;
+begin
+  Result := FChannel <> nil;
+end;
+
+function TRALResponse.Connected: boolean;
+begin
+  if FChannel <> nil then
+    Result := FChannel.Connected
+  else
+    Result := True;
+end;
+
+procedure TRALResponse.Commit;
+var
+  vServer: TRALServer;
+  vWriter: TRALStreamWriter;
+  vBody: TStream;
+  vType: StringRAL;
+  vCompress: TRALCompressType;
+  vEncoder: TRALStreamCoder;
+begin
+  if FCommitted then
+    Exit;
+  if (Parent = nil) or not Parent.InheritsFrom(TRALServer) then
+    raise ERALResponseCommitted.Create(emStreamNoServer);
+  vServer := TRALServer(Parent);
+
+  { the RAL cipher is IV + CBC + HMAC over the whole body: no piece of it is
+    something a client can read, and sending in clear what was asked encrypted is
+    not an option. Nothing went out yet, so the request still answers 500 }
+  if ContentCripto <> crNone then
+    raise ERALStreamCipher.Create(emStreamCipher);
+  vServer.CheckStreamLimit;
+
+  // the default JSON is nobody's choice: SendEvent and BeginStream make it SSE
+  if FEventStream and ((ContentType = '') or
+     (Pos(StringRAL(rctAPPLICATIONJSON), ContentType) = 1)) then
+    ContentType := rctTEXTEVENTSTREAM;
+  if Pos(StringRAL('event-stream'), ContentType) > 0 then
+  begin
+    FEventStream := True;
+    // a proxy that waits for the whole body would hold every event back
+    if Params.GetKind['Cache-Control', rpkHEADER] = nil then
+      inherited AddHeader('Cache-Control', 'no-cache');
+    if Params.GetKind['X-Accel-Buffering', rpkHEADER] = nil then
+      inherited AddHeader('X-Accel-Buffering', 'no');
+  end;
+
+  // OnResponse fires once, before the first byte - here for a stream
+  if not FResponseNotified then
+  begin
+    FResponseNotified := True;
+    vServer.NotifyResponse(TRALRequest(FStreamRequest), Self);
+  end;
+
+  { a stream is compressed only when TRALCompressPlugin.CompressStreams asked
+    for it, with a coding that can flush each piece, and a type worth it }
+  vCompress := FStreamCompress;
+  if not (vCompress in [ctDeflate, ctZLib, ctGZip]) then
+    vCompress := ctNone;
+  if (vCompress <> ctNone) and RALIsCompressedType(ContentType,
+     Params.SkipCompressedTypes, Params.SkipCompressTypes) then
+    vCompress := ctNone;
+  ContentCompress := ctNone;
+  FCommitted := True;
+  FGuarded := True;
+
+  vWriter := nil;
+  if vServer.SupportsLiveStream then
+    vWriter := vServer.CreateStreamWriter(TRALRequest(FStreamRequest), Self);
+  { an engine that cannot stream live keeps the pieces: they go out at the end,
+    after the body set before the first Send }
+  if vWriter = nil then
+  begin
+    { the body goes out whole at the end, compressed by the usual way }
+    ContentCompress := vCompress;
+    if (FBodyStream = nil) or (Body = nil) or (Body.Content <> FBodyStream) then
+    begin
+      vBody := GetResponseEncStream(False);
+      try
+        BodyStream;
+        if vBody <> nil then
+          RALCopyStream(vBody, FBodyStream, vBody.Size);
+      finally
+        vBody.Free;
+      end;
+    end;
+    Exit;
+  end;
+
+  { what the handler set before the first Send goes first; with no body the
+    content type is the one chosen, not the empty one of an empty body }
+  vType := ContentType;
+  vBody := TakeWireStream;
+  if vBody = nil then
+    ContentType := vType;
+  vEncoder := nil;
+  if vCompress <> ctNone then
+    vEncoder := RALCreateStreamEncoder(vCompress);
+  // after TakeWireStream: the header only, the channel compresses
+  if vEncoder <> nil then
+    ContentEncoding := TRALCompress.CompressToString(vCompress);
+  try
+    FChannel := TRALResponseStream.Create(vWriter, FEventStream);
+    FChannelRef := FChannel;
+    FChannel.SetEncoder(vEncoder);
+    vServer.RegisterStream(FChannel);
+    vWriter.WriteHead(Self, FStatusCode);
+    if vBody <> nil then
+      FChannel.SendStream(vBody);
+  finally
+    vBody.Free;
+  end;
+end;
+
+function TRALResponse.Send(const AText: StringRAL): boolean;
+begin
+  if AText = '' then
+  begin
+    Commit;
+    Result := (FChannel = nil) or not FChannel.Closed;
+    Exit;
+  end;
+  Result := Send(Pointer(AText)^, Length(AText));
+end;
+
+function TRALResponse.Send(const ABuffer; ASize: IntegerRAL): boolean;
+begin
+  Commit;
+  if FChannel <> nil then
+    Result := FChannel.SendBuffer(ABuffer, ASize)
+  else
+  begin
+    // kept: the body goes out whole when the handler returns
+    if ASize > 0 then
+      BodyStream.Write(ABuffer, ASize);
+    Result := True;
+  end;
+end;
+
+function TRALResponse.Send(AStream: TStream; AOwnsStream: boolean): boolean;
+var
+  vBuffer: array of Byte;
+  vRead: IntegerRAL;
+begin
+  try
+    Commit;
+    Result := True;
+    if AStream = nil then
+      Exit;
+    if FChannel <> nil then
+      Result := FChannel.SendStream(AStream)
+    else
+    begin
+      SetLength(vBuffer, DEFAULTBUFFERSTREAMSIZE);
+      AStream.Position := 0;
+      repeat
+        vRead := AStream.Read(vBuffer[0], Length(vBuffer));
+        if vRead > 0 then
+          BodyStream.Write(vBuffer[0], vRead);
+      until vRead <= 0;
+    end;
+  finally
+    if AOwnsStream then
+      AStream.Free;
+  end;
+end;
+
+function TRALResponse.SendEvent(const AData: StringRAL; const AEvent: StringRAL;
+  const AId: StringRAL; ARetry: IntegerRAL): boolean;
+begin
+  if not FCommitted then
+    FEventStream := True;
+  Result := Send(RALSSEEvent(AData, AEvent, AId, ARetry));
+end;
+
+procedure TRALResponse.BeginStream;
+begin
+  if not FCommitted then
+    FEventStream := True;
+  Commit;
+end;
+
+procedure TRALResponse.BeginStream(AStatusCode: IntegerRAL; const AContentType: StringRAL);
+begin
+  if not FCommitted then
+  begin
+    StatusCode := AStatusCode;
+    ContentType := AContentType;
+  end;
+  Commit;
+end;
+
+procedure TRALResponse.EndStream;
+begin
+  if FChannel <> nil then
+    FChannel.Close;
+end;
+
+function TRALResponse.Detach: IRALResponseStream;
+begin
+  if (Parent <> nil) and Parent.InheritsFrom(TRALServer) and
+     not TRALServer(Parent).SupportsLiveStream then
+    raise ERALResponseCommitted.Create(emStreamNoLive);
+  Commit;
+  if FChannel = nil then
+    raise ERALResponseCommitted.Create(emStreamNoLive);
+  FDetached := True;
+  Result := FChannelRef;
 end;
 
 function TRALResponse.GetResponseStream: TStream;
@@ -476,6 +799,7 @@ procedure TRALServerResponse.SetResponseStream(const AValue: TStream);
 var
   vParam: TRALParam;
 begin
+  CheckNotCommitted;
   Params.ClearParams(rpkBODY);
   if Assigned(Avalue) and (AValue.Size > 0) then
   begin
@@ -488,6 +812,7 @@ procedure TRALServerResponse.SetResponseText(const AValue: StringRAL);
 var
   vParam: TRALParam;
 begin
+  CheckNotCommitted;
   Params.ClearParams(rpkBODY);
   if AValue <> '' then
   begin

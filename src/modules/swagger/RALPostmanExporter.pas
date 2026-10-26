@@ -4,7 +4,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALJson, RALServer, RALTypes, RALAuthBase, RALAuthentication, RALRoutes, RALTools;
+  RALJson, RALServer, RALTypes, RALAuthBase, RALAuthentication, RALRoutes, RALTools,
+  RALMIMETypes;
 
 type
   TRALPostmanExporter = class
@@ -348,6 +349,16 @@ begin
 
       vAux1.Add('url', vAux2);
       vAux1.Add('method', RALMethodToHTTPMethod(vMethod));
+      // a route marked Streaming answers Server-Sent Events
+      if ARoute.Streaming then
+      begin
+        vAux3 := TRALJSONArray.Create;
+        vAux5 := TRALJSONObject.Create;
+        vAux5.Add('key', 'Accept');
+        vAux5.Add('value', rctTEXTEVENTSTREAM);
+        vAux3.Add(vAux5);
+        vAux1.Add('header', vAux3);
+      end;
 
       vRoute.Add('request', vAux1);
 

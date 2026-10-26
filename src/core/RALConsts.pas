@@ -110,6 +110,12 @@ const
   DEFAULTMAXREDIRECTS = 3;
   /// Default TRALWebModule.SessionTimeout: 30 minutes, in milliseconds.
   DEFAULTWEBSESSIONTIMEOUT = 1800000;
+  /// Default TRALServer.StreamKeepAlive: milliseconds between SSE pings of a quiet stream.
+  DEFAULTSTREAMKEEPALIVE = 15000;
+  /// Default TRALServer.StreamSendTimeout: milliseconds a stream write may block.
+  DEFAULTSTREAMSENDTIMEOUT = 30000;
+  /// Default TRALServer.StreamMaxPending: bytes a pull engine queues before Send waits.
+  DEFAULTSTREAMMAXPENDING = 1048576;
   /// Default TRALDBModule.ProcOptions.Route, the prefix of the stored procedure route.
   DEFAULTDBPROCROUTE = 'proc';
   /// Default TRALDBModule.ProcOptions.CatalogLife, in minutes.

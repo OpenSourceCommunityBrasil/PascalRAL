@@ -10,10 +10,11 @@ unit RALSaguiServer;
 interface
 
 uses
-  Classes, SysUtils, DateUtils,
+  Classes, SysUtils, DateUtils, SyncObjs,
   libsagui,
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALCompress;
+  RALParams, RALTools, RALCompress, RALResponseStream, RALCustomObjects, RALRoutes,
+  RALStream;
 
 type
   { TRALSaguiSSL }
@@ -57,6 +58,16 @@ type
     class procedure DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar); cdecl; static;
     class procedure DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq; Ares: Psg_httpres);
       cdecl; static;
+    { libmicrohttpd pulls a stream's pieces here, as they come; it blocks the
+      connection's thread until there is something, or the end }
+    class function DoQueueRead(Acls: Pcvoid; Aoffset: cuint64_t; Abuf: Pcchar;
+      Asize: csize_t): cssize_t; cdecl; static;
+    /// libmicrohttpd is done with a stream (sent or the client left).
+    class procedure DoQueueFree(Acls: Pcvoid); cdecl; static;
+    { The headers of AResponse into libsagui's response, after TakeWireStream
+      said what was done to the body }
+    class procedure FillHeaders(AServer: TRALSaguiServer; AResponse: TRALResponse;
+      Ares: Psg_httpres);
     class function DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t; Abuf: Pcchar;
       Asize: csize_t): cssize_t; cdecl; static;
     class procedure DoStreamFree(Acls: Pcvoid); cdecl; static;
@@ -100,6 +111,12 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    { The writer of a stream: the pieces wait in a queue of up to StreamMaxPending
+      bytes that libmicrohttpd pulls once the callback returns. On a route marked
+      Streaming the handler runs on a thread of its own, so its pieces leave as
+      it sends them; on any other, they leave when it returns }
+    function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
+    class function SupportsLiveStream: boolean; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     { libsagui takes the certificate only when it starts listening
@@ -154,9 +171,103 @@ implementation
 const
   { What the constructor uses, and where any invalid value goes back to }
   DEFAULTPOOLCOUNT = 32;
+  { what a content reader answers for the end of the body, and for a failure that
+    cuts it (libmicrohttpd's MHD_CONTENT_READER_END_OF_STREAM and _END_WITH_ERROR).
+    libsagui's sg_eor stands for them, and answered garbage on Linux x86-64: the
+    body never ended }
+  cSaguiEndOfStream = -1;
+  cSaguiEndWithError = -2;
 
 type
+  { TRALSaguiQueue }
+
+  { The pieces of one stream between the thread that sends and libmicrohttpd,
+    which pulls them. Held by reference by the writer and by libmicrohttpd: it
+    outlives either }
+  TRALSaguiQueue = class
+  private
+    FAborted: boolean;
+    FBuffer: RawByteString;
+    FData: TEvent;
+    FEnded: boolean;
+    FLock: TCriticalSection;
+    FMaxPending: Int64RAL;
+    FPos: IntegerRAL;
+    FReaderGone: boolean;
+    FRefs: IntegerRAL;
+    FRoom: TEvent;
+  public
+    constructor Create(AMaxPending: Int64RAL);
+    destructor Destroy; override;
+
+    procedure AddRef;
+    /// The end of the stream; AAborted ends it as an error.
+    procedure Finish(AAborted: boolean);
+    { Takes up to ASize bytes; waits up to a second while there is nothing and it
+      did not end (0, nothing yet).
+      The end and an error are cSaguiEndOfStream and cSaguiEndWithError }
+    function Pull(ABuf: Pointer; ASize: csize_t): cssize_t;
+    { Queues ASize bytes; waits while more than the limit is pending, up to
+      ATimeout milliseconds (0 waits for good). False when the reader is gone }
+    function Push(const ABuffer; ASize: IntegerRAL; ATimeout: IntegerRAL): boolean;
+    /// libmicrohttpd let go: the client left or all was sent.
+    procedure ReaderGone;
+    procedure Release;
+
+    /// True once libmicrohttpd let go.
+    property IsReaderGone: boolean read FReaderGone;
+  end;
+
+  { what a stream needs of the request being answered }
+  TRALSaguiStreamContext = class
+  public
+    { set once the handler ended or committed: the callback waits on it for a
+      route marked Streaming }
+    Done: TEvent;
+    Headed: boolean;
+    Queue: TRALSaguiQueue;
+    Res: Psg_httpres;
+    Server: TRALSaguiServer;
+    Status: IntegerRAL;
+    constructor Create(AServer: TRALSaguiServer; ARes: Psg_httpres);
+    destructor Destroy; override;
+  end;
+
+  { TRALSaguiStreamWriter }
+
+  TRALSaguiStreamWriter = class(TRALStreamWriter)
+  private
+    FContext: TRALSaguiStreamContext;
+    FQueue: TRALSaguiQueue;
+  public
+    constructor Create(AContext: TRALSaguiStreamContext);
+    destructor Destroy; override;
+    function Alive: boolean; override;
+    procedure WriteEnd(AAborted: boolean); override;
+    procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); override;
+    function WriteRaw(const ABuffer; ASize: IntegerRAL): boolean; override;
+  end;
+
+  { TRALSaguiHandlerThread }
+
+  { Runs the handler of a route marked Streaming away from libsagui's callback,
+    which waits only until it commits: libmicrohttpd then pulls the pieces while
+    the handler goes on sending }
+  TRALSaguiHandlerThread = class(TThread)
+  private
+    FContext: TRALSaguiStreamContext;
+    FRequest: TRALRequest;
+    FResponse: TRALResponse;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(AContext: TRALSaguiStreamContext; ARequest: TRALRequest;
+      AResponse: TRALResponse);
+  end;
+
   { TRALSaguiStringMap }
+
+{ TRALSaguiStringMap }
 
   TRALSaguiStringMap = class(TPersistent)
   private
@@ -375,10 +486,13 @@ var
   vInt: IntegerRAL;
   vParam: TRALParam;
   vRespStream: TStream;
-  vCookies: TStringList;
   vPayloadLen: integer;
   vClient: Pcvoid;
+  vContext: TRALSaguiStreamContext;
+  vRoute: TRALRoute;
+  vCopy: TMemoryStream;
 begin
+  vContext := nil;
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
   vResponse := vServer.CreateResponse;
@@ -517,10 +631,50 @@ begin
         end;
       end;
 
-      vServer.ProcessCommands(vRequest, vResponse);
+      vContext := TRALSaguiStreamContext.Create(vServer, Ares);
+      vResponse.EngineContext := vContext;
+      vRoute := nil;
+      if vResponse.StatusCode < HTTP_BadRequest then
+        vRoute := vServer.FindRoute(vRequest, vResponse);
 
-      vStrMap := TRALSaguiStringMap.Create(sg_httpres_headers(Ares));
-      vStrMap.FreeOnDestroy := False;
+      if (vRoute <> nil) and vRoute.Streaming then
+      begin
+        { the handler goes on after this callback returns, and the payload
+          is libsagui's only until then: it is copied }
+        if vPayloadLen > 0 then
+        begin
+          vCopy := TMemoryStream.Create;
+          vCopy.Write(sg_str_content(vPayLoad)^, vPayloadLen);
+          vRequest.SetWireBody(vCopy, boOwned);
+        end;
+        TRALSaguiHandlerThread.Create(vContext, vRequest, vResponse);
+        vContext.Done.WaitFor(INFINITE);
+        if vContext.Headed then
+        begin
+          // the thread owns them now, and frees them when the stream ends
+          vRequest := nil;
+          vResponse := nil;
+          vContext.Queue.AddRef;
+          sg_httpres_sendstream(Ares, 0, DoQueueRead, vContext.Queue, DoQueueFree,
+            vContext.Status);
+          vContext := nil;
+          Exit;
+        end;
+        // ended without a stream: answered as always below
+      end
+      else
+      begin
+        vServer.ProcessCommands(vRequest, vResponse);
+        { a stream: its pieces wait in the queue, pulled once this returns;
+          a detached one goes on being written from other threads }
+        if vServer.FinishStream(vRequest, vResponse, False) then
+        begin
+          vContext.Queue.AddRef;
+          sg_httpres_sendstream(Ares, 0, DoQueueRead, vContext.Queue, DoQueueFree,
+            vContext.Status);
+          Exit;
+        end;
+      end;
 
       { before the headers: only after it do ContentType and ContentEncoding
         say what was really done. The params give their streams away - the
@@ -529,24 +683,7 @@ begin
       { the answer is built: what a plugin took for the request - a slot of
         the concurrency limit - goes back now, before the bytes go out }
       vRequest.Finish;
-
-      vStrMap.AssignFromParams(vResponse.Params, rpkHEADER);
-
-      vStrMap.Add('Server', 'RAL_Sagui');
-      vStrMap.Add('Content-Type', vResponse.ContentType);
-      vStrMap.Add('Content-Encoding', vResponse.ContentEncoding);
-      vStrMap.Add('Content-Disposition', vResponse.ContentDisposition);
-      vStrMap.Add('Accept-Encoding', vResponse.AcceptEncoding);
-      vStrMap.Add('Content-Encription', vResponse.ContentEncription);
-
-      vCookies := TStringList.Create;
-      try
-        vResponse.GetParamsCookies(vCookies, IncMinute(Now, vServer.CookieLife));
-        for vInt := 0 to Pred(vCookies.Count) do
-          vStrMap.Add('Set-Cookie', vCookies.Strings[vInt]);
-      finally
-        FreeAndNil(vCookies);
-      end;
+      FillHeaders(vServer, vResponse, Ares);
 
       if vRespStream <> nil then
         sg_httpres_sendstream(Ares, vRespStream.Size, DoStreamRead, vRespStream,
@@ -580,6 +717,316 @@ begin
     FreeAndNil(vStrMap);
     FreeAndNil(vResponse);
     FreeAndNil(vRequest);
+    FreeAndNil(vContext);
+  end;
+end;
+
+{ TRALSaguiQueue }
+
+constructor TRALSaguiQueue.Create(AMaxPending: Int64RAL);
+begin
+  inherited Create;
+  FLock := TCriticalSection.Create;
+  FData := TEvent.Create(nil, True, False, '');
+  FRoom := TEvent.Create(nil, True, True, '');
+  FMaxPending := AMaxPending;
+  FRefs := 1;
+  FPos := 1;
+end;
+
+destructor TRALSaguiQueue.Destroy;
+begin
+  FreeAndNil(FRoom);
+  FreeAndNil(FData);
+  FreeAndNil(FLock);
+  inherited Destroy;
+end;
+
+procedure TRALSaguiQueue.AddRef;
+begin
+  FLock.Enter;
+  try
+    Inc(FRefs);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRALSaguiQueue.Release;
+var
+  vFree: boolean;
+begin
+  FLock.Enter;
+  try
+    Dec(FRefs);
+    vFree := FRefs = 0;
+  finally
+    FLock.Leave;
+  end;
+  if vFree then
+    Free;
+end;
+
+procedure TRALSaguiQueue.Finish(AAborted: boolean);
+begin
+  FLock.Enter;
+  try
+    FEnded := True;
+    FAborted := FAborted or AAborted;
+    FData.SetEvent;
+    FRoom.SetEvent;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRALSaguiQueue.ReaderGone;
+begin
+  FLock.Enter;
+  try
+    FReaderGone := True;
+    FRoom.SetEvent;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRALSaguiQueue.Push(const ABuffer; ASize: IntegerRAL; ATimeout: IntegerRAL): boolean;
+var
+  vOld: IntegerRAL;
+  vWait: Cardinal;
+begin
+  vWait := INFINITE;
+  if ATimeout > 0 then
+    vWait := ATimeout;
+  // a client that reads slowly makes the sender wait, up to the timeout
+  if FRoom.WaitFor(vWait) <> wrSignaled then
+  begin
+    Result := False;
+    Exit;
+  end;
+  FLock.Enter;
+  try
+    Result := not (FReaderGone or FEnded);
+    if not Result then
+      Exit;
+    vOld := Length(FBuffer);
+    SetLength(FBuffer, vOld + ASize);
+    Move(ABuffer, FBuffer[vOld + 1], ASize);
+    FData.SetEvent;
+    if (FMaxPending > 0) and (Length(FBuffer) - FPos + 1 >= FMaxPending) then
+      FRoom.ResetEvent;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRALSaguiQueue.Pull(ABuf: Pointer; ASize: csize_t): cssize_t;
+var
+  vCount: IntegerRAL;
+begin
+  { nothing for a second: 0 hands control back to libmicrohttpd, which looks at
+    the socket and calls again - a client that left is found that way (the
+    free callback); blocking for good it never would be }
+  if FData.WaitFor(1000) <> wrSignaled then
+  begin
+    Result := 0;
+    Exit;
+  end;
+  FLock.Enter;
+  try
+    vCount := Length(FBuffer) - FPos + 1;
+    if vCount <= 0 then
+    begin
+      // nothing left: the end, or an error that cuts the body
+      if FAborted then
+        Result := cSaguiEndWithError
+      else
+        Result := cSaguiEndOfStream;
+      Exit;
+    end;
+    if vCount > IntegerRAL(ASize) then
+      vCount := ASize;
+    Move(FBuffer[FPos], ABuf^, vCount);
+    Inc(FPos, vCount);
+    // what was read goes, once it is all of the buffer or a good part of it
+    if FPos > Length(FBuffer) then
+    begin
+      FBuffer := '';
+      FPos := 1;
+      if not FEnded then
+        FData.ResetEvent;
+    end
+    else if FPos > 65536 then
+    begin
+      Delete(FBuffer, 1, FPos - 1);
+      FPos := 1;
+    end;
+    if (FMaxPending <= 0) or (Length(FBuffer) - FPos + 1 < FMaxPending) then
+      FRoom.SetEvent;
+    Result := vCount;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+{ TRALSaguiStreamContext }
+
+constructor TRALSaguiStreamContext.Create(AServer: TRALSaguiServer; ARes: Psg_httpres);
+begin
+  inherited Create;
+  Server := AServer;
+  Res := ARes;
+  Done := TEvent.Create(nil, True, False, '');
+  Queue := TRALSaguiQueue.Create(AServer.StreamMaxPending);
+end;
+
+destructor TRALSaguiStreamContext.Destroy;
+begin
+  Queue.Release;
+  FreeAndNil(Done);
+  inherited Destroy;
+end;
+
+{ TRALSaguiStreamWriter }
+
+constructor TRALSaguiStreamWriter.Create(AContext: TRALSaguiStreamContext);
+begin
+  inherited Create;
+  FContext := AContext;
+  FQueue := AContext.Queue;
+  FQueue.AddRef;
+end;
+
+destructor TRALSaguiStreamWriter.Destroy;
+begin
+  FQueue.Release;
+  inherited Destroy;
+end;
+
+function TRALSaguiStreamWriter.Alive: boolean;
+begin
+  Result := not FQueue.IsReaderGone;
+end;
+
+procedure TRALSaguiStreamWriter.WriteEnd(AAborted: boolean);
+begin
+  FQueue.Finish(AAborted);
+end;
+
+procedure TRALSaguiStreamWriter.WriteHead(AResponse: TRALHTTPHeaderInfo;
+  AStatusCode: IntegerRAL);
+begin
+  // the response is queued by the callback, which reads these
+  TRALSaguiServer.FillHeaders(FContext.Server, TRALResponse(AResponse), FContext.Res);
+  FContext.Status := AStatusCode;
+  FContext.Headed := True;
+  FContext.Done.SetEvent;
+end;
+
+function TRALSaguiStreamWriter.WriteRaw(const ABuffer; ASize: IntegerRAL): boolean;
+begin
+  Result := FQueue.Push(ABuffer, ASize, SendTimeout);
+end;
+
+{ TRALSaguiHandlerThread }
+
+constructor TRALSaguiHandlerThread.Create(AContext: TRALSaguiStreamContext;
+  ARequest: TRALRequest; AResponse: TRALResponse);
+begin
+  FContext := AContext;
+  FRequest := ARequest;
+  FResponse := AResponse;
+  FreeOnTerminate := True;
+  inherited Create(False);
+end;
+
+procedure TRALSaguiHandlerThread.Execute;
+begin
+  try
+    FContext.Server.ProcessCommands(FRequest, FResponse);
+  except
+    // ProcessCommands answers its own errors; nothing may leave a thread
+  end;
+  if not FContext.Headed then
+  begin
+    { no stream: the callback, still waiting, answers as always and frees
+      what it lent }
+    FContext.Done.SetEvent;
+    Exit;
+  end;
+  try
+    try
+      FContext.Server.FinishStream(FRequest, FResponse);
+    except
+      // the stream is closed by now, one way or the other
+    end;
+  finally
+    FResponse.Free;
+    FRequest.Free;
+    FContext.Free;
+  end;
+end;
+
+class function TRALSaguiServer.SupportsLiveStream: boolean;
+begin
+  Result := True;
+end;
+
+function TRALSaguiServer.CreateStreamWriter(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALStreamWriter;
+begin
+  Result := nil;
+  if not (AResponse.EngineContext is TRALSaguiStreamContext) then
+    Exit;
+  Result := TRALSaguiStreamWriter.Create(TRALSaguiStreamContext(AResponse.EngineContext));
+  // libmicrohttpd frames a body of unknown size itself (chunked)
+  Result.FramesItself := True;
+  Result.HeadOnly := ARequest.Method = amHEAD;
+  Result.SendTimeout := StreamSendTimeout;
+end;
+
+class function TRALSaguiServer.DoQueueRead(Acls: Pcvoid; Aoffset: cuint64_t;
+  Abuf: Pcchar; Asize: csize_t): cssize_t;
+begin
+  Result := TRALSaguiQueue(Acls).Pull(Abuf, Asize);
+end;
+
+class procedure TRALSaguiServer.DoQueueFree(Acls: Pcvoid);
+begin
+  TRALSaguiQueue(Acls).ReaderGone;
+  TRALSaguiQueue(Acls).Release;
+end;
+
+class procedure TRALSaguiServer.FillHeaders(AServer: TRALSaguiServer;
+  AResponse: TRALResponse; Ares: Psg_httpres);
+var
+  vStrMap: TRALSaguiStringMap;
+  vCookies: TStringList;
+  vInt: IntegerRAL;
+begin
+  vStrMap := TRALSaguiStringMap.Create(sg_httpres_headers(Ares));
+  try
+    vStrMap.FreeOnDestroy := False;
+    vStrMap.AssignFromParams(AResponse.Params, rpkHEADER);
+
+    vStrMap.Add('Server', 'RAL_Sagui');
+    vStrMap.Add('Content-Type', AResponse.ContentType);
+    vStrMap.Add('Content-Encoding', AResponse.ContentEncoding);
+    vStrMap.Add('Content-Disposition', AResponse.ContentDisposition);
+    vStrMap.Add('Accept-Encoding', AResponse.AcceptEncoding);
+    vStrMap.Add('Content-Encription', AResponse.ContentEncription);
+
+    vCookies := TStringList.Create;
+    try
+      AResponse.GetParamsCookies(vCookies, IncMinute(Now, AServer.CookieLife));
+      for vInt := 0 to Pred(vCookies.Count) do
+        vStrMap.Add('Set-Cookie', vCookies.Strings[vInt]);
+    finally
+      FreeAndNil(vCookies);
+    end;
+  finally
+    FreeAndNil(vStrMap);
   end;
 end;
 
@@ -597,13 +1044,13 @@ begin
     terminator and libmicrohttpd dropped the connection: Indy shrugged, but
     WinHTTP (netHTTP) refused the whole response as invalid }
   if Acls = nil then
-    Exit(sg_eor(False));
+    Exit(cSaguiEndOfStream);
 
   Result := TStream(Acls).Read(Abuf^, Asize);
   if Result = 0 then
-    Exit(sg_eor(False));
+    Exit(cSaguiEndOfStream);
   if Result < 0 then
-    Result := sg_eor(True);
+    Result := cSaguiEndWithError;
 end;
 
 procedure TRALSaguiServer.FreeServerHandle;

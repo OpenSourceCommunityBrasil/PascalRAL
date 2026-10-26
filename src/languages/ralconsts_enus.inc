@@ -61,6 +61,15 @@
   emDBRowsAffected = 'ApplyUpdates: a statement affected %d records instead of 1 - the record was changed or deleted by another user, or the update criteria do not identify exactly one row.';
   emDBStatusNoMessage = 'The server answered HTTP %d and sent no message.';
   emDBUpdateSQLMissing = 'SQL for UpdateTable/UpdateSQL cannot be empty.';
+  emResponseCommitted = 'The response is already being sent by Send: its status, headers and body can no longer change.';
+  emSSEEventTooBig = 'A Server-Sent Event is larger than MaxEventSize.';
+  emStreamCipher = 'A streamed response cannot be encrypted with the RAL body cipher.';
+  emStreamLimit = 'Too many streamed responses are open (MaxStreams).';
+  emStreamNoLive = 'This engine does not stream live: Detach is not available.';
+  emStreamNoServer = 'Only a server response can be streamed.';
+  emStreamCancelled = 'The handler of the streamed answer cancelled it.';
+  emStreamClientCipher = 'A streamed answer encrypted with the RAL body cipher cannot be read in pieces.';
+  emStreamClientCoding = 'A streamed answer compressed with "%s" cannot be read in pieces.';
   emDBInvalidProcName = 'Invalid stored procedure name: only letters, digits, _, $ and . are accepted.';
   emDBLegacyWireProc = 'RALLegacyWire is on: the old wire format has no stored procedure calls nor output parameters.';
   emDBNoQueue = 'There is no queue to commit or roll back: call StartTransaction first.';

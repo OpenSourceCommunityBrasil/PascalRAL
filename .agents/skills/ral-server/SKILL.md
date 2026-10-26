@@ -61,6 +61,35 @@ end;
 - Reading the request (query, path params, fields, headers, body, uploads) and
   answering streams and files: `ral-body`.
 
+## Answer in pieces (streaming, Server-Sent Events)
+
+```pascal
+procedure TForm1.Progress(ARequest: TRALRequest; AResponse: TRALResponse);
+var
+  vInt: Integer;
+begin
+  for vInt := 1 to 10 do
+  begin
+    if not AResponse.SendEvent(Format('{"step":%d}', [vInt]), 'progress') then
+      Exit; // the client left
+    Sleep(500);
+  end;
+end;
+```
+
+- The first `Send`/`SendEvent` sends status and headers: set them before it. After it,
+  `Answer`, `StatusCode`, `AddHeader` raise `ERALResponseCommitted`.
+- `SendEvent` makes it `text/event-stream`; `Send` keeps the type you set (NDJSON:
+  `rctAPPLICATIONNDJSON`). `Send` returns False once the client is gone.
+- `AResponse.Detach` keeps the stream open after the handler returns, to be written
+  from other threads (`IRALResponseStream`); pings every `StreamKeepAlive` ms.
+- Mark the route `Streaming := True`: Sagui needs it to run the handler on a thread of
+  its own, and Swagger/Postman show it as `text/event-stream`.
+- Live on fpHTTP, Indy, Sagui, CGI (Lazarus) and Synopse `smThreads` (with the mORMot2
+  change in `.agents/MORMOT2_PR_STREAMING.md`); other engines send it whole at the end.
+- Compressed only with `TRALCompressPlugin.CompressStreams`; `TRALConcurrencyPlugin.MaxStreams`
+  caps open streams (503); the AES body cipher refuses a stream.
+
 ## A 2.0 server has no features until you link plugins
 
 Without plugins it answers routes and nothing else: **no compression, no cipher, no
@@ -102,9 +131,12 @@ The order they run in is their `Priority`, not the order you link them.
 | 405 | method not in `Allow` |
 | browser blocks the call (CORS) | no `TRALCORSPlugin`, or `AllowOrigin` empty |
 | answer not compressed | no `TRALCompressPlugin`, or `RALCompressZLib` not linked |
+| `ERALResponseCommitted` | `Answer`/`StatusCode`/`AddHeader` after the first `Send` |
+| events arrive all at once | engine without live streaming, or a proxy buffering (nginx: `X-Accel-Buffering: no` is sent) |
 | form from 1.x does not open ("Property CompressType does not exist") | server properties moved to plugins: `ral-migrate` |
 
 Guides (Portuguese): wiki
 [rotas](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/rotas),
 [plugins](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/plugins),
-[qual-motor](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/qual-motor).
+[qual-motor](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/qual-motor),
+[resposta-em-fluxo](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/resposta-em-fluxo).

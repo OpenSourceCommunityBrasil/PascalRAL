@@ -38,6 +38,7 @@ const
   rctAPPLICATIONGZIP = 'application/gzip';
   rctAPPLICATIONJAVASCRIPT = 'application/javascript';
   rctAPPLICATIONJSON = 'application/json';
+  rctAPPLICATIONNDJSON = 'application/x-ndjson';
   rctAPPLICATIONBSON = 'application/bson';
   rctAPPLICATIONOCTETSTREAM = 'application/octet-stream';
   rctAPPLICATIONOGG = 'application/ogg';
@@ -127,6 +128,7 @@ const
   rctMULTIPARTSIGNED = 'multipart/signed';
   rctTEXTCMD = 'text/cmd';
   rctTEXTCSS = 'text/css';
+  rctTEXTEVENTSTREAM = 'text/event-stream';
   rctTEXTCSV = 'text/csv';
   rctTEXTHTML = 'text/html';
   rctTEXTJAVASCRIPT = 'text/javascript';

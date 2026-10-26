@@ -1,8 +1,8 @@
 uses
   Classes, SysUtils, DateUtils,
-  custcgi, custweb, fpweb, httpDefs,
+  custcgi, custweb, fpweb, httpDefs, iostream,
   RALServer, RALRequest, RALResponse, RALTools, RALCompress, RALTypes,
-  RALParams, RALConsts, RALNetwork;
+  RALParams, RALConsts, RALNetwork, RALResponseStream, RALCustomObjects;
 
 type
 
@@ -10,6 +10,10 @@ type
 
   TRALCGIServerHandler = Class(TCgiHandler)
   public
+    { The status, headers and cookies of AResponse into fcl-web's response, after
+      TakeWireStream said what was done to the body }
+    procedure FillHeaders(AServer: TRALServer; AResponse: TRALResponse;
+      ACGIResponse: TResponse);
     procedure HandleRequest(ARequest : Trequest; AResponse : TResponse); override;
   end;
 
@@ -33,10 +37,71 @@ type
     /// The address of the web server that started the program, as it tells
     /// it (SERVER_ADDR, or LOCAL_ADDR on IIS); the machine's otherwise
     function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
+    { The writer of a stream: the headers by fcl-web, then the body on stdout
+      as it comes. The web server in front frames it (and may hold it: IIS
+      buffers CGI) }
+    function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
+    class function SupportsLiveStream: boolean; override;
   end;
 
 
 implementation
+
+type
+  { what the stream writer needs of the request being answered }
+  TRALCGIStreamContext = class
+  public
+    CGIResponse: TResponse;
+    Handler: TRALCGIServerHandler;
+    Server: TRALServer;
+  end;
+
+  { TRALCGIStreamWriter }
+
+  TRALCGIStreamWriter = class(TRALStreamWriter)
+  private
+    FContext: TRALCGIStreamContext;
+    FOutput: TIOStream;
+  public
+    constructor Create(AContext: TRALCGIStreamContext);
+    destructor Destroy; override;
+    procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); override;
+    function WriteRaw(const ABuffer; ASize: IntegerRAL): boolean; override;
+  end;
+
+{ TRALCGIStreamWriter }
+
+constructor TRALCGIStreamWriter.Create(AContext: TRALCGIStreamContext);
+begin
+  inherited Create;
+  FContext := AContext;
+  // the same unbuffered stdout fcl-web writes through: nothing waits in between
+  FOutput := TIOStream.Create(iosOutPut);
+end;
+
+destructor TRALCGIStreamWriter.Destroy;
+begin
+  FreeAndNil(FOutput);
+  inherited Destroy;
+end;
+
+procedure TRALCGIStreamWriter.WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL);
+begin
+  FContext.Handler.FillHeaders(FContext.Server, TRALResponse(AResponse), FContext.CGIResponse);
+  FContext.CGIResponse.Code := AStatusCode;
+  // no ContentStream: fcl-web writes no Content-Length, and the web server frames the body
+  FContext.CGIResponse.SendHeaders;
+end;
+
+function TRALCGIStreamWriter.WriteRaw(const ABuffer; ASize: IntegerRAL): boolean;
+begin
+  Result := True;
+  try
+    FOutput.WriteBuffer(ABuffer, ASize);
+  except
+    Result := False;
+  end;
+end;
 
 { TRALCGIServerHandler }
 
@@ -91,8 +156,9 @@ var
 
   vAux1, vAux2: StringRAL;
   vInt, vPos: IntegerRAL;
-  vCookies: TStringList;
+  vContext: TRALCGIStreamContext;
 begin
+  vContext := nil;
   vApp := TRALCGIServerApp(Owner);
   vServer := TRALCGIServer(vApp.Owner);
 
@@ -164,7 +230,15 @@ begin
     if vResponse.StatusCode < HTTP_BadRequest then
       vRequest.SetWireBody(ARequest.Content);
 
+    vContext := TRALCGIStreamContext.Create;
+    vContext.CGIResponse := AResponse;
+    vContext.Handler := Self;
+    vContext.Server := vServer;
+    vResponse.EngineContext := vContext;
     vServer.ProcessCommands(vRequest, vResponse);
+    // a stream already went out; fcl-web then finds the headers sent
+    if vServer.FinishStream(vRequest, vResponse) then
+      Exit;
 
     { first: only after it do ContentType and ContentEncoding say what was
       really done to the body }
@@ -172,39 +246,48 @@ begin
     { the answer is built: what a plugin took for the request - a slot of
       the concurrency limit - goes back now, before the bytes go out }
     vRequest.Finish;
-
-    if vResponse.AcceptEncoding <> '' then
-      vResponse.Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
-
-    if vResponse.ContentEncription <> '' then
-      vResponse.Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
-
-    if vResponse.ContentDisposition <> '' then
-      vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);
-
-    vResponse.Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
-
-    { cookies never left this engine - AddCookie and the JWT UseCookie did
-      nothing here. Built like every other engine's (GetParamsCookies), whole,
-      one Set-Cookie line each: fcl-web writes repeated names one by one }
-    vCookies := TStringList.Create;
-    try
-      vResponse.GetParamsCookies(vCookies, IncMinute(Now, vServer.CookieLife));
-      for vInt := 0 to Pred(vCookies.Count) do
-        AResponse.CustomHeaders.Add('Set-Cookie=' + vCookies[vInt]);
-    finally
-      FreeAndNil(vCookies);
-    end;
-
-    AResponse.Server := 'RAL_CGILaz';
-    AResponse.ContentType := vResponse.ContentType;
-    AResponse.ContentEncoding := vResponse.ContentEncoding;
-    AResponse.Code := vResponse.StatusCode;
+    FillHeaders(vServer, vResponse, AResponse);
     AResponse.FreeContentStream := True;
   finally
     FreeAndNil(vRequest);
     FreeAndNil(vResponse);
+    FreeAndNil(vContext);
   end;
+end;
+
+procedure TRALCGIServerHandler.FillHeaders(AServer: TRALServer; AResponse: TRALResponse;
+  ACGIResponse: TResponse);
+var
+  vInt: IntegerRAL;
+  vCookies: TStringList;
+begin
+  if AResponse.AcceptEncoding <> '' then
+    AResponse.Params.AddParam('Accept-Encoding', AResponse.AcceptEncoding, rpkHEADER);
+
+  if AResponse.ContentEncription <> '' then
+    AResponse.Params.AddParam('Content-Encription', AResponse.ContentEncription, rpkHEADER);
+
+  if AResponse.ContentDisposition <> '' then
+    AResponse.Params.AddParam('Content-Disposition', AResponse.ContentDisposition, rpkHEADER);
+
+  AResponse.Params.AssignParams(ACGIResponse.CustomHeaders, rpkHEADER, '=');
+
+  { cookies never left this engine - AddCookie and the JWT UseCookie did
+    nothing here. Built like every other engine's (GetParamsCookies), whole,
+    one Set-Cookie line each: fcl-web writes repeated names one by one }
+  vCookies := TStringList.Create;
+  try
+    AResponse.GetParamsCookies(vCookies, IncMinute(Now, AServer.CookieLife));
+    for vInt := 0 to Pred(vCookies.Count) do
+      ACGIResponse.CustomHeaders.Add('Set-Cookie=' + vCookies[vInt]);
+  finally
+    FreeAndNil(vCookies);
+  end;
+
+  ACGIResponse.Server := 'RAL_CGILaz';
+  ACGIResponse.ContentType := AResponse.ContentType;
+  ACGIResponse.ContentEncoding := AResponse.ContentEncoding;
+  ACGIResponse.Code := AResponse.StatusCode;
 end;
 
 { TRALCGIServerApp }
@@ -225,6 +308,23 @@ destructor TRALCGIServer.Destroy;
 begin
   FreeAndNil(FCGIApp);
   inherited Destroy;
+end;
+
+class function TRALCGIServer.SupportsLiveStream: boolean;
+begin
+  Result := True;
+end;
+
+function TRALCGIServer.CreateStreamWriter(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALStreamWriter;
+begin
+  Result := nil;
+  if not (AResponse.EngineContext is TRALCGIStreamContext) then
+    Exit;
+  Result := TRALCGIStreamWriter.Create(TRALCGIStreamContext(AResponse.EngineContext));
+  // the web server in front frames the body
+  Result.FramesItself := True;
+  Result.HeadOnly := ARequest.Method = amHEAD;
 end;
 
 function TRALCGIServer.GetServerAddress(AMode: TRALIpMode): StringRAL;

@@ -78,6 +78,7 @@ type
     /// Segments of FFullRoute, matched against each request.
     FSegments: TRALRouteSegments;
     FSkipAuthMethods: TRALMethods;
+    FStreaming: boolean;
     FURIParams: TRALRouteParams;
   protected
     procedure AssignTo(Dest: TPersistent); override;
@@ -131,6 +132,11 @@ type
     property OnReplyGen: TRALOnReplyGen read FOnReplyGen write FOnReplyGen;
     /// Methods that skip authentication on this route; amALL skips all.
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
+    { The handler answers with TRALResponse.Send. Not a permission - Send works on
+      any route: a pull engine (Sagui) runs a marked handler on a thread of its own
+      so its pieces leave at once, and the API documentation shows the route as
+      text/event-stream }
+    property Streaming: boolean read FStreaming write FStreaming default False;
     /// The ':name' params of the path, in order.
     property URIParams: TRALRouteParams read FURIParams write SetURIParams;
   published
@@ -160,6 +166,7 @@ type
     property OutputParams;
     property Route;
     property SkipAuthMethods;
+    property Streaming;
     property URIParams;
   end;
 
@@ -500,6 +507,7 @@ begin
   vDest := TRALBaseRoute(Dest);
   vDest.AllowedMethods := FAllowedMethods;
   vDest.AllowURIParams := FAllowURIParams;
+  vDest.Streaming := FStreaming;
   vDest.Callback := FCallback;
   vDest.Description.Assign(FDescription);
   vDest.Name := FName;

@@ -62,6 +62,15 @@
   emDBRowsAffected = 'ApplyUpdates: um comando afetou %d registros em vez de 1 - o registro foi alterado ou excluído por outro usuário, ou o critério da atualização não identifica exatamente uma linha.';
   emDBStatusNoMessage = 'O servidor respondeu HTTP %d e não enviou mensagem.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL não pode estar vazio.';
+  emResponseCommitted = 'A resposta já começou a ser enviada por Send: status, cabeçalhos e corpo não podem mais mudar.';
+  emSSEEventTooBig = 'Um Server-Sent Event passou de MaxEventSize.';
+  emStreamCipher = 'Uma resposta em fluxo não pode ser cifrada com a cifra de corpo do RAL.';
+  emStreamLimit = 'Respostas em fluxo demais abertas (MaxStreams).';
+  emStreamNoLive = 'Este motor não envia em fluxo ao vivo: Detach não está disponível.';
+  emStreamNoServer = 'Só uma resposta de servidor pode ser enviada em fluxo.';
+  emStreamCancelled = 'O tratador da resposta em fluxo a cancelou.';
+  emStreamClientCipher = 'Uma resposta em fluxo cifrada com a cifra de corpo do RAL não pode ser lida em pedaços.';
+  emStreamClientCoding = 'Uma resposta em fluxo comprimida com "%s" não pode ser lida em pedaços.';
   emDBInvalidProcName = 'Nome de procedure inválido: só letras, dígitos, _, $ e . são aceitos.';
   emDBLegacyWireProc = 'RALLegacyWire está ligado: o formato antigo não tem chamada de procedure nem parâmetros de saída.';
   emDBNoQueue = 'Não há fila para confirmar ou desfazer: chame StartTransaction antes.';

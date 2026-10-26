@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, SyncObjs, DateUtils,
   RALCustomObjects, RALTypes, RALAuthBase, RALRequest, RALResponse,
   RALCompress, RALCripto, RALConsts, RALTools, RALToken, RALJson, RALParams,
-  RALMimeTypes, RALStream;
+  RALMimeTypes, RALStream, RALSSE;
 
 type
   /// Event that receives the answer of a request, or the message of its failure.
@@ -77,6 +77,23 @@ type
                                  AResponse: TRALResponse;
                                  const AInfo: TRALExecInfo) of object;
 
+  { Receives a piece of a response body as it arrives, decoded (gzip and
+    deflate undone), on the thread of the request. ACancel closes the
+    connection, and the call fails with rteCancelled. }
+  TRALOnReceiveData = procedure(ASender: TObject; AResponse: TRALResponse;
+                                const ABuffer; ASize: IntegerRAL;
+                                var ACancel: boolean) of object;
+
+  { Receives each event of a text/event-stream response as it arrives, on the
+    thread of the request. ACancel closes the connection, and the call fails
+    with rteCancelled. }
+  TRALOnServerEvent = procedure(ASender: TObject; AResponse: TRALResponse;
+                                const AEvent: TRALSSEEvent;
+                                var ACancel: boolean) of object;
+
+  /// Raised inside the engine when a stream handler set ACancel.
+  ERALStreamCancelled = class(Exception);
+
   { What the engine itself does about the server certificate when there is no pin
     or event: svEngine keeps its own rule, svAlways verifies, svNever accepts any. }
   TRALSSLVerify = (svEngine, svAlways, svNever);
@@ -112,6 +129,7 @@ type
   end;
 
   TRALClient = class;
+  TRALClientStreamSink = class;
   /// Class of a client component, for a descendant such as a protocol's own client.
   TRALClientClass = class of TRALClient;
 
@@ -138,6 +156,22 @@ type
     FPolicyVerify: TRALSSLVerify;
     /// Port of the attempt in progress.
     FPort: IntegerRAL;
+    /// OnReceiveData of this call only (TRALClient.Get with a handler).
+    FCallOnData: TRALOnReceiveData;
+    /// OnServerEvent of this call only.
+    FCallOnEvent: TRALOnServerEvent;
+    /// A stream handler cancelled the attempt in progress.
+    FStreamCancelled: boolean;
+    /// The attempt in progress handed a piece over: it is not sent again.
+    FStreamDelivered: boolean;
+
+    { Hands an answer read whole to the stream handlers: what an engine that
+      cannot read in pieces does at the end, so the application code is the
+      same on every engine }
+    procedure DeliverWhole(AResponse: TRALResponse);
+    /// The stream handlers of this call, else the client's.
+    procedure StreamHandlers(out AOnData: TRALOnReceiveData;
+                             out AOnEvent: TRALOnServerEvent);
   protected
     /// Accept-Encoding to send: the request's own, else AcceptEncoding, else all.
     function AcceptEncodingFor(ARequest: TRALRequest): StringRAL;
@@ -167,6 +201,15 @@ type
     procedure LockCookieJar;
     /// A new, empty cookie jar of the engine's library; nil when it keeps none.
     class function NewCookieJar: TObject; virtual;
+    { What the engine writes the body into, in place of ABody, when the call
+      reads it in pieces; nil when it does not (ABody then, as always). The
+      engine calls Finish after filling the head of AResponse, and frees it. }
+    function NewResponseSink(AResponse: TRALResponse; ABody: TStream): TRALClientStreamSink;
+    { Fills the head of AResponse (StatusCode, ContentType, ContentEncoding,
+      ContentEncription) while its body is still arriving: called at the first
+      piece by TRALClientStreamSink. An engine that reads in pieces overrides
+      it; the base leaves the response as it is }
+    procedure ReadStreamHead(AResponse: TRALResponse); virtual;
     /// Whether a pin applies to the host, and whether AFingerprint is one of them.
     procedure ResolvePin(const AFingerprint: StringRAL;
                          out AApplies, AMatches: boolean);
@@ -174,6 +217,10 @@ type
     procedure SetTransportError(AResponse: TRALResponse;
                                 AError: TRALTransportError; ACode: IntegerRAL;
                                 const AMessage: StringRAL); virtual;
+    /// True once the attempt in progress handed a piece over: it must not be resent.
+    function StreamDelivered: boolean;
+    /// True when the call reads its answer in pieces (a stream handler is assigned).
+    function StreamWanted: boolean;
     /// True when plain http is refused: SSL.Required, or a pin for the host.
     function TLSRequired: boolean;
     /// Unlocks the client's cookie jar.
@@ -218,6 +265,66 @@ type
 
   /// Class of a client engine.
   TRALClientHTTPClass = class of TRALClientHTTP;
+
+  { TRALClientStreamSink }
+
+  { What a client engine writes the body of an answer into when the call asked
+    for it in pieces (OnReceiveData, OnServerEvent): the first piece reads the
+    head of the answer (TRALClientHTTP.ReadStreamHead), a 2xx is decoded as it
+    arrives and handed over, and anything else goes to the body as always. The
+    body keeps the decoded pieces only with KeepStreamBody. Made by
+    TRALClientHTTP.NewResponseSink; the engine frees it. }
+  TRALClientStreamSink = class(TStream)
+  private
+    /// Where the body goes: the raw answer that is not streamed, or the kept pieces.
+    FBody: TStream;
+    /// Pieces the decoder produced, handed over and emptied each time.
+    FDecoded: TMemoryStream;
+    FDecoder: TRALStreamCoder;
+    FEngine: TRALClientHTTP;
+    /// Keeps the decoded pieces in FBody (KeepStreamBody).
+    FKeep: boolean;
+    /// 0 not started, 1 the body as always, 2 streamed.
+    FMode: IntegerRAL;
+    FOnData: TRALOnReceiveData;
+    FOnEvent: TRALOnServerEvent;
+    FParser: TRALSSEParser;
+    FPosition: Int64RAL;
+    FResponse: TRALResponse;
+
+    /// Hands a decoded piece over: to the reader of events or to OnReceiveData.
+    procedure Deliver(const ABuffer; ASize: IntegerRAL);
+    /// Fails the reading when a handler cancelled.
+    procedure Cancel;
+    procedure ParserEvent(ASender: TObject; const AEvent: TRALSSEEvent;
+                          var ACancel: boolean);
+    /// Reads the head of the answer and decides what the body is.
+    procedure Start;
+  protected
+    function GetSize: Int64; override;
+    procedure SetSize(const NewSize: Int64); override;
+  public
+    { Pieces of the answer to AResponse, from the engine AEngine, and the
+      stream ABody that keeps what is not handed over }
+    constructor Create(AEngine: TRALClientHTTP; AResponse: TRALResponse;
+                       ABody: TStream; AOnData: TRALOnReceiveData;
+                       AOnEvent: TRALOnServerEvent; AKeep: boolean);
+    destructor Destroy; override;
+
+    { The body ended well: the decoder checks its end, the last event goes, and
+      a streamed answer stops saying it is compressed. Called by the engine
+      after it filled the head of the response. }
+    procedure Finish;
+    /// Not readable: answers 0.
+    function Read(var Buffer; Count: Longint): Longint; override;
+    /// Answers how much was written: the libraries ask, none moves back.
+    function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
+    function Write(const Buffer; Count: Longint): Longint; override;
+
+    /// True once the body was handed over in pieces.
+    function Streamed: boolean;
+  end;
+
 
   /// Thread that runs one request of a client and calls back when it ends.
   TRALThreadClient = class(TThread)
@@ -351,12 +458,15 @@ type
     FIndexUrl: IntegerRAL;
     FKeepAlive: boolean;
     FKeepAliveInterval: IntegerRAL;
+    FKeepStreamBody: boolean;
     FMaxRedirects: IntegerRAL;
     /// Cookie jars of an EngineType left behind, freed with the client.
     FOldCookieJars: TList;
     FOnAfterExecute: TRALOnAfterExecute;
     FOnBeforeExecute: TRALOnBeforeExecute;
+    FOnReceiveData: TRALOnReceiveData;
     FOnResponse: TRALThreadClientResponse;
+    FOnServerEvent: TRALOnServerEvent;
     FOnValidateServerCert: TRALOnValidateCert;
     FPoolConnection: TRALPoolConnection;
     /// Request of the thread that created the client.
@@ -390,6 +500,10 @@ type
     procedure DropEngine;
     /// Runs a request on the calling thread; the caller frees the response.
     function ExecuteSingle(ARoute: StringRAL; AMethod: TRALMethod) : TRALResponse; virtual;
+    /// ExecuteSingle with stream handlers of this call only.
+    function ExecuteStream(ARoute: StringRAL; AMethod: TRALMethod;
+                           AOnData: TRALOnReceiveData;
+                           AOnEvent: TRALOnServerEvent): TRALResponse;
     { Runs a request on the calling thread or on a TRALThreadClient, and hands
       the answer to AOnResponse, or to OnResponse when it is nil. }
     procedure ExecuteThread(ARoute: StringRAL; AMethod: TRALMethod;
@@ -450,6 +564,14 @@ type
     /// Sends a GET and hands the answer to AOnResponse.
     procedure Get(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
                   AExecBehavior : TRALExecBehavior = ebSingleThread); overload;
+    { Sends a GET whose answer goes to AOnData in pieces as it arrives (see
+      OnReceiveData), on the calling thread; the caller frees AResponse }
+    procedure Get(ARoute: StringRAL; AOnData: TRALOnReceiveData;
+                  var AResponse: TRALResponse); overload;
+    { Sends a GET whose text/event-stream answer goes to AOnEvent event by event
+      (see OnServerEvent), on the calling thread; the caller frees AResponse }
+    procedure Get(ARoute: StringRAL; AOnEvent: TRALOnServerEvent;
+                  var AResponse: TRALResponse); overload;
     function IsPropertyRelevant(const AName: StringRAL): boolean; override;
     /// Sends a PATCH and returns the response, which the caller frees.
     procedure Patch(ARoute: StringRAL; var AResponse : TRALResponse); overload;
@@ -461,6 +583,12 @@ type
     /// Sends a POST and hands the answer to AOnResponse.
     procedure Post(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
                    AExecBehavior : TRALExecBehavior = ebSingleThread); overload;
+    /// Sends a POST whose answer goes to AOnData in pieces - see Get.
+    procedure Post(ARoute: StringRAL; AOnData: TRALOnReceiveData;
+                   var AResponse: TRALResponse); overload;
+    /// Sends a POST whose event stream goes to AOnEvent event by event - see Get.
+    procedure Post(ARoute: StringRAL; AOnEvent: TRALOnServerEvent;
+                   var AResponse: TRALResponse); overload;
     /// Sends a PUT and returns the response, which the caller frees.
     procedure Put(ARoute: StringRAL; var AResponse : TRALResponse); overload;
     /// Sends a PUT and hands the answer to AOnResponse.
@@ -500,6 +628,11 @@ type
       engines with SupportsKeepAliveInterval, raised to their minimum. }
     property KeepAliveInterval: IntegerRAL read FKeepAliveInterval
                                            write SetKeepAliveInterval default 0;
+    { Keeps a body handed to OnReceiveData or OnServerEvent in ResponseStream
+      too, decoded; off, it stays empty and the memory flat however long the
+      stream lasts. }
+    property KeepStreamBody: boolean read FKeepStreamBody write FKeepStreamBody
+                                     default False;
     /// Most redirects followed in a row.
     property MaxRedirects: IntegerRAL read FMaxRedirects write FMaxRedirects default DEFAULTMAXREDIRECTS;
     /// Fired when each attempt ends - see TRALOnAfterExecute.
@@ -508,8 +641,18 @@ type
     /// Fired before each attempt, which it may refuse - see TRALOnBeforeExecute.
     property OnBeforeExecute: TRALOnBeforeExecute read FOnBeforeExecute
                                                   write FOnBeforeExecute;
+    { Receives the body of a 2xx answer in pieces as it arrives, decoded, on the
+      thread of the request: the body is then not kept (KeepStreamBody), a
+      call that handed a piece over is never sent again, and RequestTimeout
+      counts the time without data, not the whole call. An engine that cannot
+      read in pieces hands the body over whole at the end. }
+    property OnReceiveData: TRALOnReceiveData read FOnReceiveData write FOnReceiveData;
     /// Callback of the requests sent without one.
     property OnResponse: TRALThreadClientResponse read FOnResponse write FOnResponse;
+    { Receives each event of a text/event-stream answer as it arrives, with the
+      rules of OnReceiveData; another type of answer is read as always unless
+      OnReceiveData is assigned too. }
+    property OnServerEvent: TRALOnServerEvent read FOnServerEvent write FOnServerEvent;
     /// Judges the server certificate; it overrides SSL.Pins and the engine.
     property OnValidateServerCert: TRALOnValidateCert read FOnValidateServerCert
                                                       write FOnValidateServerCert;
@@ -867,6 +1010,12 @@ end;
 
 
 function TRALClient.ExecuteSingle(ARoute: StringRAL; AMethod: TRALMethod): TRALResponse;
+begin
+  Result := ExecuteStream(ARoute, AMethod, nil, nil);
+end;
+
+function TRALClient.ExecuteStream(ARoute: StringRAL; AMethod: TRALMethod;
+  AOnData: TRALOnReceiveData; AOnEvent: TRALOnServerEvent): TRALResponse;
 var
   vClient: TRALClientHTTP;
   vRequest: TRALRequest;
@@ -887,10 +1036,15 @@ begin
       vIndexFrom := GetIndexUrl;
       vClient.IndexUrl := vIndexFrom; // see ExecuteThread
       GetRequest.Clone(vRequest);
+      vClient.FCallOnData := AOnData;
+      vClient.FCallOnEvent := AOnEvent;
       vClient.BeforeSendUrl(ARoute, vRequest, Result, AMethod);
     finally
       if vClient <> nil then
       begin
+        // the engine goes back to the pool: the handlers were this call's
+        vClient.FCallOnData := nil;
+        vClient.FCallOnEvent := nil;
         // see ExecuteThread: the advanced failover index must survive the
         // exception BeforeSendUrl raises on a transport failure - so it is
         // read here, before the engine goes away.
@@ -963,6 +1117,11 @@ function TRALClient.GetIndexUrl: IntegerRAL;
 begin
   LockSession;
   try
+    { BaseURL may have been given fewer lines since a failover moved the index
+      (BaseURL.Text is written without going through SetBaseURL): an index past
+      the end built an empty URL }
+    if (FIndexUrl < 0) or (FIndexUrl >= FBaseURL.Count) then
+      FIndexUrl := 0;
     Result := FIndexUrl;
   finally
     UnLockSession;
@@ -1325,6 +1484,9 @@ begin
     client }
   ADest.OnBeforeExecute := Self.OnBeforeExecute;
   ADest.OnAfterExecute := Self.OnAfterExecute;
+  ADest.OnReceiveData := Self.OnReceiveData;
+  ADest.OnServerEvent := Self.OnServerEvent;
+  ADest.KeepStreamBody := Self.KeepStreamBody;
 
   { the clone runs on the same transport arrangement as the original: the DAO
     gives each dataset a client of its own, and a clone that lost the pool
@@ -1620,6 +1782,34 @@ begin
   ExecuteThread(ARoute, amDELETE, AOnResponse, AExecBehavior);
 end;
 
+procedure TRALClient.Get(ARoute: StringRAL; AOnData: TRALOnReceiveData;
+  var AResponse: TRALResponse);
+begin
+  AResponse := nil;
+  AResponse := ExecuteStream(ARoute, amGET, AOnData, nil);
+end;
+
+procedure TRALClient.Get(ARoute: StringRAL; AOnEvent: TRALOnServerEvent;
+  var AResponse: TRALResponse);
+begin
+  AResponse := nil;
+  AResponse := ExecuteStream(ARoute, amGET, nil, AOnEvent);
+end;
+
+procedure TRALClient.Post(ARoute: StringRAL; AOnData: TRALOnReceiveData;
+  var AResponse: TRALResponse);
+begin
+  AResponse := nil;
+  AResponse := ExecuteStream(ARoute, amPOST, AOnData, nil);
+end;
+
+procedure TRALClient.Post(ARoute: StringRAL; AOnEvent: TRALOnServerEvent;
+  var AResponse: TRALResponse);
+begin
+  AResponse := nil;
+  AResponse := ExecuteStream(ARoute, amPOST, nil, AOnEvent);
+end;
+
 procedure TRALClient.Get(ARoute: StringRAL; var AResponse: TRALResponse);
 begin
   { nil first: when the request fails the assignment below never runs, and a
@@ -1848,6 +2038,205 @@ begin
   Result.Error := '';
   Result.Host := '';
   Result.Port := 0;
+end;
+
+{ The codings an answer read in pieces can be decoded from: gzip and deflate
+  when their unit is linked (and has a piecewise decoder), else identity }
+function RALStreamAcceptEncoding: StringRAL;
+var
+  vCoder: TRALStreamCoder;
+  vType: TRALCompressType;
+begin
+  Result := '';
+  for vType := ctDeflate to ctGZip do
+  begin
+    vCoder := RALCreateStreamDecoder(vType);
+    if vCoder <> nil then
+    begin
+      vCoder.Free;
+      if vType = ctZLib then
+        Continue; // not an HTTP coding name of its own
+      if Result <> '' then
+        Result := ', ' + Result;
+      Result := TRALCompress.CompressToString(vType) + Result;
+    end;
+  end;
+  if Result = '' then
+    Result := 'identity';
+end;
+
+{ TRALClientStreamSink }
+
+constructor TRALClientStreamSink.Create(AEngine: TRALClientHTTP;
+  AResponse: TRALResponse; ABody: TStream; AOnData: TRALOnReceiveData;
+  AOnEvent: TRALOnServerEvent; AKeep: boolean);
+begin
+  inherited Create;
+  FEngine := AEngine;
+  FResponse := AResponse;
+  FBody := ABody;
+  FOnData := AOnData;
+  FOnEvent := AOnEvent;
+  FKeep := AKeep;
+  FMode := 0;
+  FPosition := 0;
+end;
+
+destructor TRALClientStreamSink.Destroy;
+begin
+  FreeAndNil(FParser);
+  FreeAndNil(FDecoder);
+  FreeAndNil(FDecoded);
+  inherited Destroy;
+end;
+
+procedure TRALClientStreamSink.Cancel;
+begin
+  FEngine.FStreamCancelled := True;
+  raise ERALStreamCancelled.Create(emStreamCancelled);
+end;
+
+procedure TRALClientStreamSink.ParserEvent(ASender: TObject;
+  const AEvent: TRALSSEEvent; var ACancel: boolean);
+begin
+  FOnEvent(FEngine.Parent, FResponse, AEvent, ACancel);
+end;
+
+procedure TRALClientStreamSink.Deliver(const ABuffer; ASize: IntegerRAL);
+var
+  vCancel: boolean;
+begin
+  if ASize <= 0 then
+    Exit;
+  if FKeep then
+    FBody.WriteBuffer(ABuffer, ASize);
+  if FParser <> nil then
+  begin
+    if not FParser.Feed(ABuffer, ASize) then
+      Cancel;
+  end
+  else
+  begin
+    vCancel := False;
+    FOnData(FEngine.Parent, FResponse, ABuffer, ASize, vCancel);
+    if vCancel then
+      Cancel;
+  end;
+end;
+
+procedure TRALClientStreamSink.Start;
+var
+  vEncoding: StringRAL;
+  vType: TRALCompressType;
+begin
+  FMode := 1;
+  FEngine.ReadStreamHead(FResponse);
+  { a redirect being followed: its body is not the answer, and the head of
+    the next one is read again at its first piece }
+  if (FResponse.StatusCode >= 300) and (FResponse.StatusCode < 400) then
+    FMode := 0;
+  // only a 2xx is handed over: an error is read whole, as always
+  if (FResponse.StatusCode < 200) or (FResponse.StatusCode > 299) then
+    Exit;
+
+  if Assigned(FOnEvent) and
+     (RALPosText(rctTEXTEVENTSTREAM, FResponse.ContentType) > 0) then
+  begin
+    FParser := TRALSSEParser.Create;
+    FParser.OnEvent := {$IFDEF FPC}@{$ENDIF}ParserEvent;
+  end
+  else if not Assigned(FOnData) then
+    Exit; // events asked, and this is no event stream: the body as always
+
+  if FResponse.ContentEncription <> '' then
+    raise Exception.Create(emStreamClientCipher);
+  vEncoding := RALTrim(FResponse.ContentEncoding);
+  if (vEncoding <> '') and (not RALSameName(vEncoding, 'identity')) then
+  begin
+    vType := TRALCompress.StringToCompress(vEncoding);
+    if vType <> ctNone then
+      FDecoder := RALCreateStreamDecoder(vType);
+    if FDecoder = nil then
+      raise Exception.CreateFmt(emStreamClientCoding, [vEncoding]);
+    FDecoded := TMemoryStream.Create;
+  end;
+  // what a followed redirect left in the body is not part of this answer
+  FBody.Size := 0;
+  FMode := 2;
+end;
+
+function TRALClientStreamSink.Write(const Buffer; Count: Longint): Longint;
+begin
+  Result := Count;
+  if Count <= 0 then
+    Exit;
+  if FMode = 0 then
+    Start;
+  Inc(FPosition, Count);
+  if FMode <> 2 then
+  begin
+    FBody.WriteBuffer(Buffer, Count);
+    Exit;
+  end;
+
+  // the answer is being handed over: it is never sent again from here on
+  FEngine.FStreamDelivered := True;
+  if FDecoder = nil then
+    Deliver(Buffer, Count)
+  else
+  begin
+    FDecoded.Position := 0;
+    FDecoder.Update(Buffer, Count, FDecoded);
+    if FDecoded.Position > 0 then
+      Deliver(FDecoded.Memory^, FDecoded.Position);
+  end;
+end;
+
+procedure TRALClientStreamSink.Finish;
+begin
+  if FMode <> 2 then
+    Exit;
+  if FDecoder <> nil then
+  begin
+    FDecoded.Position := 0;
+    FDecoder.Finish(FDecoded);
+    if FDecoded.Position > 0 then
+      Deliver(FDecoded.Memory^, FDecoded.Position);
+  end;
+  // what was kept is decoded already
+  FResponse.ContentEncoding := '';
+  FResponse.Params.CompressType := ctNone;
+end;
+
+function TRALClientStreamSink.Read(var Buffer; Count: Longint): Longint;
+begin
+  Result := 0;
+end;
+
+function TRALClientStreamSink.Seek(const Offset: Int64; Origin: TSeekOrigin): Int64;
+begin
+  Result := FPosition;
+end;
+
+function TRALClientStreamSink.GetSize: Int64;
+begin
+  Result := FPosition;
+end;
+
+procedure TRALClientStreamSink.SetSize(const NewSize: Int64);
+begin
+  // a library that starts the body over (a retry, a redirect) before it was handed over
+  if (NewSize = 0) and (FMode <> 2) then
+  begin
+    FPosition := 0;
+    FMode := 0;
+    FBody.Size := 0;
+  end;
+end;
+
+function TRALClientStreamSink.Streamed: boolean;
+begin
+  Result := FMode = 2;
 end;
 
 { TRALClientSSL }
@@ -2100,6 +2489,10 @@ begin
   end;
   if (Result = '') and (Parent <> nil) then
     Result := Trim(Parent.AcceptEncoding);
+  { an answer read in pieces is decoded in pieces, and only gzip and deflate
+    can be (zstd and brotli only whole): those are all it offers }
+  if (Result = '') and StreamWanted then
+    Result := RALStreamAcceptEncoding;
   if Result = '' then
     Result := GetAcceptCompress;
 end;
@@ -2244,7 +2637,23 @@ begin
         ARequest.Params.SpoolAbove := FParent.SpoolAbove;
         AResponse.Params.SpoolAbove := FParent.SpoolAbove;
 
+        FStreamDelivered := False;
+        FStreamCancelled := False;
         SendUrl(vURL, ARequest, AResponse, AMethod);
+        { an engine that could not read in pieces read the body whole: it is
+          handed over now, so the application sees the same on every engine }
+        if (not FStreamCancelled) and (not FStreamDelivered) and StreamWanted and
+           (AResponse.ErrorCode = 0) and (AResponse.StatusCode >= 200) and
+           (AResponse.StatusCode <= 299) then
+        try
+          DeliverWhole(AResponse);
+        except
+          on e: ERALStreamCancelled do
+            FStreamCancelled := True;
+        end;
+        if FStreamCancelled then
+          SetTransportError(AResponse, rteCancelled, 0,
+                            StringRAL(Format(emRequestCancelled, [vURL])));
         vResp := AResponse.StatusCode;
         vErrorCode := AResponse.ErrorCode;
       end;
@@ -2293,7 +2702,10 @@ begin
       end;
     end
     else if CanSwitchURL(AMethod, AResponse.TransportError) and
-            (vConta < vMaxUrls) then
+            (vConta < vMaxUrls) and (not FStreamDelivered) and
+            (not FStreamCancelled) then
+      { never after a piece was handed over: delivering the start of an answer
+        twice is worse than failing }
       vRepeat := True;
     // no Continue here: in a repeat..until it jumps straight to the condition,
     // on both Delphi and FPC, so it would not repeat anything.
@@ -2348,6 +2760,106 @@ begin
       Result := AMethod in RALIdempotentMethods;
   else
     Result := False;
+  end;
+end;
+
+procedure TRALClientHTTP.StreamHandlers(out AOnData: TRALOnReceiveData;
+  out AOnEvent: TRALOnServerEvent);
+begin
+  if Assigned(FCallOnData) or Assigned(FCallOnEvent) then
+  begin
+    AOnData := FCallOnData;
+    AOnEvent := FCallOnEvent;
+  end
+  else
+  begin
+    AOnData := FParent.OnReceiveData;
+    AOnEvent := FParent.OnServerEvent;
+  end;
+end;
+
+function TRALClientHTTP.StreamDelivered: boolean;
+begin
+  Result := FStreamDelivered or FStreamCancelled;
+end;
+
+function TRALClientHTTP.StreamWanted: boolean;
+begin
+  Result := Assigned(FCallOnData) or Assigned(FCallOnEvent) or
+            ((FParent <> nil) and (Assigned(FParent.OnReceiveData) or
+                                   Assigned(FParent.OnServerEvent)));
+end;
+
+function TRALClientHTTP.NewResponseSink(AResponse: TRALResponse;
+  ABody: TStream): TRALClientStreamSink;
+var
+  vOnData: TRALOnReceiveData;
+  vOnEvent: TRALOnServerEvent;
+begin
+  Result := nil;
+  if not StreamWanted then
+    Exit;
+  StreamHandlers(vOnData, vOnEvent);
+  Result := TRALClientStreamSink.Create(Self, AResponse, ABody, vOnData,
+                                        vOnEvent, FParent.KeepStreamBody);
+end;
+
+procedure TRALClientHTTP.ReadStreamHead(AResponse: TRALResponse);
+begin
+  // an engine that cannot tell before the end: the body is handed over whole
+end;
+
+procedure TRALClientHTTP.DeliverWhole(AResponse: TRALResponse);
+var
+  vSink: TRALClientStreamSink;
+  vBody: TStream;
+  vDummy: TMemoryStream;
+  vBuf: array of Byte;
+  vRead: IntegerRAL;
+  vOnData: TRALOnReceiveData;
+  vOnEvent: TRALOnServerEvent;
+begin
+  vBody := AResponse.ResponseStream;
+  if vBody = nil then
+    Exit;
+  { the answer is decoded already, and stays in the response: the sink
+    neither decodes nor keeps it }
+  StreamHandlers(vOnData, vOnEvent);
+  vDummy := TMemoryStream.Create;
+  vSink := TRALClientStreamSink.Create(Self, AResponse, vDummy, vOnData,
+                                       vOnEvent, False);
+  try
+    vSink.FMode := 1;
+    if Assigned(vSink.FOnEvent) and
+       (RALPosText(rctTEXTEVENTSTREAM, AResponse.ContentType) > 0) then
+    begin
+      vSink.FParser := TRALSSEParser.Create;
+      vSink.FParser.OnEvent := {$IFDEF FPC}@{$ENDIF}vSink.ParserEvent;
+      vSink.FMode := 2;
+    end
+    else if Assigned(vSink.FOnData) then
+      vSink.FMode := 2;
+    if vSink.FMode <> 2 then
+      Exit;
+    FStreamDelivered := True;
+    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE);
+    vBody.Position := 0;
+    repeat
+      vRead := vBody.Read(vBuf[0], Length(vBuf));
+      if vRead > 0 then
+        vSink.Deliver(vBuf[0], vRead);
+    until vRead <= 0;
+    vBody.Position := 0;
+    { as on the engines that read in pieces: the body handed over is not kept
+      unless KeepStreamBody }
+    if not FParent.KeepStreamBody then
+    begin
+      AResponse.ResponseStream := nil;
+      AResponse.Params.ClearParams(rpkBODY);
+    end;
+  finally
+    vSink.Free;
+    vDummy.Free;
   end;
 end;
 

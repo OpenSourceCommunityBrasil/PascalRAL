@@ -60,6 +60,8 @@ type
     procedure DoRedirect(Sender: TObject; const ASrc: String; var ADest: String);
   protected
     procedure OnGetSocketHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
+    /// The head fphttpclient read, which it has before the first piece of the body.
+    procedure ReadStreamHead(AResponse: TRALResponse); override;
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
@@ -364,11 +366,21 @@ begin
   inherited Destroy;
 end;
 
+procedure TRALfpHttpClientHTTP.ReadStreamHead(AResponse: TRALResponse);
+begin
+  AResponse.StatusCode := FHttp.ResponseStatusCode;
+  AResponse.ContentType := Trim(FHttp.ResponseHeaders.Values['Content-Type']);
+  AResponse.ContentEncoding := Trim(FHttp.ResponseHeaders.Values['Content-Encoding']);
+  AResponse.ContentEncription := Trim(FHttp.ResponseHeaders.Values['Content-Encription']);
+end;
+
 procedure TRALfpHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
   vSource: TStream;
   vResult: TRALBodyStream;
+  vSink: TRALClientStreamSink;
+  vDest: TStream;
   vCookies: StringRAL;
   vAttempt: IntegerRAL;
   vRetry, vReusing: boolean;
@@ -407,7 +419,8 @@ var
     be a read timeout. }
   function SocketIsDead: boolean;
   begin
-    Result := vReusing and (vAttempt = 1) and
+    // an answer already handed over in pieces is never sent again
+    Result := (not StreamDelivered) and vReusing and (vAttempt = 1) and
               (GetTickCount64 - vStart < Cardinal(Parent.RequestTimeout) div 2);
   end;
 
@@ -508,6 +521,11 @@ begin
   { where fphttpclient writes the answer: memory, blocks above RALChunkAbove,
     a file above SpoolAbove - and the response adopts it, no copy }
   vResult := TRALBodyStream.Create(-1, Parent.SpoolAbove);
+  { read in pieces: fphttpclient writes into the sink, which hands them over }
+  vSink := NewResponseSink(AResponse, vResult);
+  vDest := vResult;
+  if vSink <> nil then
+    vDest := vSink;
   try
     if ARequest.ContentType <> '' then
       ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
@@ -544,6 +562,8 @@ begin
       vStart := GetTickCount64;
 
       vResult.Size := 0;
+      if vSink <> nil then
+        vSink.Size := 0;
       if vSource <> nil then
         vSource.Position := 0;
       FHttp.RequestBody := vSource;
@@ -562,14 +582,14 @@ begin
     // devido o parâmetro AllowedResponseCodes
     try
       case AMethod of
-        amGET    : FHttp.HTTPMethod('GET', AURL, vResult, []);
-        amPOST   : FHttp.HTTPMethod('POST', AURL, vResult, []);
-        amPUT    : FHttp.HTTPMethod('PUT', AURL, vResult, []);
-        amPATCH  : FHttp.HTTPMethod('PATCH', AURL, vResult, []); // sem funcao
-        amDELETE : FHttp.HTTPMethod('DELETE', AURL, vResult, []);
-        amTRACE  : FHttp.HTTPMethod('TRACE', AURL, vResult, []); // sem funcao
-        amHEAD   : FHttp.HTTPMethod('HEAD', AURL, vResult, []); // trata diferente
-        amOPTIONS: FHttp.HTTPMethod('OPTIONS', AURL, vResult, []);
+        amGET    : FHttp.HTTPMethod('GET', AURL, vDest, []);
+        amPOST   : FHttp.HTTPMethod('POST', AURL, vDest, []);
+        amPUT    : FHttp.HTTPMethod('PUT', AURL, vDest, []);
+        amPATCH  : FHttp.HTTPMethod('PATCH', AURL, vDest, []); // sem funcao
+        amDELETE : FHttp.HTTPMethod('DELETE', AURL, vDest, []);
+        amTRACE  : FHttp.HTTPMethod('TRACE', AURL, vDest, []); // sem funcao
+        amHEAD   : FHttp.HTTPMethod('HEAD', AURL, vDest, []); // trata diferente
+        amOPTIONS: FHttp.HTTPMethod('OPTIONS', AURL, vDest, []);
       end;
       { the Set-Cookie headers become the answer's cookies right there
         (AddSetCookie). FHttp.Cookies is not read: fphttpclient splits each
@@ -595,6 +615,10 @@ begin
         the point: every engine fills ProtocolVersion, so an application never
         has to know which one is running in order to ask. }
       AResponse.Protocol := StringRAL(FHttp.ServerHTTPVersion);
+      { the end of a body read in pieces: the decoder checks it, and what was
+        kept is decoded already }
+      if vSink <> nil then
+        vSink.Finish;
       AResponse.SetWireBody(vResult.Detach, boOwned);
       { A server that closes the connection after this answer says so (RFC
         9112 9.3), and fphttpclient 3.2 only looks for "Connection: close" in
@@ -612,6 +636,9 @@ begin
       // DoRedirect
       FSocketReused := Parent.KeepAlive and FHttp.KeepConnection and FHttp.SocketOpen;
     except
+      { a stream handler cancelled: the socket goes, with the rest of the body }
+      on e: ERALStreamCancelled do
+        HandleException(rteCancelled, -1, e.Message);
       on e: ESocketError do
       begin
         { our validation refused the certificate: to fphttpclient that is just
@@ -682,6 +709,7 @@ begin
     end;
     until not vRetry;
   finally
+    FreeAndNil(vSink);
     FreeAndNil(vResult);
     FreeAndNil(vSource);
   end;

@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils,
   RALJson, RALServer, RALTypes, RALAuthBase, RALAuthentication, RALRoutes, RALTools,
-  RALSwaggerModule;
+  RALMIMETypes, RALSwaggerModule;
 
 type
 
@@ -297,6 +297,7 @@ procedure TRALSwaggerExporter.RouteToJSON(AItem: TRALJSONObject; AServer: TRALSe
 var
   vRoute, vAuth, vjMethod: TRALJSONObject;
   vAux1, vAux2: TRALJSONObject;
+  vContent, vStream, vSchema: TRALJSONObject;
   vSecurity, vAuthTypes, vTags: TRALJSONArray;
   vMethod: TRALMethod;
   vStrMethod, vStrOperation, vStrRoute, vStrAux: StringRAL;
@@ -532,6 +533,18 @@ begin
         vAux1 := TRALJSONObject.Create;;
         vAux2 := TRALJSONObject.Create;;
         vAux2.Add('description', 'successful operation');
+        { a route marked Streaming answers in pieces: Server-Sent Events by
+          what the route declares, the type an EventSource reads }
+        if ARoute.Streaming then
+        begin
+          vSchema := TRALJSONObject.Create;
+          vSchema.Add('type', 'string');
+          vStream := TRALJSONObject.Create;
+          vStream.Add('schema', vSchema);
+          vContent := TRALJSONObject.Create;
+          vContent.Add(rctTEXTEVENTSTREAM, vStream);
+          vAux2.Add('content', vContent);
+        end;
 
         vAux1.Add('200', vAux2);
         vjMethod.Add('responses', vAux1);

@@ -29,7 +29,7 @@ uses
   mormot.lib.openssl11,
   {$ENDIF}
   RALClient, RALParams, RALTypes, RALTools, RALConsts, RALRequest,
-  RALCompress, RALResponse;
+  RALCompress, RALResponse, RALStream;
 
 type
   { TRALSynopseClientHTTP }
@@ -60,6 +60,10 @@ type
                             AWasOk: boolean; ATLS, APeer: pointer): boolean;
     function DoRedirect(Sender: THttpClientSocket;
                         var Context: THttpClientRequest): boolean;
+  protected
+    { The head mORMot2 read, which it has before the first piece of the body:
+      the status from its status line }
+    procedure ReadStreamHead(AResponse: TRALResponse); override;
   public
     destructor Destroy; override;
 
@@ -187,10 +191,26 @@ begin
   end;
 end;
 
+procedure TRALSynopseClientHTTP.ReadStreamHead(AResponse: TRALResponse);
+var
+  vLine: StringRAL;
+begin
+  if FHttp = nil then
+    Exit;
+  // 'HTTP/1.1 200 OK'
+  vLine := StringRAL(FHttp.Http.CommandResp);
+  AResponse.StatusCode := StrToIntDef(string(Copy(vLine, 10, 3)), 0);
+  AResponse.ContentType := StringRAL(FHttp.Http.ContentType);
+  AResponse.ContentEncoding := StringRAL(FHttp.Http.HeaderGetValue('CONTENT-ENCODING'));
+  AResponse.ContentEncription := StringRAL(FHttp.Http.HeaderGetValue('CONTENT-ENCRIPTION'));
+end;
+
 procedure TRALSynopseClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
   AResponse: TRALResponse; AMethod: TRALMethod);
 var
   vSource: TStream;
+  vBody: TRALBodyStream;
+  vSink: TRALClientStreamSink;
   vHeader: StringRAL;
   vHttp: THttpClientSocket;
   vAddress: UTF8String;
@@ -213,6 +233,8 @@ begin
   vHttp := nil;
   vFailed := False;
   vKeepAlive := 0;
+  vBody := nil;
+  vSink := nil;
 
   try
     { same scheme://host:port as the socket we already hold: reuse it, once the
@@ -398,6 +420,13 @@ begin
     { built once for this attempt, with no copy of a body that has nothing to
       transform; the params stay, a retry sends them again }
     vSource := ARequest.TakeWireStream;
+    { read in pieces: mORMot2 writes each chunk into the sink (OutStream)
+      instead of gathering the body in Content }
+    if StreamWanted then
+    begin
+      vBody := TRALBodyStream.Create(-1, Parent.SpoolAbove);
+      vSink := NewResponseSink(AResponse, vBody);
+    end;
     try
       if ARequest.ContentType <> '' then
         ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
@@ -418,21 +447,21 @@ begin
       try
         case AMethod of
           amGET:
-            vResult := vHttp.Request(vAddress, 'GET', vKeepAlive, vHeader, '', '', True, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'GET', vKeepAlive, vHeader, '', '', True, vSource, vSink);
           amPOST:
-            vResult := vHttp.Request(vAddress, 'POST', vKeepAlive, vHeader, '', '', True, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'POST', vKeepAlive, vHeader, '', '', True, vSource, vSink);
           amPUT:
-            vResult := vHttp.Request(vAddress, 'PUT', vKeepAlive, vHeader, '', '', True, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'PUT', vKeepAlive, vHeader, '', '', True, vSource, vSink);
           amPATCH:
-            vResult := vHttp.Request(vAddress, 'PATCH', vKeepAlive, vHeader, '', '', True, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'PATCH', vKeepAlive, vHeader, '', '', True, vSource, vSink);
           amDELETE:
-            vResult := vHttp.Request(vAddress, 'DELETE', vKeepAlive, vHeader, '', '', True, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'DELETE', vKeepAlive, vHeader, '', '', True, vSource, vSink);
           amTRACE:
-            vResult := vHttp.Request(vAddress, 'TRACE', vKeepAlive, vHeader, '', '', True, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'TRACE', vKeepAlive, vHeader, '', '', True, vSource, vSink);
           amHEAD:
-            vResult := vHttp.Request(vAddress, 'HEAD', vKeepAlive, vHeader, '', '', True, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'HEAD', vKeepAlive, vHeader, '', '', True, vSource, vSink);
           amOPTIONS:
-            vResult := vHttp.Request(vAddress, 'OPTIONS', vKeepAlive, vHeader, '', '', True, vSource, nil);
+            vResult := vHttp.Request(vAddress, 'OPTIONS', vKeepAlive, vHeader, '', '', True, vSource, vSink);
         end;
 
         { mORMot does not raise on a client-side failure: Request returns
@@ -469,11 +498,25 @@ begin
             ProtocolVersion, so an application never has to know which one is
             running in order to ask. }
           AResponse.Protocol := StringRAL(vHttp.Http.CommandResp);
-          { a view that holds mORMot's string: the next request replaces
-            Content, and this reference keeps the answer alive, uncopied }
-          AResponse.SetWireBody(vHttp.Content);
+          if vSink <> nil then
+          begin
+            { the end of a body read in pieces: the decoder checks it, and
+              what was kept is decoded already }
+            vSink.Finish;
+            AResponse.SetWireBody(vBody.Detach, boOwned);
+          end
+          else
+            { a view that holds mORMot's string: the next request replaces
+              Content, and this reference keeps the answer alive, uncopied }
+            AResponse.SetWireBody(vHttp.Content);
         end;
       except
+        // a stream handler cancelled: the socket is dropped below
+        on e: ERALStreamCancelled do
+        begin
+          vFailed := True;
+          SetTransportError(AResponse, rteCancelled, -1, e.Message);
+        end;
         on e: ENetSock do
         begin
           vFailed := True;
@@ -491,6 +534,8 @@ begin
         end;
       end;
     finally
+      FreeAndNil(vSink);
+      FreeAndNil(vBody);
       FreeAndNil(vSource);
     end;
   except

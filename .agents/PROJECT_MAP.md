@@ -70,6 +70,8 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 - `RALCustomObjects.pas` - `TRALComponent`, `TRALHTTPHeaderInfo` (the wire body API)
 - `RALParams.pas` - `TRALParams`/`TRALParam`: every param kind, body encode/decode
 - `RALRequest.pas`, `RALResponse.pas` - request and response
+- `RALResponseStream.pas` - a response sent in pieces (`Send`): the channel
+  (`TRALResponseStream`, `IRALResponseStream`) and the writer each engine implements
 - `RALRoutes.pas` - routes and route lookup
 - `RALPlugin.pas` - plugin base, phases, priorities, the plugin host
 - `RALServer.pas` - `TRALServer`, `TRALModuleRoutes` (modules)
@@ -85,7 +87,8 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 `RALBase64`, `RALExternalsLibraries` (dynamic library loading), `RALHexadecimal`,
 `RALJson` (+ `RALJSON_Delphi/FPC/lkJSON/uJSON.inc` backends), `RALMIMETypes`,
 `RALMultipartCoder`, `RALNetwork` (the server's own address), `RALQuicFrame` (RAL's
-frame over QUIC), `RALResponsePages`, `RALStream` (views, chunked and temp-file
+frame over QUIC), `RALResponsePages`, `RALSSE` (Server-Sent Events writer and
+parser), `RALStream` (views, chunked and temp-file
 streams, body ownership), `RALThreadSafe`, `RALTools`, `RALUrlCoder`; `RALTranslate`
 is in no package.
 

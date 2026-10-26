@@ -4,10 +4,10 @@ unit RALServer;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, TypInfo, DateUtils,
+  Classes, SysUtils, StrUtils, TypInfo, DateUtils, SyncObjs,
   RALAuthBase, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
   RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects,
-  RALResponsePages, RALCompressZLib, RALPlugin;
+  RALResponsePages, RALCompressZLib, RALPlugin, RALResponseStream;
 
 const
   /// Start of the friendly name of the certificates RALSelfSigned makes in the store.
@@ -102,6 +102,10 @@ type
   /// Event fired with an exception the server caught.
   TRALOnServerError = procedure(Error: Exception) of object;
 
+  /// Fired once when a streamed response closes, with why (an MCP session cleans up here).
+  TRALOnStreamClosed = procedure(Sender: TObject; AStream: TRALResponseStream;
+    AReason: TRALStreamCloseReason) of object;
+
   { Base of the server components: answers each request through its plugins, then
     its modules. Every feature other than routing is a plugin. }
   TRALServer = class(TRALPluginHost)
@@ -131,6 +135,14 @@ type
     FSSL: TRALSSL;
     /// Active as read from a form, applied by Loaded.
     FStreamedActive: boolean;
+    FOnStreamClosed: TRALOnStreamClosed;
+    FStreamKeepAlive: IntegerRAL;
+    FStreamLimit: IntegerRAL;
+    FStreamMaxPending: IntegerRAL;
+    /// The open streams, not held by reference: each leaves the list as it closes.
+    FStreams: TList;
+    FStreamsLock: TCriticalSection;
+    FStreamSendTimeout: IntegerRAL;
 
     /// First module of the modules loop: -1, the internal module, when it has work.
     function FirstModule: IntegerRAL;
@@ -138,6 +150,8 @@ type
     function GetModule(AIndex: IntegerRAL): TRALModuleRoutes;
     /// Calls ServerActivating or ServerDeactivating on the linked modules.
     procedure NotifyModules(AActive: boolean);
+    /// A stream closed: it leaves the list, and OnStreamClosed hears it.
+    procedure StreamClosed(AStream: TRALResponseStream; AReason: TRALStreamCloseReason);
     procedure WriteActive(const AValue: boolean);
   protected
     /// Links a module to the server.
@@ -177,13 +191,23 @@ type
     class function AuthTypeOf(const AScheme: StringRAL): TRALAuthTypes;
     /// Stops the plugins of a server freed while running.
     procedure BeforeDestruction; override;
+    { ENGINE API: raises ERALStreamLimit when StreamLimit streams are open; called
+      by the commit of a stream }
+    procedure CheckStreamLimit;
     procedure ClientBlocked(const AClientIP: StringRAL); override;
+    { Closes every open stream with AReason; the server does it before it stops, so
+      no engine thread waits for good on a stream }
+    procedure CloseStreams(AReason: TRALStreamCloseReason = srServerStopped);
     /// Number of linked modules.
     function CountSubModules: IntegerRAL;
     /// A new request of this server; the caller frees it.
     function CreateRequest: TRALRequest;
     /// A new response of this server, with status 200; the caller frees it.
     function CreateResponse: TRALResponse;
+    { ENGINE API: the writer that puts a stream on the connection of ARequest,
+      built from AResponse.EngineContext at the commit; nil keeps the pieces and
+      sends them when the handler returns. Each live engine overrides it }
+    function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; virtual;
     /// Adds a route with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
@@ -202,15 +226,34 @@ type
     function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; virtual;
     /// Certificate the engine is set up with; False when there is none.
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; virtual;
+    { ENGINE API: called when the handler returned. False when the response did
+      not go out as a live stream (send it as always). True when it did: the
+      request is finished (a concurrency slot goes back) and the stream ends, or,
+      after Detach, the calling thread waits until it closes, pinging an SSE
+      stream every StreamKeepAlive milliseconds. AWait False returns at once
+      after a Detach: a pull engine's library sends only once its callback
+      returns }
+    function FinishStream(ARequest: TRALRequest; AResponse: TRALResponse;
+      AWait: boolean = True): boolean;
     /// True when an authentication plugin is linked.
     function HasAuthentication: boolean;
+    { ENGINE API: fires OnResponse; TRALServer.ProcessCommands and the commit of a
+      stream call it, once per response }
+    procedure NotifyResponse(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Number of streams open now.
+    function OpenStreamCount: IntegerRAL;
     /// Answers a request: the plugins loop, then the modules loop, else 404.
     procedure ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
     { Sets the engine up with ACertificate and turns SSL on; on a running server
       the certificate is swapped under the listener. }
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; virtual;
+    /// ENGINE API: keeps AStream in the list of open streams until it closes.
+    procedure RegisterStream(AStream: TRALResponseStream);
     /// True when SSL is enabled.
     function SSLEnabled: boolean;
+    { True when the engine sends the pieces of TRALResponse.Send as they come;
+      False keeps them and sends the body whole when the handler returns }
+    class function SupportsLiveStream: boolean; virtual;
     /// Starts the server.
     procedure Start;
     /// Stops the server.
@@ -220,6 +263,9 @@ type
     /// Runs the ppValidate plugins before the body is decoded; 501 for an unknown method.
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
 
+    { Most streams open at once; 0 is no limit. TRALConcurrencyPlugin.MaxStreams
+      sets it }
+    property StreamLimit: IntegerRAL read FStreamLimit write FStreamLimit;
     /// Linked module at AIndex, or nil.
     property SubModule[AIndex: IntegerRAL]: TRALModuleRoutes read GetSubModule;
   published
@@ -244,6 +290,8 @@ type
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
     /// Fired with an exception the server caught.
     property OnServerError: TRALOnServerError read FOnServerError write FOnServerError;
+    /// Fired once when a streamed response closes, with why.
+    property OnStreamClosed: TRALOnStreamClosed read FOnStreamClosed write FOnStreamClosed;
     /// Port to listen on.
     property Port: IntegerRAL read FPort write SetPort;
     /// Raises the exceptions of the handlers when OnServerError is not assigned.
@@ -259,6 +307,18 @@ type
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     /// Answers '/' with ServerStatus when no route takes it.
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
+    { Milliseconds between the ': ping' comments of a quiet detached SSE stream,
+      which also find a client that left; 0 sends none }
+    property StreamKeepAlive: IntegerRAL read FStreamKeepAlive write FStreamKeepAlive
+      default DEFAULTSTREAMKEEPALIVE;
+    { Bytes a pull engine (Sagui) queues for a stream before Send waits for the
+      client to read }
+    property StreamMaxPending: IntegerRAL read FStreamMaxPending write FStreamMaxPending
+      default DEFAULTSTREAMMAXPENDING;
+    { Milliseconds a stream write may block on a client that stopped reading;
+      past it the stream is closed and Send answers False. 0 is no limit }
+    property StreamSendTimeout: IntegerRAL read FStreamSendTimeout write FStreamSendTimeout
+      default DEFAULTSTREAMSENDTIMEOUT;
   end;
 
   { The request as the handlers of a module see it: it holds the core TRALRequest
@@ -331,6 +391,21 @@ type
     /// Answers with the file AFileName.
     procedure Answer(const AFileName: StringRAL;
                      const ADispositionInline: boolean = True); overload;
+    /// See TRALResponse.BeginStream.
+    procedure BeginStream; overload;
+    /// See TRALResponse.BeginStream.
+    procedure BeginStream(AStatusCode: IntegerRAL; const AContentType: StringRAL); overload;
+    /// See TRALResponse.Detach.
+    function Detach: IRALResponseStream;
+    /// See TRALResponse.EndStream.
+    procedure EndStream;
+    /// See TRALResponse.Send.
+    function Send(const AText: StringRAL): boolean; overload;
+    /// See TRALResponse.Send.
+    function Send(AStream: TStream; AOwnsStream: boolean = True): boolean; overload;
+    /// See TRALResponse.SendEvent.
+    function SendEvent(const AData: StringRAL; const AEvent: StringRAL = '';
+      const AId: StringRAL = ''; ARetry: IntegerRAL = -1): boolean;
 
     /// Content type of the response.
     property ContentType: StringRAL read GetContentType write SetContentType;
@@ -590,6 +665,11 @@ begin
   FSessionTimeout := 30000;
   FShowServerStatus := True;
   FCookieLife := 30;
+  FStreamKeepAlive := DEFAULTSTREAMKEEPALIVE;
+  FStreamMaxPending := DEFAULTSTREAMMAXPENDING;
+  FStreamSendTimeout := DEFAULTSTREAMSENDTIMEOUT;
+  FStreams := TList.Create;
+  FStreamsLock := TCriticalSection.Create;
   FSSL := CreateRALSSL;
 end;
 
@@ -604,8 +684,139 @@ begin
   FreeAndNil(FIPConfig);
   FreeAndNil(FListSubModules);
   FreeAndNil(FResponsePages);
+  CloseStreams(srServerStopped);
+  FreeAndNil(FStreams);
+  FreeAndNil(FStreamsLock);
 
   inherited;
+end;
+
+class function TRALServer.SupportsLiveStream: boolean;
+begin
+  Result := False;
+end;
+
+function TRALServer.CreateStreamWriter(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALStreamWriter;
+begin
+  Result := nil;
+end;
+
+procedure TRALServer.NotifyResponse(ARequest: TRALRequest; AResponse: TRALResponse);
+begin
+  if Assigned(FOnResponse) then
+    FOnResponse(ARequest, AResponse);
+end;
+
+function TRALServer.OpenStreamCount: IntegerRAL;
+begin
+  FStreamsLock.Enter;
+  try
+    Result := FStreams.Count;
+  finally
+    FStreamsLock.Leave;
+  end;
+end;
+
+procedure TRALServer.CheckStreamLimit;
+begin
+  if (FStreamLimit > 0) and (OpenStreamCount >= FStreamLimit) then
+    raise ERALStreamLimit.Create(emStreamLimit);
+end;
+
+procedure TRALServer.RegisterStream(AStream: TRALResponseStream);
+begin
+  AStream.OnClosed := {$IFDEF FPC}@{$ENDIF}StreamClosed;
+  FStreamsLock.Enter;
+  try
+    FStreams.Add(AStream);
+  finally
+    FStreamsLock.Leave;
+  end;
+end;
+
+procedure TRALServer.StreamClosed(AStream: TRALResponseStream;
+  AReason: TRALStreamCloseReason);
+begin
+  if FStreamsLock = nil then
+    Exit;
+  FStreamsLock.Enter;
+  try
+    FStreams.Remove(AStream);
+  finally
+    FStreamsLock.Leave;
+  end;
+  if Assigned(FOnStreamClosed) then
+    FOnStreamClosed(Self, AStream, AReason);
+end;
+
+procedure TRALServer.CloseStreams(AReason: TRALStreamCloseReason);
+var
+  vObjs: array of TRALResponseStream;
+  vRefs: array of IRALResponseStream;
+  vInt: IntegerRAL;
+begin
+  if FStreamsLock = nil then
+    Exit;
+  { held by reference while they are aborted: a stream in the list is open, so
+    someone still holds it, and it cannot go away under this loop }
+  FStreamsLock.Enter;
+  try
+    SetLength(vObjs, FStreams.Count);
+    SetLength(vRefs, FStreams.Count);
+    for vInt := 0 to FStreams.Count - 1 do
+    begin
+      vObjs[vInt] := TRALResponseStream(FStreams.Items[vInt]);
+      vRefs[vInt] := vObjs[vInt];
+    end;
+  finally
+    FStreamsLock.Leave;
+  end;
+  for vInt := 0 to High(vObjs) do
+    vObjs[vInt].Abort(AReason);
+  vRefs := nil;
+end;
+
+function TRALServer.FinishStream(ARequest: TRALRequest; AResponse: TRALResponse;
+  AWait: boolean): boolean;
+var
+  vStream: TRALResponseStream;
+  vRef: IRALResponseStream;
+  vWait: Cardinal;
+begin
+  Result := AResponse.StreamLive;
+  if not Result then
+    Exit;
+  vStream := AResponse.Stream;
+  vRef := vStream;
+  { the handler returned: what a plugin took for the request - a concurrency
+    slot - goes back now, even when the stream goes on after Detach }
+  try
+    ARequest.Finish;
+  except
+    on e: Exception do
+      PluginError(e);
+  end;
+
+  if not AResponse.Detached then
+  begin
+    vStream.Close;
+    Exit;
+  end;
+  if not AWait then
+    Exit;
+
+  // held open by Detach: this thread waits, and finds a client that left
+  vWait := 1000;
+  if FStreamKeepAlive > 0 then
+    vWait := FStreamKeepAlive;
+  while not vStream.WaitClosed(vWait) do
+  begin
+    if vStream.IsEventStream and (FStreamKeepAlive > 0) then
+      vStream.SendComment('ping')
+    else
+      vStream.Connected;
+  end;
 end;
 
 procedure TRALServer.AddSubRoute(ASubRoute: TRALModuleRoutes);
@@ -864,6 +1075,7 @@ var
 begin
   if AResponse.StatusCode >= HTTP_BadRequest then
     Exit;
+  AResponse.StreamRequest := ARequest;
   // a body the engine could not take apart is the client's error, answered first
   if ARequest.Params.BodyError <> '' then
   begin
@@ -901,16 +1113,34 @@ begin
     if not vHandled then
       AResponse.Answer(HTTP_NotFound);
 
-    if Assigned(FOnResponse) then
-      FOnResponse(ARequest, AResponse);
+    // the handler returned: a committed response takes the engine's changes again
+    AResponse.Unguard;
+    // a stream fired OnResponse at its commit, before the first byte
+    if not AResponse.Committed then
+      NotifyResponse(ARequest, AResponse);
 
     ARequest.Params.ClearParams;
   except
     on e: exception do
     begin
+      AResponse.Unguard;
+      if AResponse.StreamLive then
+      begin
+        { the status went out already: the stream is cut without its last chunk,
+          the sign of a truncated body, after an error event an EventSource reads }
+        if AResponse.EventStream then
+          AResponse.Stream.SendEvent(ErrorText(e), 'error');
+        AResponse.Stream.Abort(srError);
+      end
+      else if e is ERALStreamLimit then
+      begin
+        AResponse.Answer(HTTP_ServiceUnavailable, e.Message, rctTEXTPLAIN);
+        AResponse.Params.ReplaceParam('Retry-After', '1', rpkHEADER);
+      end
+      else
       { The 500 comes first, so a failed handler never leaves a 200; then
         OnServerError, or the exception goes up with RaiseError. }
-      AResponse.Answer(HTTP_InternalError, ErrorText(e), rctTEXTPLAIN);
+        AResponse.Answer(HTTP_InternalError, ErrorText(e), rctTEXTPLAIN);
       if assigned(OnServerError) then
         OnServerError(e)
       else if RaiseError then
@@ -1009,6 +1239,9 @@ end;
   SSL are read. }
 procedure TRALServer.WriteActive(const AValue: boolean);
 begin
+  // no engine thread may stay waiting on a stream while its listener goes
+  if (not AValue) and FActive then
+    CloseStreams(srServerStopped);
   if not (csLoading in ComponentState) then
     SetActive(AValue)
   { only a True is kept: the setters that restart a live server turn Active off
@@ -1101,7 +1334,10 @@ begin
   { before inherited: TComponent.BeforeDestruction marks the server as
     destroying, and a destroying host notifies nobody }
   if FActive and not (csDesigning in ComponentState) then
+  begin
+    CloseStreams(srServerStopped);
     NotifyPlugins(False);
+  end;
   inherited;
 end;
 
@@ -1200,6 +1436,43 @@ end;
 procedure TRALModuleResponse.Answer(AStatusCode: IntegerRAL);
 begin
   FCore.Answer(AStatusCode);
+end;
+
+procedure TRALModuleResponse.BeginStream;
+begin
+  FCore.BeginStream;
+end;
+
+procedure TRALModuleResponse.BeginStream(AStatusCode: IntegerRAL;
+  const AContentType: StringRAL);
+begin
+  FCore.BeginStream(AStatusCode, AContentType);
+end;
+
+function TRALModuleResponse.Detach: IRALResponseStream;
+begin
+  Result := FCore.Detach;
+end;
+
+procedure TRALModuleResponse.EndStream;
+begin
+  FCore.EndStream;
+end;
+
+function TRALModuleResponse.Send(const AText: StringRAL): boolean;
+begin
+  Result := FCore.Send(AText);
+end;
+
+function TRALModuleResponse.Send(AStream: TStream; AOwnsStream: boolean): boolean;
+begin
+  Result := FCore.Send(AStream, AOwnsStream);
+end;
+
+function TRALModuleResponse.SendEvent(const AData: StringRAL; const AEvent: StringRAL;
+  const AId: StringRAL; ARetry: IntegerRAL): boolean;
+begin
+  Result := FCore.SendEvent(AData, AEvent, AId, ARetry);
 end;
 
 procedure TRALModuleResponse.Answer(const AFileName: StringRAL;

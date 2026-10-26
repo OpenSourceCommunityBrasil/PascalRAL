@@ -56,6 +56,26 @@ blocked in `accept`); `TCP_NODELAY` on (two sends per answer otherwise stall 40 
 a HEAD answers the GET's length with no body; a thread created inside a C library
 needs `IsMultiThread := True`.
 
+Streaming (`Send` in a handler) - without it the engine is buffered and still correct:
+
+- Answer `SupportsLiveStream` True and build a `TRALStreamWriter` in
+  `CreateStreamWriter` from `AResponse.EngineContext`, an object the engine sets before
+  `ProcessCommands` (its connection, its library response). `WriteHead` sends status
+  and headers (`Transfer-Encoding: chunked`; HTTP/1.0 closes at the end), `WriteRaw`
+  writes bytes, `WriteEnd(AAborted)` ends (aborted: close without the last chunk),
+  `Alive` checks the peer without writing. `FramesItself` when the library chunks.
+- Right after `ProcessCommands`: `if FinishStream(ARequest, AResponse) then Exit`; a pull
+  library passes `AWait=False` and keeps pulling from a queue (see Sagui).
+- Prove it: first piece before the handler ends, keep-alive after the last chunk,
+  HTTP/1.0, a client that leaves is seen, 1 GB at flat memory, `Active := False` with
+  open streams returns promptly.
+
+Client streaming: override `ReadStreamHead` (status, `ContentType`, `ContentEncoding`
+while the body arrives) and write the body into `NewResponseSink(AResponse, ABody)`
+when it is not nil, calling its `Finish` after filling the head; an
+`ERALStreamCancelled` from the sink is `rteCancelled`. An engine that does neither
+hands the body over whole at the end.
+
 ## Client: what to override
 
 `EngineName`, `EngineVersion`, `PackageDependency` and `SendUrl(AURL, ARequest,

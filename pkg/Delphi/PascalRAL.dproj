@@ -179,6 +179,7 @@
         <DCCReference Include="..\..\src\core\RALParams.pas"/>
         <DCCReference Include="..\..\src\core\RALRequest.pas"/>
         <DCCReference Include="..\..\src\core\RALResponse.pas"/>
+        <DCCReference Include="..\..\src\core\RALResponseStream.pas"/>
         <DCCReference Include="..\..\src\core\RALRoutes.pas"/>
         <DCCReference Include="..\..\src\core\RALPlugin.pas"/>
         <DCCReference Include="..\..\src\core\RALAuthBase.pas"/>
@@ -189,6 +190,7 @@
         <DCCReference Include="..\..\src\common\RALThreadSafe.pas"/>
         <DCCReference Include="..\..\src\common\RALJson.pas"/>
         <DCCReference Include="..\..\src\common\RALMIMETypes.pas"/>
+        <DCCReference Include="..\..\src\common\RALSSE.pas"/>
         <DCCReference Include="..\..\src\common\RALUrlCoder.pas"/>
         <DCCReference Include="..\..\src\common\RALMultipartCoder.pas"/>
         <DCCReference Include="..\..\src\common\RALNetwork.pas"/>

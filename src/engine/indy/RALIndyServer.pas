@@ -6,10 +6,11 @@ interface
 uses
   Classes, SysUtils, DateUtils,
   IdSSLOpenSSL, IdHTTPServer, IdCustomHTTPServer, IdContext, IdMessageCoder,
-  IdGlobalProtocols, IdGlobal, IdCookie, IdHeaderList,
+  IdGlobalProtocols, IdGlobal, IdCookie, IdHeaderList, IdStackConsts,
   {$IFDEF FPC}IdSchedulerOfThreadPool,{$ENDIF}
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALStream, RALPlugin, RALContent;
+  RALParams, RALTools, RALStream, RALPlugin, RALContent, RALResponseStream,
+  RALCustomObjects;
 
 type
   TIdSSLOptionsRAL = class(TIdSSLOptions)
@@ -72,6 +73,10 @@ type
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetSSL(const AValue: TRALIndySSL);
 
+    { The status, headers and cookies of AResponse into Indy's response, after
+      TakeWireStream said what was done to the body }
+    procedure FillHeaders(AResponse: TRALResponse; AResponseInfo: TIdHTTPResponseInfo;
+      AKeepAlive: boolean);
     procedure OnCommandProcess(AContext: TIdContext; ARequestInfo: TIdHTTPRequestInfo;
       AResponseInfo: TIdHTTPResponseInfo);
     { Where Indy writes the body it receives. Left to Indy (a TMemoryStream)
@@ -86,6 +91,11 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    { The writer of a stream: headers by Indy with Transfer-Encoding: chunked (no
+      Content-Length), the pieces on the connection's IOHandler; the connection is
+      kept alive after the last chunk }
+    function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
+    class function SupportsLiveStream: boolean; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
@@ -101,6 +111,86 @@ type
   end;
 
 implementation
+
+type
+  { what the stream writer needs of one request, kept for as long as its callback runs }
+  TRALIndyStreamContext = class
+  public
+    Context: TIdContext;
+    KeepAlive: boolean;
+    ResponseInfo: TIdHTTPResponseInfo;
+    Server: TRALIndyServer;
+  end;
+
+  { TRALIndyStreamWriter }
+
+  TRALIndyStreamWriter = class(TRALStreamWriter)
+  private
+    FContext: TRALIndyStreamContext;
+  public
+    constructor Create(AContext: TRALIndyStreamContext);
+    function Alive: boolean; override;
+    procedure WriteEnd(AAborted: boolean); override;
+    procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); override;
+    function WriteRaw(const ABuffer; ASize: IntegerRAL): boolean; override;
+  end;
+
+{ TRALIndyStreamWriter }
+
+constructor TRALIndyStreamWriter.Create(AContext: TRALIndyStreamContext);
+begin
+  inherited Create;
+  FContext := AContext;
+end;
+
+function TRALIndyStreamWriter.Alive: boolean;
+begin
+  try
+    Result := FContext.Context.Connection.Connected;
+  except
+    Result := False;
+  end;
+end;
+
+procedure TRALIndyStreamWriter.WriteEnd(AAborted: boolean);
+begin
+  { a body cut short must end with the connection, and HTTP/1.0 has no other
+    way to end it; a chunked one that ended as asked keeps it alive }
+  if AAborted or not Chunked then
+    FContext.ResponseInfo.CloseConnection := True;
+end;
+
+procedure TRALIndyStreamWriter.WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL);
+begin
+  FContext.Server.FillHeaders(TRALResponse(AResponse), FContext.ResponseInfo, FContext.KeepAlive);
+  FContext.ResponseInfo.ResponseNo := AStatusCode;
+  if Chunked then
+    FContext.ResponseInfo.TransferEncoding := 'chunked'
+  else
+  begin
+    { HTTP/1.0: no Content-Length, and the end of the connection ends the
+      body. -2 and not -1: with -1 and no content Indy counts a length, and
+      writes a page of its own as the body }
+    FContext.ResponseInfo.ContentLength := -2;
+    FContext.ResponseInfo.CloseConnection := True;
+  end;
+  {$IFDEF MSWINDOWS}
+  // a client that stops reading cannot hold a Send for good
+  if SendTimeout > 0 then
+    FContext.Context.Binding.SetSockOpt(Id_SOL_SOCKET, Id_SO_SNDTIMEO, SendTimeout);
+  {$ENDIF}
+  FContext.ResponseInfo.WriteHeader;
+end;
+
+function TRALIndyStreamWriter.WriteRaw(const ABuffer; ASize: IntegerRAL): boolean;
+begin
+  Result := True;
+  try
+    FContext.Context.Connection.IOHandler.Write(RawToBytes(ABuffer, ASize));
+  except
+    Result := False;
+  end;
+end;
 
 { The answer to a request whose handling raised outside ProcessCommands -
   decoding it, or building the answer. The exception used to be swallowed and
@@ -222,16 +312,80 @@ begin
   Result := TRALIndySSL(GetDefaultSSL);
 end;
 
+class function TRALIndyServer.SupportsLiveStream: boolean;
+begin
+  Result := True;
+end;
+
+function TRALIndyServer.CreateStreamWriter(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALStreamWriter;
+begin
+  Result := nil;
+  if not (AResponse.EngineContext is TRALIndyStreamContext) then
+    Exit;
+  Result := TRALIndyStreamWriter.Create(TRALIndyStreamContext(AResponse.EngineContext));
+  // HTTP/1.0 knows no chunked: the end of the body is the end of the connection
+  Result.Chunked := ARequest.ProtocolVersion <> rhv10;
+  Result.HeadOnly := ARequest.Method = amHEAD;
+  Result.SendTimeout := StreamSendTimeout;
+end;
+
+procedure TRALIndyServer.FillHeaders(AResponse: TRALResponse;
+  AResponseInfo: TIdHTTPResponseInfo; AKeepAlive: boolean);
+var
+  vInt: IntegerRAL;
+  vCookies: TStringList;
+  vParam: TRALParam;
+begin
+  with AResponse do
+  begin
+    AResponseInfo.ResponseNo := StatusCode;
+    AResponseInfo.Server := 'RAL_Indy';
+    AResponseInfo.ContentEncoding := ContentEncoding;
+
+    vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
+    if vParam <> nil then
+    begin
+      AResponseInfo.WWWAuthenticate.Add(RALSafeHeaderText(vParam.AsString));
+      AResponse.Params.DelParam('WWW-Authenticate');
+    end;
+
+    if AResponse.AcceptEncoding <> '' then
+      Params.AddParam('Accept-Encoding', AResponse.AcceptEncoding, rpkHEADER);
+
+    if AResponse.ContentEncription <> '' then
+      Params.AddParam('Content-Encription', AResponse.ContentEncription, rpkHEADER);
+
+    Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER, ': ');
+
+    { every cookie whole, on its own Set-Cookie line, from the builder all
+      engines share - a TIdCookie made a cookie CALLED Set-Cookie out of an
+      AddCookie(TRALCookie) one, which is why that case went out raw }
+    vCookies := TStringList.Create;
+    try
+      GetParamsCookies(vCookies, IncMinute(Now, CookieLife));
+      for vInt := 0 to Pred(vCookies.Count) do
+        AResponseInfo.CustomHeaders.AddValue('Set-Cookie', vCookies[vInt]);
+    finally
+      FreeAndNil(vCookies);
+    end;
+
+    AResponseInfo.ContentType := ContentType;
+    AResponseInfo.ContentDisposition := ContentDisposition;
+    AResponseInfo.CloseConnection := not AKeepAlive;
+  end;
+end;
+
 procedure TRALIndyServer.OnCommandProcess(AContext: TIdContext;
   ARequestInfo: TIdHTTPRequestInfo; AResponseInfo: TIdHTTPResponseInfo);
 var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vInt: IntegerRAL;
-  vCookies: TStringList;
-  vParam: TRALParam;
   vKeepAlive: boolean;
+  vContext: TRALIndyStreamContext;
 begin
+  vContext := nil;
   vRequest := CreateRequest;
   vResponse := CreateResponse;
 
@@ -328,66 +482,40 @@ begin
         end;
       end;
 
+      { what a stream writer needs, should the handler call Send }
+      vContext := TRALIndyStreamContext.Create;
+      vContext.Context := AContext;
+      vContext.KeepAlive := vKeepAlive;
+      vContext.ResponseInfo := AResponseInfo;
+      vContext.Server := Self;
+      vResponse.EngineContext := vContext;
       ProcessCommands(vRequest, vResponse);
+      { a stream already went out: it ends now, or waits here while a Detach
+        holds it; Indy then finds the headers written and nothing to send }
+      if FinishStream(vRequest, vResponse) then
+        Exit;
 
-      with vResponse do
-      begin
-        { the body first, handed to Indy at once so nothing can leak it: only
-          after TakeWireStream do ContentEncoding and ContentType say what
-          was really done (a JPEG goes out uncompressed) }
-        AResponseInfo.ContentStream := TakeWireStream;
-        if AResponseInfo.ContentStream = nil then
-          AResponseInfo.ContentStream := TMemoryStream.Create;
-        AResponseInfo.FreeContentStream := True;
+      { the body first, handed to Indy at once so nothing can leak it: only
+        after TakeWireStream do ContentEncoding and ContentType say what
+        was really done (a JPEG goes out uncompressed) }
+      AResponseInfo.ContentStream := vResponse.TakeWireStream;
+      if AResponseInfo.ContentStream = nil then
+        AResponseInfo.ContentStream := TMemoryStream.Create;
+      AResponseInfo.FreeContentStream := True;
 
-        AResponseInfo.ResponseNo := StatusCode;
-        { the answer is built: what a plugin took for the request - a slot of
-          the concurrency limit - goes back now, before the bytes go out }
-        vRequest.Finish;
+      { the answer is built: what a plugin took for the request - a slot of
+        the concurrency limit - goes back now, before the bytes go out }
+      vRequest.Finish;
+      FillHeaders(vResponse, AResponseInfo, vKeepAlive);
 
-        AResponseInfo.Server := 'RAL_Indy';
-        AResponseInfo.ContentEncoding := ContentEncoding;
+      { Indy sends no body for a HEAD and leaves its length uncounted, then
+        writes Content-Length: 0 - which RFC 9110 9.3.2 forbids unless the
+        GET would send nothing. The size of what a GET would send goes
+        instead; Indy still keeps the body itself back }
+      if ARequestInfo.CommandType = hcHEAD then
+        AResponseInfo.ContentLength := AResponseInfo.ContentStream.Size;
 
-        vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
-        if vParam <> nil then
-        begin
-          AResponseInfo.WWWAuthenticate.Add(RALSafeHeaderText(vParam.AsString));
-          vResponse.Params.DelParam('WWW-Authenticate');
-        end;
-
-        if vResponse.AcceptEncoding <> '' then
-          Params.AddParam('Accept-Encoding', vResponse.AcceptEncoding, rpkHEADER);
-
-        if vResponse.ContentEncription <> '' then
-          Params.AddParam('Content-Encription', vResponse.ContentEncription, rpkHEADER);
-
-        Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER, ': ');
-
-        { every cookie whole, on its own Set-Cookie line, from the builder all
-          engines share - a TIdCookie made a cookie CALLED Set-Cookie out of an
-          AddCookie(TRALCookie) one, which is why that case went out raw }
-        vCookies := TStringList.Create;
-        try
-          GetParamsCookies(vCookies, IncMinute(Now, CookieLife));
-          for vInt := 0 to Pred(vCookies.Count) do
-            AResponseInfo.CustomHeaders.AddValue('Set-Cookie', vCookies[vInt]);
-        finally
-          FreeAndNil(vCookies);
-        end;
-
-        AResponseInfo.ContentType := ContentType;
-        AResponseInfo.ContentDisposition := ContentDisposition;
-        AResponseInfo.CloseConnection := not vKeepAlive;
-
-        { Indy sends no body for a HEAD and leaves its length uncounted, then
-          writes Content-Length: 0 - which RFC 9110 9.3.2 forbids unless the
-          GET would send nothing. The size of what a GET would send goes
-          instead; Indy still keeps the body itself back }
-        if ARequestInfo.CommandType = hcHEAD then
-          AResponseInfo.ContentLength := AResponseInfo.ContentStream.Size;
-
-        AResponseInfo.WriteContent;
-      end;
+      AResponseInfo.WriteContent;
     except
       on e: exception do
       begin
@@ -401,6 +529,7 @@ begin
   finally
     FreeAndNil(vResponse);
     FreeAndNil(vRequest);
+    FreeAndNil(vContext);
   end;
 end;
 

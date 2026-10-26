@@ -111,7 +111,7 @@ Item_39=src\wizard\delphi\cgi
 Item_40=src\languages
 
 [Files]
-Count=134
+Count=136
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -246,6 +246,8 @@ Item_130=src\wizard\delphi\console\RALWizardProjConsole.pas
 Item_131=src\wizard\delphi\standalone\RALWizardFormStandAlone.pas
 Item_132=src\wizard\delphi\standalone\RALWizardProjStandAlone.pas
 Item_133=src\wizard\delphi\cgi\RALWizardProjCGI.pas
+Item_134=src\core\RALResponseStream.pas
+Item_135=src\common\RALSSE.pas
 [AdditionalFiles]
 Count=0
 

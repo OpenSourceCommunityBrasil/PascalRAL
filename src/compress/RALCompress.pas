@@ -16,6 +16,20 @@ type
   TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip, ctZStd, ctBrotli);
   TRALCompressTypes = set of TRALCompressType;
 
+  { TRALStreamCoder }
+
+  { Compresses or decompresses a body in pieces, as they come, keeping its state
+    between them: one per body, used by one thread at a time. What a piece
+    produces is written to the output given to Update; a piece may produce
+    nothing yet }
+  TRALStreamCoder = class
+  public
+    /// What is still held goes to AOutput: the trailer, or the checks of the end.
+    procedure Finish(AOutput: TStream); virtual; abstract;
+    /// Codes ASize bytes of ABuffer, writing what comes out to AOutput.
+    procedure Update(const ABuffer; ASize: IntegerRAL; AOutput: TStream); virtual; abstract;
+  end;
+
   { TRALCompress }
 
   /// Compression class for PascalRAL
@@ -48,6 +62,12 @@ type
     class function GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
     class function CompressTypes : TRALCompressTypes; virtual; abstract;
     class function BestCompressFromClass(ATypes : TRALCompressTypes) : TRALCompressType; virtual;
+    { A decompressor of AFormat that takes the body in pieces, or nil when this
+      class has none (the base answers nil): the body is then decompressed whole }
+    class function CreateStreamDecoder(AFormat: TRALCompressType): TRALStreamCoder; virtual;
+    { A compressor of AFormat whose every Update sends out all it was given (a
+      flush per piece), or nil when this class has none (the base answers nil) }
+    class function CreateStreamEncoder(AFormat: TRALCompressType): TRALStreamCoder; virtual;
   published
     property Format: TRALCompressType read FFormat write SetFormat;
   end;
@@ -62,6 +82,10 @@ type
   procedure GetCompressList(AList : TStrings);
   function GetSuportedCompress : TRALCompressTypes;
   function GetAcceptCompress : StringRAL;
+  /// A piecewise decompressor of ACompressType, or nil - see CreateStreamDecoder.
+  function RALCreateStreamDecoder(ACompressType: TRALCompressType): TRALStreamCoder;
+  /// A piecewise compressor of ACompressType, or nil - see CreateStreamEncoder.
+  function RALCreateStreamEncoder(ACompressType: TRALCompressType): TRALStreamCoder;
   /// One entry of an Accept-Encoding / Content-Encoding list: 'gzip;q=0.5'
   /// gives 'gzip' and 0.5. The name comes lowercase; with no q, the quality is 1
   procedure RALSplitCoding(const AToken: StringRAL; out AName: StringRAL;
@@ -340,6 +364,26 @@ begin
   Result := CompressClasses[ACompressType];
 end;
 
+function RALCreateStreamDecoder(ACompressType: TRALCompressType): TRALStreamCoder;
+var
+  vClass: TRALCompressClass;
+begin
+  Result := nil;
+  vClass := GetCompressClass(ACompressType);
+  if vClass <> nil then
+    Result := vClass.CreateStreamDecoder(ACompressType);
+end;
+
+function RALCreateStreamEncoder(ACompressType: TRALCompressType): TRALStreamCoder;
+var
+  vClass: TRALCompressClass;
+begin
+  Result := nil;
+  vClass := GetCompressClass(ACompressType);
+  if vClass <> nil then
+    Result := vClass.CreateStreamEncoder(ACompressType);
+end;
+
 procedure GetCompressList(AList: TStrings);
 var
   vInt : IntegerRAL;
@@ -400,6 +444,16 @@ begin
 end;
 
 { TRALCompress }
+
+class function TRALCompress.CreateStreamDecoder(AFormat: TRALCompressType): TRALStreamCoder;
+begin
+  Result := nil;
+end;
+
+class function TRALCompress.CreateStreamEncoder(AFormat: TRALCompressType): TRALStreamCoder;
+begin
+  Result := nil;
+end;
 
 procedure TRALCompress.SetFormat(AValue: TRALCompressType);
 begin

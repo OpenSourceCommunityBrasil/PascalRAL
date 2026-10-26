@@ -97,6 +97,28 @@ answer calls `Client.DropCallbacks(Self)` in its destructor.
 - `PoolConnection` (on) keeps engines and their connections between calls;
   `ShareConnection` (on) lets clients share one connection on netHTTP, OkHttp and QUIC.
 
+## Read an answer in pieces (streams, Server-Sent Events)
+
+```pascal
+procedure TForm1.OnEvent(ASender: TObject; AResponse: TRALResponse;
+  const AEvent: TRALSSEEvent; var ACancel: boolean);
+begin
+  Memo1.Lines.Add(AEvent.Event + ': ' + AEvent.Data); // on the request's thread
+end;
+
+FClient.Get('events', {$IFDEF FPC}@{$ENDIF}OnEvent, vResponse); // frees vResponse after
+```
+
+- `OnServerEvent` (events of a `text/event-stream`) and `OnReceiveData` (raw pieces,
+  decoded) on the client, or the `Get`/`Post` overloads that take one for that call.
+  Only a 2xx is handed over; an error is read as always.
+- The body is not kept (`KeepStreamBody` keeps it); a call that handed a piece over is
+  never resent; `ACancel` closes the connection and fails the call with `rteCancelled`;
+  `RequestTimeout` counts the time without data.
+- In pieces on Indy, fpHTTP and mORMot2; netHTTP, OkHttp and the QUIC engines hand the
+  whole body over at the end (same code, no live arrival).
+- The events run on the request's thread: synchronize before touching the UI.
+
 ## Useful properties
 
 `ConnectTimeout` (30000 ms), `RequestTimeout` (10000 ms), `Authentication` (`ral-auth`),
