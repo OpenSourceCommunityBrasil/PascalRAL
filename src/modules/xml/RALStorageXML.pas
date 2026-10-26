@@ -422,6 +422,50 @@ begin
   end;
 end;
 
+/// Dates as TBufDataset reads them: the locale of the machine, the year in four digits
+function FPCDate(AValue: TDateTime; AType: TFieldType): StringRAL;
+var
+  vFormat: TFormatSettings;
+  vShort: string;
+  vInt: IntegerRAL;
+  vQuote: Char;
+begin
+  // TBufDataset writes AsString and reads with StrToDateTime; a two-digit year in the
+  // short date format of the machine (d/m/y on Linux) would lose the century
+  vFormat := {$IFDEF FPC}DefaultFormatSettings{$ELSE}FormatSettings{$ENDIF};
+  vShort := '';
+  vQuote := #0;
+  vInt := 1;
+  while vInt <= Length(vFormat.ShortDateFormat) do
+  begin
+    if vQuote <> #0 then
+    begin
+      if vFormat.ShortDateFormat[vInt] = vQuote then
+        vQuote := #0;
+      vShort := vShort + vFormat.ShortDateFormat[vInt];
+    end
+    else if CharInSet(vFormat.ShortDateFormat[vInt], ['y', 'Y']) then
+    begin
+      while (vInt < Length(vFormat.ShortDateFormat)) and
+        CharInSet(vFormat.ShortDateFormat[vInt + 1], ['y', 'Y']) do
+        Inc(vInt);
+      vShort := vShort + 'yyyy';
+    end
+    else
+    begin
+      if CharInSet(vFormat.ShortDateFormat[vInt], ['"', '''']) then
+        vQuote := vFormat.ShortDateFormat[vInt];
+      vShort := vShort + vFormat.ShortDateFormat[vInt];
+    end;
+    Inc(vInt);
+  end;
+  vFormat.ShortDateFormat := vShort;
+  if AType = ftDate then
+    Result := StringRAL(FormatDateTime('ddddd', AValue, vFormat))
+  else
+    Result := StringRAL(FormatDateTime('c', AValue, vFormat));
+end;
+
 /// AText is not empty and holds only digits.
 function AllDigitsText(const AText: StringRAL): boolean;
 var
@@ -765,6 +809,8 @@ begin
                 begin
                   if FFieldTypes[vInt] = sftBlob then
                     vText := TRALBase64.Encode(FieldBytes(vField))
+                  else if vField.DataType in [ftDate, ftDateTime, ftTimeStamp] then
+                    vText := FPCDate(vField.AsDateTime, vField.DataType)
                   else
                     vText := StringRAL(vField.AsString);
                 end

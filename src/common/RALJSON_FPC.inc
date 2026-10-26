@@ -3,7 +3,9 @@
 }
 
 uses
-  fpjson, Variants, Classes, SysUtils, RALTypes;
+  { jsonparser registers the parser GetJSON calls: without it every ParseJSON
+    raised "No JSON parser handler installed" unless the program linked it }
+  fpjson, jsonparser, Variants, Classes, SysUtils, RALTypes;
 
 type
 

@@ -27,6 +27,8 @@ type
     { the request being sent, for the redirect handler: the next hop's Cookie
       header is rebuilt from its params and the jar }
     FCurrent: TRALRequest;
+    /// The Accept TIdHTTP was created with, sent when the request names none
+    FIndyAccept: string;
 
     /// what the client's jar holds for AURI, as a Cookie value
     function JarCookiesFor(AURI: TIdURI): StringRAL;
@@ -238,6 +240,7 @@ begin
     PATCH. TIdTCPClientCustom.Connect copies this onto the socket, so it also
     survives the IOHandler being swapped for the SSL one. }
   FHttp.UseNagle := False;
+  FIndyAccept := FHttp.Request.Accept;
   FHttp.OnSelectAuthorization := {$IFDEF FPC}@{$ENDIF}SelectAuthorization;
   FHttp.OnRedirect := {$IFDEF FPC}@{$ENDIF}DoRedirect;
 
@@ -267,6 +270,7 @@ var
   vResult: TRALBodyStream;
   vCookieText: StringRAL;
   vURI: TIdURI;
+  vAcceptPos: Integer;
 
   { Winsock codes that mean the request never reached a server: connection
     refused, timed out, network or host unreachable, host not found. Anything
@@ -393,6 +397,17 @@ begin
   end;
 
   ARequest.Params.AssignParams(FHttp.Request.CustomHeaders, rpkHEADER, ': ');
+
+  { TIdHTTP writes its own Accept (text/html, */*) before the custom headers,
+    and a server reads the first one: the request's goes into that property }
+  vAcceptPos := FHttp.Request.CustomHeaders.IndexOfName('Accept');
+  if vAcceptPos >= 0 then
+  begin
+    FHttp.Request.Accept := FHttp.Request.CustomHeaders.Values['Accept'];
+    FHttp.Request.CustomHeaders.Delete(vAcceptPos);
+  end
+  else
+    FHttp.Request.Accept := FIndyAccept;
 
   { built once for this attempt, with no copy of a body that has nothing to
     transform; the params stay, a retry sends them again }
