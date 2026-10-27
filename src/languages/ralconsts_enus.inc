@@ -47,6 +47,7 @@
   emCryptInvalidPadding = 'Encrypted data could not be decoded: wrong key or altered content.';
   emCryptInvalidMAC = 'Encrypted data failed integrity check: wrong key or altered content.';
   emDBConnectionUndefined = 'Connection not set.';
+  emDBClientUndefined = 'The connection has no Client set.';
   emDBInvalidTableName = 'Invalid table name: only letters, digits, _, $ and . are accepted.';
   emDBSQLRejected = 'SQL rejected by OnValidateSQL.';
   emStreamSizeBeyondEnd = 'Binary stream announces more bytes than it holds.';

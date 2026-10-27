@@ -2103,7 +2103,17 @@ begin
 end;
 
 procedure TRALClientSSL.SetPins(AValue: TStrings);
+var
+  vInt: IntegerRAL;
 begin
+  { checked before the list takes it: the IDE's string list editor comes in
+    here, and a bad line kept by PinsChanged's raise was saved in the form,
+    which then failed to open on "Error reading SSL.Pins.Strings" }
+  if AValue <> nil then
+    for vInt := 0 to Pred(AValue.Count) do
+      if RALPinFingerprint(StringRAL(AValue.Strings[vInt])) = '' then
+        raise Exception.Create(emCertPinInvalid);
+
   FPins.Assign(AValue);
 end;
 

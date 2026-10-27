@@ -48,6 +48,7 @@
   emCryptInvalidMAC = 'Dados cifrados falharam na verificação de integridade: chave errada ou conteúdo alterado.';
   emHMACEmptyText = 'Texto de entrada não pode ser vazio.';
   emDBConnectionUndefined = 'Conexão não definida.';
+  emDBClientUndefined = 'A conexão não tem Client definido.';
   emDBInvalidTableName = 'Nome de tabela inválido: só letras, dígitos, _, $ e . são aceitos.';
   emDBSQLRejected = 'SQL recusado pelo OnValidateSQL.';
   emStreamSizeBeyondEnd = 'O stream binário anuncia mais bytes do que contém.';

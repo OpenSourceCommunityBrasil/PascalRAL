@@ -15,6 +15,7 @@ type
   private
     FClient: TRALClient;
     FModuleRoute: StringRAL;
+    procedure CheckClient;
   protected
     procedure SetClient(AValue: TRALClient);
     procedure SetModuleRoute(AValue: StringRAL);
@@ -96,6 +97,14 @@ end;
 
 { TRALDBConnection }
 
+{ A dataset linked to a connection that has no Client used to stop at an access
+  violation - in the IDE too, on Active = True or on the Fields Editor }
+procedure TRALDBConnection.CheckClient;
+begin
+  if FClient = nil then
+    raise Exception.Create(emDBClientUndefined);
+end;
+
 procedure TRALDBConnection.SetClient(AValue: TRALClient);
 begin
   if FClient <> nil then
@@ -131,6 +140,7 @@ begin
   if ACache.Count = 0 then
     Exit;
 
+  CheckClient;
   vMem := ACache.SaveToStream;
   try
     FClient.Request.Clear;
@@ -151,6 +161,7 @@ var
   vUrl: StringRAL;
   vSQLCache: TRALDBSQLCache;
 begin
+  CheckClient;
   vSQLCache := TRALDBSQLCache.Create;
   vSQLCache.Storage := AStorage;
   try
@@ -178,6 +189,7 @@ var
   vUrl: StringRAL;
   vSQLCache: TRALDBSQLCache;
 begin
+  CheckClient;
   vSQLCache := TRALDBSQLCache.Create;
   vSQLCache.Storage := AStorage;
   try
@@ -206,6 +218,7 @@ var
 begin
   Result := nil;
   vResponse := nil;
+  CheckClient;
 
   FClient.Request.Clear;
   FClient.Request.Params.AddParam('sql', ASQL, rpkBODY);
@@ -237,6 +250,7 @@ var
 begin
   Result := nil;
   vResponse := nil;
+  CheckClient;
 
   FClient.Request.Clear;
   FClient.Request.ContentType := rctAPPLICATIONJSON;
