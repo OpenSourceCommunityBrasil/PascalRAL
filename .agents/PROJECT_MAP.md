@@ -47,6 +47,9 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/design/` | `PascalRALDsgn` | core design time (`RALRegister`, property editors) |
 | `src/engine/<engine>/` | `<Engine>RAL` | one transport engine per folder |
 | `src/languages/` | (included by `RALConsts`) | user-facing texts per language, UTF-8 with BOM |
+| `src/modules/mqtt/` | `RALModuleMQTTPackage` | MQTT 3.1.1/5.0 and MQTT-SN client, broker, SN gateway, REST bridge |
+| `src/modules/mqtt/design/` | `RALModuleMQTTDsgn` | MQTT IDE registration and verbs |
+| `src/modules/mqtt/db/` | `RALModuleMQTTDBPackage` | `TRALMQTTDataSetLink` (messages into a dataset) |
 | `src/modules/soap/` | `RALModuleSOAPPackage` | SOAP module, client, WSDL |
 | `src/modules/soap/design/` | `RALModuleSOAPDsgn` | SOAP IDE verbs |
 | `src/modules/swagger/` | `RALModuleSwaggerPackage` | Swagger module, Swagger and Postman exporters |
@@ -151,6 +154,20 @@ raised; an impossible explicit choice raises.
 
 ### `src/modules/`
 
+- `mqtt/` (RALModuleMQTTPackage, requires PascalRAL and RALPluginAuthPackage; guide in
+  `src/modules/mqtt/README.md`): `RALMQTTTypes` (reason codes, properties, reader and
+  writer), `RALMQTTPacket` (3.1.1 and 5.0 packets), `RALMQTTTopic` (validation, matching,
+  the broker's topic tree), `RALMQTTSocket` (one socket code for every OS, poll),
+  `RALMQTTTLS` (OpenSSL TLS and DTLS), `RALMQTTWebSocket`, `RALMQTTProxy` (HTTP CONNECT,
+  SOCKS5), `RALMQTTAuth` (SCRAM, the client authenticators), `RALMQTTStore` (file session
+  store), `RALMQTTSession` (packet ids, aliases, broker URIs), `RALMQTTClient`
+  (`TRALMQTTClient`), `RALMQTTActions` (connect, disconnect, publish actions),
+  `RALMQTTSNTypes`/`RALMQTTSNPacket12`/`RALMQTTSNPacket20` (MQTT-SN codecs),
+  `RALMQTTSNClient`, `RALMQTTBroker` (`TRALMQTTBroker`, a `TRALServer`),
+  `RALMQTTBrokerStore` (journal), `RALMQTTSNGateway`, `RALMQTTRestModule`;
+  `design/RALModuleMQTTReg` (RALModuleMQTTDsgn: "Test connection", "Test ports");
+  `db/RALMQTTDataSetLink` + `db/RALModuleMQTTDBReg` (RALModuleMQTTDBPackage, requires
+  RALDBPackage)
 - `soap/` (RALModuleSOAPPackage, requires XML): `RALSOAPTypes` (versions, faults),
   `RALSOAPModule` (`TRALSOAPModule`, operations), `RALWSDLExporter`, `RALSOAPClient`
   (`TRALSOAPClient`, a `TRALClient`), `RALSOAPActions` (`TRALSOAPExecute`);

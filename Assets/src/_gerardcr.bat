@@ -29,6 +29,10 @@ echo RALModuleSwagger
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleSwaggerPackage.dcr" "RALModuleSwagger.rc"
 echo RALModuleXML
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleXMLPackage.dcr" "RALModuleXML.rc"
+echo RALModuleMQTT
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleMQTTDsgn.dcr" "RALModuleMQTT.rc"
+echo RALModuleMQTTDB
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleMQTTDBPackage.dcr" "RALModuleMQTTDB.rc"
 echo RALModuleSOAP
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleSOAPDsgn.dcr" "RALModuleSOAP.rc"
 echo NetHttp

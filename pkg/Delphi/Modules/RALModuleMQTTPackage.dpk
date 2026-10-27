@@ -1,0 +1,58 @@
+package RALModuleMQTTPackage;
+
+{$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | MQTT and MQTT-SN: client, broker, gateway'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  PascalRAL,
+  RALPluginAuthPackage;
+
+contains
+  RALMQTTTypes in '..\..\..\src\modules\mqtt\RALMQTTTypes.pas',
+  RALMQTTPacket in '..\..\..\src\modules\mqtt\RALMQTTPacket.pas',
+  RALMQTTTopic in '..\..\..\src\modules\mqtt\RALMQTTTopic.pas',
+  RALMQTTSocket in '..\..\..\src\modules\mqtt\RALMQTTSocket.pas',
+  RALMQTTTLS in '..\..\..\src\modules\mqtt\RALMQTTTLS.pas',
+  RALMQTTWebSocket in '..\..\..\src\modules\mqtt\RALMQTTWebSocket.pas',
+  RALMQTTProxy in '..\..\..\src\modules\mqtt\RALMQTTProxy.pas',
+  RALMQTTAuth in '..\..\..\src\modules\mqtt\RALMQTTAuth.pas',
+  RALMQTTStore in '..\..\..\src\modules\mqtt\RALMQTTStore.pas',
+  RALMQTTSession in '..\..\..\src\modules\mqtt\RALMQTTSession.pas',
+  RALMQTTClient in '..\..\..\src\modules\mqtt\RALMQTTClient.pas',
+  RALMQTTActions in '..\..\..\src\modules\mqtt\RALMQTTActions.pas',
+  RALMQTTSNTypes in '..\..\..\src\modules\mqtt\RALMQTTSNTypes.pas',
+  RALMQTTSNPacket12 in '..\..\..\src\modules\mqtt\RALMQTTSNPacket12.pas',
+  RALMQTTSNPacket20 in '..\..\..\src\modules\mqtt\RALMQTTSNPacket20.pas',
+  RALMQTTSNClient in '..\..\..\src\modules\mqtt\RALMQTTSNClient.pas',
+  RALMQTTBrokerStore in '..\..\..\src\modules\mqtt\RALMQTTBrokerStore.pas',
+  RALMQTTBroker in '..\..\..\src\modules\mqtt\RALMQTTBroker.pas',
+  RALMQTTSNGateway in '..\..\..\src\modules\mqtt\RALMQTTSNGateway.pas',
+  RALMQTTRestModule in '..\..\..\src\modules\mqtt\RALMQTTRestModule.pas';
+end.

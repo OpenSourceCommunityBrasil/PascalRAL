@@ -488,6 +488,22 @@ arrived. The WSDL has one binding per style (WS-I). `TRALSOAPClient` descends fr
 `sfXML` is MSXML (COM): XML save/load are wrapped in `CoInitializeEx`. Loading a storage
 into a `TBufDataset` merges the change log (`RALStoragePosted`/`RALStorageLoaded`).
 
+### MQTT (`src/modules/mqtt`)
+
+`RALModuleMQTTPackage` (requires `PascalRAL` and `RALPluginAuthPackage`): client and
+broker for MQTT 3.1.1 and 5.0, MQTT-SN 1.2 and 2.0 (draft) client and gateway, a REST
+bridge (`TRALMQTTRestModule`); design in `RALModuleMQTTDsgn`, `TRALMQTTDataSetLink` in the
+optional `RALModuleMQTTDBPackage` (requires `RALDBPackage`). Its own sockets
+(`RALMQTTSocket`, one code for every OS) and OpenSSL loaded at run time
+(`RALMQTTTLS`, TLS and DTLS): no engine involved. `TRALMQTTBroker` is a `TRALServer`:
+each CONNECT runs `ValidateRequest`/`ProcessCommands` on an internal route, so the
+server's plugins and authenticators judge MQTT logins. The client's certificate rule is
+`TRALClient`'s. The MQTT-SN gateway is a `TRALMQTTBrokerExtension` (sessions of the
+broker itself; the wake callback runs under the broker's lock). Wire text is
+`AnsiString`/`StringRAL`, never `string` (UTF-16 on Delphi). Guide and traps:
+`src/modules/mqtt/README.md`; every statement of the standards:
+`.agents/MQTT_CONFORMANCE.md`; tests: orchestrator suite `mqtt`/`mqttfpc`.
+
 ### Performance rules
 
 - The allocator serialises threads (FastMM4 medium blocks, FPC's heap): allocations per
