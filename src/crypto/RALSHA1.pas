@@ -34,9 +34,11 @@ implementation
 
 { SHA-1 adds modulo 2^32 on purpose: with overflow checks on - the default of
   many Debug builds, and of an implicit build of this package - every block
-  raised EIntOverflow. The SHA-2 units turn the check off around their sums;
-  here every sum is one, so the whole unit goes without it }
+  raised EIntOverflow, and with range checks on, ERangeError (FPC checks the
+  result of Inc on a Cardinal). Here every sum is one, so the whole unit goes
+  without both, as the SHA-2 units do }
 {$Q-}
+{$R-}
 
 { TRALSHA1 }
 
