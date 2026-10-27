@@ -830,6 +830,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+- **fix: Correção de defeitos achados no preparo de lançamento da versão 1.2** (2026-10-27 – mobius1qwe)
+
 - **fix: Correção de AV no RAD do Delphi** (2026-10-13 – mobius1qwe)
 
 - **fix: Erro de adição de cookie fix: Erro de JAR nos clientes fix: Erro de compilação Delphi seattle** (2026-10-08 – mobius1qwe)
