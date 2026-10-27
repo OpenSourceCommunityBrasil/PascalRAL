@@ -34,11 +34,19 @@ type
       to pay that round trip again before /opensql }
     FSchema: TRALDBInfoFields;
     FSchemaSQL: StringRAL;
+    FCountUpdatedRecords: boolean;
+    { the first failure of the running ApplyUpdates or ExecSQL, which the call
+      raises when it returns }
+    FFailure: StringRAL;
 
     FOnError: TRALDBTableOnError;
   protected
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    /// A failure of ApplyUpdates or ExecSQL: OnError hears it, and the call
+    /// raises the first one when it returns
+    procedure CallFailed(const AMessage: StringRAL);
+    procedure RaiseFailure;
 
     procedure InternalPost; override;
     procedure InternalDelete; override;
@@ -48,6 +56,7 @@ type
     procedure DropSchema;
 
     procedure SetSQL(AValue: TStrings);
+    procedure SetParams(const AValue: TParams);
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
     procedure SetRALConnection(AValue: TRALDBConnection);
     procedure SetStorage(const AValue: TRALStorageLink);
@@ -71,8 +80,18 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    /// Sends what Post and Delete cached, one statement per record, and waits
+    /// for the answer. A statement that failed, and an UPDATE or DELETE that
+    /// did not affect exactly one record - the record was changed or deleted
+    /// by someone else, or the criteria matched no row - is reported through
+    /// OnError and then raised, the first one, once the whole answer is
+    /// handled: the DAO's ApplyUpdatesRemote and FireDAC itself do the same.
+    /// CountUpdatedRecords set to False skips the count.
     procedure ApplyUpdates; reintroduce;
-    // no zeos essa funcao ja existe
+    /// Runs SQL with Params on the server and waits: RowsAffected and LastId
+    /// are read on the next line. A failure is reported through OnError and
+    /// then raised, as the DAO's ExecSQLRemote does. (TZMemTable has an
+    /// ExecSQL of its own, which this replaces.)
     procedure ExecSQL; override;
 
     function ParamByName(const AValue: StringRAL): TParam; reintroduce;
@@ -84,31 +103,23 @@ type
     property FieldDefs;
     property RALConnection: TRALDBConnection read FRALConnection write SetRALConnection;
     property ParamCheck: boolean read FParamCheck write FParamCheck;
-    property Params: TParams read FParams write FParams;
+    property Params: TParams read FParams write SetParams;
     property SQL: TStrings read FSQL write SetSQL;
     property Storage: TRALStorageLink read FStorage write SetStorage;
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
+    /// Whether ApplyUpdates takes an UPDATE or DELETE that did not affect
+    /// exactly one record as an error, as FireDAC's CountUpdatedRecords does.
+    /// Off for an UpdateSQL whose statements do not report one record each -
+    /// a stored procedure, a statement that touches several rows.
+    property CountUpdatedRecords: boolean read FCountUpdatedRecords
+      write FCountUpdatedRecords default True;
 
     property OnError: TRALDBTableOnError read FOnError write FOnError;
   end;
 
 implementation
-
-{ Reads the error message the server sent back, by name and then anonymously.
-
-  TRALDBModule.AnswerException answers with a single body param named
-  'Exception'. EncodeBody skips multipart for a lone body param and never puts
-  its name on the wire, so DecodeBody names whatever arrives 'ral_body' and
-  ParamByName('Exception') came back nil - OnError fired with an empty message
-  while the real one sat in the body, unread. }
-function ExceptionFromResponse(AResponse: TRALResponse): StringRAL;
-begin
-  Result := AResponse.ParamByName('Exception').AsString;
-  if Result = '' then
-    Result := AResponse.Body.AsString;
-end;
 
 { TRALDBZMemTable }
 
@@ -190,7 +201,16 @@ begin
     if FRALConnection <> nil then
     begin
       FLoading := True;
-      FRALConnection.OpenRemote(Self, FStorage, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
+      { lowered by the callback - which a raise BEFORE the request (no Client,
+        an engine that is not registered) never reaches: the next Open then
+        opened the dataset locally and empty, and every Post was taken for a
+        load and never sent }
+      try
+        FRALConnection.OpenRemote(Self, FStorage, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
+      except
+        FLoading := False;
+        raise;
+      end;
     end;
     Exit;
   end
@@ -259,6 +279,11 @@ begin
   inherited;
 end;
 
+procedure TRALDBZMemTable.SetParams(const AValue: TParams);
+begin
+  RALAssignOwned(FParams, AValue);
+end;
+
 procedure TRALDBZMemTable.SetSQL(AValue: TStrings);
 begin
   FSQL.Assign(AValue);
@@ -308,6 +333,7 @@ var
   vField: TFieldDef;
   vType: TRALFieldType;
   vTables: TStringList;
+  vDriver: IntegerRAL;
 begin
   vTables := TStringList.Create;
 
@@ -320,6 +346,7 @@ begin
     Self.DisableControls;
     FieldDefs.Clear;
 
+    vDriver := Ord(FSQLCache.GetQueryClass(Self));
     try
       for vInt := 0 to Pred(vInfo.Count) do
       begin
@@ -331,16 +358,36 @@ begin
 
         vField := FieldDefs.AddFieldDef;
         vField.Name := vInfo.Field[vInt].FieldName;
-        vField.DataType := TRALDB.RALFieldTypeToFieldType(vType);
 
-        if TRALFieldType(vType) = sftString then
-          vField.Size := vInfo.Field[vInt].Length
+        { A Zeos server that exports natively (ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT)
+          answers this dataset with its own field types, and the Fields Editor
+          builds its persistent fields from these defs: they have to be those
+          types, or Zeos refuses the load with a type mismatch. Through a RAL
+          storage - always, with the stock ZeosLib - the RAL type is what
+          arrives. See TRALDBFDMemTable.InternalInitFieldDefs. }
+        if (vInfo.Field[vInt].NativeDriver = vDriver) and
+           (vInfo.Field[vInt].FieldType <> ftUnknown) then
+          vInfo.Field[vInt].NativeFieldDef(vField)
         else
-          vField.Size := 0;
+        begin
+          vField.DataType := TRALDB.RALFieldTypeToFieldType(vType);
 
-        if (TRALFieldType(vType) = sftDouble) and
-           (vInfo.Field[vInt].Precision > 0) then
-          vField.Precision := vInfo.Field[vInt].Precision;
+          if TRALFieldType(vType) = sftString then
+            vField.Size := vInfo.Field[vInt].Length
+          else
+            vField.Size := 0;
+
+          if (TRALFieldType(vType) = sftDouble) and
+             (vInfo.Field[vInt].Precision > 0) then
+            vField.Precision := vInfo.Field[vInt].Precision;
+
+          // a decimal: Precision its digits, Size its scale (see RALDBModule)
+          if TRALFieldType(vType) = sftBCD then
+          begin
+            vField.Precision := RALDecimalPrecision(vInfo.Field[vInt].Precision);
+            vField.Size := vInfo.Field[vInt].Scale;
+          end;
+        end;
 
         vField.Required := vInfo.Field[vInt].Flags and 2 > 0;
 
@@ -365,7 +412,7 @@ begin
     except
       on e: Exception do
       begin
-        raise Exception.CreateFmt('Error: %s %s', [vField.Name, e.Message]);
+        raise Exception.CreateFmt(emDBFieldLoad, [vField.Name, e.Message]);
       end;
     end;
 
@@ -389,11 +436,18 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.Body.AsStream;
+    vMem := AResponse.Body.Content; // where it is, not a copy
+    vSQLCache := nil;
     try
       FLoading := True;
-      vSQLCache := TRALDBSQLCache.Create;
+      { A 200 whose body is not a query response - a route answering the
+        wrong thing, a truncated stream - used to raise out of this callback:
+        lost in the response thread on the ebMultiThread path, escaping Open
+        on the synchronous one, and FLoading stayed True either way, so the
+        dataset could never be opened again. It is an error of the same family
+        as a 500 and is reported the same way, through OnError. }
       try
+        vSQLCache := TRALDBSQLCache.Create;
         vSQLCache.ResponseFromStream(vMem);
         vDBSQL := vSQLCache.SQLList[0];
 
@@ -401,24 +455,23 @@ begin
           ZeosLoadFromStream(Self, vDBSQL.Response.Stream)
         else
           LoadFromRALStorage(Self, vDBSQL.Response.Stream);
-      finally
-        FreeAndNil(vSQLCache);
-      end;
 
-      { Only when the load actually opened the dataset. This runs inside the
-        client callback, and an exception raised here does not reach whoever
-        called Open - it escapes into the thread that dispatches the response
-        and terminates the process. A load that brought nothing has to end as a
-        closed dataset and an OnError, never as a crash in the host. }
-      if Self.Active then
-        Self.First;
+        { only when the load actually opened the dataset }
+        if Self.Active then
+          Self.First;
+      except
+        on e: Exception do
+          if Assigned(FOnError) then
+            FOnError(Self, StringRAL(e.Message));
+      end;
     finally
-      FreeAndNil(vMem);
+      FreeAndNil(vSQLCache);
+      FLoading := False;
     end;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
   begin
-    vException := ExceptionFromResponse(AResponse);
+    vException := RALDBResponseError(AResponse);
     if Assigned(FOnError) then
       FOnError(Self, vException);
   end
@@ -429,7 +482,7 @@ begin
       them - the status is always said now, and the body when there is one }
     vException := AException;
     if vException = '' then
-      vException := ExceptionFromResponse(AResponse);
+      vException := RALDBResponseError(AResponse);
     vException := Trim('HTTP ' + IntToStr(AResponse.StatusCode) + ' ' + vException);
     if Assigned(FOnError) then
       FOnError(Self, vException);
@@ -447,32 +500,28 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.Body.AsStream;
+    vMem := AResponse.Body.Content; // where it is, not a copy
+    vSQLCache := TRALDBSQLCache.Create;
     try
-      vSQLCache := TRALDBSQLCache.Create;
-      try
-        vSQLCache.ResponseFromStream(vMem);
-        vDBSQL := vSQLCache.SQLList[0];
+      vSQLCache.ResponseFromStream(vMem);
+      vDBSQL := vSQLCache.SQLList[0];
 
-        FRowsAffected := vDBSQL.Response.RowsAffected;
-        FLastId := vDBSQL.Response.LastId;
-      finally
-        FreeAndNil(vSQLCache);
-      end;
+      FRowsAffected := vDBSQL.Response.RowsAffected;
+      FLastId := vDBSQL.Response.LastId;
     finally
-      FreeAndNil(vMem);
+      FreeAndNil(vSQLCache);
     end;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
+    CallFailed(RALDBResponseError(AResponse))
+  else
   begin
-    vException := ExceptionFromResponse(AResponse);
-    if Assigned(FOnError) then
-      FOnError(Self, vException);
-  end
-  else if AException <> '' then
-  begin
-    if Assigned(FOnError) then
-      FOnError(Self, AException);
+    { 401, 404, the pool's 429, a transport failure: the statement did not
+      run, which went unsaid whenever AException came empty }
+    vException := AException;
+    if vException = '' then
+      vException := RALDBResponseError(AResponse);
+    CallFailed(Trim('HTTP ' + IntToStr(AResponse.StatusCode) + ' ' + vException));
   end;
 end;
 
@@ -488,62 +537,83 @@ var
 begin
   if AResponse.StatusCode = HTTP_OK then
   begin
-    vMem := AResponse.Body.AsStream;
-    try
-      FSQLCache.ResponseFromStream(vMem);
-      for vInt1 := 0 to Pred(FSQLCache.Count) do
+    { the body where it is: AsStream copied the whole answer first }
+    vMem := AResponse.Body.Content;
+    FSQLCache.ResponseFromStream(vMem);
+    for vInt1 := 0 to Pred(FSQLCache.Count) do
+    begin
+      vDBSQL := FSQLCache.SQLList[vInt1];
+      if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
+         (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
       begin
-        vDBSQL := FSQLCache.SQLList[vInt1];
-        if (vDBSQL.ExecType = etOpen) and (not vDBSQL.Response.Error) and
-           (vDBSQL.BookMark <> nil) and (Self.BookmarkValid(vDBSQL.BookMark)) then
-        begin
-          Self.GotoBookmark(vDBSQL.BookMark);
+        Self.GotoBookmark(vDBSQL.BookMark);
 
-          vTable := TZMemTable.Create(nil);
+        vTable := TZMemTable.Create(nil);
+        try
           try
-            try
-              if vDBSQL.Response.Native then
-                ZeosLoadFromStream(vTable, vDBSQL.Response.Stream)
-              else
-                LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
+            if vDBSQL.Response.Native then
+              ZeosLoadFromStream(vTable, vDBSQL.Response.Stream)
+            else
+              LoadFromRALStorage(vTable, vDBSQL.Response.Stream);
 
-              Self.Edit;
-              for vInt2 := 0 to Pred(vTable.FieldCount) do
-              begin
-                vField := Self.FindField(vTable.Fields[vInt2].FieldName);
-                if vField <> nil then
-                  vField.Value := vTable.Fields[vInt2].Value;
-              end;
-              Self.Post;
-            except
-
+            Self.Edit;
+            for vInt2 := 0 to Pred(vTable.FieldCount) do
+            begin
+              vField := Self.FindField(vTable.Fields[vInt2].FieldName);
+              if vField <> nil then
+                vField.Value := vTable.Fields[vInt2].Value;
             end;
-          finally
-            FreeAndNil(vTable);
+            Self.Post;
+          except
+
           end;
-        end
-        else if vDBSQL.Response.Error then
-        begin
-          if Assigned(FOnError) then
-            FOnError(Self, vDBSQL.Response.StrError);
+        finally
+          FreeAndNil(vTable);
         end;
-      end;
-      FSQLCache.Clear;
-    finally
-      FreeAndNil(vMem);
+      end
+      else if vDBSQL.Response.Error then
+        CallFailed(vDBSQL.Response.StrError)
+      { an UPDATE or DELETE that changed no record, or several - see
+        TRALDBFDMemTable.OnApplyUpdates }
+      else if (vDBSQL.ExecType = etExecute) and FCountUpdatedRecords and
+              (vDBSQL.Response.RowsAffected >= 0) and (vDBSQL.Response.RowsAffected <> 1) then
+        CallFailed(StringRAL(Format(emDBRowsAffected, [vDBSQL.Response.RowsAffected])));
     end;
+    FSQLCache.Clear;
   end
   else if AResponse.StatusCode = HTTP_InternalError then
+    CallFailed(RALDBResponseError(AResponse))
+  else
   begin
-    vException := ExceptionFromResponse(AResponse);
-    if Assigned(FOnError) then
-      FOnError(Self, vException);
-  end
-  else if AException <> '' then
-  begin
-    if Assigned(FOnError) then
-      FOnError(Self, AException);
+    { 401, 404, a transport failure: nothing reached the database, which went
+      unsaid whenever AException came empty - the same words as an Open }
+    vException := AException;
+    if vException = '' then
+      vException := RALDBResponseError(AResponse);
+    CallFailed(Trim('HTTP ' + IntToStr(AResponse.StatusCode) + ' ' + vException));
   end;
+end;
+
+procedure TRALDBZMemTable.CallFailed(const AMessage: StringRAL);
+begin
+  if Assigned(FOnError) then
+    FOnError(Self, AMessage);
+  if FFailure = '' then
+    FFailure := AMessage;
+end;
+
+{ ApplyUpdatesRemote and ExecSQLRemote are ebSingleThread: the answer was
+  handled on this thread before the call returned, so its failure is raised
+  to the caller - as the DAO does - instead of reaching OnError alone, or
+  nothing at all when OnError was not assigned }
+procedure TRALDBZMemTable.RaiseFailure;
+var
+  vError: StringRAL;
+begin
+  vError := FFailure;
+  FFailure := '';
+  if vError <> '' then
+    raise Exception.Create(string(vError));
 end;
 
 class procedure TRALDBZMemTable.ZeosLoadFromStream(ADataset: TZMemTable; AStream: TStream);
@@ -560,7 +630,11 @@ begin
     ADataset.LoadFromStream(AStream);
   {$ENDIF}
   {$ELSE}
-  vMethod.Data := Pointer(Self);
+  { the dataset, not Self: this is a class procedure, so Self is the class, and
+    the method ran on the VMT - an access violation on every native answer
+    when Zeos publishes LoadFromStream (ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT).
+    RALDBZeos does the same thing right }
+  vMethod.Data := Pointer(ADataset);
   vMethod.Code := ADataset.MethodAddress('LoadFromStream');
   if vMethod.Code <> nil then
   begin
@@ -633,6 +707,7 @@ begin
   FSQLCache := TRALDBSQLCache.Create;
   FUpdateMode := upWhereAll;
   FStorage := nil;
+  FCountUpdatedRecords := True;
 
   FLoading := False;
 
@@ -658,7 +733,9 @@ begin
   if FRALConnection = nil then
     raise Exception.Create(emDBConnectionUndefined);
 
+  FFailure := '';
   FRALConnection.ApplyUpdatesRemote(FSQLCache, {$IFDEF FPC}@{$ENDIF}OnApplyUpdates);
+  RaiseFailure;
 end;
 
 procedure TRALDBZMemTable.ExecSQL;
@@ -671,7 +748,9 @@ begin
   if FRALConnection = nil then
     raise Exception.Create(emDBConnectionUndefined);
 
+  FFailure := '';
   FRALConnection.ExecSQLRemote(Self, FStorage, {$IFDEF FPC}@{$ENDIF}OnExecSQLResponse);
+  RaiseFailure;
 end;
 
 function TRALDBZMemTable.ParamByName(const AValue: StringRAL): TParam;

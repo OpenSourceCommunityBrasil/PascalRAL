@@ -5,6 +5,14 @@ interface
 
 {$I PascalRAL.inc}
 
+{ the language files are UTF-8 with a BOM. Delphi reads a file without one in
+  the system ANSI codepage, and every accented message came out double-encoded;
+  FPC refuses to include a file with a BOM into a module of another codepage,
+  hence the directive - on FPC only, Delphi has none and needs none }
+{$IFDEF FPC}
+  {$CODEPAGE UTF8}
+{$ENDIF}
+
 uses
   Classes, SysUtils;
 
@@ -13,9 +21,9 @@ type
 
 const
   // Versionamento
-  RALVERSION = '1.1.0-1';
+  RALVERSION = '1.2.0-108';
   RALVERSION_MAJOR = 1;
-  RALVERSION_MINOR = 1;
+  RALVERSION_MINOR = 2;
   RALVERSION_PATCH = 0;
   RALVERSION_FULL  = RALVERSION_MAJOR * 10000
                    + RALVERSION_MINOR * 100
@@ -33,6 +41,9 @@ const
   ENGINESAGUI              = 'Sagui';
   ENGINENETHTTP            = 'netHttp';
   ENGINEFPHTTP             = 'fpHttp';
+  ENGINEOKHTTP             = 'OkHttp';
+  ENGINEMSQUIC             = 'MsQuic';
+  ENGINEKWIK               = 'Kwik';
 
   // html pages
   RALDefaultPage = '<!DOCTYPE html>'
@@ -52,6 +63,9 @@ const
   MultipartLineLength = 500;
   DEFAULTBUFFERSTREAMSIZE = 52428800;
   DEFAULTDECODERBUFFERSIZE = 65536;
+  { the work buffer the compressors read and write through, whatever the size
+    of the body: see TRALCompressZLib.InitCompress }
+  DEFAULTCOMPRESSBUFFERSIZE = 65536;
 
   // Client defaults and limits.
   // The two timeouts must be written both in the constructor and in the
@@ -61,11 +75,48 @@ const
   // the dfm/lfm - so typing exactly 5000 in the Object Inspector produced a
   // component that ran with 30000.
   DEFAULTCONNECTTIMEOUT = 30000;
+  { How many idle client engines TRALClient keeps for reuse. An engine owns a
+    connection, so this is also the ceiling on connections one client holds
+    open while nothing is in flight. Past it a released engine is closed
+    instead of pooled, which is what the client did for EVERY engine before
+    the pool existed. }
+  RALMAXIDLEENGINES = 32;
+  { Milliseconds an engine may sit idle in TRALClient's pool before it is
+    closed instead of handed out again. Zero keeps it forever. Five minutes
+    is below what a server usually allows a kept-alive connection. }
+  RALENGINEIDLETIMEOUT = 300000;
+  { Milliseconds a thread's own Request - TRALClient.Request is one object per
+    thread - may sit untouched before the client discards it. Deliberately NOT
+    the pool's idle timeout: a thread that set a header once and calls every
+    ten minutes must not lose it in between. Thirty minutes. }
+  RALTHREADREQUESTTIMEOUT = 1800000;
+  { The port a TRALServer listens on when nobody chose one, and the port a
+    client assumes for a BaseURL without one on the engines that have to know
+    - the QUIC engine has no 80/443 convention to fall back on. }
+  DEFAULTSERVERPORT = 8000;
+  { ALPN the QUIC engine offers on both ends. A server and a client with
+    different values never complete a handshake. }
+  RALQUICALPN = 'ralq1';
+  { Milliseconds a QUIC connection may sit idle before either end closes it.
+    QUIC negotiates the smaller of the two peers' values, so the client and
+    the server start from the same one. }
+  RALQUICIDLETIMEOUT = 30000;
   DEFAULTREQUESTTIMEOUT = 10000;
   // Consecutive redirects a client follows. Engines used to disagree without
   // anyone choosing it: Indy 3, mORMot2 3, fpHTTP 255, netHTTP whatever
   // THTTPClient defaults to.
   DEFAULTMAXREDIRECTS = 3;
+  { Milliseconds a WebModule session may sit unused before it is dropped -
+    TRALWebModule.SessionTimeout. Thirty minutes, the usual for a web session.
+    Not TRALServer.SessionTimeout, whose 30000 is what mORMot2 holds an idle
+    kept-alive connection for: at 30 minutes there, an idle client would keep
+    a thread of smThreads for half an hour }
+  DEFAULTWEBSESSIONTIMEOUT = 1800000;
+  { Floor for TRALClient.KeepAliveInterval while it is on. It comes from
+    WinHTTP, which refuses WINHTTP_OPTION_HTTP2_KEEPALIVE below 5000 ms with
+    ERROR_INVALID_PARAMETER. Engines with no floor of their own answer 0 to
+    MinKeepAliveInterval and are not held to this one. }
+  MINKEEPALIVEMS = 5000;
   // Attempts to obtain a token, in SetTokenDigest/SetTokenJWT/SetTokenOAuth1.
   RALMAXTOKENTRIES = 4;
   HTTPLineBreak = #13#10;
@@ -73,16 +124,20 @@ const
   HTTP_OK                  = 200;
   HTTP_Created             = 201;
   HTTP_NoContent           = 204;
+  HTTP_PartialContent      = 206;
   HTTP_Moved               = 301;
   HTTP_Found               = 302;
+  HTTP_NotModified         = 304;
   HTTP_BadRequest          = 400;
   HTTP_Unauthorized        = 401;
   HTTP_Forbidden           = 403;
   HTTP_NotFound            = 404;
   HTTP_MethodNotAllowed    = 405;
+  HTTP_NotAcceptable       = 406;
   HTTP_RequestTimeout      = 408;
   HTTP_RequestEntityTooLarge = 413;
   HTTP_UnsupportedMedia    = 415;
+  HTTP_RangeNotSatisfiable = 416;
   HTTP_TooManyRequests     = 429;
   HTTP_InternalError       = 500;
   HTTP_NotImplemented      = 501;

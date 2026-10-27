@@ -243,6 +243,7 @@ begin
     begin
       vFile.Add('  FWebModule := TRALWebModule.Create(nil);');
       vFile.Add('  FWebModule.Server := FServer;');
+      vFile.Add('  FWebModule.DocumentRoot := ''www'';');
     end;
 
     if Auth = 1 then

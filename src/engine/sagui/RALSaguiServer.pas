@@ -50,7 +50,7 @@ type
     FHandle: Psg_httpsrv;
     FLibPath: TFileName;
     FPoolCount: IntegerRAL;
-    FConnectionLimit: Int64RAL;
+    FMaxConnections: IntegerRAL;
     class procedure DoClientConnectionCallback(Acls: Pcvoid; const Aclient: Pcvoid;
       Aclosed: Pcbool); cdecl; static;
     class procedure DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar); cdecl; static;
@@ -81,11 +81,12 @@ type
     function InitializeServer: boolean;
     function IPv6IsImplemented: boolean; override;
 
-    function GetConnectionLimit: Int64RAL;
     function GetPoolCount: IntegerRAL;
     function GetSSL: TRALSaguiSSL;
     procedure SetActive(const AValue: boolean); override;
-    procedure SetConnectionLimit(const AValue: Int64RAL);
+    procedure SetMaxConnections(const AValue: IntegerRAL);
+    /// Streaming-only reader for the old ConnectionLimit - see DefineProperties
+    procedure ReadOldConnectionLimit(Reader: TReader);
     procedure SetLibPath(const AValue: TFileName);
     procedure SetPoolCount(const AValue: IntegerRAL);
     procedure SetPort(const AValue: IntegerRAL); override;
@@ -95,14 +96,34 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    { Reads a ConnectionLimit written by a .dfm/.lfm from before the rename, so
+      no existing project stops loading. It never WRITES it - nil writer and
+      HasData False - so the old name dies out with the next save. }
+    procedure DefineProperties(Filer: TFiler); override;
+    /// DEPRECATED, use MaxConnections - the old name of the same property,
+    /// kept so existing code still compiles. It is not published, so the
+    /// Object Inspector shows the new name only, and it carries no
+    /// "deprecated" directive because Delphi 12 does not accept one on a
+    /// property (FPC does, and a hint on one compiler only is worse than a
+    /// comment on both).
+    property ConnectionLimit: IntegerRAL read FMaxConnections write SetMaxConnections;
   published
-    property ConnectionLimit: Int64RAL read GetConnectionLimit write SetConnectionLimit;
+    /// Ceiling on how many connections may be open AT THE SAME TIME: past it
+    /// libmicrohttpd refuses a NEW one, so no existing client is dropped to
+    /// make room. 0 means no ceiling, the same as on the Indy, fpHTTP and
+    /// mORMot2 servers - this was called ConnectionLimit until 2026-09-15, and
+    /// the name is now the same on all four.
+    property MaxConnections: IntegerRAL read FMaxConnections write SetMaxConnections default 0;
     property LibPath: TFileName read FLibPath write SetLibPath;
     property PoolCount: IntegerRAL read GetPoolCount write SetPoolCount;
     property SSL: TRALSaguiSSL read GetSSL write SetSSL;
   end;
 
 implementation
+
+const
+  { What the constructor uses, and where any invalid value goes back to }
+  DEFAULTPOOLCOUNT = 32;
 
 type
   { TRALSaguiStringMap }
@@ -207,8 +228,7 @@ begin
     FLibPath := SgLib.GetLastName;
   {$ENDIF}
 
-  ConnectionLimit := 9999999;
-  PoolCount := 32;
+  PoolCount := DEFAULTPOOLCOUNT;
 end;
 
 function TRALSaguiServer.CreateRALSSL: TRALSSL;
@@ -329,6 +349,7 @@ var
   vPPayload: Pcchar;
   vPayloadStream: TMemoryStream;
   vPay: ansistring;
+  vClient: Pcvoid;
 begin
   vServer := TRALSaguiServer(Acls);
   vRequest := vServer.CreateRequest;
@@ -339,6 +360,7 @@ begin
     happened to hold. In a cdecl callback invoked from C that is a silent
     process death, not an exception }
   vStrMap := nil;
+  vRespStream := nil;
   try
     try
       with vRequest do
@@ -381,6 +403,20 @@ begin
         vServer.DecodeAuth(vRequest);
 
         ClientInfo.IP := GetSaguiIP(Areq);
+        { libmicrohttpd's client handle, which is per CONNECTION - the
+          sockaddr GetSaguiIP reads the address from. A kept-alive client's
+          requests all report it; nil (no client) stays 0, meaning unknown.
+          The pointer of a closed connection is handed to the next one, so
+          the client's port goes above it, as http.sys is keyed - and the
+          port is reported, which it was not: both families keep it in the
+          third and fourth bytes of the sockaddr, in network order }
+        vClient := sg_httpreq_client(Areq);
+        if vClient <> nil then
+        begin
+          ClientInfo.Port := (PByte(vClient)[2] shl 8) or PByte(vClient)[3];
+          ClientInfo.ConnectionID := (Int64RAL(ClientInfo.Port) shl 48) xor
+            Int64RAL(NativeUInt(vClient));
+        end;
         ClientInfo.MACAddress := '';
         ClientInfo.UserAgent := ParamByName('User-Agent').AsString;
 
@@ -389,12 +425,17 @@ begin
 
         { the real size, like Indy, fpHTTP and Synopse report. Zero here was
           the server telling every handler that the request arrived empty.
-          Read BEFORE ValidateRequest, which compares it with MaxRequestSize }
+          A form or a multipart body never reaches the payload -
+          libmicrohttpd parses it into fields and files - so it is the
+          length the client declared there, as on Indy and fpHTTP. Read
+          BEFORE ValidateRequest, which compares it with MaxRequestSize }
         vPayloadLen := 0;
         vPayLoad := sg_httpreq_payload(Areq);
         if Assigned(vPayLoad) then
           vPayloadLen := sg_str_length(vPayLoad);
         ContentSize := vPayloadLen;
+        if ContentSize = 0 then
+          ContentSize := StrToInt64Def(string(ParamByName('Content-Length').AsString), 0);
 
         vServer.ValidateRequest(vRequest, vResponse);
         if vResponse.StatusCode < HTTP_BadRequest then
@@ -447,18 +488,18 @@ begin
             end;
           end;
 
+          { HttpVersion is the scheme, which the request line does not carry -
+            it says HTTP/1.1 over TLS too, and this used to copy the 'HTTP' }
+          if vServer.SSLEnabled then
+            HttpVersion := 'HTTPS'
+          else
+            HttpVersion := 'HTTP';
           vStr := sg_httpreq_version(Areq);
           vInt := Pos('/', vStr);
           if vInt > 0 then
-          begin
-            HttpVersion := Copy(vStr, 1, vInt - 1);
-            Protocol := Copy(vStr, vInt + 1, 3);
-          end
+            Protocol := Copy(vStr, vInt + 1, 3)
           else
-          begin
-            HttpVersion := 'HTTP';
             Protocol := '1.0';
-          end;
         end;
       end;
 
@@ -495,10 +536,25 @@ begin
                               vResponse.StatusCode)
     except
       on e: exception do
+      begin
+        { the request failed before its response was queued - the stream
+          goes out last - and nothing answered it: a 500 goes out instead,
+          over headers and cookies cleared of whatever the answer had been
+          given already, and the stream that never reached libsagui is
+          freed here }
+        if sg_httpres_is_empty(Ares) then
+        begin
+          FreeAndNil(vRespStream);
+          sg_httpres_clear(Ares);
+          vStr := vServer.ErrorText(e);
+          sg_httpres_sendbinary(Ares, PAnsiChar(vStr), Length(vStr),
+                                PAnsiChar(StringRAL(rctTEXTPLAIN)), HTTP_InternalError);
+        end;
         if assigned(vServer.OnServerError) then
           vServer.OnServerError(e)
         else if vServer.RaiseError then
           Raise;
+      end;
     end;
   finally
     FreeAndNil(vStrMap);
@@ -535,11 +591,6 @@ begin
   if FHandle <> nil then
     sg_httpsrv_free(FHandle);
   FHandle := nil;
-end;
-
-function TRALSaguiServer.GetConnectionLimit: Int64RAL;
-begin
-  Result := FConnectionLimit;
 end;
 
 function TRALSaguiServer.GetPoolCount: IntegerRAL;
@@ -594,9 +645,16 @@ begin
     end;
   end;
 
-  SgLib.Check;
+  try
+    SgLib.Check;
+  except
+    if AValue then
+      inherited SetActive(False);
+    raise;
+  end;
   if AValue then
   begin
+    try
     { Every worker thread of this engine is created inside libmicrohttpd, so
       BeginThread never runs and IsMultiThread stays False - and that flag is
       what the memory manager reads to decide whether to lock at all:
@@ -620,11 +678,21 @@ begin
       connection limit goes first for the same reason. }
     if FHandle <> nil then
     begin
-      SetConnectionLimit(ConnectionLimit);
+      SetMaxConnections(FMaxConnections);
       SetPoolCount(PoolCount);
     end;
     if not InitializeServer then
+    begin
       FreeServerHandle;
+      raise Exception.CreateFmt(emServerListenFailed, ['Sagui', Port]);
+    end;
+    except
+      { the base already wrote Active := True; a server that says it is
+        active while nothing listens cannot even be started again, since
+        SetActive(True) is then a no-op. Same guard on every engine. }
+      inherited SetActive(False);
+      raise;
+    end;
   end
   else
   begin
@@ -633,11 +701,43 @@ begin
   end;
 end;
 
-procedure TRALSaguiServer.SetConnectionLimit(const AValue: Int64RAL);
+procedure TRALSaguiServer.SetMaxConnections(const AValue: IntegerRAL);
 begin
-  FConnectionLimit := AValue;
-  if FHandle <> nil then
-    sg_httpsrv_set_con_limit(FHandle, AValue);
+  if AValue < 0 then
+    FMaxConnections := 0
+  else
+    FMaxConnections := AValue;
+
+  if FHandle = nil then
+    Exit;
+
+  if FMaxConnections > 0 then
+    sg_httpsrv_set_con_limit(FHandle, FMaxConnections)
+  else
+    { 0 means NO ceiling, as it does on every other RAL server - and
+      libmicrohttpd reads a literal 0 as "accept nothing", so it never sees
+      one. This is the number this engine used as its own default until
+      2026-09-15. }
+    sg_httpsrv_set_con_limit(FHandle, 9999999);
+end;
+
+procedure TRALSaguiServer.DefineProperties(Filer: TFiler);
+begin
+  inherited;
+  Filer.DefineProperty('ConnectionLimit', ReadOldConnectionLimit, nil, False);
+end;
+
+procedure TRALSaguiServer.ReadOldConnectionLimit(Reader: TReader);
+var
+  vOld: Int64RAL;
+begin
+  { ReadInt64 and not ReadInteger: the old property was Int64RAL, and it falls
+    back to the 32-bit read for the values that were really written }
+  vOld := Reader.ReadInt64;
+  if (vOld <= 0) or (vOld >= 9999999) then
+    MaxConnections := 0 // the old default, which is what 0 means now
+  else
+    MaxConnections := IntegerRAL(vOld);
 end;
 
 procedure TRALSaguiServer.SetLibPath(const AValue: TFileName);
@@ -665,11 +765,26 @@ begin
     sg_httpsrv_shutdown(FHandle);
 end;
 
+{ Negative or zero goes back to the default, and not out of a taste for
+  rounding: FPoolCount ends up in sg_httpsrv_set_thr_pool_size, which takes a
+  cuint - so -1 does not mean "automatic" there, it means 4294967295 threads
+  asked of libmicrohttpd, and 0 means a server with nobody to answer. Three
+  samples in the examples repository carried exactly that -1 in a form file,
+  typed meaning "automatic", which is another library's convention and not
+  this one's.
+
+  Same rule as MaxConnections right above: a value the layer below cannot
+  keep never reaches it. }
 procedure TRALSaguiServer.SetPoolCount(const AValue: IntegerRAL);
 begin
-  FPoolCount := AValue;
+  if AValue <= 0 then
+    FPoolCount := DEFAULTPOOLCOUNT
+  else
+    FPoolCount := AValue;
+  { the sanitised value: a zero or negative AValue reached the library as it
+    came, while the property already read DEFAULTPOOLCOUNT }
   if FHandle <> nil then
-    sg_httpsrv_set_thr_pool_size(FHandle, AValue);
+    sg_httpsrv_set_thr_pool_size(FHandle, FPoolCount);
 end;
 
 procedure TRALSaguiServer.SetPort(const AValue: IntegerRAL);
@@ -696,9 +811,11 @@ begin
   begin
     if not Assigned(sg_httpsrv_tls_listen3) then
     begin
+      { it used to report the error and then call the nil pointer anyway }
       e := Exception.Create(emSaguiServerUnsupportedTLS);
       if assigned(OnServerError) then
         OnServerError(e);
+      raise e;
     end;
 
     Result := sg_httpsrv_tls_listen3(FHandle, pansichar(SSL.PrivateKey),
@@ -745,11 +862,15 @@ end;
 procedure TRALSaguiStringMap.AssignFromParams(AParams: TRALParams; AKind: TRALParamKind);
 var
   vInt: integer;
+  vParam: TRALParam;
 begin
+  { what this fills is the response's header map, and each entry becomes one
+    header line: no CR or LF in it, as on every engine }
   for vInt := 0 to Pred(AParams.Count) do
   begin
-    if AParams.Index[vInt].Kind = AKind then
-      Add(AParams.Index[vInt].ParamName, AParams.Index[vInt].AsString);
+    vParam := AParams.Index[vInt];
+    if vParam.Kind = AKind then
+      Add(RALSafeHeaderText(vParam.ParamName), RALSafeHeaderText(vParam.AsString));
   end;
 end;
 

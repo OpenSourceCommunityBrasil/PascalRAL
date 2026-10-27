@@ -15,6 +15,23 @@ type
   TRALComponent = class(TComponent)
   private
     function GetVersion: string;
+  public
+    { Whether a published property still means anything with the component
+      configured as it is RIGHT NOW - the mORMot2 server's HttpSysDomain says
+      nothing outside smHttpSys, and ShareConnection says nothing on an engine
+      whose transport is one socket per object.
+
+      It is what the Object Inspector filter asks (see TRALSelectionEditor in
+      RALRegister), and it lives here, on the component, so that the design
+      package never has to know one engine from another.
+
+      HIDDEN IS NOT FORBIDDEN, and nothing may be built on top of this: a
+      property left over from another configuration has to stay harmless, so
+      an irrelevant value is ignored and never raises. What does raise is an
+      explicit choice that cannot work - a Mode this platform has no server
+      for, an HTTPVersion this engine cannot ask for - and those are never
+      hidden. }
+    function IsPropertyRelevant(const AName: StringRAL): boolean; virtual;
   published
     property Version: string read GetVersion;
   end;
@@ -33,7 +50,19 @@ type
     FContentEncription: StringRAL;
     FContentType: StringRAL;
     FCriptoKey: StringRAL;
+    FProtocolVersion: TRALHTTPVersion;
     FParams: TRALParams;
+    { what AcceptCompress and ContentCompress answered last, for which text and
+      under which set of registered compressors: a request reads each several
+      times, and the header only changes when somebody writes it. The text is
+      compared by reference - kept here, it cannot be freed and its address
+      taken by another string - so a hit costs two comparisons }
+    FAcceptKey: StringRAL;
+    FAcceptGen: IntegerRAL;
+    FAcceptValue: TRALCompressType;
+    FContentKey: StringRAL;
+    FContentGen: IntegerRAL;
+    FContentValue: TRALCompressType;
   protected
     /// Grabs the kind of compression that will be accepted on the traffic
     function GetAcceptCompress: TRALCompressType;
@@ -44,9 +73,12 @@ type
     /// Grabs the kind of criptography that will be used on the traffic
     function GetContentCripto: TRALCriptoType;
     function GetParams: TRALParams;
+    function GetProtocol: StringRAL;
     procedure SetContentCompress(const AValue: TRALCompressType);
     procedure SetContentCripto(AValue: TRALCriptoType);
+    procedure SetContentDisposition(const AValue: StringRAL);
     procedure SetContentType(const AValue: StringRAL);
+    procedure SetProtocol(const AValue: StringRAL);
   public
     constructor Create(AOwner : TObject); virtual;
     destructor Destroy; override;
@@ -63,19 +95,33 @@ type
     function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
-    /// Grabs the body of either the request or the response
+    /// The body of the request or the response, when it is ONE value - raw text,
+    /// JSON, a file (the param named 'ral_body'). A body the engine already split
+    /// into params is not here: form fields (x-www-form-urlencoded) and the parts
+    /// of a multipart are rpkFIELD/rpkBODY params, read them with ParamByName,
+    /// and Params.AssignParamsUrl(rpkFIELD) gives the form back as text. For such
+    /// a body this answers nil - Body.AsString is still safe and gives ''
     function Body: TRALParam;
     procedure Clear; virtual;
     procedure Clone(ASource: TRALHTTPHeaderInfo);
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
     function GetCookie(const AName: StringRAL): StringRAL; virtual; deprecated 'use GetRALCookie(AName): TRALCookie instead';
+    /// The cookie of that name, received (Name and Value; the attributes of a
+    /// Set-Cookie stay with the browser) or set with AddCookie(TRALCookie) on
+    /// this response (the whole record). An empty record when there is none.
     function GetRALCookie(const AName: StringRAL): TRALCookie; virtual;
     function GetField(const AName: StringRAL): StringRAL; virtual;
     function GetHeader(const AName: StringRAL): StringRAL; virtual;
     function GetQuery(const AName: StringRAL): StringRAL; virtual;
     function HasValidAcceptEncoding: boolean;
     function HasValidContentEncoding: boolean;
-    /// Grabs the param either on request or response by its name
+    /// The param with this name, of ANY kind - query string, header, cookie, form
+    /// field - and the first one added when there are several: the query string
+    /// and the headers come in before any authentication event runs, so a value
+    /// added later with AddParam does not override one the client sent under the
+    /// same name (use Params.ReplaceParam for that, or Params.GetKind to ask for
+    /// one kind). A JSON body is not split into params unless the server has
+    /// JSONBodyToParams on; read it from Body otherwise
     function ParamByName(const AParamName: StringRAL): TRALParam;
     /// fills the body with the String AContent
     procedure SetBody(AContent: StringRAL); overload; virtual;
@@ -91,8 +137,26 @@ type
     property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
     property ContentEncription: StringRAL read FContentEncription write FContentEncription;
     property ContentType: StringRAL read FContentType write SetContentType;
-    property ContentDisposition: StringRAL read FContentDisposition write FContentDisposition;
+    property ContentDisposition: StringRAL read FContentDisposition write SetContentDisposition;
     property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
+    /// Which HTTP version carried this message, as the transport REPORTS it -
+    /// never what was asked for, since ALPN settles that during the TLS
+    /// handshake. A transport that cannot tell leaves rhvDefault.
+    ///
+    /// On a RESPONSE it is what the client engine could read back. On a
+    /// REQUEST it is what the server saw the client arrive on, which is the
+    /// only place the answer is reliable: the http.sys server reads it from
+    /// the driver, while a client on Windows has to guess from the status
+    /// line - and an HTTP/2 response does not have one, so it under-reports.
+    property ProtocolVersion: TRALHTTPVersion read FProtocolVersion write FProtocolVersion;
+    /// The SAME fact as ProtocolVersion, spelled the way the wire spells it -
+    /// '1.0', '1.1', '2.0', or '' when the transport could not tell.
+    ///
+    /// There is ONE field behind the two, on purpose: an engine that fills
+    /// either one has filled both, and they can never disagree. Writing text
+    /// a version cannot be parsed out of leaves rhvDefault, so Protocol reads
+    /// back as '' - it is not a free-text field.
+    property Protocol: StringRAL read GetProtocol write SetProtocol stored False;
     property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
     property Params: TRALParams read GetParams;
     property Parent: TObject read FParent;
@@ -107,11 +171,23 @@ begin
   Result := RALVERSION;
 end;
 
+function TRALComponent.IsPropertyRelevant(const AName: StringRAL): boolean;
+begin
+  Result := True; // everything shows unless a descendant says otherwise
+end;
+
 { TRALHTTPHeaderInfo }
 
 function TRALHTTPHeaderInfo.GetAcceptCompress: TRALCompressType;
 begin
-  Result := TRALCompress.GetBestCompress(FAcceptEncoding);
+  if (Pointer(FAcceptEncoding) <> Pointer(FAcceptKey)) or
+     (FAcceptGen <> CompressRegistration) then
+  begin
+    FAcceptValue := TRALCompress.GetBestCompress(FAcceptEncoding);
+    FAcceptKey := FAcceptEncoding;
+    FAcceptGen := CompressRegistration;
+  end;
+  Result := FAcceptValue;
 end;
 
 function TRALHTTPHeaderInfo.GetContentCripto: TRALCriptoType;
@@ -134,9 +210,15 @@ begin
   FContentEncription := CriptoToStrCripto(AValue);
 end;
 
+procedure TRALHTTPHeaderInfo.SetContentDisposition(const AValue: StringRAL);
+begin
+  { the file name in it is often the client's own: kept to one line }
+  FContentDisposition := RALSafeHeaderText(AValue);
+end;
+
 procedure TRALHTTPHeaderInfo.SetContentType(const AValue: StringRAL);
 begin
-  FContentType := AValue;
+  FContentType := RALSafeHeaderText(AValue); // one header line, whatever AValue held
   { Never on a multipart container. RFC 2046 puts the charset on each part, so
     the parameter means nothing here - and appending anything after "boundary="
     breaks every parser that reads the boundary as the rest of the header value.
@@ -188,9 +270,20 @@ begin
   Result := FParams;
 end;
 
+function TRALHTTPHeaderInfo.GetProtocol: StringRAL;
+begin
+  Result := RALHTTPVersionToStr(FProtocolVersion);
+end;
+
+procedure TRALHTTPHeaderInfo.SetProtocol(const AValue: StringRAL);
+begin
+  FProtocolVersion := StrToRALHTTPVersion(AValue);
+end;
+
 procedure TRALHTTPHeaderInfo.Clear;
 begin
   FParams.ClearParams;
+  FProtocolVersion := rhvDefault;
 end;
 
 procedure TRALHTTPHeaderInfo.Clone(ASource: TRALHTTPHeaderInfo);
@@ -210,6 +303,7 @@ begin
   ASource.ContentType := Self.ContentType;
   ASource.ContentDisposition := Self.ContentDisposition;
   ASource.CriptoKey := Self.CriptoKey;
+  ASource.ProtocolVersion := Self.ProtocolVersion;
 
   for vInt := 0 to Pred(FParams.Count) do begin
     vParamSource := FParams.Index[vInt];
@@ -272,28 +366,72 @@ end;
 
 function TRALHTTPHeaderInfo.AddCookie(const ACookie: TRALCookie
   ): TRALHTTPHeaderInfo;
+var
+  vInt: IntegerRAL;
+  vParam: TRALParam;
+  vPrefix: StringRAL;
 begin
   Result := Self;
-  FParams.AddParam('Set-Cookie', GetCookieText(ACookie), rpkCOOKIE);
+  { each cookie is a Set-Cookie line of its own. AddParam finds a param by name
+    and kind, and all of these are named Set-Cookie, so the second cookie of a
+    response overwrote the first - the JWT raltoken and a cookie of the
+    application could not go out together. A cookie of the same name still
+    replaces the one already there }
+  vPrefix := ACookie.Name + '=';
+  vParam := nil;
+  for vInt := 0 to Pred(FParams.Count) do
+    if (FParams.Index[vInt].Kind = rpkCOOKIE) and
+       RALSameName(FParams.Index[vInt].ParamName, 'Set-Cookie') and
+       (Pos(vPrefix, FParams.Index[vInt].AsString) = 1) then
+    begin
+      vParam := FParams.Index[vInt];
+      Break;
+    end;
+  if vParam = nil then
+  begin
+    vParam := FParams.NewParam;
+    vParam.ParamName := 'Set-Cookie';
+    vParam.ContentType := rctTEXTPLAIN;
+    vParam.Kind := rpkCOOKIE;
+  end;
+  vParam.AsString := GetCookieText(ACookie);
 end;
 
 function TRALHTTPHeaderInfo.AddCookies(ACookies: StringRAL): TRALHTTPHeaderInfo;
 var
-  vInt1: IntegerRAL;
-  vStr: StringRAL;
-begin
-  while Trim(ACookies) <> '' do
+  vInt, vStart: IntegerRAL;
+
+  procedure AddPair(AEnd: IntegerRAL);
+  var
+    vPair, vName, vValue: StringRAL;
+    vEquals: IntegerRAL;
   begin
-    vInt1 := Pos(';', ACookies);
-    if vInt1 = 0 then
-      vInt1 := Length(ACookies) + 1;
-
-    vStr := Copy(ACookies, 1, vInt1 - 1);
-    Delete(ACookies, 1, vInt1);
-
-    vInt1 := Pos('=', vStr);
-    AddCookie(Trim(Copy(vStr, 1, vInt1 - 1)), Trim(Copy(vStr, vInt1 + 1, Length(vStr))));
+    vPair := Copy(ACookies, vStart, AEnd - vStart);
+    vEquals := Pos(StringRAL('='), vPair);
+    // RALTrim: SysUtils.Trim over a StringRAL converts to UTF-16 and back
+    vName := RALTrim(Copy(vPair, 1, vEquals - 1));
+    vValue := RALTrim(Copy(vPair, vEquals + 1, Length(vPair)));
+    // an empty segment ("a=1;;b=2") is no cookie at all
+    if (vName <> '') or (vValue <> '') then
+      AddCookie(vName, vValue);
   end;
+
+begin
+  { Result first: this is a fluent method, and it never assigned it - the
+    caller got whatever the register held. Then ONE scan, a Copy per cookie:
+    it used to Trim and Delete off the front of the whole remaining header
+    once per cookie, quadratic in the number of cookies of a header that comes
+    straight from the network, before any authentication - mORMot2 and MsQuic
+    hand it over whole }
+  Result := Self;
+  vStart := 1;
+  for vInt := 1 to Length(ACookies) do
+    if ACookies[POSINISTR - 1 + vInt] = ';' then
+    begin
+      AddPair(vInt);
+      vStart := vInt + 1;
+    end;
+  AddPair(Length(ACookies) + 1);
 end;
 
 function TRALHTTPHeaderInfo.AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo;
@@ -344,7 +482,16 @@ end;
 
 function TRALHTTPHeaderInfo.GetContentCompress: TRALCompressType;
 begin
-  Result := TRALCompress.GetBestCompress(FContentEncoding);
+  { the same memory as GetAcceptCompress: ProcessCommands, the engine and the
+    body encoder each ask }
+  if (Pointer(FContentEncoding) <> Pointer(FContentKey)) or
+     (FContentGen <> CompressRegistration) then
+  begin
+    FContentValue := TRALCompress.GetBestCompress(FContentEncoding);
+    FContentKey := FContentEncoding;
+    FContentGen := CompressRegistration;
+  end;
+  Result := FContentValue;
 end;
 
 function TRALHTTPHeaderInfo.GetCookie(const AName: StringRAL): StringRAL;
@@ -354,7 +501,10 @@ begin
   Result := '';
   vParam := FParams.GetKind[AName, rpkCOOKIE];
   if vParam <> nil then
-    Result := vParam.AsString;
+    Result := vParam.AsString
+  else
+    // one AddCookie(TRALCookie) set on a response sits inside a Set-Cookie line
+    Result := GetRALCookie(AName).Value;
 end;
 
 function TRALHTTPHeaderInfo.GetRALCookie(const AName: StringRAL): TRALCookie;
@@ -394,19 +544,26 @@ end;
 
 procedure TRALHTTPHeaderInfo.SetBody(AContent: StringRAL);
 begin
-  Params.ClearParams;
+  Params.ClearParams(rpkBODY); // the body only: headers, cookies and query stay
   Params.AddValue(AContent, rpkBODY);
 end;
 
 procedure TRALHTTPHeaderInfo.SetBody(AContent: TStream);
 begin
-  Params.ClearParams;
+  Params.ClearParams(rpkBODY);
   Params.AddValue(AContent, rpkBODY);
 end;
 
 procedure TRALHTTPHeaderInfo.SetContentCompress(const AValue: TRALCompressType);
 begin
-  FContentEncoding := TRALCompress.CompressToString(AValue);
+  { only a coding this program can produce. ContentCompress already reads back
+    ctNone for one whose unit is not linked, so the body went out as it was -
+    while Content-Encoding, written from here, still named it: a server with
+    CompressType = ctZStd and no zstd linked answered "zstd" over plain bytes }
+  if GetCompressClass(AValue) <> nil then
+    FContentEncoding := TRALCompress.CompressToString(AValue)
+  else
+    FContentEncoding := '';
 end;
 
 function TRALHTTPHeaderInfo.Body: TRALParam;
@@ -414,60 +571,104 @@ begin
   Result := ParamByName('ral_body');
 end;
 
+{ The next comma-separated entry of AText from APos on, trimmed, with APos left
+  past it; False once the text is over. A scan instead of a Delete off the
+  front of what is left: these headers come straight from the network, before
+  any authentication, and cutting them entry by entry was quadratic in the
+  number of entries. }
+function NextListEntry(const AText: StringRAL; var APos: IntegerRAL;
+  out AEntry: StringRAL): boolean;
+var
+  vEnd: IntegerRAL;
+begin
+  Result := APos <= Length(AText);
+  if not Result then
+    Exit;
+  vEnd := APos;
+  while (vEnd <= Length(AText)) and (AText[POSINISTR - 1 + vEnd] <> ',') do
+    Inc(vEnd);
+  AEntry := RALTrim(Copy(AText, APos, vEnd - APos));
+  APos := vEnd + 1;
+end;
+
 function TRALHTTPHeaderInfo.HasValidContentEncoding: boolean;
 var
   vStr, vEnc: StringRAL;
-  vInt: integer;
+  vPos: IntegerRAL;
+  vSupported: TRALCompressTypes;
 begin
-  Result := (Trim(FContentEncoding) = '');
-
+  { no LowerCase of the whole header - on Delphi two UTF-8/UTF-16 conversions:
+    StringToCompress lowercases each name already, and identity is compared
+    with RALSameName }
+  vStr := RALTrim(FContentEncoding);
+  Result := vStr = '';
   if Result then
     Exit;
 
-  vStr := LowerCase(Trim(FContentEncoding));
-  while vStr <> '' do
+  vSupported := GetSuportedCompress;
+  vPos := 1;
+  while NextListEntry(vStr, vPos, vEnc) do
   begin
-    vInt := Pos(',', vStr);
-    if vInt <= 0 then
-      vInt := Length(vStr) + 1;
-    vEnc := Trim(Copy(vStr, 1, vInt - 1));
-
-    if TRALCompress.StringToCompress(vEnc) <> ctNone then
+    { identity is "not encoded" (RFC 9110 8.4.1), so a body declared with it
+      is one this server can read. A known coding whose compressor was not
+      linked in (br without RALCompressBrotli) is not: the body could not be
+      decoded, and it used to go on and vanish in the decoder - 415 says why }
+    if (TRALCompress.StringToCompress(vEnc) in vSupported) or
+       RALSameName(Copy(vEnc, 1, 8), 'identity') then
     begin
       Result := True;
       Break;
     end;
-
-    Delete(vStr, 1, vInt);
   end;
 end;
 
+{ RFC 9110 12.5.3: without the header, and with any list that does not refuse
+  it, identity - the body as it is - stays acceptable. So "identity", "gzip;q=1"
+  or a coding this build did not link are all fine: the answer simply goes out
+  uncompressed. The request is only unanswerable when identity is refused on
+  purpose ("identity;q=0", or "*;q=0" with no identity entry) and none of the
+  codings still accepted is one this server has. Everything else used to be
+  answered 415, which speaks of the request body and sent whoever was debugging
+  after the Content-Type. }
 function TRALHTTPHeaderInfo.HasValidAcceptEncoding: boolean;
 var
-  vStr, vEnc: StringRAL;
-  vInt: integer;
+  vStr, vEnc, vName: StringRAL;
+  vPos: IntegerRAL;
+  vQuality, vIdentity, vStar: Double;
+  vSupported: TRALCompressTypes;
+  vHasCoding, vRefused: boolean;
 begin
-  Result := (Trim(FAcceptEncoding) = '');
-
-  if Result then
+  Result := True;
+  vStr := RALTrim(FAcceptEncoding);
+  if vStr = '' then
     Exit;
 
-  vStr := LowerCase(Trim(FAcceptEncoding));
-  while vStr <> '' do
+  vIdentity := -1;
+  vStar := -1;
+  vHasCoding := False;
+  vSupported := GetSuportedCompress;
+  vPos := 1;
+  while NextListEntry(vStr, vPos, vEnc) do
   begin
-    vInt := Pos(',', vStr);
-    if vInt <= 0 then
-      vInt := Length(vStr) + 1;
-    vEnc := Trim(Copy(vStr, 1, vInt - 1));
+    if vEnc = '' then
+      Continue;
 
-    if TRALCompress.StringToCompress(vEnc) <> ctNone then
+    RALSplitCoding(vEnc, vName, vQuality);
+    if vName = 'identity' then
+      vIdentity := vQuality
+    else if vName = '*' then
     begin
-      Result := True;
-      Break;
-    end;
-
-    Delete(vStr, 1, vInt);
+      vStar := vQuality;
+      if (vQuality > 0) and (vSupported <> []) then
+        vHasCoding := True;
+    end
+    else if (vQuality > 0) and
+            (TRALCompress.NameToCompress(vName) in vSupported) then
+      vHasCoding := True;
   end;
+
+  vRefused := (vIdentity = 0) or ((vIdentity < 0) and (vStar = 0));
+  Result := (not vRefused) or vHasCoding;
 end;
 
 end.

@@ -16,6 +16,8 @@ type
   private
     FName: StringRAL;
     FURL: StringRAL;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
   published
     constructor Create;
   published
@@ -51,6 +53,7 @@ type
     procedure SetServersUrl(AValue: TStrings);
     procedure SetSystemDescription(const AValue: TStrings);
     procedure SetSwaggerFile(const AValue: TFileName);
+    procedure SetLicense(const AValue: TRALSwaggerLicense);
 
     procedure SwaggerCSS(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SwaggerIndex(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -65,7 +68,7 @@ type
   published
     property AllowCORSVerbs: boolean read FAllowCORSVerbs write FAllowCORSVerbs;
     property EMail: StringRAL read FEMail write FEMail;
-    property License: TRALSwaggerLicense read FLicense write FLicense;
+    property License: TRALSwaggerLicense read FLicense write SetLicense;
     property PostmanFile: TFileName read FPostmanFile write SetPostmanFile;
     property PostmanTag: boolean read FPostmanTag write SetPostmanTag;
     { The swagger routes skip the server's Authentication by default, so the
@@ -102,6 +105,14 @@ const
   SWAGGER_UI_PRESET_SRI = 'sha384-galk03E+Pl0FjoMG8/Q/YDvlX1EBQuy2m/ZtQyd2rxoBEB5bzmAMiGC0GO11pjJz';
 
   { TRALSwaggerLicense }
+
+procedure TRALSwaggerLicense.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALSwaggerLicense then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
 
 constructor TRALSwaggerLicense.Create;
 begin
@@ -269,6 +280,11 @@ begin
     FSwaggerFile := AValue
   else
     FSwaggerFile := '';
+end;
+
+procedure TRALSwaggerModule.SetLicense(const AValue: TRALSwaggerLicense);
+begin
+  RALAssignOwned(FLicense, AValue);
 end;
 
 procedure TRALSwaggerModule.SetSystemDescription(const AValue: TStrings);

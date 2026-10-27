@@ -5,7 +5,7 @@ type
   end;
         
 const
-  RAL_MIME_TYPES : array[0..1242] of TRALMIMEItem = (
+  RAL_MIME_TYPES : array[0..1244] of TRALMIMEItem = (
   ( Ext : '.123'; Mime : 'application/vnd.lotus-1-2-3'),
   ( Ext : '.3dml'; Mime : 'text/vnd.in3d.3dml'),
   ( Ext : '.3ds'; Mime : 'image/x-3ds'),
@@ -581,7 +581,7 @@ const
   ( Ext : '.mime'; Mime : 'message/rfc822'),
   ( Ext : '.mj2'; Mime : 'video/mj2'),
   ( Ext : '.mjp2'; Mime : 'video/mj2'),
-  ( Ext : '.mjs'; Mime : 'text/plain'),
+  ( Ext : '.mjs'; Mime : 'text/javascript'),
   ( Ext : '.mk'; Mime : 'text/plain'),
   ( Ext : '.mk3d'; Mime : 'video/x-matroska'),
   ( Ext : '.mka'; Mime : 'audio/x-matroska'),
@@ -1120,6 +1120,7 @@ const
   ( Ext : '.vxml'; Mime : 'application/voicexml+xml'),
   ( Ext : '.w3d'; Mime : 'application/x-director'),
   ( Ext : '.wad'; Mime : 'application/x-doom'),
+  ( Ext : '.wasm'; Mime : 'application/wasm'),
   ( Ext : '.wav'; Mime : 'audio/wav'),
   ( Ext : '.wax'; Mime : 'audio/x-ms-wax'),
   ( Ext : '.wbk'; Mime : 'application/msword'),
@@ -1149,6 +1150,7 @@ const
   ( Ext : '.wmx'; Mime : 'video/x-ms-wmx'),
   ( Ext : '.wmz'; Mime : 'application/x-ms-wmz'),
   ( Ext : '.woff'; Mime : 'application/x-font-woff'),
+  ( Ext : '.woff2'; Mime : 'font/woff2'),
   ( Ext : '.wpd'; Mime : 'application/vnd.wordperfect'),
   ( Ext : '.wpl'; Mime : 'application/vnd.ms-wpl'),
   ( Ext : '.wps'; Mime : 'application/vnd.ms-works'),

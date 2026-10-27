@@ -1,6 +1,8 @@
 /// Base unit for RALClients using mORMot2 engine
 unit RALSynopseClient;
 
+{$I ..\\..\\base\\PascalRAL.inc}
+
 { mORMot builds its OpenSSL unit for every target except Android, and honours a
   global DISABLE_OPENSSL (mormot.defines.inc). Its own USE_OPENSSL define does
   not cross unit boundaries, so the two conditions are mirrored here with
@@ -50,12 +52,14 @@ type
       implemented on SChannel"), which FCertSeen is what tells apart }
     FCert: TRALCertInfo;
     FCertSeen: boolean;
+    { whether EVERY call of this handshake said ok - see EachPeerVerify }
+    FChainOk: boolean;
 
     procedure DropSocket;
     function EachPeerVerify(ASocket: TNetSocket; AContext: PNetTlsContext;
                             AWasOk: boolean; ATLS, APeer: pointer): boolean;
-  protected
-    function SupportsCertPin: boolean; override;
+    function DoRedirect(Sender: THttpClientSocket;
+                        var Context: THttpClientRequest): boolean;
   public
     destructor Destroy; override;
 
@@ -65,9 +69,16 @@ type
     class function EngineName: StringRAL; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
+
+    class function SupportsCertPin: boolean; override;
   end;
 
 implementation
+
+uses
+  { IsHttp and hfConnectionClose, for the same test mORMot makes before it
+    reopens on a redirect - see DoRedirect }
+  mormot.core.text, mormot.net.http;
 
 const
   { mORMot2 returns this from THttpClientSocket.Request when the request failed
@@ -90,7 +101,7 @@ begin
   FCertSeen := False;
 end;
 
-function TRALSynopseClientHTTP.SupportsCertPin: boolean;
+class function TRALSynopseClientHTTP.SupportsCertPin: boolean;
 begin
   { True as a rule, and the exceptions - SChannel, or a build without OpenSSL -
     are caught right after the handshake in SendUrl, where the fingerprint
@@ -128,13 +139,52 @@ begin
 
   if AContext <> nil then
     FCert.Error := StringRAL(AContext^.LastError);
-  FCert.Trusted := AWasOk;
+  { the verdict of the whole chain, not of this call: OpenSSL reports an error
+    on the link where it happens and then calls again, with ok, for every link
+    down to the leaf - "the last error (if any) is still in the error value",
+    says its own source, but this callback only gets the flag. Taking the last
+    call's flag made the leaf of ANY chain come out trusted, a self-signed one
+    included, and an OnValidateServerCert answering ACert.Trusted accepted it }
+  FChainOk := FChainOk and AWasOk;
+  FCert.Trusted := FChainOk;
   FCertSeen := True;
 
   { True keeps the handshake going even for a certificate OpenSSL rejected -
     which is the point when the trust comes from a pin and not from a store.
     Nothing is accepted by this: SendUrl still has to agree. }
   Result := True;
+end;
+
+{ mORMot follows a redirect inside Request, and when the target is another
+  server, port or scheme - or the answer closed the connection - it opens the
+  new connection by itself, in a handshake SendUrl never sees. So:
+  - SSL.Required or a pin: never off TLS;
+  - a pin or OnValidateServerCert: never onto a TLS connection nobody judges.
+    EachPeerVerify keeps every handshake going and only SendUrl, after
+    OpenUri, decides - so that one would take any certificate;
+  - otherwise OpenSSL checks the name, and it has to be the new host's:
+    HostNamesCsv still names the first one, and every redirect to another
+    https host failed on it.
+  Refused, the 3xx itself is the answer, as on the other engines. }
+function TRALSynopseClientHTTP.DoRedirect(Sender: THttpClientSocket;
+  var Context: THttpClientRequest): boolean;
+var
+  vUri: TUri;
+  vHost: StringRAL;
+  vPort: IntegerRAL;
+begin
+  Result := not (TLSRequired and LeavesTLS(Sender.ServerTls, StringRAL(Context.Url)));
+  if Result and IsHttp(Context.Url) and vUri.From(Context.Url) and vUri.Https and
+     ((hfConnectionClose in Sender.Http.HeaderFlags) or (vUri.Server <> Sender.Server) or
+      (vUri.Port <> Sender.Port) or not Sender.ServerTls) then
+  begin
+    Result := not CertCheckWanted;
+    if Result then
+    begin
+      RALSplitHostPort(StringRAL(vUri.Server), vHost, vPort);
+      Sender.TLS.HostNamesCsv := RawUtf8(vHost);
+    end;
+  end;
 end;
 
 procedure TRALSynopseClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
@@ -146,10 +196,10 @@ var
   vAddress: UTF8String;
   vResult: IntegerRAL;
   vKeepAlive: Cardinal;
-  vCookies: TStringList;
-  vInt: IntegerRAL;
+  vCookies: StringRAL;
   vUri: TUri;
-  vServer: StringRAL;
+  vServer, vHostName: StringRAL;
+  vHostPort: IntegerRAL;
   vFailed: boolean;
 
   { The two except blocks below are already split by phase, which is exactly the
@@ -165,9 +215,8 @@ begin
   vKeepAlive := 0;
 
   try
-    { same scheme://host:port as the socket we already hold: reuse it. mORMot
-      reopens the connection by itself (DoRetry) when the server dropped an
-      idle one, so a stale socket costs one retry, never a failed request }
+    { same scheme://host:port as the socket we already hold: reuse it, once the
+      probe below says the server has not closed it }
     vServer := '';
     if vUri.From(UTF8String(AURL)) then
       vServer := StringRAL(vUri.Scheme) + '://' + StringRAL(vUri.Server) + ':' +
@@ -193,14 +242,14 @@ begin
         SSL_VERIFY_NONE, and mORMot then does not install the verification
         callback at all (mormot.lib.openssl11, SetupCtx) - the client would
         accept everything and OnValidateServerCert would never be called. }
-      { zerado a cada conexao, e nao so' no primeiro uso: TCrtSocket.Open copia
-        o contexto DE VOLTA para quem o passou (aTLSContext^ := TLS), entao o
-        campo volta de uma conexao carregando Enabled, CipherName, PeerSubject
-        e LastError daquela - e reenviar isso na proxima e' passar entrada suja
-        onde o mORMot espera um contexto limpo. InitNetTlsContext e' o proprio
-        zera-tudo do mORMot. }
+      { cleared on every connection, not just on first use: TCrtSocket.Open
+        copies the context BACK to whoever passed it (aTLSContext^ := TLS), so
+        the field comes back from a connection carrying that one's Enabled,
+        CipherName, PeerSubject and LastError - and sending that again on the
+        next one feeds dirty input where mORMot expects a clean context.
+        InitNetTlsContext is mORMot's own reset-everything. }
       InitNetTlsContext(FTLS);
-      {$IFDEF MSWINDOWS}
+      {$IFDEF RALWindows}
       { Windows only, and it is what makes https to a public CA work at all on
         this engine once OpenSSL is loaded: OpenSSL has no certificate store of
         its own on Windows, so mORMot's fallback - SSL_CTX_set_default_verify_paths
@@ -216,12 +265,29 @@ begin
         certificate is still refused unless a pin or the event says otherwise. }
       FTLS.CASystemStores := [scsCA, scsRoot];
       {$ENDIF}
+
+      { THE NAME, which mORMot's OpenSSL layer checks only when told: it calls
+        SSL_set1_host for HostNamesCsv and for nothing else, and nobody filled
+        it - so under OpenSSL (always on POSIX, on Windows once it is loaded) a
+        certificate valid for ANY host was accepted for this one. SChannel
+        checks the name by itself and ignores the field. Brackets off an IPv6:
+        OpenSSL 3 takes an address literal as an IP check, and 1.1.1 compares
+        it as a name, against the subject CN when there are no DNS names. With
+        a pin or the event a mismatch only clears Trusted - they decide. }
+      if vUri.Https then
+      begin
+        RALSplitHostPort(StringRAL(vUri.Server), vHostName, vHostPort);
+        FTLS.HostNamesCsv := RawUtf8(vHostName);
+      end;
+
       FCertSeen := False;
+      FChainOk := True;
       if CertCheckWanted then
         FTLS.OnEachPeerVerify := {$IFDEF FPC}@{$ENDIF}EachPeerVerify
       else
-        { sem pin e sem evento, quem manda e' o SSL.Verify. svAlways nao precisa
-          de nada: este engine ja' valida por padrao, nas duas pilhas. }
+        { with no pin and no event, SSL.Verify has the say. svAlways needs
+          nothing here: this engine already validates by default, on both
+          stacks. }
         FTLS.IgnoreCertificateErrors := Parent.SSL.Verify = svNever;
 
       try
@@ -239,8 +305,9 @@ begin
         begin
           if e.LastError = nrUnknownError then
           begin
-            { mesma razao do bloco do veredito abaixo: sair pela resposta, e
-              nao por raise, senao o except externo reclassifica }
+            { same reason as the verdict block below: leave through the
+              response and not through a raise, or the outer except
+              reclassifies it }
             SetTransportError(AResponse, rteCertificate, -1, e.Message);
             Exit;
           end;
@@ -248,17 +315,18 @@ begin
         end;
       end;
       FServer := vServer;
+      FHttp.OnRedirect := {$IFDEF FPC}@{$ENDIF}DoRedirect;
 
       { The verdict, taken once and on our own stack. Refusing costs a closed
         connection and nothing else: not one byte of the request - the token
         included - has been sent yet. }
       if CertCheckWanted then
       begin
-        { Sai por SetTransportError e Exit, e nao por raise: um raise daqui
-          seria apanhado pelo except deste mesmo SendUrl, que o reclassificaria
-          como falha de transporte e trocaria a mensagem. Quem transforma isto
-          em excecao para quem chamou e' o BeforeSendUrl, no "if vErrorCode
-          <> 0", com o texto que ficou na resposta. }
+        { Leaves through SetTransportError and Exit, not through a raise: a
+          raise from here would be caught by this very SendUrl's except, which
+          would reclassify it as a transport failure and replace the message.
+          What turns this into an exception for the caller is BeforeSendUrl, at
+          the "if vErrorCode <> 0", with the text left in the response. }
         if not FCertSeen then
         begin
           { SChannel completed the handshake without ever asking us, or the
@@ -317,7 +385,7 @@ begin
     // string when no compression unit is linked, and then the server answers
     // uncompressed.
 
-    ARequest.Params.AddParam('Accept-Encoding', GetAcceptCompress, rpkHEADER);
+    ARequest.Params.AddParam('Accept-Encoding', AcceptEncodingFor(ARequest), rpkHEADER);
 
     ARequest.CriptoKey := Parent.CriptoOptions.Key;
     ARequest.ContentCripto := Parent.CriptoOptions.CriptType;
@@ -341,22 +409,9 @@ begin
       vHeader := ARequest.Params.AssignParamsListText(rpkHEADER, ': ');
 
       // cookies
-      vCookies := TStringList.Create;
-      try
-        ARequest.Params.AssignParams(vCookies, rpkCOOKIE, '=');
-        if vCookies.Count > 0 then
-        begin
-          vHeader := vHeader + HTTPLineBreak + 'Cookie: ';
-          for vInt := 0 to Pred(vCookies.Count) do
-          begin
-            if vInt > 0 then
-               vHeader := vHeader + '; ';
-            vHeader := vHeader + vCookies.Strings[vInt];
-          end;
-        end;
-      finally
-        FreeAndNil(vCookies);
-      end;
+      vCookies := ARequest.Params.CookieHeaderText;
+      if vCookies <> '' then
+        vHeader := vHeader + HTTPLineBreak + 'Cookie: ' + vCookies;
 
       try
         case AMethod of
@@ -405,6 +460,13 @@ begin
           AResponse.ContentType := vHttp.ContentType;
           AResponse.ContentDisposition := AResponse.ParamByName('Content-Disposition').AsString;
           AResponse.StatusCode := vResult;
+          { Which version answered. CommandResp is the status line mORMot2 read
+            back, 'HTTP/1.1 200 OK' - and the parse takes the scheme off, so it
+            can be handed over whole. THttpClientSocket is HTTP/1.x only, so it
+            is always 1.0 or 1.1, and that is the point: every engine fills
+            ProtocolVersion, so an application never has to know which one is
+            running in order to ask. }
+          AResponse.Protocol := StringRAL(vHttp.Http.CommandResp);
           AResponse.ResponseText := vHttp.Content;
         end;
       except
@@ -443,8 +505,12 @@ begin
     end;
   end;
 
-  // a socket that failed, or one the server was told to close, is not kept
-  if vFailed or (vKeepAlive = 0) then
+  { a socket that failed, or one the server was told to close, is not kept -
+    nor one a redirect left connected to another server: kept, the next call
+    to FServer would go there, token and all }
+  if vFailed or (vKeepAlive = 0) or
+     ((FHttp <> nil) and ((FHttp.Server <> vUri.Server) or (FHttp.Port <> vUri.Port) or
+                          (FHttp.ServerTls <> vUri.Https))) then
     DropSocket;
 end;
 
@@ -466,5 +532,8 @@ end;
 initialization
   RegisterClass(TRALSynopseClientHTTP);
   RegisterEngine(TRALSynopseClientHTTP);
+
+finalization
+  UnregisterEngine(TRALSynopseClientHTTP);
 
 end.

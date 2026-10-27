@@ -7,7 +7,7 @@ uses
   {$IFDEF FPC}
   bufstream,
   {$ENDIF}
-  Classes, SysUtils, DB, DateUtils, TypInfo,
+  Classes, SysUtils, DB, DateUtils, TypInfo, FMTBcd,
   RALTypes, RALCustomObjects, RALDBTypes, RALBase64, RALConsts,
   RALStream;
 
@@ -40,6 +40,9 @@ type
     procedure LiftReadOnly;
     procedure RestoreReadOnly;
 
+    /// An sftBCD value: through AsBCD, so a decimal field keeps every digit
+    /// and a float or currency field converts as it would from any TBcd
+    procedure ReadFieldBCD(AField: TField; const AValue: TBcd);
     procedure ReadFieldBoolean(AField: TField; AValue: Boolean);
     procedure ReadFieldByte(AField: TField; AValue: byte);
     procedure ReadFieldDateTime(AField: TField; AValue: TDateTime); overload;
@@ -101,7 +104,13 @@ type
     property StorageFormat: TRALStorageFormat read FStorageFormat;
   end;
 
+/// Forgets the cached link class ALink; each storage unit calls it in its finalization.
+procedure UnregisterStorageLink(ALink: TRALStorageLinkClass);
+
 implementation
+
+uses
+  RALTools;
 
 const
   cStorageLinkClass: array[TRALStorageFormat] of StringRAL = ('', 'TRALStorageBINLink',
@@ -119,12 +128,31 @@ var
 
 function StorageLinkClassOf(AFormat: TRALStorageFormat): TRALStorageLinkClass;
 begin
+  { a format read off the wire is a byte cast to the enum, and both tables are
+    indexed by it: past the last member this read a "class" from beyond the
+    array and called its constructor. The case statement this replaced simply
+    answered nil there. Cardinal, not Ord: Delphi compares a small enum as a
+    signed byte, and 128 to 255 passed "Ord(x) > Ord(High(x))" - see
+    RALFieldTypeName }
+  Result := nil;
+  if Cardinal(AFormat) > Cardinal(Ord(High(TRALStorageFormat))) then
+    Exit;
+
   Result := gStorageLinkClasses[AFormat];
   if Result = nil then
   begin
     Result := TRALStorageLinkClass(GetClass(cStorageLinkClass[AFormat]));
     gStorageLinkClasses[AFormat] := Result;
   end;
+end;
+
+procedure UnregisterStorageLink(ALink: TRALStorageLinkClass);
+var
+  vFormat: TRALStorageFormat;
+begin
+  for vFormat := Low(TRALStorageFormat) to High(TRALStorageFormat) do
+    if gStorageLinkClasses[vFormat] = ALink then
+      gStorageLinkClasses[vFormat] := nil;
 end;
 
   { TRALStorage }
@@ -228,6 +256,12 @@ begin
     AField.AsFloat := AValue;
 end;
 
+procedure TRALStorage.ReadFieldBCD(AField: TField; const AValue: TBcd);
+begin
+  if AField <> nil then
+    AField.AsBCD := AValue;
+end;
+
 procedure TRALStorage.ReadFieldDateTime(AField: TField; AValue: TDateTime);
 begin
   if AField <> nil then
@@ -246,8 +280,12 @@ var
 begin
   if AField <> nil then
   begin
-    if not TryStrToDateTime(AValue, vDate) then
-      vDate := ISO8601ToDate(AValue);
+    { ISO 8601 first: 'Z' as written, an offset brought to local time (see
+      RALTryISO8601ToDateTime); anything else in the local format, and what
+      neither reads raises EConvertError }
+    if not RALTryISO8601ToDateTime(AValue, vDate) then
+      if not TryStrToDateTime(string(AValue), vDate) then
+        vDate := RALISO8601ToDateTime(AValue);
     AField.AsDateTime := vDate;
   end;
 end;
@@ -439,7 +477,7 @@ end;
 procedure TRALStorageLink.LoadPropsFromStream(AWriter: TRALBinaryWriter);
 begin
 //  FStorageFormat := TRALStorageFormat(AWriter.ReadByte);
-  FFieldCharCase := TRALFieldCharCase(AWriter.ReadByte);
+  FFieldCharCase := TRALFieldCharCase(AWriter.ReadEnum(Ord(High(TRALFieldCharCase))));
 end;
 
 procedure TRALStorageLink.LoadPropsFromStream(AStream: TStream);

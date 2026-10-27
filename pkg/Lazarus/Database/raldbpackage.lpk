@@ -25,7 +25,7 @@
       </Other>
     </CompilerOptions>
     <Description Value="Package for DBWare components for PascalRAL."/>
-    <Version Major="1" Minor="1"/>
+    <Version Major="1" Minor="2"/>
     <Files Count="7">
       <Item1>
         <Filename Value="..\..\..\src\database\RALDBBase.pas"/>

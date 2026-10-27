@@ -206,7 +206,9 @@ begin
     if vBufSize + FIndex = vBufLength then
       Compress
     else
-      FIndex := vBufSize;
+      { past what the block already held: a second piece shorter than a
+        block went over the first, and the digest came out wrong }
+      FIndex := FIndex + vBufSize;
 
     Dec(ALength, vBufSize);
   end;

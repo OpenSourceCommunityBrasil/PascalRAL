@@ -47,7 +47,7 @@ A pasta `src/` está organizada em:
 
 - `src/base/` — tipos base, core do servidor/cliente, rotas, requisições/respostas e registro.
 - `src/database/` — camada de DBWare/DBModule e conectores (FireDAC/SQLDB/Zeos).
-- `src/engine/` — engines de transporte (CGI, fpHTTP, Indy, netHTTP, Sagui, Synopse, UniGUI).
+- `src/engine/` — engines de transporte (CGI, fpHTTP, Indy, MsQuic, netHTTP, OkHttp, Sagui, Synopse, UniGUI).
 - `src/languages/` — arquivos de constantes/strings por idioma.
 - `src/others/` — integrações e implementações externas (ex.: kxBSON, brotli, ZSTD).
 - `src/utils/` — utilitários (JSON, compressões, hash, stream, storage, criptografia, multipart etc.).
@@ -116,10 +116,25 @@ A pasta `src/` está organizada em:
 - `engine/cgi/`: `RALCGIRegister.pas`, `RALCGIServer*.inc`, `RALCGIServer.pas`
 - `engine/fpHTTP/`: `RALfpHTTPClient.pas`, `RALfpHTTPRegister.pas`, `RALfpHTTPServer.pas`
 - `engine/indy/`: `RALIndyClient.pas`, `RALIndyRegister.pas`, `RALIndyServer.pas`
+- `engine/msquic/`: `MsQuic.pas` (binding da API C, carga dinamica), `RALMsQuicClient.pas`, `RALMsQuicRegister.pas`, `RALMsQuicServer.pas` — QUIC (RFC 9000) por MsQuic; **nao e HTTP/3**: o que trafega e um frame binario proprio, entao as DUAS pontas tem de ser RAL. Precisa da `msquic.dll`/`libmsquic.so.2` (build OpenSSL) em runtime — no Android e `libmsquic.so`, deployada em `library\lib\arm64-v8a\` e `library\lib\armeabi-v7a\`, porque la nao ha soname versionado; a lib so e carregada no `Active := True`. Servidor E cliente rodam no Android 9+ (API 28) sem port, verificados no aparelho nos dois ABIs em 02/10/2026; os binarios (Windows x64/x86, Android arm64/armv7) ficam zipados na branch `external`, em `msquic/`. `README.md` e o guia de uso (deploy por plataforma, certificados); fora do Windows a validacao de certificado e a do OpenSSL (o check de plataforma do msquic e um stub no POSIX), e no Android a loja do sistema e juntada num PEM no cache — `TRALMsQuicClientHTTP.DefaultCaFile` troca a loja
+- `engine/kwik/`: `RALKwikClient.pas`, `RALKwikRegister.pas`, `java/` (ponte JNI + 5 jars), `README.md` — cliente QUIC de **Android**, so Delphi; fala o MESMO frame do MsQuic (os dois usam `RALQuicFrame`), entao conversa com o `TRALMsQuicServer`; nasceu quando o MsQuic nao tinha `.so` para Android, e hoje fica para o Android 8 (API 26-27, abaixo do piso do msquic) e para app que nao quer biblioteca nativa. Kwik e LGPL v3
 - `engine/netHTTP/`: `RALnetHTTPClient.pas`, `RALNetHTTPRegister.pas`
+- `engine/okhttp/`: `RALOkHttpClient.pas`, `RALOkHttpRegister.pas`, `java/` (ponte JNI + jars), `README.md` — cliente, só Android, só Delphi; é o único caminho para HTTP/2 lá
 - `engine/sagui/`: `RALSaguiRegister.pas`, `RALSaguiServer.pas`
 - `engine/synopse/`: `RALSynopseClient.pas`, `RALSynopseRegister.pas`, `RALSynopseServer.pas`
 - `engine/unigui/`: `RALUniGUIRegister.pas`, `RALUniGUIServer.pas`
+
+**O que é igual entre os motores, e onde não dá para ser (2026-09-15)**
+
+- `MaxConnections` — teto de conexões abertas ao mesmo tempo, mesmo nome e mesma semântica (`0` = sem teto, e quem passa do teto tem a conexão NOVA recusada) no Indy, no fpHTTP, no Sagui e no Synopse. No Sagui chamava-se `ConnectionLimit` até esta data; o nome velho continua compilando (propriedade pública, não publicada) e um `.dfm`/`.lfm` antigo ainda carrega, por `DefineProperties`. **UniGUI e CGI ficam de fora por natureza**: um não tem escuta própria, o outro não tem servidor.
+- `MaxKeepAliveConnections` (Synopse) **não** é a mesma coisa: não recusa ninguém, só para de conceder keep-alive, e só o `smThreads` tem esse teto.
+- `Protocol`/`ProtocolVersion` — **todos** os seis servidores e **todos** os cinco clientes preenchem, mesmo os que só falam HTTP/1.1.
+- `ShareConnection` — netHTTP, OkHttp e MsQuic, e `SupportsSharedConnection` diz quais; **ligado por padrão desde 20/09/2026**. Nos outros o transporte é um objeto por conexão: honrar a propriedade **serializaria** chamada concorrente, então eles a ignoram. `PoolConnection.Enabled` (reuso do objeto engine, e da conexão dele) também nasce ligado.
+- `KeepAliveInterval` — netHTTP e OkHttp, os dois com frame PING de HTTP/2 de verdade: o OkHttp por `pingInterval`, o netHTTP por `WINHTTP_OPTION_HTTP2_KEEPALIVE` (164) no handle de sessão, que **só existe do Windows 11 em diante** e onde não existe é ignorado em silêncio. O piso é do motor (`MinKeepAliveInterval`: 5000 no netHTTP, nenhum no OkHttp) e é aplicado **na atribuição**, para o valor que se lê ser o que vale.
+
+**Propriedade que não se aplica some do Object Inspector, e nunca levanta.** Quem decide é o próprio componente, em `TRALComponent.IsPropertyRelevant` (`RALCustomObjects`), e a cola de IDE fica num lugar só, `TRALSelectionEditor` em `RALRegister` — assim nenhum motor precisa depender da IDE. Esconder é conforto: o valor escondido pode ser sobra de outra configuração, então é **ignorado**. O que levanta é escolha explícita impossível (`smHttpSys` fora do Windows, `rhv2` num motor sem h2), e essa nunca fica escondida.
+
+Isso vale **um nível abaixo também**, desde 2026-09-16: as quatro propriedades de arquivo do `SSL` somem do servidor Synopse em `smHttpSys`, onde o certificado vem da loja da máquina pelo `netsh` e nenhum `.pem` é lido. O componente é perguntado pelo nome **composto** (`IsPropertyRelevant('SSL.CertificateFile')`), então um método só responde pelos dois níveis, e a cola de IDE é o `TRALNestedProperty`, registrado pelo tipo base — o que faz valer para o `SSL` de qualquer motor sem uma linha de design-time em cada um.
 
 ---
 
@@ -176,6 +191,7 @@ A pasta `src/` está organizada em:
 - `RALSHA2_64.pas`
 - `RALMIMETypes.pas`
 - `RALMultipartCoder.pas`
+- `RALNetwork.pas` (IPs da propria maquina, pedidos ao sistema; base de `TRALServer.GetServerAddress`)
 - `RALOpenSSL.pas`
 - `RALResponsePages.pas`
 - `RALStorage.pas`
@@ -235,12 +251,12 @@ Lazarus
 2. Cada engine (Indy/fpHTTP/netHTTP/...) implementa o transporte.
 3. `RALRequest` é codificado (params/headers/body; compress/cripto quando configurado).
 4. A resposta é decodificada para `RALResponse`.
-5. `TRALClient.ExecuteThread` decide **em qual thread** a chamada roda: `ebMultiThread`
-   (padrão) dispara uma `TRALThreadClient` e volta na hora — o callback chega depois, pela
-   main thread, via `OnTerminate`; `ebSingleThread` roda na própria thread chamadora e
-   chama o callback **antes** de retornar. Quem lê o resultado como propriedade logo após a
-   chamada (ex.: `TRALDBFDMemTable.ExecSQL` → `RowsAffected`/`LastId`) precisa de
-   `ebSingleThread`. O callback sempre recebe uma `TRALResponse` válida; o erro vem em
+5. `TRALClient.ExecuteThread` decide **em qual thread** a chamada roda: `ebSingleThread`
+   (**padrão desde 20/09/2026**; antes era `ebMultiThread`) roda na própria thread chamadora
+   e chama o callback **antes** de retornar, então o resultado pode ser lido na linha
+   seguinte — e um `Get` num botão trava a tela enquanto dura; `ebMultiThread` dispara uma
+   `TRALThreadClient` e volta na hora — o callback chega depois, pela main thread, via
+   `OnTerminate`. O callback sempre recebe uma `TRALResponse` válida; o erro vem em
    `AException`.
 6. Qual certificado o cliente aceita é decidido no `TRALClient`, nunca no engine:
    `SSL.Pins` (lista: `fp`, `host=fp` ou `host:porta=fp` — resolvida por conexão,

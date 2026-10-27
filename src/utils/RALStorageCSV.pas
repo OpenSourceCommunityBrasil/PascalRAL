@@ -6,7 +6,7 @@ interface
 {$I ../base/PascalRAL.inc}
 
 uses
-  Classes, SysUtils, DB, DateUtils,
+  Classes, SysUtils, DB, DateUtils, FMTBcd,
   RALTypes, RALStorage, RALTools, RALMIMETypes, RALDBTypes, RALBase64, RALStream;
 
 type
@@ -52,6 +52,8 @@ type
     function CSVFormatDateTime(AValue: TDateTime): StringRAL;
     function CSVFormatFloat(AValue: Double): StringRAL;
     function CSVFormatStream(AValue: TStream): StringRAL;
+    /// a memo quoted whole, line breaks included
+    function CSVFormatMemo(AValue: StringRAL): StringRAL;
     function CSVFormatString(AValue: StringRAL): StringRAL;
     /// format settings built from FormatOptions on top of the machine defaults
     function CSVFormatSettings: TFormatSettings;
@@ -183,9 +185,9 @@ var
 begin
   case FFormatOptions.DateTimeFormat of
     dtfUnix:
-      Result := IntToStr(DateTimeToUnix(AValue));
+      Result := RALDateTimeToUnixText(AValue);
     dtfISO8601:
-      Result := DateToISO8601(AValue);
+      Result := RALDateTimeToISO8601(AValue, True);
     dtfCustom:
       begin
         if (Frac(AValue) <> 0) and (Trunc(AValue) <> 0) then
@@ -241,7 +243,7 @@ end;
 function TRALStorageCSV.CSVParseDateTime(const AValue: StringRAL;
   var ADate: TDateTime): boolean;
 var
-  vUnix: Int64RAL;
+  vSeconds: Double;
   vText: StringRAL;
 begin
   Result := False;
@@ -250,21 +252,17 @@ begin
     Exit;
 
   case FFormatOptions.DateTimeFormat of
+    // whole seconds, or with the decimals of the milliseconds (see RALDBTypes)
     dtfUnix:
       begin
-        Result := TryStrToInt64(vText, vUnix);
+        Result := TryStrToFloat(string(vText), vSeconds, RALInvariantFormat);
         if Result then
-          ADate := UnixToDateTime(vUnix);
+          ADate := RALUnixSecondsToDateTime(vSeconds);
       end;
     dtfISO8601:
       begin
-        // ISO8601ToDate raises on garbage; the caller treats False as "not a date"
-        try
-          ADate := ISO8601ToDate(vText);
-          Result := True;
-        except
-          Result := False;
-        end;
+        // the caller treats False as "not a date"
+        Result := RALTryISO8601ToDateTime(vText, ADate);
       end;
     dtfCustom:
       Result := TryStrToDateTime(vText, ADate, CSVFormatSettings) or
@@ -276,6 +274,15 @@ end;
 function TRALStorageCSV.CSVFormatStream(AValue: TStream): StringRAL;
 begin
   Result := Format('"%s"', [TRALBase64.Encode(AValue)]);
+end;
+
+{ The text whole, line breaks included - RFC 4180 lets them sit inside the
+  quotes, and ReadLine keeps them there. It was the base64 of the field's own
+  bytes (UTF-16 for a wide memo, see RALStorageBIN), which the reader took
+  for the text itself: a memo came back as base64 }
+function TRALStorageCSV.CSVFormatMemo(AValue: StringRAL): StringRAL;
+begin
+  Result := '"' + StringReplace(AValue, '"', '""', [rfReplaceAll]) + '"';
 end;
 
 function TRALStorageCSV.CSVFormatString(AValue: StringRAL): StringRAL;
@@ -315,7 +322,7 @@ end;
 
 procedure TRALStorageCSV.WriteFields(ADataset: TDataSet; AStream: TStream);
 var
-  vFields: StringRAL;
+  vFields, vName: StringRAL;
   vInt: IntegerRAL;
 begin
   SetLength(FFieldNames, ADataset.FieldCount);
@@ -326,7 +333,16 @@ begin
   begin
     if vInt > 0 then
       vFields := vFields + FFormatOptions.FColumnSeparator;
-    vFields := vFields + ADataset.Fields[vInt].FieldName;
+    { a name holding the separator, a quote or a line break - an alias, which
+      opensql takes from the SQL the client sends - split the header or ran
+      into the records: it is quoted like a text value, which the reader
+      already unquotes. Any other name goes as it always did }
+    vName := ADataset.Fields[vInt].FieldName;
+    if (Pos(StringRAL(FFormatOptions.FColumnSeparator), vName) > 0) or
+       (Pos(StringRAL('"'), vName) > 0) or (Pos(StringRAL(#13), vName) > 0) or
+       (Pos(StringRAL(#10), vName) > 0) then
+      vName := CSVFormatString(vName);
+    vFields := vFields + vName;
 
     FFieldNames[vInt] := CharCaseValue(ADataset.Fields[vInt].FieldName);
     FFieldTypes[vInt] := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
@@ -367,6 +383,9 @@ begin
             vValue := vValue + ADataset.Fields[vInt].AsString;
           sftDouble:
             vValue := vValue + CSVFormatFloat(ADataset.Fields[vInt].AsFloat);
+          // every digit, with the separator of the options as a float has
+          sftBCD:
+            vValue := vValue + StringRAL(BCDToStr(ADataset.Fields[vInt].AsBCD, CSVFormatSettings));
           sftBoolean:
             vValue := vValue + CSVFormatBoolean(ADataset.Fields[vInt].AsBoolean);
           sftString:
@@ -382,15 +401,7 @@ begin
               end;
             end;
           sftMemo:
-            begin
-              vMem := TMemoryStream.Create;
-              try
-                TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-                vValue := vValue + CSVFormatStream(vMem);
-              finally
-                vMem.Free
-              end;
-            end;
+            vValue := vValue + CSVFormatMemo(ADataset.Fields[vInt].AsWideString);
           sftDateTime:
             vValue := vValue + CSVFormatDateTime(ADataset.Fields[vInt].AsDateTime);
         end;
@@ -559,16 +570,18 @@ begin
         else
           vValue := '';
         vSize := 0;
+        { text gets the wide types the other readers build: an ftString is
+          ANSI on Delphi, and lost what CP_ACP has no place for }
         if CSVIsQuoted(vValue) then
         begin
           if (FFormatOptions.DateTimeFormat <> dtfUnix) and
              CSVParseDateTime(vValue, vDate) then
             vType := ftDateTime
           else if Length(vValue) - 2 > 255 then
-            vType := ftMemo
+            vType := ftWideMemo
           else
           begin
-            vType := ftString;
+            vType := ftWideString;
             vSize := 255;
           end;
         end
@@ -587,7 +600,7 @@ begin
         end
         else
         begin
-          vType := ftString;
+          vType := ftWideString;
           vSize := 255;
         end
       end;
@@ -629,6 +642,7 @@ var
   vFormat: TFormatSettings;
   vInt64: Int64RAL;
   vFloat: Extended;
+  vBcd: TBcd;
   vDate: TDateTime;
 begin
   vFormat := CSVFormatSettings;
@@ -662,6 +676,9 @@ begin
             sftDouble:
               if TryStrToFloat(CSVUnquote(vValue), vFloat, vFormat) then
                 ReadFieldFloat(FFoundFields[vInt], vFloat);
+            sftBCD:
+              if TryStrToBCD(string(CSVUnquote(vValue)), vBcd, vFormat) then
+                ReadFieldBCD(FFoundFields[vInt], vBcd);
             sftBoolean:
               ReadFieldBoolean(FFoundFields[vInt],
                 SameText(CSVUnquote(vValue), FFormatOptions.BoolTrueStr));
@@ -722,7 +739,10 @@ begin
   FBoolFalseStr := AWriter.ReadString;
   FBoolTrueStr := AWriter.ReadString;
   FColumnSeparator := AWriter.ReadChar;
-  FDateTimeFormat:= TRALDateTimeFormat(AWriter.ReadByte);
+  { a byte of the request body, and every case over it covers all three
+    members - the shape in which FPC jumped out of its table for a
+    TRALFieldType past the last one (see TRALBinaryWriter.ReadEnum) }
+  FDateTimeFormat:= TRALDateTimeFormat(AWriter.ReadEnum(Ord(High(TRALDateTimeFormat))));
   if FDateTimeFormat = dtfCustom then
   begin
     FCustomDateFormat := AWriter.ReadString;
@@ -753,5 +773,8 @@ initialization
   // resolves the link by class name, so a server asked for CSV got nil and
   // died with an access violation at address zero on Create
   RegisterClass(TRALStorageCSVLink);
+
+finalization
+  UnregisterStorageLink(TRALStorageCSVLink);
 
 end.

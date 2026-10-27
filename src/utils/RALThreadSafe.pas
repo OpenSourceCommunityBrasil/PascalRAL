@@ -1,6 +1,8 @@
 ﻿/// Class for Threading definitions and critical session controllers
 unit RALThreadSafe;
 
+{$I ..\base\PascalRAL.inc}
+
 interface
 
 uses
@@ -55,7 +57,83 @@ type
     property Values[const AName: StringRAL]: StringRAL read GetValue write SetValue;
   end;
 
+  { TRALSnapshots }
+
+  /// The current version of something every request reads while the
+  /// configuration may replace it - read with no lock at all. Publish puts a
+  /// new version in place with one atomic write, and the version it replaces
+  /// is kept, not freed, until this object goes: a request that took it a
+  /// moment before is still reading it. A version is never changed after it is
+  /// published, so a request sees one consistent whole, never half of each.
+  /// What is kept grows by one per change, and a change is someone editing the
+  /// configuration, not a request
+  TRALSnapshots = class(TRALThreadSafe)
+  private
+    FCurrent: TObject;
+    FRetired: TList;
+  public
+    constructor Create; override;
+    destructor Destroy; override;
+
+    /// Makes AValue the current version, owned by this object from here on
+    procedure Publish(AValue: TObject);
+
+    /// The current version, nil before the first Publish. Never freed while
+    /// this object lives, whatever is published after it
+    property Current: TObject read FCurrent;
+  end;
+
 implementation
+
+{ The pointer swapped with a full barrier, so a reader on another core that
+  sees the new version also sees everything written into it before }
+function ExchangePointer(var ATarget: Pointer; AValue: Pointer): Pointer;
+begin
+  {$IFDEF FPC}
+  Result := InterlockedExchange(ATarget, AValue);
+  {$ELSE}
+  {$IFDEF DELPHIXE3UP}
+  Result := AtomicExchange(ATarget, AValue);
+  {$ELSE}
+  Result := TInterlocked.Exchange(ATarget, AValue);
+  {$ENDIF}
+  {$ENDIF}
+end;
+
+{ TRALSnapshots }
+
+constructor TRALSnapshots.Create;
+begin
+  inherited Create;
+  FRetired := TList.Create;
+end;
+
+destructor TRALSnapshots.Destroy;
+var
+  vInt: IntegerRAL;
+begin
+  for vInt := 0 to Pred(FRetired.Count) do
+    TObject(FRetired[vInt]).Free;
+  FreeAndNil(FRetired);
+  FreeAndNil(FCurrent);
+  inherited Destroy;
+end;
+
+procedure TRALSnapshots.Publish(AValue: TObject);
+var
+  vOld: TObject;
+begin
+  { one writer at a time, for the list of retired versions; the readers never
+    take this lock }
+  Lock;
+  try
+    vOld := TObject(ExchangePointer(Pointer(FCurrent), Pointer(AValue)));
+    if vOld <> nil then
+      FRetired.Add(vOld);
+  finally
+    Unlock;
+  end;
+end;
 
 { TRALStringListSafe }
 

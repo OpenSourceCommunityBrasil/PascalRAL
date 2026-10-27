@@ -169,12 +169,25 @@ const
   {$ENDREGION}
 
 type
+  TRALMIMEStrings = array of StringRAL;
 
   { TRALMIMEType }
 
   TRALMIMEType = class
   private
     FInternalMIMEList: TStringList;
+    { extension -> type by hash, for GetMIMEType - which runs for every file
+      served. The binary search over the list cut the name out of an entry and
+      lowercased it at every probe, two strings each, twenty per lookup; and
+      the list is sorted by AnsiCompareText, which on Windows ignores hyphens,
+      while the search compared byte by byte - an extension with a hyphen or an
+      underscore could be in the list and not be found. Open addressing, the
+      slots a power of two, kept at most half full }
+    FExtKeys: TRALMIMEStrings;
+    FExtTypes: TRALMIMEStrings;
+    FExtCount: IntegerRAL;
+    function ExtSlot(const AExt: StringRAL; out AFound: boolean): IntegerRAL;
+    procedure ExtAdd(const AExt, AType: StringRAL);
 
     class var FInstance: TRALMIMEType;
   protected
@@ -206,9 +219,57 @@ type
 const
   DEFAULTCONTENTTYPE = rctNONE;
 
+/// True for media types whose bytes are compressed already - images, audio,
+/// video, archives, web fonts: a coding over them spends a whole pass to come
+/// out the same size or larger. Parameters ('; charset=') and case are ignored
+function RALIsCompressedMediaType(const AContentType: StringRAL): boolean;
+
 implementation
 
+uses
+  RALTools;
+
 {$I RALMIMETypes.inc}
+
+function RALIsCompressedMediaType(const AContentType: StringRAL): boolean;
+const
+  { whole types. What compresses is left out on purpose - SVG, BMP, TIFF,
+    WAV, TTF/OTF, PDF - and so is application/octet-stream, which says nothing
+    about the bytes. Windows' registry spells a few its own way, and those are
+    here too }
+  cTypes: array[0..36] of StringRAL = (
+    'image/png', 'image/jpeg', 'image/pjpeg', 'image/gif', 'image/webp',
+    'image/avif', 'image/heic', 'image/heif', 'image/jxl', 'image/jp2',
+    'audio/mpeg', 'audio/mp4', 'audio/aac', 'audio/x-aac', 'audio/ogg',
+    'audio/opus', 'audio/webm', 'audio/flac', 'audio/x-flac', 'audio/vorbis',
+    'audio/x-m4a', 'audio/x-ms-wma',
+    'application/zip', 'application/x-zip-compressed', 'application/gzip',
+    'application/x-gzip',
+    'application/x-bzip2', 'application/x-xz', 'application/x-7z-compressed',
+    'application/x-rar-compressed', 'application/vnd.rar', 'application/zstd',
+    'application/java-archive', 'application/vnd.android.package-archive',
+    'application/font-woff', 'font/woff', 'font/woff2');
+var
+  vType: StringRAL;
+  vPos, vInt: IntegerRAL;
+begin
+  vType := RALTrim(AContentType);
+  vPos := Pos(StringRAL(';'), vType);
+  if vPos > 0 then
+    vType := RALTrim(Copy(vType, 1, vPos - 1));
+
+  { video is compressed whatever its container says }
+  Result := RALSameName(Copy(vType, 1, 6), 'video/');
+  if Result then
+    Exit;
+
+  for vInt := Low(cTypes) to High(cTypes) do
+    if RALSameName(vType, cTypes[vInt]) then
+    begin
+      Result := True;
+      Break;
+    end;
+end;
 
 { TRALMIMEType }
 
@@ -256,27 +317,151 @@ begin
   end;
 end;
 
+{ FNV-1a of the extension with 'A'..'Z' folded, so that two spellings
+  RALSameName calls equal always land on the same slot. 32-bit arithmetic that
+  wraps on purpose: overflow and range checks are off for this one function }
+{$IFOPT Q+}{$DEFINE RALMIME_Q}{$Q-}{$ENDIF}
+{$IFOPT R+}{$DEFINE RALMIME_R}{$R-}{$ENDIF}
+function ExtHash(const AExt: StringRAL): Cardinal;
+var
+  vByte: PByte;
+  vInt: IntegerRAL;
+  vChr: Byte;
+begin
+  Result := 2166136261;
+  vByte := PByte(Pointer(AExt));
+  for vInt := 1 to Length(AExt) do
+  begin
+    vChr := vByte^;
+    if (vChr >= Ord('A')) and (vChr <= Ord('Z')) then
+      Inc(vChr, 32);
+    Result := (Result xor vChr) * Cardinal(16777619);
+    Inc(vByte);
+  end;
+end;
+{$IFDEF RALMIME_Q}{$Q+}{$UNDEF RALMIME_Q}{$ENDIF}
+{$IFDEF RALMIME_R}{$R+}{$UNDEF RALMIME_R}{$ENDIF}
+
+function TRALMIMEType.ExtSlot(const AExt: StringRAL; out AFound: boolean): IntegerRAL;
+var
+  vMask: IntegerRAL;
+begin
+  AFound := False;
+  Result := -1;
+  if Length(FExtKeys) = 0 then
+    Exit;
+  vMask := Length(FExtKeys) - 1;
+  Result := IntegerRAL(ExtHash(AExt) and Cardinal(vMask));
+  { linear probing: the run ends at an empty slot. Keys are never removed,
+    so a run is never broken }
+  while FExtKeys[Result] <> '' do
+  begin
+    if RALSameName(FExtKeys[Result], AExt) then
+    begin
+      AFound := True;
+      Exit;
+    end;
+    Result := (Result + 1) and vMask;
+  end;
+end;
+
+procedure TRALMIMEType.ExtAdd(const AExt, AType: StringRAL);
+var
+  vOldKeys, vOldTypes: TRALMIMEStrings;
+  vInt, vSlot: IntegerRAL;
+  vFound: boolean;
+begin
+  if AExt = '' then
+    Exit;
+  if (FExtCount + 1) * 2 > Length(FExtKeys) then
+  begin
+    vOldKeys := FExtKeys;
+    vOldTypes := FExtTypes;
+    FExtKeys := nil;
+    FExtTypes := nil;
+    if Length(vOldKeys) = 0 then
+      SetLength(FExtKeys, 1024)
+    else
+      SetLength(FExtKeys, Length(vOldKeys) * 2);
+    SetLength(FExtTypes, Length(FExtKeys));
+    for vInt := 0 to High(vOldKeys) do
+      if vOldKeys[vInt] <> '' then
+      begin
+        vSlot := ExtSlot(vOldKeys[vInt], vFound);
+        FExtKeys[vSlot] := vOldKeys[vInt];
+        FExtTypes[vSlot] := vOldTypes[vInt];
+      end;
+  end;
+  vSlot := ExtSlot(AExt, vFound);
+  if vFound then
+    Exit; // the first type given for an extension is the one that stays
+  FExtKeys[vSlot] := AExt;
+  FExtTypes[vSlot] := AType;
+  Inc(FExtCount);
+end;
+
 function TRALMIMEType.GetMIMEType(const AFileName: StringRAL): StringRAL;
 var
-  vIdx : IntegerRAL;
+  vSlot : IntegerRAL;
   vExt : StringRAL;
+  vFound : boolean;
 begin
   Result := '';
   vExt := ExtractFileExt(AFileName);
-  vIdx := IndexOfExt(vExt);
-  if vIdx >= 0 then
+  vSlot := ExtSlot(vExt, vFound);
+  if vFound then
   begin
-    Result := FInternalMIMEList.ValueFromIndex[vIdx];
+    Result := FExtTypes[vSlot];
   end
   {$IF DEFINED(RALApple) or DEFINED(RALAppleFPC)}
     else
     begin
+      { asked every time, not cached: the list is a singleton that request
+        threads search without a lock, and adding to it here - a sorted
+        insert - moved entries under a binary search running on another
+        thread. The system lookup only happens for extensions the list does
+        not have }
       Result := GetMimeTypeMACOs(vExt);
-      if Result <> '' then
-        AddMIMEType(vExt, Result);
     end
   {$IFEND};
 end;
+
+{$IFDEF RALApple}
+{ Delphi's RTL does not import the UTType functions (Macapi.CoreServices leaves
+  LaunchServices out), so they are declared here. They live in CoreServices on
+  macOS and in MobileCoreServices on iOS }
+const
+  {$IFDEF IOS}
+  cUTTypeLib = '/System/Library/Frameworks/MobileCoreServices.framework/MobileCoreServices';
+  {$ELSE}
+  cUTTypeLib = '/System/Library/Frameworks/CoreServices.framework/CoreServices';
+  {$ENDIF}
+  {$IF NOT DECLARED(_PU)}
+    {$IFDEF UNDERSCOREIMPORTNAME}
+    _PU = '_';
+    {$ELSE}
+    _PU = '';
+    {$ENDIF}
+  {$IFEND}
+
+function UTTypeCreatePreferredIdentifierForTag(AInTagClass, AInTag,
+  AInConformingToUTI: CFStringRef): CFStringRef; cdecl;
+  external cUTTypeLib name _PU + 'UTTypeCreatePreferredIdentifierForTag';
+function UTTypeCopyPreferredTagWithClass(AInUTI, AInTagClass: CFStringRef): CFStringRef; cdecl;
+  external cUTTypeLib name _PU + 'UTTypeCopyPreferredTagWithClass';
+
+{ kUTTagClassFilenameExtension and kUTTagClassMIMEType are exported data the RTL
+  does not import either; their values are fixed UTI tag class names }
+function kUTTagClassFilenameExtension: CFStringRef;
+begin
+  Result := CFSTR('public.filename-extension');
+end;
+
+function kUTTagClassMIMEType: CFStringRef;
+begin
+  Result := CFSTR('public.mime-type');
+end;
+{$ENDIF}
 
 {$IF DEFINED(RALApple) or DEFINED(RALAppleFPC)}
 function TRALMIMEType.GetMimeTypeMACOs(AExtension: string): string;
@@ -293,7 +478,7 @@ begin
 
   {$IFDEF RALApple}
     ExtCF := CFStringCreateWithCString(nil,
-                                       MarshaledAString(AnsiString(AExtension))),
+                                       MarshaledAString(UTF8String(AExtension)),
                                        kCFStringEncodingUTF8);
   {$ELSE}
     ExtCF := CFStringCreateWithCString(nil, PChar(AExtension), kCFStringEncodingUTF8);
@@ -335,10 +520,16 @@ end;
 {$IFEND}
 
 function TRALMIMEType.AddMIMEType(AExt, AType: StringRAL): boolean;
+var
+  vFound: boolean;
 begin
-  Result := IndexOfExt(AExt) < 0;
+  ExtSlot(AExt, vFound);
+  Result := not vFound;
   if Result then
+  begin
     FInternalMIMEList.Add(AExt + '=' + AType);
+    ExtAdd(AExt, AType);
+  end;
 end;
 
 function TRALMIMEType.GetSystemTypes: boolean;

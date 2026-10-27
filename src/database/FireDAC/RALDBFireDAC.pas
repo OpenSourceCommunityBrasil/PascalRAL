@@ -32,11 +32,19 @@ type
   protected
     procedure Conectar; override;
     function FindProtocol: StringRAL;
+    /// A query on this connection with ASQL and AParams in place - see there
+    function NewQuery(const ASQL: StringRAL; AParams: TParams):
+      {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
 
     procedure OnConnBeforeConnect(ASender: TObject);
     procedure OnConnAfterConnect(ASender: TObject);
-    procedure OnConnError(ASender, AInitiator: TObject; var AException: Exception);
-    procedure OnQueryError(ASender, AInitiator: TObject; var AException: Exception);
+    // AnyDAC (XE2..XE4) hands the initiator as an interface, FireDAC as an object
+    procedure OnConnError(ASender: TObject;
+      {$IFDEF DELPHIXE4UP}AInitiator: TObject{$ELSE}const AInitiator: IADStanObject{$ENDIF};
+      var AException: Exception);
+    procedure OnQueryError(ASender: TObject;
+      {$IFDEF DELPHIXE4UP}AInitiator: TObject{$ELSE}const AInitiator: IADStanObject{$ENDIF};
+      var AException: Exception);
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -49,6 +57,9 @@ type
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL; override;
+    function GetNativeConnection: TComponent; override;
+    /// NativeConnection's getter - connects first, see GetNativeConnection
+    function GetConnector: {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF};
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     procedure SaveToStream(ADataset: TDataset; AStream: TStream;
@@ -57,6 +68,9 @@ type
 
     class function DatabaseName: StringRAL; override;
     class function PackageDependency: StringRAL; override;
+    /// The FireDAC connection this driver opens - see GetNativeConnection
+    property NativeConnection: {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF}
+      read GetConnector;
   end;
 
 implementation
@@ -94,19 +108,27 @@ begin
     FConnector.Params.Add('StringFormat=Unicode');
   end;
 
+  ApplyConnectionParams(FConnector.Params);
+
   FConnector.BeforeConnect := OnConnBeforeConnect;
   FConnector.AfterConnect := OnConnAfterConnect;
   FConnector.OnError := OnConnError;
 
   {$IFDEF DELPHIXE4UP}
-  if FindProtocol = 'PG' then
-    FPhysLink := TFDPhysPgDriverLink.Create(nil)
-  else if FindProtocol = 'FB' then
-    FPhysLink := TFDPhysFBDriverLink.Create(nil)
-  else if FindProtocol = 'MySQL' then
-    FPhysLink := TFDPhysMySQLDriverLink.Create(nil)
-  else if FindProtocol = 'SQLite' then
-    FPhysLink := TFDPhysSQLiteDriverLink.Create(nil);
+  { once per driver: Conectar runs again on every reconnect - the pool does it
+    for a connection that dropped - and each pass used to build another link
+    over the last, which FireDAC keeps in its own driver list }
+  if FPhysLink = nil then
+  begin
+    if FindProtocol = 'PG' then
+      FPhysLink := TFDPhysPgDriverLink.Create(nil)
+    else if FindProtocol = 'FB' then
+      FPhysLink := TFDPhysFBDriverLink.Create(nil)
+    else if FindProtocol = 'MySQL' then
+      FPhysLink := TFDPhysMySQLDriverLink.Create(nil)
+    else if FindProtocol = 'SQLite' then
+      FPhysLink := TFDPhysSQLiteDriverLink.Create(nil);
+  end;
 
   FPhysLink.VendorLib := LibLocation;
   try
@@ -168,6 +190,21 @@ begin
     FConnector.Close;
 end;
 
+{ Connected - and with it configured - on the way out: DriverID, Database and
+  the credentials are only applied by Conectar, and with the pool off (the
+  default) nothing had called it yet, so a route that took this connection got
+  one with no driver definition. Conectar returns at once when it is open. }
+function TRALDBFireDAC.GetNativeConnection: TComponent;
+begin
+  Result := GetConnector;
+end;
+
+function TRALDBFireDAC.GetConnector: {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF};
+begin
+  Conectar;
+  Result := FConnector;
+end;
+
 function TRALDBFireDAC.IsConnected: boolean;
 begin
   Result := FConnector.Connected;
@@ -193,67 +230,82 @@ begin
     OnBeforeConnect(ASender, Request);
 end;
 
-procedure TRALDBFireDAC.OnConnError(ASender, AInitiator: TObject; var AException: Exception);
+procedure TRALDBFireDAC.OnConnError(ASender: TObject;
+      {$IFDEF DELPHIXE4UP}AInitiator: TObject{$ELSE}const AInitiator: IADStanObject{$ENDIF};
+      var AException: Exception);
 begin
   if Assigned(OnErrorConnect) then
     OnErrorConnect(ASender, AException.Message, Request);
 end;
 
-procedure TRALDBFireDAC.OnQueryError(ASender, AInitiator: TObject; var AException: Exception);
+procedure TRALDBFireDAC.OnQueryError(ASender: TObject;
+      {$IFDEF DELPHIXE4UP}AInitiator: TObject{$ELSE}const AInitiator: IADStanObject{$ENDIF};
+      var AException: Exception);
 begin
   if Assigned(OnErrorQuery) then
     OnErrorQuery(ASender, AException.Message, Request);
 end;
 
+{ The query a request runs, with its params - freed right here when any of that
+  fails, since nobody else holds it yet. Three routines built it inline, none
+  inside a try: an unknown param, a value that did not convert or a statement
+  the server refused left one query behind per request, hung on a connection
+  the pool keeps alive. AParams may be nil - TestConnection passes nil, and
+  OpenCompatible used to dereference it, so a pool with ValidateOnAcquire
+  failed its test every time and reconnected on every acquire. }
+function TRALDBFireDAC.NewQuery(const ASQL: StringRAL; AParams: TParams):
+  {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
+var
+  vInt: integer;
+begin
+  Result := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}.Create(nil);
+  try
+    Result.Connection := FConnector;
+    Result.OnError := OnQueryError;
+    Result.SQL.Text := ASQL;
+    if AParams <> nil then
+      for vInt := 0 to Pred(AParams.Count) do
+      begin
+        Result.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
+        if not AParams.Items[vInt].IsNull then
+          Result.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+      end;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
 function TRALDBFireDAC.OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset;
 var
   vQuery: {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
-  vInt: integer;
 begin
-  Result := nil;
-
   Conectar;
 
-  vQuery := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}.Create(nil);
-  vQuery.FetchOptions.Unidirectional := True;
-  vQuery.OnError := OnQueryError;
-  vQuery.Connection := FConnector;
-  vQuery.Close;
-  vQuery.SQL.Text := ASQL;
-  for vInt := 0 to Pred(AParams.Count) do
-  begin
-    vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-    if not AParams.Items[vInt].IsNull then
-      vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
+  vQuery := NewQuery(ASQL, AParams);
+  try
+    vQuery.FetchOptions.Unidirectional := True;
+    vQuery.Open;
+  except
+    vQuery.Free;
+    raise;
   end;
-  vQuery.Open;
-
   Result := vQuery;
 end;
 
 function TRALDBFireDAC.OpenNative(ASQL: StringRAL; AParams: TParams): TDataset;
 var
   vQuery: {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
-  vInt: integer;
 begin
-  Result := nil;
-
   Conectar;
 
-  vQuery := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}.Create(nil);
-  vQuery.Connection := FConnector;
-  vQuery.OnError := OnQueryError;
-  vQuery.Close;
-  vQuery.SQL.Text := ASQL;
-  if (AParams <> nil) and (AParams.Count > 0) then
-    for vInt := 0 to Pred(AParams.Count) do
-    begin
-      vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-      if not AParams.Items[vInt].IsNull then
-        vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
-    end;
-  vQuery.Open;
-
+  vQuery := NewQuery(ASQL, AParams);
+  try
+    vQuery.Open;
+  except
+    vQuery.Free;
+    raise;
+  end;
   Result := vQuery;
 end;
 
@@ -296,25 +348,14 @@ procedure TRALDBFireDAC.ExecSQL(ASQL: StringRAL; AParams: TParams;
   var ARowsAffected: Int64RAL; var ALastInsertId: Int64RAL);
 var
   vQuery: {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
-  vInt: integer;
 begin
   Conectar;
 
   ALastInsertId := 0;
   ARowsAffected := 0;
 
-  vQuery := {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF}.Create(nil);
+  vQuery := NewQuery(ASQL, AParams);
   try
-    vQuery.Connection := FConnector;
-    vQuery.OnError := OnQueryError;
-    vQuery.Close;
-    vQuery.SQL.Text := ASQL;
-    for vInt := 0 to Pred(AParams.Count) do
-    begin
-      vQuery.ParamByName(AParams.Items[vInt].Name).DataType := AParams.Items[vInt].DataType;
-      if not AParams.Items[vInt].IsNull then
-        vQuery.ParamByName(AParams.Items[vInt].Name).Value := AParams.Items[vInt].Value;
-    end;
     vQuery.ExecSQL;
 
     ARowsAffected := vQuery.RowsAffected;
@@ -341,5 +382,8 @@ end;
 initialization
   RegisterClass(TRALDBFireDAC);
   RegisterDatabase(TRALDBFireDAC);
+
+finalization
+  UnregisterDatabase(TRALDBFireDAC);
 
 end.

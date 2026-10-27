@@ -50,8 +50,11 @@ type
 
   TRALCriptoType = (crNone, crAES128, crAES192, crAES256);
   TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
+  { amUNKNOWN is what a server gets for a method it does not implement, and
+    ValidateRequest answers 501 to it - it is never a member of a route's
+    method sets. It goes last so that no ordinal already stored moves }
   TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTIONS,
-    amHEAD, amTRACE);
+    amHEAD, amTRACE, amUNKNOWN);
   TRALMethods = set of TRALMethod;
   TRALParamKind = (rpkNONE, rpkBODY, rpkFIELD, rpkHEADER, rpkQUERY, rpkCOOKIE);
   TRALParamKinds = set of TRALParamKind;
@@ -74,8 +77,25 @@ type
   TRALSecurityOption = (rsoBruteForceProtection, rsoFloodProtection,
     rsoPathTransvBlackList);
   TRALSecurityOptions = set of TRALSecurityOption;
+  { The headers TRALServer.SecurityHeaders adds to every answer, with the
+    values the OWASP REST cheat sheet gives an API:
+    rshContentTypeOptions     X-Content-Type-Options: nosniff
+    rshFrameOptions           X-Frame-Options: DENY
+    rshReferrerPolicy         Referrer-Policy: no-referrer
+    rshStrictTransport        Strict-Transport-Security: max-age=31536000,
+                              only when the server runs TLS
+    rshContentSecurityPolicy  Content-Security-Policy: default-src 'none';
+                              frame-ancestors 'none' - which forbids a page
+                              everything, so it is for a server that serves
+                              no HTML; a WebModule's pages need a policy of
+                              their own }
+  TRALSecurityHeader = (rshContentTypeOptions, rshFrameOptions, rshReferrerPolicy,
+    rshStrictTransport, rshContentSecurityPolicy);
+  TRALSecurityHeaders = set of TRALSecurityHeader;
   TRALExecBehavior = (ebSingleThread, ebMultiThread);
   TRALDateTimeFormat = (dtfUnix, dtfISO8601, dtfCustom);
+  /// IP family of an address - see TRALServer.GetServerAddress
+  TRALIpMode = (rimIPv4, rimIPv6);
 
   { How a send attempt ended, from the transport's point of view.
 
@@ -107,6 +127,41 @@ type
     ///   does not know
     rteCancelled);
 
+  { Which HTTP protocol version to speak.
+
+    RAL does not implement HTTP/2 itself: what frames it is the platform under
+    an engine - WinHTTP on Windows, OkHttp under HttpURLConnection on Android -
+    and only some engines reach such a platform at all. So this is what the
+    client ASKS for; what was actually negotiated comes back in
+    TRALResponse.ProtocolVersion, because ALPN may always settle on less.
+
+    rhvDefault leaves every engine with the behaviour it has today, so nothing
+    changes for an application that does not ask. Asking rhv2 of an engine
+    whose SupportsHTTP2 is False raises on the first request instead of
+    quietly falling back - a transport that silently is not what was asked for
+    is how one spends an afternoon wondering why nothing got faster.
+
+    In practice HTTP/2 only happens over TLS: both platforms negotiate it by
+    ALPN and neither offers the cleartext upgrade (h2c).
+
+    The same type answers the other direction, on TRALRequest/TRALResponse:
+    which version the message ACTUALLY travelled on - see ProtocolVersion and
+    Protocol on TRALHTTPHeaderInfo, which are two faces of one field and
+    therefore cannot disagree. That is why rhv10 exists: nothing can ASK for
+    HTTP/1.0, but a server still receives it, and the fpHTTP engine decides
+    whether to close the connection by it. }
+  TRALHTTPVersion = (
+    /// whatever the engine does today - HTTP/1.1 everywhere, at present; also
+    /// what a transport that cannot tell the version reports back
+    rhvDefault,
+    /// HTTP/1.0 - an OBSERVED value only: BeforeSendUrl refuses it as a
+    /// request, because no engine can ask a transport for it
+    rhv10,
+    /// force HTTP/1.1, declining an HTTP/2 the platform might have taken
+    rhv11,
+    /// ask for HTTP/2, falling back to 1.1 when the server does not offer it
+    rhv2);
+
   {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   TRALBase64StringHelper = {$IFDEF FPC}type{$ELSE}record{$ENDIF} helper for StringRAL
   public
@@ -128,6 +183,11 @@ const
   {$IFEND}
   EmptyStr: StringRAL = StringRAL('');
 
+  { methods whose repetition leaves the server where one call would
+    (RFC 7231 4.2.2): the only ones a client may send again once the request
+    may have been delivered }
+  RALIdempotentMethods = [amGET, amHEAD, amOPTIONS, amTRACE, amPUT, amDELETE];
+
 // Returns the last position of a string
 function RALHighStr(const AStr: StringRAL): integer;
 
@@ -137,10 +197,15 @@ function BytesToStringUTF8(const ABytes: TBytes): StringRAL;
 function StringToBytes(const AString: StringRAL): TBytes;
 function BytesToString(const ABytes: TBytes): StringRAL;
 
-{$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
-function DateToISO8601(const AValue: TDateTime): StringRAL;
-function ISO8601ToDate(const AValue: StringRAL): TDateTime;
-{$IFEND}
+/// The version as it is written on the wire - '1.0', '1.1', '2.0', or '' when
+/// the transport could not tell. This is what TRALHTTPHeaderInfo.Protocol
+/// hands back, so every engine spells it the same way.
+function RALHTTPVersionToStr(AVersion: TRALHTTPVersion): StringRAL;
+/// Reads back what RALHTTPVersionToStr writes, and also what the engines find
+/// in a request line or a status line: the leading 'HTTP/' is optional, and so
+/// is the minor part, so '2', '2.0' and 'HTTP/2' all mean rhv2. Anything else
+/// - including the empty string - is rhvDefault, never a guess.
+function StrToRALHTTPVersion(const AValue: StringRAL): TRALHTTPVersion;
 
 implementation
 
@@ -225,33 +290,43 @@ begin
   {$ENDIF}
 end;
 
-{$IF NOT Defined(FPC) AND NOT Defined(DELPHIXE6UP)}
-function DateToISO8601(const AValue: TDateTime): StringRAL;
-var
-  vFmt: TFormatSettings;
+function RALHTTPVersionToStr(AVersion: TRALHTTPVersion): StringRAL;
 begin
-  vFmt.DateSeparator := '-';
-  vFmt.ShortDateFormat := 'yyyy-mm-dd';
-  vFmt.TimeSeparator := ':';
-  vFmt.ShortTimeFormat := 'hh:nn:ss';
-  vFmt.LongTimeFormat := 'hh:nn:ss.zzz';
-
-  Result := StringReplace(DateToStr(AValue, vFmt), ' ', 'T', []);
+  case AVersion of
+    rhv10: Result := '1.0';
+    rhv11: Result := '1.1';
+    rhv2:  Result := '2.0';
+  else
+    Result := ''; // rhvDefault: the transport did not say, so neither do we
+  end;
 end;
 
-function ISO8601ToDate(const AValue: StringRAL): TDateTime;
+function StrToRALHTTPVersion(const AValue: StringRAL): TRALHTTPVersion;
 var
-  vFmt: TFormatSettings;
+  vStr: StringRAL;
+  vPos: IntegerRAL;
 begin
-  vFmt.DateSeparator := '-';
-  vFmt.ShortDateFormat := 'yyyy-mm-dd';
-  vFmt.TimeSeparator := ':';
-  vFmt.ShortTimeFormat := 'hh:nn:ss';
-  vFmt.LongTimeFormat := 'hh:nn:ss.zzz';
+  vStr := UpperCase(Trim(AValue));
 
-  Result := StrToDate(StringReplace(AValue, 'T', ' ', []), vFmt);
+  { 'HTTP/1.1 200 OK' and 'HTTP/1.1' and '1.1' all have to land on rhv11:
+    drop the scheme, then whatever follows the version }
+  if Pos(StringRAL('HTTP/'), vStr) = 1 then
+    Delete(vStr, 1, 5);
+
+  vPos := Pos(StringRAL(' '), vStr);
+  if vPos > 0 then
+    vStr := Copy(vStr, 1, vPos - 1);
+
+  { 'h2' is how ALPN names it, and what OkHttp reports }
+  if (vStr = '2') or (vStr = '2.0') or (vStr = 'H2') or (vStr = 'H2C') then
+    Result := rhv2
+  else if vStr = '1.1' then
+    Result := rhv11
+  else if vStr = '1.0' then
+    Result := rhv10
+  else
+    Result := rhvDefault;
 end;
-{$IFEND}
 
 { TRALBase64StringHelper }
 

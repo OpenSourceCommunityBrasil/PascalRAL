@@ -1,4 +1,4 @@
-
+﻿
 { @abstract constant internal messages
   am = alert messages: middle severity messages, might raise exception
   em = error messages: high severity messages, raises exception
@@ -14,10 +14,33 @@
   emCertPinInvalid = 'Cada línea de SSL.Pins debe terminar en el SHA-256 del certificado: 64 dígitos hexadecimales, con o sin separadores.';
   emCertPinUnsupported = 'SSL.Pins no es compatible con el motor %s en esta plataforma: no puede leer la huella digital del certificado. Use el motor Indy o decida en OnValidateServerCert.';
   emRequestCancelled = 'La solicitud fue rechazada por OnBeforeExecute: %s.';
+  emConnectionClosedNoResponse = 'El servidor cerró la conexión sin responder: %s.';
   emCertRejected = 'Certificado del servidor rechazado.';
   emCertRequiresTLS = 'SSL.Required está definido, o una línea de SSL.Pins aplica a este host, por lo que se rechaza http sin cifrar: %s.';
+  emHTTP2Unsupported = 'HTTPVersion es rhv2 y el motor %s no habla HTTP/2 en esta plataforma. Use el motor netHTTP, o deje HTTPVersion en rhvDefault.';
+  emOkHttpAndroidOnly = 'El motor OkHttp solo tiene implementacion en Android: se registra en las demas plataformas para poder elegirlo, pero no puede enviar una peticion. Use el motor netHTTP en esta plataforma.';
+  emKwikAndroidOnly = 'El motor Kwik solo tiene implementacion en Android: se registra en las demas plataformas para poder elegirlo, pero no puede enviar una peticion. Use el motor MsQuic en esta plataforma.';
+  emKwikCryptoMissing = 'Esta version de Android no puede ejecutar el TLS 1.3 de Kwik, le falta: %s.';
+  emKwikBridgeMissing = 'El puente de Kwik no respondio: %s. Verifique que los jars kwik, agent15, hkdf, siphash y ralkwik esten todos declarados en el proyecto.';
+  emHttpSysAddUrl = 'http.sys rechazo escuchar en el puerto %d (codigo %d). El codigo 5 significa que el puerto no esta reservado para este usuario: ejecute una vez, como Administrador, "netsh http add urlacl url=http://+:%0:d/ user=<usuario>", o inicie el servidor elevado.';
+  emHttpSysWindowsOnly = 'Mode es smHttpSys, servido por el kernel de Windows (http.sys), y no tiene implementación en esta plataforma. Use smThreads o smAsync, teniendo en cuenta que ninguno de los dos sirve HTTP/2.';
+  emHTTP10NotRequestable = 'HTTPVersion es rhv10, y HTTP/1.0 no se puede solicitar: ningún motor expone esa opción. rhv10 solo aparece de vuelta, en una petición que el servidor recibió. Deje HTTPVersion en rhvDefault.';
+  emServerListenFailed = 'El servidor %s no pudo escuchar en el puerto %d.';
+  emQuicRequiresTLS = 'QUIC no tiene modo sin cifrado: defina SSL.CertificateFile y SSL.PrivateKeyFile antes de activar el servidor.';
+  emQuicFileNotFound = 'QUIC: archivo no encontrado: %s.';
+  emQuicLibrary = 'No se pudo cargar MsQuic: %s.';
+  emQuicApiFailed = 'MsQuic %s falló: %s.';
+  emQuicListenFailed = 'MsQuic no pudo escuchar en el puerto UDP %d: %s.';
+  emQuicHandshakeTimeout = 'El handshake QUIC con %s:%d agotó el tiempo.';
+  emQuicConnectFailed = 'La conexión QUIC con %s:%d falló: %s.';
+  emQuicFrameMalformed = 'Frame QUIC malformado.';
+  emQuicFrameTooLarge = 'QUIC: un cuerpo de %d bytes no cabe en un frame; el límite es de %d bytes.';
+  emQuicAnswerTimeout = 'QUIC: tiempo agotado esperando la respuesta.';
+  emQuicPeerAborted = 'QUIC: el otro extremo abortó el stream.';
+  emQuicPlatformUnsupported = 'El motor MsQuic solo traduce los códigos de estado de Windows y Linux; todavía no funciona en esta plataforma.';
   emCompressInvalidFormat = 'Formato de compressión no és válido.';
   emCompressLibFilesError = 'No se encontraron los archivos binarios de biblioteca de las clases: %s.';
+  emCompressFailed = 'El compresor %s ha fallado.';
   emContentCheckError = 'Error de comprobación de contenido.';
   emCryptEmptyKey = 'Se debe proporcionar la clave.';
   emCryptInvalidLength = 'Los datos cifrados tienen un tamaño inválido: necesitan IV y bloques enteros.';
@@ -25,6 +48,7 @@
   emCryptInvalidMAC = 'Los datos cifrados fallaron la verificación de integridad: clave incorrecta o contenido alterado.';
   emHMACEmptyText = 'Se debe proporcionar lo texto.';
   emDBConnectionUndefined = 'Conexión no establecida.';
+  emDBClientUndefined = 'La conexión no tiene Client definido.';
   emDBInvalidTableName = 'Nombre de tabla inválido: solo letras, dígitos, _, $ y . son aceptados.';
   emDBSQLRejected = 'SQL rechazado por OnValidateSQL.';
   emStreamSizeBeyondEnd = 'El stream binario anuncia más bytes de los que contiene.';
@@ -34,6 +58,8 @@
   emDBEmptyBody = 'El cuerpo está vacío.';
   emDBLinkMissing = 'Falta la propiedad DBLink.';
   emDBPoolTimeout = 'Se agotó el tiempo de espera por una conexión libre a la base de datos.';
+  emDBRowsAffected = 'ApplyUpdates: una instrucción afectó %d registros en lugar de 1 - el registro fue modificado o eliminado por otro usuario, o el criterio de actualización no identifica exactamente una fila.';
+  emDBStatusNoMessage = 'El servidor respondió HTTP %d y no envió ningún mensaje.';
   emDBUpdateSQLMissing = 'SQL para UpdateTable/UpdateSQL no puede estar vacío.';
   emInvalidFormat = 'Formato no és válido.';
   emInvalidJSONFormat = 'Formato JSON no és válido.';
@@ -43,6 +69,32 @@
   emStorageInvalidBinary = 'Formato binario no és válido.';
   emStorageLinkNotFound = 'Lo Storage %s no ha declarado en "uses".';
   emStorageNotFound = 'No se encontró TRALStorageLink.';
+
+  emEngineNotFound = 'Motor %s no encontrado: la unit que lo registra no está en las uses.';
+  emDBFieldLoad = 'No se pudo cargar el campo %s: %s';
+  emHTTPDateInvalid = '"%s" no es una fecha HTTP.';
+  emMultipartNoPart = 'Cuerpo multipart mal formado: ninguna parte completa delimitada por su boundary.';
+  emBase64Invalid = 'Texto base64 no válido.';
+  emDecimalInvalid = '"%s" no es un número decimal.';
+  emISO8601Invalid = '"%s" no es una fecha ISO 8601.';
+  emLibraryNotLoaded = 'La biblioteca no fue cargada.';
+  emOpenSSLCallFailed = 'OpenSSL falló en %s.';
+  emOpenSSLNotLoaded = 'OpenSSL no está cargado.';
+  emRandomBytesFailed = 'El sistema no pudo generar bytes aleatorios.';
+
+  // server certificate (TRALCertInfo.Error)
+  wmCertMsQuicStatus = 'MsQuic no validó el certificado: %s (flags 0x%x).';
+  wmCertNotValidatedByEngine = 'El motor no validó el certificado.';
+  wmCertNotValidatedByPlatform = 'La plataforma no validó el certificado.';
+  wmCertOpenSSLVerify = 'OpenSSL no validó el certificado (error %d).';
+  wmCertUnavailable = 'El certificado no está disponible en este socket handler.';
+
+  // jwt messages (sent as error_description in WWW-Authenticate)
+  wmJWTExpired = 'El token expiró';
+  wmJWTInvalid = 'La firma o el formato del token no es válido';
+  wmJWTNotYetValid = 'El token aún no es válido';
+  wmJWTRefused = 'El token fue rechazado por el servidor';
+  emJWTNoSecretKey = 'JWT: la SignSecretKey está vacía, así que el servidor no firma ni acepta tokens';
 
   // sagui error messages
   emSaguiLibraryLoadError = 'Error al intentar cargar libsagui.';
@@ -65,6 +117,8 @@
   SError403Page = 'El servidor informa que no quiere que accedas.';
   SError404 = 'No encontrado';
   SError404Page = 'El servidor informa que la página que estás solicitando no existe en esta realidad.';
+  SError406 = 'No aceptable';
+  SError406Page = 'El servidor informa que no puede responder en ninguna codificación que usted acepte';
   SError415 = 'Tipo de medio no soportado';
   SError415Page = 'El servidor informa que no sabe lo que estás preguntando.';
   SError429 = 'Demasiadas solicitudes';
@@ -88,3 +142,7 @@
   cmDBBinary = 'Formato Binario.';
   cmDBSQL = 'SQL';
   cmDBTableName = 'Nombre de la tabla.';
+
+  // wizard messages
+  emWizardDirEmpty = 'El directorio debe completarse.';
+  emWizardDirNotFound = 'El directorio no existe.';

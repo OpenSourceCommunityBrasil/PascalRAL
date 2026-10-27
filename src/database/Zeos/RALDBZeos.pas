@@ -37,6 +37,9 @@ type
                       var ALastInsertId: Int64RAL); override;
     function GetDriverType: TRALDBDriverType; override;
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; override;
+    function GetNativeConnection: TComponent; override;
+    /// NativeConnection's getter - connects first, see GetNativeConnection
+    function GetConnector: TZConnection;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
@@ -45,6 +48,8 @@ type
 
     class function DatabaseName : StringRAL; override;
     class function PackageDependency : StringRAL; override;
+    /// The TZConnection this driver opens - see GetNativeConnection
+    property NativeConnection: TZConnection read GetConnector;
   end;
 
 implementation
@@ -55,6 +60,13 @@ procedure TRALDBZeos.Conectar;
 begin
   if FConnector.Connected then
     Exit;
+
+  { a connection the SERVER dropped is not closed for Zeos: the DBC object is
+    still there, Connected answers False, and TZAbstractConnection.Connect does
+    nothing while that object exists - no reconnection and no error, and every
+    query after it failed with "Connection is not opened yet" for good.
+    Disconnect is what frees it, and it is harmless on a closed connection }
+  FConnector.Disconnect;
 
   FConnector.Database               := Database;
   FConnector.HostName               := Hostname;
@@ -71,6 +83,8 @@ begin
     (pooler suite, 07/09/2026). FireDAC waits up to 10 s by default
     (BusyTimeout); ask Zeos for the same, so a pooled SQLite behaves alike
     under both drivers. Only when the application did not set it }
+  ApplyConnectionParams(FConnector.Properties);
+
   if (DatabaseType = dtSQLite) and
      (Trim(FConnector.Properties.Values['busytimeout']) = '') then
     FConnector.Properties.Values['busytimeout'] := '10000';
@@ -162,6 +176,9 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
+      { nobody else holds it yet: every failed open used to leave one
+        behind, on a connection the pool keeps alive }
+      vQuery.Free;
       raise;
     end;
   end;
@@ -205,8 +222,25 @@ end;
 
 procedure TRALDBZeos.Disconnect;
 begin
-  if FConnector.Connected then
-    FConnector.Disconnect;
+  { no "if Connected": a dropped connection answers False there and still has
+    to be released (see Conectar). Zeos guards it by the right criterion }
+  FConnector.Disconnect;
+end;
+
+{ Connected - and with it configured - on the way out: Database, credentials
+  and the driver settings are only applied by Conectar, and with the pool off
+  (the default) nothing had called it yet, so a route that took this
+  connection got one that knew no database. Conectar returns at once when
+  the connection is already open. }
+function TRALDBZeos.GetNativeConnection: TComponent;
+begin
+  Result := GetConnector;
+end;
+
+function TRALDBZeos.GetConnector: TZConnection;
+begin
+  Conectar;
+  Result := FConnector;
 end;
 
 function TRALDBZeos.IsConnected: boolean;
@@ -299,6 +333,9 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
+      { nobody else holds it yet: every failed open used to leave one
+        behind, on a connection the pool keeps alive }
+      vQuery.Free;
       raise;
     end;
   end;
@@ -361,6 +398,9 @@ end;
 initialization
   RegisterClass(TRALDBZeos);
   RegisterDatabase(TRALDBZeos);
+
+finalization
+  UnregisterDatabase(TRALDBZeos);
 
 end.
 

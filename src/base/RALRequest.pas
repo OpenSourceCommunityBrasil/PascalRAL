@@ -1,4 +1,4 @@
-﻿/// Unit that contains everything related to the "Request" part of the communication.
+/// Unit that contains everything related to the "Request" part of the communication.
 unit RALRequest;
 
 interface
@@ -15,6 +15,7 @@ type
   /// Class that stores information from the client. Some of them can only be obtained with RALClient
   TRALClientInfo = class(TPersistent)
   private
+    FConnectionID: Int64RAL;
     FIP: StringRAL;
     FMACAddress: StringRAL;
     FPort: IntegerRAL;
@@ -22,6 +23,33 @@ type
   protected
     procedure AssignTo(Dest: TPersistent); override;
   public
+    /// Which CONNECTION carried this request, as the engine identifies it.
+    ///
+    /// It is not an address and not a client: it is the transport underneath,
+    /// and its whole point is that SEVERAL requests can share one. Under
+    /// HTTP/1.1 a kept-alive socket serves them one after the other; under
+    /// HTTP/2 and QUIC they travel at the same time, multiplexed, and telling
+    /// the two apart is otherwise impossible from inside a handler - the
+    /// requests look identical. Counting distinct values against the number of
+    /// requests is what says whether multiplexing actually happened, which is
+    /// also how a server tells one busy client from many.
+    ///
+    /// The value is only unique and only comparable WITHIN one running server:
+    /// each engine hands over whatever it already has - http.sys the peer's
+    /// address and port (its own ConnectionId is per stream under HTTP/2, and
+    /// its RawConnectionId is not filled on every Windows), mORMot2's socket
+    /// modes a counter of their own, the other engines the connection object
+    /// or its handle with the peer's port above it - the handle alone came
+    /// back for the next connection, and a hundred connections in a row
+    /// counted as one - so it must never be persisted, sent to a client, or
+    /// compared across servers. A reused connection keeps the same value for
+    /// its whole life; a value may be reused after its connection is gone,
+    /// once the client's port comes round again.
+    ///
+    /// ZERO means the engine cannot tell, which is a legitimate answer and not
+    /// an error - CGI has no connection of its own, and UniGUI's belongs to
+    /// UniGUI. Code that counts must skip it rather than treat it as one more.
+    property ConnectionID: Int64RAL read FConnectionID write FConnectionID;
     property IP: StringRAL read FIP write FIP;
     property MACAddress: StringRAL read FMACAddress write FMACAddress;
     property Port: IntegerRAL read FPort write FPort;
@@ -65,10 +93,14 @@ type
     FHost: StringRAL;
     FHttpVersion: StringRAL;
     FMethod: TRALMethod;
-    FProtocol: StringRAL;
     FQuery: StringRAL;
+    FRoute: TCollectionItem;
+    FRouteData: TObject;
   private
     procedure ParseQueryParams(const AValue: StringRAL);
+    procedure SetAuthorization(const AValue: TRALAuthorization);
+    procedure SetClientInfo(const AValue: TRALClientInfo);
+    procedure SetRouteData(AValue: TObject);
   protected
     /// Grabs the full URL of the request
     function GetURL: StringRAL;
@@ -86,7 +118,8 @@ type
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctTEXTPLAIN): TRALRequest; reintroduce;
     /// Adds a string cookie to the body of the request.
     function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce; overload;
-    /// Adds a RALcookie to the header of the request.
+    /// Adds a cookie to the Cookie header of the request: its Name and Value,
+    /// the only part of a TRALCookie a request carries.
     function AddCookie(const ACookie: TRALCookie): TRALRequest; reintroduce; overload;
     /// Adds a string param with the "Field" kind to the request.
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALRequest; reintroduce;
@@ -105,14 +138,29 @@ type
     property URL: StringRAL read GetURL;
     property RequestStream: TStream read GetRequestStream write SetRequestStream;
     property RequestText: StringRAL read GetRequestText write SetRequestText;
+    /// The route answering this request: a TRALBaseRoute of RALRoutes, which
+    /// cannot be named here because RALRoutes uses this unit. The server fills
+    /// it once the route is resolved - before OnRequest - and it stays nil
+    /// when none answers. Its InputParams and OutputParams carry the order the
+    /// route declares, which the params themselves, kept in the order they
+    /// arrived, do not.
+    property Route: TCollectionItem read FRoute write FRoute;
+    /// What the module answering the request worked out while deciding to
+    /// answer it, for its handler to use instead of working it out again - the
+    /// WebModule keeps the file it resolved here. OWNED by the request: freed
+    /// with it, or when another object is assigned. Server side only, and
+    /// Clone leaves it behind
+    property RouteData: TObject read FRouteData write SetRouteData;
   published
-    property Authorization: TRALAuthorization read FAuthorization write FAuthorization;
-    property ClientInfo: TRALClientInfo read FClientInfo write FClientInfo;
+    property Authorization: TRALAuthorization read FAuthorization write SetAuthorization;
+    property ClientInfo: TRALClientInfo read FClientInfo write SetClientInfo;
     property ContentSize: Int64RAL read FContentSize write FContentSize;
     property Host: StringRAL read FHost write FHost;
+    /// The SCHEME, not the version: 'HTTP' or 'HTTPS'. Which version carried
+    /// the request is Protocol/ProtocolVersion, inherited from
+    /// TRALHTTPHeaderInfo - the two names have always meant different things.
     property HttpVersion: StringRAL read FHttpVersion write FHttpVersion;
     property Method: TRALMethod read FMethod write FMethod;
-    property Protocol: StringRAL read FProtocol write FProtocol;
     property Query: StringRAL read FQuery write SetQuery;
   end;
 
@@ -157,26 +205,49 @@ end;
 
 function TRALRequest.GetRequestText: StringRAL;
 begin
-  Result := GetRequestEncText;
+  { the body as text, as on the response: on the client this ran gzip and AES
+    and rewrote ContentType. An engine wants RequestStream }
+  Result := GetRequestEncText(False);
+end;
+
+procedure TRALRequest.SetAuthorization(const AValue: TRALAuthorization);
+begin
+  RALAssignOwned(FAuthorization, AValue);
+end;
+
+procedure TRALRequest.SetClientInfo(const AValue: TRALClientInfo);
+begin
+  RALAssignOwned(FClientInfo, AValue);
+end;
+
+procedure TRALRequest.SetRouteData(AValue: TObject);
+begin
+  if AValue = FRouteData then
+    Exit;
+  FRouteData.Free;
+  FRouteData := AValue;
 end;
 
 procedure TRALRequest.ParseQueryParams(const AValue: StringRAL);
-var
-  sl: TStringList;
 begin
-  sl := TStringList.Create;
-  try
-    sl.Delimiter := '&';
-    sl.DelimitedText := AValue;
-    Params.AppendParams(sl, rpkQUERY);
-  finally
-    FreeAndNil(sl);	
-  end;
+  { the same parser as everywhere else (AppendParamsText): '&' only, decoded,
+    empty segments skipped. A TStringList's DelimitedText also split on spaces
+    and read quotes - two parsers with two answers for one query string - and
+    the engines that set Query then parsed it a second time }
+  Params.AppendParamsText(AValue, rpkQUERY);
 end;
 
 function TRALRequest.GetURL: StringRAL;
 begin
-  Result := LowerCase(FHttpVersion) + ':/' + FixRoute(FHost + '/' + FQuery);
+  { scheme://host/path - the path is fixed already (SetQuery). It wrote one
+    slash, 'http:/host/route', and TRALServerOAuth takes its signature base
+    string over this; and an engine that left HttpVersion empty, as the CGIs
+    did, made it ':/' }
+  if FHttpVersion = '' then
+    Result := 'http://'
+  else
+    Result := LowerCase(FHttpVersion) + '://';
+  Result := Result + FHost + FQuery;
 end;
 
 procedure TRALRequest.SetQuery(const AValue: StringRAL);
@@ -205,8 +276,10 @@ begin
   ASource.Host := Self.Host;
   ASource.HttpVersion := Self.HttpVersion;
   ASource.Method := Self.Method;
-  ASource.Protocol := Self.Protocol;
+  { Protocol is not copied here: it is a face of ProtocolVersion, which the
+    inherited Clone above already carried over }
   ASource.Query := Self.Query;
+  ASource.Route := Self.Route;
 end;
 
 constructor TRALRequest.Create(AOwner: TObject);
@@ -219,6 +292,7 @@ end;
 
 destructor TRALRequest.Destroy;
 begin
+  FreeAndNil(FRouteData);
   FreeAndNil(FClientInfo);
   FreeAndNil(FAuthorization);
   inherited;
@@ -254,7 +328,12 @@ end;
 
 function TRALRequest.AddCookie(const ACookie: TRALCookie): TRALRequest;
 begin
-  inherited AddCookie(ACookie);
+  { a Cookie header is name=value pairs: Path, Expires, HttpOnly and the rest
+    are what a server tells a browser. The inherited method keeps the whole
+    Set-Cookie line, right for a response, and here the cookie went out as
+    "Cookie: Set-Cookie=name=value" on the engines that join the params
+    themselves, while GetRALCookie could not find it by its name }
+  Params.AddParam(ACookie.Name, ACookie.Value, rpkCOOKIE);
   Result := Self;
 end;
 
@@ -361,11 +440,14 @@ begin
 
     Params.CompressType := ctNone;
     Params.CriptoOptions.CriptType := crNone;
-
-    FStream := Params.EncodeBody(vContentType, vContentDisposition);
-
-    Params.CompressType := vCompress;
-    Params.CriptoOptions.CriptType := vCripto;
+    try
+      FStream := Params.EncodeBody(vContentType, vContentDisposition);
+    finally
+      { in a finally: an EncodeBody that raised left the request's params
+        with no compression and no cipher for the rest of their life }
+      Params.CompressType := vCompress;
+      Params.CriptoOptions.CriptType := vCripto;
+    end;
   end;
   Result := FStream;
 end;
@@ -407,19 +489,29 @@ end;
 function TRALClientRequest.GetRequestEncStream(const AEncode: boolean): TStream;
 var
   vContentType, vContentDisposition: StringRAL;
+  vCompress: TRALCompressType;
+  vCripto: TRALCriptoType;
 begin
   if not AEncode then
   begin
-    Params.CriptoOptions.CriptType := crNone;
-    Params.CriptoOptions.Key := '';
+    { the plain body, and nothing touched: no cipher key wiped, no
+      ContentType or ContentCompress rewritten }
+    vCompress := Params.CompressType;
+    vCripto := Params.CriptoOptions.CriptType;
     Params.CompressType := ctNone;
-  end
-  else
-  begin
-    Params.CriptoOptions.CriptType := ContentCripto;
-    Params.CriptoOptions.Key := CriptoKey;
-    Params.CompressType := ContentCompress;
+    Params.CriptoOptions.CriptType := crNone;
+    try
+      Result := Params.EncodeBody(vContentType, vContentDisposition, False);
+    finally
+      Params.CompressType := vCompress;
+      Params.CriptoOptions.CriptType := vCripto;
+    end;
+    Exit;
   end;
+
+  Params.CriptoOptions.CriptType := ContentCripto;
+  Params.CriptoOptions.Key := CriptoKey;
+  Params.CompressType := ContentCompress;
   { False: a multipart REQUEST goes out uncompressed. The server is the one that
     parses it, and a server that reads multipart natively - libmicrohttpd, under
     the Sagui engine - parses before any decompression layer, so it saw gzip
@@ -477,6 +569,7 @@ var
   vDest : TRALClientInfo;
 begin
   vDest := TRALClientInfo(Dest);
+  vDest.ConnectionID := Self.ConnectionID;
   vDest.IP := Self.IP;
   vDest.MACAddress := Self.MACAddress;
   vDest.Port := Self.Port;

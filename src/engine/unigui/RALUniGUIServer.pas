@@ -80,7 +80,6 @@ var
   vInt: IntegerRAL;
   vCookies: TStringList;
   vParam: TRALParam;
-  vIdCookie: TIdCookie;
 begin
   if Assigned(FOnHTTPCommand) then
     FOnHTTPCommand(ARequestInfo, AResponseInfo, Handled);
@@ -100,6 +99,10 @@ begin
     with vRequest do
     begin
       ClientInfo.IP := ARequestInfo.RemoteIP;
+      { ClientInfo.ConnectionID stays 0 on purpose: the server here is UniGUI's,
+        RAL only hooks its events, and the hook hands over the request info
+        without the context that owns the socket. Zero is the documented
+        answer for "the engine cannot tell" - see TRALClientInfo.ConnectionID }
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := ARequestInfo.UserAgent;
 
@@ -125,19 +128,14 @@ begin
       ValidateRequest(vRequest, vResponse);
       if vResponse.StatusCode < HTTP_BadRequest then
       begin
-        Params.AppendParams(ARequestInfo.Params, rpkQUERY);
-
-        if ARequestInfo.Params.Count = 0 then
-        begin
-          Params.AppendParamsUrl(ARequestInfo.QueryParams, rpkQUERY);
-          Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
-        end;
-
-        for vInt := 0 to Pred(ARequestInfo.Cookies.Count) do
-        begin
-          vIdCookie := ARequestInfo.Cookies.Cookies[vInt];
-          Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
-        end;
+        { each param with the kind of where it came from, decoded once.
+          Indy's Params mixes the query string with a urlencoded form, both already
+          decoded - and AppendParamLine decoded them again, so a '%2B' turned into a
+          space. The raw texts go through the one parser; the cookies come from
+          their header, as on every engine }
+        Params.AppendParamsText(ARequestInfo.QueryParams, rpkQUERY);
+        Params.AppendParamsText(ARequestInfo.FormParams, rpkFIELD);
+        AddCookies(Params.GetKind['Cookie', rpkHEADER].AsString);
 
         Params.CompressType := ContentCompress;
         Params.CriptoOptions.CriptType := ContentCripto;
@@ -180,7 +178,7 @@ begin
       vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
       if vParam <> nil then
       begin
-        AResponseInfo.WWWAuthenticate.Add(vParam.AsString);
+        AResponseInfo.WWWAuthenticate.Add(RALSafeHeaderText(vParam.AsString));
         vResponse.Params.DelParam('WWW-Authenticate');
       end;
 
@@ -192,17 +190,15 @@ begin
 
       Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER, ': ');
 
+      { every cookie whole, on its own Set-Cookie line, from the builder all
+        engines share. A TIdCookie made a cookie CALLED Set-Cookie out of an
+        AddCookie(TRALCookie) one, and lasted 30 minutes whatever CookieLife
+        said }
       vCookies := TStringList.Create;
       try
-        Params.AssignParams(vCookies, rpkCOOKIE);
+        GetParamsCookies(vCookies, IncMinute(Now, CookieLife));
         for vInt := 0 to Pred(vCookies.Count) do
-        begin
-          vIdCookie := AResponseInfo.Cookies.Add;
-          vIdCookie.CookieName := vCookies.Names[vInt];
-          vIdCookie.Value := vCookies.ValueFromIndex[vInt];
-          vIdCookie.Expires := RALDateTimeToGMT(IncMinute(Now, 30));
-          vIdCookie.Path := '/';
-        end;
+          AResponseInfo.CustomHeaders.AddValue('Set-Cookie', vCookies[vInt]);
       finally
         FreeAndNil(vCookies);
       end;

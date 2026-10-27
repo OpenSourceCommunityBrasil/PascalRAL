@@ -19,6 +19,8 @@ type
   TRALSSL = class(TPersistent)
   private
     FEnabled: boolean;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
   published
     property Enabled: boolean read FEnabled write FEnabled;
   end;
@@ -30,6 +32,8 @@ type
   private
     FExpirationTime: IntegerRAL;
     FMaxTry: IntegerRAL;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
   public
     constructor Create;
   published
@@ -71,6 +75,7 @@ type
     FIPv6Enabled: boolean;
     FOwner: TRALServer;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     procedure SetIPv6Enabled(AValue: boolean);
   public
     constructor Create(AOwner: TRALServer);
@@ -88,10 +93,18 @@ type
   // Internal CORS configuration of Server
   TRALCORSOptions = class(TPersistent)
   private
+    FAllowCredentials: boolean;
     FAllowOrigin: StringRAL;
     FAllowHeaders: TStringList;
+    { AllowHeaders as the header carries it, rebuilt when the list changes:
+      it was rebuilt on every request a route answered. Published as a
+      snapshot, so a request reading it while the list changes is never left
+      holding a text being freed }
+    FAllowHeadersText: TRALSnapshots;
     FMaxAge: IntegerRAL;
+    procedure AllowHeadersChanged(Sender: TObject);
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     procedure SetAllowHeaders(AValue: TStringList);
     procedure SetDefaultHeaders;
   public
@@ -100,12 +113,28 @@ type
 
     procedure AddAllowHeader(AValue: StringRAL);
     function GetAllowHeaders: StringRAL;
+    /// The Access-Control-Allow-Origin to answer a request coming from
+    /// ARequestOrigin: '*', the configured origin, or the request's own origin
+    /// when it is one of a list. '' means "this origin is not allowed"
+    function OriginFor(const ARequestOrigin: StringRAL): StringRAL;
   published
+    /// Sends Access-Control-Allow-Credentials: true, which a browser needs to
+    /// let fetch(..., {credentials: 'include'}) through - cookies or an
+    /// Authorization header on a cross-origin call. Browsers refuse it next to
+    /// AllowOrigin = '*', and so does the server: with '*' the header is not
+    /// sent. Name the origins instead
+    property AllowCredentials: boolean read FAllowCredentials write FAllowCredentials
+      default False;
     // List of headers that are allowed in the CORS configuration
     property AllowHeaders: TStringList read FAllowHeaders write SetAllowHeaders;
-    // List of IPs allowed to comunicate with the server
+    /// Who may call the server from a browser on another site: empty (the
+    /// default) is nobody, '*' is anyone, one origin
+    /// ('https://app.example.com') is that one, and several separated by
+    /// spaces or commas make the request's Origin be answered back when it is
+    /// one of them, with Vary: Origin. It was '*' by default until 03/10/2026;
+    /// a form saved before then keeps its '*', which the IDE wrote out
     property AllowOrigin: StringRAL read FAllowOrigin write FAllowOrigin;
-    // Time in miliseconds to allow an active CORS session
+    // Time in seconds a browser may keep the preflight answer
     property MaxAge: IntegerRAL read FMaxAge write FMaxAge;
   end;
 
@@ -115,18 +144,26 @@ type
   TRALSecurity = class(TPersistent)
   private
     FBlackIPList: TRALStringListSafe;
+    { what the published BlackIPList is - the list the Object Inspector and the
+      DFM fill. The requests read FBlackIPList; see IPViewChange }
+    FBlackIPView: TStringList;
     FBlockedList: TRALStringListSafe;
     FBruteForce: TRALBruteForceProtection;
     FFloodTimeInterval: IntegerRAL;
     FFloodList: TRALStringListSafe;
+    { the second ClearExpiredIPsOnRequest last pruned in - see there }
+    FLastPrune: Cardinal;
     FOptions: TRALSecurityOptions;
     FWhiteIPList: TRALStringListSafe;
-    // Creates and returns the internal Blacklisted IPs
-    function GetBlackIPList: TStringList;
+    { same as FBlackIPView, for FWhiteIPList }
+    FWhiteIPView: TStringList;
     function GetBlockedCount: IntegerRAL;
     function GetFloodCount: IntegerRAL;
-    // Creates and returns the internal Whitelisted IPs
-    function GetWhiteIPList: TStringList;
+    // Copies a changed BlackIPList/WhiteIPList into the list the requests read
+    procedure IPViewChange(Sender: TObject);
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+  private
     // Setter functions for class properties
     procedure SetBlackIPList(AValue: TStringList);
     procedure SetBruteForce(const Value: TRALBruteForceProtection);
@@ -143,13 +180,17 @@ type
     function CheckBlockClientIP(const AClientIP: StringRAL): boolean;
     // Removes the IPs that are stored longer than the preconfigured duration
     procedure ClearExpiredIPs;
+    /// ClearExpiredIPs at most once a second - what every request calls
+    procedure ClearExpiredIPsOnRequest;
     // Verifies if the incomming IP is known for request flooding
     function CheckFlood(const AClientIP: StringRAL): boolean;
     // Removes an IP from the list of blocked IPs
     procedure UnblockClient(const AClientIP: StringRAL);
-    // Gets a client block object from the list of blocked IPs
+    // Gets a client block object from the list of blocked IPs. While requests
+    // are being served, another one can prune or unblock that address - and
+    // free the object - at any moment: GetBlockClientTry is the safe read
     function GetBlockClient(const AClientIP: StringRAL): TRALClientBlockList;
-    // Gets a client object from the list of blocked IPs
+    // Gets a client object from the flood list - same caution as GetBlockClient
     function GetClientList(const AClientIP: StringRAL): TRALClientList;
     // Gets the number of tries to block client, in case client is not blocked
     // return zero
@@ -162,16 +203,19 @@ type
     property BlockedCount: IntegerRAL read GetBlockedCount;
     property FloodCount: IntegerRAL read GetFloodCount;
   published
-    // List of IPs that will not receive a response from the server
-    property BlackIPList: TStringList read GetBlackIPList write SetBlackIPList;
+    // List of IPs that will not receive a response from the server. Every
+    // change applies at once and copies the whole list, so add many addresses
+    // between BeginUpdate and EndUpdate, or assign a list
+    property BlackIPList: TStringList read FBlackIPView write SetBlackIPList;
     // Set of configurations to block BruteForce attacks
     property BruteForce: TRALBruteForceProtection read FBruteForce write SetBruteForce;
     // Time in miliseconds between requests by the same IP that the server will allow
     property FloodTimeInterval: IntegerRAL read FFloodTimeInterval write SetFloodTimeInterval;
     // Flags that will enable/disable security features
     property Options: TRALSecurityOptions read FOptions write SetOptions;
-    // List of IPs that will always receive a response from the server and won't be blocked
-    property WhiteIPList: TStringList read GetWhiteIPList write SetWhiteIPList;
+    // List of IPs that will always receive a response from the server and won't
+    // be blocked - changed the same way as BlackIPList
+    property WhiteIPList: TStringList read FWhiteIPView write SetWhiteIPList;
   end;
 
   TRALOnServerError = procedure(Error: Exception) of object;
@@ -182,19 +226,24 @@ type
   TRALServer = class(TRALComponent)
   private
     FActive: boolean;
+    { Active as read from the form, applied by Loaded - see WriteActive }
+    FStreamedActive: boolean;
     FAuthentication: TRALAuthServer;
     FCompressType: TRALCompressType;
     FCookieLife: IntegerRAL;
     FCORSOptions: TRALCORSOptions;
     FCriptoOptions: TRALCriptoOptions;
     FEngine: StringRAL;
+    FHideErrorDetails: boolean;
     FIPConfig: TRALIPConfig;
+    FJSONBodyToParams: boolean;
     FListSubModules: TList;
     FMaxRequestSize: Int64RAL;
     FPort: IntegerRAL;
     FRaiseError: boolean;
     FRoutes: TRALRoutes;
     FSecurity: TRALSecurity;
+    FSecurityHeaders: TRALSecurityHeaders;
     FServerStatus: TStringList;
     FSessionTimeout: IntegerRAL;
     FShowServerStatus: boolean;
@@ -203,9 +252,17 @@ type
 
     FOnClientBlock: TRALOnClientBlock;
     FOnRequest: TRALOnReply;
-    FOnResponse: TRALOnReply;    
+    FOnResponse: TRALOnReply;
     FOnServerError: TRALOnServerError;
+    procedure WriteActive(const AValue: boolean);
+    { the brute-force count for a request the authentication just answered -
+      see TRALAuthServer.AttemptOf }
+    procedure CountAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
+                           AOnAuthRoute: boolean);
+    { the SecurityHeaders an answer goes out with }
+    procedure AddSecurityHeaders(AResponse: TRALResponse);
   protected
+    procedure Loaded; override;
     /// Adds a fixed subroute from other components into server routes
     procedure AddSubRoute(ASubRoute: TRALModuleRoutes);
     /// Processes CORS headers
@@ -231,6 +288,13 @@ type
     procedure SetPort(const AValue: IntegerRAL); virtual;
     procedure SetServerStatus(AValue: TStringList);
     procedure SetSessionTimeout(const AValue: IntegerRAL); virtual;
+    { the object properties copy what they are given (RALAssignOwned) }
+    procedure SetCORSOptions(const AValue: TRALCORSOptions);
+    procedure SetCriptoOptions(const AValue: TRALCriptoOptions);
+    procedure SetIPConfig(const AValue: TRALIPConfig);
+    procedure SetResponsePages(const AValue: TRALResponsePages);
+    procedure SetRoutes(const AValue: TRALRoutes);
+    procedure SetSecurity(const AValue: TRALSecurity);
     function GetSubModule(AIndex: IntegerRAL): TRALModuleRoutes;
   public
     constructor Create(AOwner: TComponent); override;
@@ -257,6 +321,21 @@ type
     // Create handle response of server
     function CreateResponse: TRALResponse;
     function SSLEnabled: boolean;
+    /// The text a 500 answers for AException: its message, or only
+    /// 'Internal Server Error' with HideErrorDetails on. Every engine answers
+    /// its failures through it, and so do the DBWare module and the DAO
+    function ErrorText(AException: Exception): StringRAL;
+    /// The IP address clients reach this server at, in the given family.
+    /// A server bound to one address (IPConfig.IPv4Bind / IPv6Bind) answers
+    /// that address. The default bind, every interface, answers the address
+    /// this machine uses on the network - the source of its default route,
+    /// see RALGetLocalAddress - or the loopback when there is no network.
+    /// rimIPv6 answers '' while IPConfig.IPv6Enabled is off, since the server
+    /// does not listen on IPv6 then. The same on every engine, and the server
+    /// does not have to be active: it reads the configuration and asks the
+    /// operating system, not the engine. Engines whose address comes from
+    /// elsewhere (CGI, http.sys) or that ignore IPConfig (MsQuic) override it
+    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; virtual;
     // Shortcut to start the server
     procedure Start;
     // Shortcut to stop the server
@@ -264,21 +343,37 @@ type
     // Returns a submodule based on the provided AIndex
     property SubModule[AIndex: IntegerRAL]: TRALModuleRoutes read GetSubModule;
   published
-    property Active: boolean read FActive write SetActive;
+    property Active: boolean read FActive write WriteActive;
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
     // Compression algorithm that will be used on responses to the client
     property CompressType: TRALCompressType read FCompressType write FCompressType;
-    // Determinates in seconds how long will the cookies be kept
+    // Minutes a cookie the server sends is kept by the browser (its Expires)
     property CookieLife: integer read FCookieLife write FCookieLife;
     // Determinates CORS configurations for server-server communication
-    property CORSOptions: TRALCORSOptions read FCORSOptions write FCORSOptions;
+    property CORSOptions: TRALCORSOptions read FCORSOptions write SetCORSOptions;
     // Options for P2P crypt security
-    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write FCriptoOptions;
+    property CriptoOptions: TRALCriptoOptions read FCriptoOptions write SetCriptoOptions;
     // Read-only property to indicate engine version
     property Engine: StringRAL read FEngine;
+    /// A 500 says only 'Internal Server Error' instead of the exception's
+    /// message - which, from a database driver, names tables and columns,
+    /// quotes SQL and sometimes part of the connection string. OnServerError
+    /// still receives the exception whole, which is where to log it. Off by
+    /// default: the message goes to the client, as it always did
+    property HideErrorDetails: boolean read FHideErrorDetails write FHideErrorDetails
+      default False;
     // Configuration params for IP listening
-    property IPConfig: TRALIPConfig read FIPConfig write FIPConfig;
-    property ResponsePages: TRALResponsePages read FResponsePages write FResponsePages;
+    property IPConfig: TRALIPConfig read FIPConfig write SetIPConfig;
+    /// A request body that is a JSON object also becomes params: each member of
+    /// the first level is an rpkFIELD param, the same as a form field, so
+    /// ParamByName('campo') reads a field posted as JSON too (a nested object or
+    /// array arrives as its JSON text). Off by default: without it JSON is only
+    /// in Body, and ParamByName sees the query string and form fields only. The
+    /// body stays in Body either way. A name also present in the query string
+    /// keeps the query's value first, as it does for a form
+    property JSONBodyToParams: boolean read FJSONBodyToParams write FJSONBodyToParams
+      default False;
+    property ResponsePages: TRALResponsePages read FResponsePages write SetResponsePages;
     // Port to listen to
     property Port: IntegerRAL read FPort write SetPort;
     { Largest request body accepted, in bytes; anything bigger is answered 413
@@ -288,14 +383,27 @@ type
       mORMot2 is the exception, it also refuses at the socket }
     property MaxRequestSize: Int64RAL read FMaxRequestSize write SetMaxRequestSize default 0;
     // Route configuration of the server, a.k.a endpoints
-    property Routes: TRALRoutes read FRoutes write FRoutes;
+    property Routes: TRALRoutes read FRoutes write SetRoutes;
     // Whether the server will raise error to the application or not (exception raise^), default value is false
     property RaiseError: boolean read FRaiseError write FRaiseError default false;
     // Security configurations of the server
-    property Security: TRALSecurity read FSecurity write FSecurity;
+    property Security: TRALSecurity read FSecurity write SetSecurity;
+    /// Security headers every answer carries - see TRALSecurityHeader for the
+    /// values. Empty (the default) sends none. A route that sets one of them
+    /// itself keeps its own value, and OnResponse sees them and may change
+    /// them. rshContentSecurityPolicy forbids a page everything: leave it off
+    /// on a server whose WebModule or Swagger serves pages. A 500 an engine
+    /// answers for a body it could not decode carries none
+    property SecurityHeaders: TRALSecurityHeaders read FSecurityHeaders
+      write FSecurityHeaders default [];
     // Default text answered by the server without WebModule when requesting the route '/'
     property ServerStatus: TStringList read FServerStatus write SetServerStatus;
-    // Timeout (miliseconds) for WebModule to determinate max age of the session
+    // Milliseconds an idle connection is kept by the engine: mORMot2 closes a
+    // kept-alive connection after this long without a request (0 turns
+    // keep-alive off there). Indy hands it to its own session list, which RAL
+    // leaves off, and fpHTTP to the period its accept loop wakes up idle; the
+    // other engines ignore it. Not the WebModule's sessions, despite the name:
+    // those have TRALWebModule.SessionTimeout
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     // Boolean check to whether or not show the default text for route '/'
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
@@ -325,6 +433,7 @@ type
     procedure SetServer(AValue: TRALServer); virtual;
     // Defines the Domain prefix of all the routes of the instance of this class
     procedure SetDomain(const AValue: StringRAL); virtual;
+    procedure SetRoutes(const AValue: TRALRoutes);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -335,10 +444,19 @@ type
                          const ADescription: StringRAL = ''): TRALRoute; overload;
     // Inherited method of RALServer
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; virtual;
-    // Inherited method of RALServer
+    /// A NEW list of this module's routes - what the Swagger and Postman
+    /// exporters document. The caller frees the list, never the routes in it,
+    /// which still belong to the module
     function GetListRoutes: TList; virtual;
+    /// Answers a request for one of this module's routes that has neither
+    /// OnReply nor OnReplyGen: 404 here, a file in TRALWebModule
+    procedure AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
+    /// TRALServer.ErrorText of the server the module is attached to - the
+    /// exception's message, unless that server hides it - and the message
+    /// as it is with no server
+    function ErrorText(AException: Exception): StringRAL;
 
-    property Routes: TRALRoutes read FRoutes write FRoutes;
+    property Routes: TRALRoutes read FRoutes write SetRoutes;
   published
     // The RALServer object which this module is attached to
     property Server: TRALServer read FServer write SetServer;
@@ -350,6 +468,54 @@ type
 
 implementation
 
+uses
+  RALJson, RALNetwork;
+
+{ The members of a JSON object body as rpkFIELD params (TRALServer.
+  JSONBodyToParams). A body that is not an object, or not JSON at all, is left
+  alone: the route still has it in Body, and answering 400 is its call }
+procedure PromoteJSONBody(ARequest: TRALRequest);
+var
+  vText, vName: StringRAL;
+  vValue, vMember: TRALJSONValue;
+  vObject: TRALJSONObject;
+  vInt: IntegerRAL;
+begin
+  if Pos(StringRAL('json'), LowerCase(ARequest.ContentType)) = 0 then
+    Exit;
+  vText := Trim(ARequest.Body.AsString);
+  if Copy(vText, 1, 1) <> '{' then
+    Exit;
+
+  vValue := nil;
+  try
+    try
+      vValue := TRALJSON.ParseJSON(vText);
+    except
+      Exit;
+    end;
+    if not (vValue is TRALJSONObject) then
+      Exit;
+    vObject := TRALJSONObject(vValue);
+    for vInt := 0 to Pred(vObject.Count) do
+    begin
+      vName := vObject.GetName(vInt);
+      vMember := vObject.Get(vInt);
+      if (vName = '') or vMember.IsNull then
+        Continue;
+      { a nested object or array goes as its JSON text. Not through AsString:
+        the FPC backend hands that to fpjson, which raises for an object - the
+        request died with 500 there, while Delphi's backend answered the JSON }
+      if vMember.JsonType in [rjtObject, rjtArray] then
+        ARequest.Params.AddParam(vName, vMember.ToJSON, rpkFIELD)
+      else
+        ARequest.Params.AddParam(vName, vMember.AsString, rpkFIELD);
+    end;
+  finally
+    FreeAndNil(vValue);
+  end;
+end;
+
 { TRALCORSOptions }
 
 procedure TRALCORSOptions.SetAllowHeaders(AValue: TStringList);
@@ -357,7 +523,7 @@ begin
   if FAllowHeaders = AValue then
     Exit;
 
-  if Trim(AValue.Text) <> '' then
+  if (AValue <> nil) and (Trim(AValue.Text) <> '') then
     FAllowHeaders.Text := AValue.Text
   else
     SetDefaultHeaders;
@@ -365,27 +531,89 @@ end;
 
 procedure TRALCORSOptions.SetDefaultHeaders;
 begin
-  FAllowHeaders.Add('Content-Type');
-  FAllowHeaders.Add('Origin');
-  FAllowHeaders.Add('Accept');
-  FAllowHeaders.Add('Authorization');
-  FAllowHeaders.Add('Content-Encoding');
-  FAllowHeaders.Add('Accept-Encoding');
+  { the defaults replace the list: added to what was there, every empty
+    assignment appended the six again, and all the copies went out in
+    Access-Control-Allow-Headers }
+  FAllowHeaders.BeginUpdate;
+  try
+    FAllowHeaders.Clear;
+    FAllowHeaders.Add('Content-Type');
+    FAllowHeaders.Add('Origin');
+    FAllowHeaders.Add('Accept');
+    FAllowHeaders.Add('Authorization');
+    FAllowHeaders.Add('Content-Encoding');
+    FAllowHeaders.Add('Accept-Encoding');
+  finally
+    FAllowHeaders.EndUpdate;
+  end;
+end;
+
+type
+  { one version of TRALCORSOptions' header text - see TRALSnapshots }
+  TRALTextVersion = class
+  public
+    Text: StringRAL;
+  end;
+
+procedure TRALCORSOptions.AllowHeadersChanged(Sender: TObject);
+var
+  vInt: IntegerRAL;
+  vVersion: TRALTextVersion;
+begin
+  { one line, the items joined by commas as they are. DelimitedText used to do
+    this, and it also wrapped in quotes any item holding a blank or a quote -
+    "X-A, X-B" written on one line went out as one quoted, unusable name }
+  vVersion := TRALTextVersion.Create;
+  for vInt := 0 to Pred(FAllowHeaders.Count) do
+  begin
+    if vInt > 0 then
+      vVersion.Text := vVersion.Text + ',';
+    vVersion.Text := vVersion.Text + StringRAL(FAllowHeaders.Strings[vInt]);
+  end;
+  FAllowHeadersText.Publish(vVersion);
+end;
+
+{ every engine's SSL descends from this one: the copy takes the published
+  properties both sides have, the engine's own included - SetSSL in the
+  engines called Assign on a class that had no copy, and raised }
+procedure TRALSSL.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALSSL then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
+
+procedure TRALCORSOptions.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALCORSOptions then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
 end;
 
 constructor TRALCORSOptions.Create;
 begin
   inherited;
-  FAllowOrigin := '*';
+  { no origin by default: '*' let any web page call the server from a
+    visitor's browser unless someone remembered to close it. Empty is also the
+    one value streaming leaves out of a form, so it is what a form without
+    AllowOrigin has always meant - '*' was always written out explicitly }
+  FAllowOrigin := '';
   FMaxAge := 86400;
 
+  FAllowHeadersText := TRALSnapshots.Create;
   FAllowHeaders := TStringList.Create;
+  { every change rebuilds the text: Add, Assign, the Object Inspector and a
+    form being read all end in OnChange }
+  FAllowHeaders.OnChange := {$IFDEF FPC}@{$ENDIF}AllowHeadersChanged;
   SetDefaultHeaders;
 end;
 
 destructor TRALCORSOptions.Destroy;
 begin
   FreeAndNil(FAllowHeaders);
+  FreeAndNil(FAllowHeadersText);
   inherited;
 end;
 
@@ -394,10 +622,42 @@ begin
   FAllowHeaders.Add(AValue);
 end;
 
+function TRALCORSOptions.OriginFor(const ARequestOrigin: StringRAL): StringRAL;
+var
+  vList, vItem: StringRAL;
+  vInt: IntegerRAL;
+begin
+  vList := Trim(FAllowOrigin);
+  if (vList = '*') or (vList = '') then
+    Exit(vList);
+
+  // a single origin is answered as configured, whoever asks - as before
+  if (Pos(StringRAL(' '), vList) = 0) and (Pos(StringRAL(','), vList) = 0) then
+    Exit(vList);
+
+  Result := '';
+  if ARequestOrigin = '' then
+    Exit;
+  vList := StringReplace(vList, ',', ' ', [rfReplaceAll]);
+  while vList <> '' do
+  begin
+    vInt := Pos(StringRAL(' '), vList);
+    if vInt = 0 then
+      vInt := Length(vList) + 1;
+    vItem := Trim(Copy(vList, 1, vInt - 1));
+    Delete(vList, 1, vInt);
+    // scheme and host are case-insensitive; a trailing slash is not part of
+    // an origin, but a configured one with it should still match
+    if Copy(vItem, Length(vItem), 1) = '/' then
+      vItem := Copy(vItem, 1, Length(vItem) - 1);
+    if (vItem <> '') and RALSameName(vItem, ARequestOrigin) then
+      Exit(ARequestOrigin);
+  end;
+end;
+
 function TRALCORSOptions.GetAllowHeaders: StringRAL;
 begin
-  FAllowHeaders.Delimiter := ',';
-  Result := FAllowHeaders.DelimitedText;
+  Result := TRALTextVersion(FAllowHeadersText.Current).Text;
 end;
 
 { TRALIPConfig }
@@ -411,16 +671,28 @@ begin
 
   if FOwner <> nil then
   begin
+    { refused before anything is touched: the refusal used to come after the
+      server had been stopped, and the line starting it again was never
+      reached - asking for IPv6 on an engine without it took a live server
+      down }
+    if AValue and (not FOwner.IPv6IsImplemented) then
+      raise Exception.Create(wmIPv6notImplemented);
+
     vActive := FOwner.Active;
     FOwner.Active := False;
-
-    if (AValue) and (not FOwner.IPv6IsImplemented) then
-      raise Exception.Create(wmIPv6notImplemented)
-    else
-      FIPv6Enabled := AValue;
-
+    FIPv6Enabled := AValue;
     FOwner.Active := vActive;
-  end;
+  end
+  else
+    FIPv6Enabled := AValue; // no server to restart: it used to be dropped
+end;
+
+procedure TRALIPConfig.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALIPConfig then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
 end;
 
 constructor TRALIPConfig.Create(AOwner: TRALServer);
@@ -441,6 +713,14 @@ begin
 end;
 
 { TRALBruteForceProtection }
+
+procedure TRALBruteForceProtection.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALBruteForceProtection then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
 
 constructor TRALBruteForceProtection.Create;
 begin
@@ -467,7 +747,7 @@ begin
   FAuthentication := nil;
   FCompressType := ctNone;
   FEngine := '';
-  FPort := 8000;
+  FPort := DEFAULTSERVERPORT;
   FSessionTimeout := 30000;
   FShowServerStatus := True;
   FCookieLife := 30;
@@ -573,10 +853,21 @@ end;
 
 procedure TRALServer.CheckCORS(AAllowOptions: boolean; AAllowMethods: StringRAL;
   ARequest: TRALRequest; AResponse: TRALResponse);
+var
+  vOrigin: StringRAL;
 begin
   if AAllowOptions then
   begin
-    AResponse.Params.AddParam('Access-Control-Allow-Origin', FCORSOptions.AllowOrigin, rpkHEADER);
+    vOrigin := FCORSOptions.OriginFor(
+      ARequest.Params.GetKind['Origin', rpkHEADER].AsString);
+    if vOrigin <> '' then
+      AResponse.Params.AddParam('Access-Control-Allow-Origin', vOrigin, rpkHEADER);
+    { the answer depends on who asked whenever it is not one fixed value, and a
+      cache in the middle must not hand one origin's answer to another }
+    if (vOrigin <> Trim(FCORSOptions.AllowOrigin)) or (vOrigin = '') then
+      AResponse.Params.AddParam('Vary', 'Origin', rpkHEADER);
+    if FCORSOptions.AllowCredentials and (vOrigin <> '') and (vOrigin <> '*') then
+      AResponse.Params.AddParam('Access-Control-Allow-Credentials', 'true', rpkHEADER);
     AResponse.Params.AddParam('Access-Control-Allow-Methods', AAllowMethods, rpkHEADER);
     AResponse.Params.AddParam('Access-Control-Allow-Headers', FCORSOptions.GetAllowHeaders, rpkHEADER);
 
@@ -595,6 +886,33 @@ begin
   Result := False;
   if FSSL <> nil then
     Result := FSSL.Enabled;
+end;
+
+function TRALServer.ErrorText(AException: Exception): StringRAL;
+begin
+  if FHideErrorDetails or (AException = nil) then
+    Result := SError500
+  else
+    Result := StringRAL(AException.Message);
+end;
+
+procedure TRALServer.AddSecurityHeaders(AResponse: TRALResponse);
+begin
+  if FSecurityHeaders = [] then
+    Exit;
+  if rshContentTypeOptions in FSecurityHeaders then
+    AResponse.Params.AddParam('X-Content-Type-Options', 'nosniff', rpkHEADER);
+  if rshFrameOptions in FSecurityHeaders then
+    AResponse.Params.AddParam('X-Frame-Options', 'DENY', rpkHEADER);
+  if rshReferrerPolicy in FSecurityHeaders then
+    AResponse.Params.AddParam('Referrer-Policy', 'no-referrer', rpkHEADER);
+  { a browser ignores it over plain http (RFC 6797 8.1), and a server behind
+    a proxy that terminates TLS is told nothing here - the proxy sends it }
+  if (rshStrictTransport in FSecurityHeaders) and SSLEnabled then
+    AResponse.Params.AddParam('Strict-Transport-Security', 'max-age=31536000', rpkHEADER);
+  if rshContentSecurityPolicy in FSecurityHeaders then
+    AResponse.Params.AddParam('Content-Security-Policy',
+      'default-src ''none''; frame-ancestors ''none''', rpkHEADER);
 end;
 
 destructor TRALServer.Destroy;
@@ -619,6 +937,30 @@ begin
   Result := FSSL;
 end;
 
+function TRALServer.GetServerAddress(AMode: TRALIpMode): StringRAL;
+var
+  vBind: StringRAL;
+begin
+  Result := '';
+  if AMode = rimIPv6 then
+  begin
+    if not FIPConfig.IPv6Enabled then
+      Exit;
+    vBind := FIPConfig.IPv6Bind;
+  end
+  else
+  begin
+    vBind := FIPConfig.IPv4Bind;
+  end;
+
+  { a server bound to one address is reached there and nowhere else; the
+    default bind, every interface, is reached at the machine's own address }
+  if RALIsAnyAddress(vBind) then
+    Result := RALGetLocalAddress(AMode)
+  else
+    Result := StringRAL(Trim(string(vBind)));
+end;
+
 function TRALServer.GetSubModule(AIndex: IntegerRAL): TRALModuleRoutes;
 begin
   Result := nil;
@@ -629,6 +971,36 @@ end;
 procedure TRALServer.SetServerStatus(AValue: TStringList);
 begin
   FServerStatus.Assign(AValue);
+end;
+
+procedure TRALServer.SetCORSOptions(const AValue: TRALCORSOptions);
+begin
+  RALAssignOwned(FCORSOptions, AValue);
+end;
+
+procedure TRALServer.SetCriptoOptions(const AValue: TRALCriptoOptions);
+begin
+  RALAssignOwned(FCriptoOptions, AValue);
+end;
+
+procedure TRALServer.SetIPConfig(const AValue: TRALIPConfig);
+begin
+  RALAssignOwned(FIPConfig, AValue);
+end;
+
+procedure TRALServer.SetResponsePages(const AValue: TRALResponsePages);
+begin
+  RALAssignOwned(FResponsePages, AValue);
+end;
+
+procedure TRALServer.SetRoutes(const AValue: TRALRoutes);
+begin
+  RALAssignOwned(FRoutes, AValue);
+end;
+
+procedure TRALServer.SetSecurity(const AValue: TRALSecurity);
+begin
+  RALAssignOwned(FSecurity, AValue);
 end;
 
 procedure TRALServer.Notification(AComponent: TComponent; Operation: TOperation);
@@ -659,19 +1031,32 @@ var
   vInt: IntegerRAL;
   vSubRoute: TRALModuleRoutes;
   vString: StringRAL;
-  vCheckBruteForce: boolean;
-  vCheckBruteForceTries: boolean;
   vCheck_Authentication: boolean;
   vRouteIsAuth: boolean;
+  vBody: TRALParam;
+  vAllowed: TRALMethods;
 
 label
   aSTATUS, aOK, a401, a403, a404, a405, aFIM;
 
 begin
+  { first, so that every answer has them - those ValidateRequest refused
+    included, which every engine still hands over here }
+  AddSecurityHeaders(AResponse);
   if AResponse.StatusCode >= HTTP_BadRequest then
     Exit;
+  { a body the engine could not take apart - a multipart with no part
+    delimited by its boundary - is the client's error, answered before any
+    route runs. It used to reach the route with nothing in its params, the
+    body gone without a word }
+  if ARequest.Params.BodyError <> '' then
+  begin
+    AResponse.Answer(HTTP_BadRequest, ARequest.Params.BodyError, rctTEXTPLAIN);
+    Exit;
+  end;
   try
     vRouteIsAuth := False;
+    vAllowed := [];
 
     // a fixed CompressType on the server always wins: it is an explicit
     // choice by whoever set up the server, so the client cannot opt out of
@@ -707,6 +1092,15 @@ begin
       if vRoute <> nil then
         vRouteIsAuth := True;
     end;
+    { every engine comes through here, so every one fills it: the handler, and
+      OnRequest/OnResponse, can read what the route declares }
+    ARequest.Route := vRoute;
+
+    { only when a route will answer: a request for nothing had its whole body
+      parsed into params anyway, one AddParam per member - and anyone,
+      without a token, can send megabytes of JSON to any URL }
+    if FJSONBodyToParams and (vRoute <> nil) then
+      PromoteJSONBody(ARequest);
 
     if Assigned(FOnRequest) then
       FOnRequest(ARequest, AResponse);
@@ -729,6 +1123,7 @@ begin
       else if vRouteIsAuth then
       begin
         FAuthentication.BeforeValidate(ARequest, AResponse);
+        CountAttempt(ARequest, AResponse, True);
         goto aFIM;
       end
       else if vRoute.IsMethodAllowed(ARequest.Method) then
@@ -741,19 +1136,18 @@ begin
           end
           else
           begin
-            vCheckBruteForce := (rsoBruteForceProtection in Security.Options);
-            // client e valido se o numero de tentativas <= ao max de tentativas
-            vCheckBruteForceTries :=
-              (vCheckBruteForce and (Security.CheckBlockClientTry(
-              ARequest.ClientInfo.IP)));
-
             // devido algumas auths que adiciona o header realm
             vCheck_Authentication := ValidateAuth(ARequest, AResponse);
+            CountAttempt(ARequest, AResponse, False);
 
             if vCheck_Authentication then
               goto aOK
-            else if (vCheckBruteForceTries) or (AResponse.StatusCode = HTTP_Unauthorized) then
+            else if AResponse.StatusCode = HTTP_Unauthorized then
               goto a401
+            { the authenticator's own server error - a JWT with no key says
+              so - is not a refusal of the client: it goes out as it is }
+            else if AResponse.StatusCode >= HTTP_InternalError then
+              goto aFIM
             else
               goto a403;
           end;
@@ -762,12 +1156,32 @@ begin
           goto aOK;
       end
       else
+      begin
+        vAllowed := vRoute.AllowedMethods;
         goto a405;
+      end;
     end
     else if (ARequest.Query = '/') and (FShowServerStatus) then
       goto aSTATUS
     else
+    begin
+      { no route takes this method: CanAnswerRoute only finds one that does,
+        since several routes may share a path with a verb each, and so a verb
+        outside AllowedMethods came back as a 404 - the 405 below was reached
+        by the WebModule's files alone. A path some route has is 405, with what
+        all of its routes take in Allow; only a path no route has is 404.
+        OPTIONS keeps the 404 it gets above from a route that does not take it }
+      if ARequest.Method <> amOPTIONS then
+      begin
+        vAllowed := FRoutes.AllowedMethodsOf(ARequest);
+        for vInt := 0 to Pred(FListSubModules.Count) do
+          vAllowed := vAllowed +
+            TRALModuleRoutes(FListSubModules.Items[vInt]).Routes.AllowedMethodsOf(ARequest);
+        if vAllowed <> [] then
+          goto a405;
+      end;
       goto a404;
+    end;
 
     aSTATUS:
     begin
@@ -785,36 +1199,19 @@ begin
 
     aOK:
     begin
-      Security.UnblockClient(ARequest.ClientInfo.IP);
       vRoute.Execute(ARequest, AResponse);
       goto aFIM;
     end;
 
+    { the failed try was already counted, or not, by CountAttempt }
     a401:
     begin
-      { only when the counting is switched on. BlockClient was called from here
-        whatever the options said, and nothing ever read the entry back with
-        rsoBruteForceProtection off, while ClearExpiredIPs only pruned with it
-        on: one permanent object per distinct address that ever failed to
-        authenticate. A scan from varying sources was an unbounded allocation
-        with no protection in exchange. }
-      if rsoBruteForceProtection in Security.Options then
-        Security.BlockClient(ARequest.ClientInfo.IP);
       AResponse.Answer(HTTP_Unauthorized);
       goto aFIM;
     end;
 
     a403:
     begin
-      { same as a401, and the event follows the block: OnClientBlock says a
-        client WAS blocked, so firing it when nothing was counted reported
-        something that did not happen }
-      if rsoBruteForceProtection in Security.Options then
-      begin
-        Security.BlockClient(ARequest.ClientInfo.IP);
-        if Assigned(FOnClientBlock) then
-          FOnClientBlock(Self, ARequest.ClientInfo.IP);
-      end;
       AResponse.Answer(HTTP_Forbidden);
       goto aFIM;
     end;
@@ -832,13 +1229,29 @@ begin
         three requests with the wrong verb - a preflight, a client pointed at
         the wrong route - locked the address out for the whole ExpirationTime.
         And the answer for a route that exists but does not take that method is
-        405, not 403. }
+        405, not 403. RFC 9110 15.5.6: a 405 MUST say which methods the
+        resource does take, in Allow. }
       AResponse.Answer(HTTP_MethodNotAllowed);
+      AResponse.AddHeader('Allow', RALAllowedMethodsText(vAllowed));
       goto aFIM;
     end;
 
     aFIM:
     begin
+      { a body that is compressed already - an image, audio, video, an
+        archive - is not compressed again: the coding was chosen above from
+        Accept-Encoding alone, before any route said what it answers, and over
+        such bytes it spends a pass and a buffer of the whole body to come out
+        the same size or larger. Decided here, on the answer the route gave
+        and before any engine reads ContentEncoding; OnResponse still has the
+        last word }
+      if (AResponse.ContentCompress <> ctNone) and (not AResponse.ContentEncoded) then
+      begin
+        vBody := AResponse.Params.SingleBody;
+        if (vBody <> nil) and RALIsCompressedMediaType(vBody.ContentType) then
+          AResponse.ContentCompress := ctNone;
+      end;
+
       if Assigned(FOnResponse) then
         FOnResponse(ARequest, AResponse);
 
@@ -851,7 +1264,7 @@ begin
         200 the response started with and an empty body. Without
         OnServerError and with RaiseError off (the defaults) the exception
         used to be swallowed and the client got exactly that }
-      AResponse.Answer(HTTP_InternalError, e.Message, rctTEXTPLAIN);
+      AResponse.Answer(HTTP_InternalError, ErrorText(e), rctTEXTPLAIN);
       if assigned(OnServerError) then
         OnServerError(e)
       else if RaiseError then
@@ -880,7 +1293,7 @@ begin
     read a list with the expired entries already gone, instead of one turn
     behind. It costs nothing when there is nothing to prune - both lists answer
     IsEmpty without taking a lock. }
-  Security.ClearExpiredIPs;
+  Security.ClearExpiredIPsOnRequest;
 
   { first, and on the raw size: the engines only decode the body (decompress,
     decrypt, split the multipart) when this leaves the status below 400 }
@@ -891,15 +1304,21 @@ begin
   end
   else if not ARequest.HasValidContentEncoding then
   begin
+    { the error page goes out as it is, so no Content-Encoding on it: this
+      used to echo the client's coding, and a client that sent br to a server
+      without brotli got a plain page labelled br - its decoder failed instead
+      of showing the 415. Accept-Encoding says what this server can read }
     AResponse.Answer(HTTP_UnsupportedMedia);
-    AResponse.ContentEncoding := ARequest.ContentEncoding;
     AResponse.AcceptEncoding := GetAcceptCompress;
     Exit;
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
-    AResponse.Answer(HTTP_UnsupportedMedia);
-    AResponse.ContentEncoding := ARequest.AcceptEncoding;
+    { 406, not 415: the problem is what the client ACCEPTS, not the body it
+      sent - and it only happens when it refuses identity on purpose. Same as
+      above, the page is not encoded: the whole Accept-Encoding used to be
+      copied into its Content-Encoding }
+    AResponse.Answer(HTTP_NotAcceptable);
     AResponse.AcceptEncoding := GetAcceptCompress;
     Exit;
   end
@@ -917,13 +1336,23 @@ begin
       // Security Protections
       if vCheckFlood or vCheckPathTransversal then
       begin
-        Security.BlockClient(ARequest.ClientInfo.IP);
+        { a path walking out of the tree is an attack and counts toward the
+          block; a flood refusal is a rate, not a guess, and counting it locked
+          clients out for ExpirationTime - back when the first request of every
+          new address measured as a flood too }
+        if vCheckPathTransversal and (rsoBruteForceProtection in Security.Options) then
+          Security.BlockClient(ARequest.ClientInfo.IP);
 
         if Assigned(FOnClientBlock) then
           FOnClientBlock(Self, ARequest.ClientInfo.IP);
 
         AResponse.Answer(HTTP_Forbidden);
-      end;
+      end
+      { RFC 9110 9.1: a method the server does not implement is answered 501,
+        here and not in a route - before the engine decodes the body, and
+        after the request was counted for flood like any other }
+      else if ARequest.Method = amUNKNOWN then
+        AResponse.Answer(HTTP_NotImplemented);
     end
     else
     begin
@@ -961,6 +1390,33 @@ begin
   FActive := AValue;
 end;
 
+{ A form saved with Active = True reads it FIRST - it is the first published
+  property - so the engine used to start right there, before Port, IPConfig
+  and SSL had been read: a server saved with SSL enabled listened in plain
+  HTTP, one bound to 127.0.0.1 listened on every interface. While loading the
+  value is only kept, and Loaded applies it once everything else is in. }
+procedure TRALServer.WriteActive(const AValue: boolean);
+begin
+  if not (csLoading in ComponentState) then
+    SetActive(AValue)
+  { only a True is kept: the reader never writes the default False, while the
+    setters that restart a live server - SetPort, PoolCount, Mode - write
+    Active := False and back as their own properties are read, and that must
+    not undo it }
+  else if AValue then
+    FStreamedActive := True;
+end;
+
+procedure TRALServer.Loaded;
+begin
+  inherited Loaded;
+  if FStreamedActive then
+  begin
+    FStreamedActive := False;
+    SetActive(True);
+  end;
+end;
+
 procedure TRALServer.SetAuthentication(const AValue: TRALAuthServer);
 begin
   if AValue <> FAuthentication then
@@ -985,6 +1441,23 @@ begin
   FSessionTimeout := AValue;
 end;
 
+{ Counted where a secret was checked, cleared where one was accepted, nothing
+  otherwise. It used to count every 401 - no credentials, an expired token -
+  but never the token route's, where the password IS checked, so that one could
+  be tried without limit; and any route that answered cleared the count, so one
+  request to a public page between guesses was enough to start over. Off,
+  nothing is kept: no entry would ever be read back. }
+procedure TRALServer.CountAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
+  AOnAuthRoute: boolean);
+begin
+  if not (rsoBruteForceProtection in Security.Options) then
+    Exit;
+  case FAuthentication.AttemptOf(ARequest, AResponse, AOnAuthRoute) of
+    raaFailed: Security.BlockClient(ARequest.ClientInfo.IP);
+    raaPassed: Security.UnblockClient(ARequest.ClientInfo.IP);
+  end;
+end;
+
 function TRALServer.ValidateAuth(ARequest: TRALRequest; var AResponse: TRALResponse): boolean;
 begin
   Result := False;
@@ -998,11 +1471,22 @@ end;
 { TRALModuleRoutes }
 
 procedure TRALModuleRoutes.SetDomain(const AValue: StringRAL);
+var
+  vInt: IntegerRAL;
 begin
   if AValue = FDomain then
     Exit;
 
   FDomain := FixRoute(AValue);
+  { every route keeps its full path split (UpdateSegments), the domain in it }
+  if FRoutes <> nil then
+    for vInt := 0 to Pred(FRoutes.Count) do
+      TRALBaseRoute(FRoutes.Items[vInt]).UpdateSegments;
+end;
+
+procedure TRALModuleRoutes.SetRoutes(const AValue: TRALRoutes);
+begin
+  RALAssignOwned(FRoutes, AValue);
 end;
 
 procedure TRALModuleRoutes.SetServer(AValue: TRALServer);
@@ -1085,6 +1569,19 @@ begin
     Result.Add(FRoutes.Items[vInt]);
 end;
 
+procedure TRALModuleRoutes.AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse);
+begin
+  AResponse.Answer(HTTP_NotFound);
+end;
+
+function TRALModuleRoutes.ErrorText(AException: Exception): StringRAL;
+begin
+  if FServer <> nil then
+    Result := FServer.ErrorText(AException)
+  else
+    Result := StringRAL(AException.Message);
+end;
+
 { TRALSecurity }
 
 procedure TRALSecurity.BlockClient(const AClientIP: StringRAL);
@@ -1137,7 +1634,7 @@ begin
   { blocked only from MaxTry failed tries on: the list holds every IP that
     failed once, and testing membership alone locked an IP out at the first
     wrong password, whatever MaxTry said. A successful login clears the
-    counter (ProcessCommands unblocks on the way to the route) }
+    counter - see TRALServer.CountAttempt }
   { Same verdict as before - (blocked by tries OR black-listed) AND NOT
     white-listed - but asking each list only when it can possibly answer yes.
     This runs on every request of every engine, and each Exists takes a
@@ -1165,11 +1662,10 @@ end;
 
 function TRALSecurity.CheckFlood(const AClientIP: StringRAL): boolean;
 var
-  vInterval: Int64RAL;
   vFlood: TRALClientList;
   vList: TStringList;
   vIndex: IntegerRAL;
-  vLastAccess: TDateTime;
+  vNow, vLastAccess: TDateTime;
 begin
   Result := False;
   if not (rsoFloodProtection in Options) then
@@ -1182,41 +1678,80 @@ begin
     simultaneous requests from being measured against a value one of them has
     already overwritten. CheckBlockClientIP is asked afterwards, outside, so
     this lock is never held while another is taken. }
+  vNow := Now;
   vList := FFloodList.Lock;
   try
     vIndex := vList.IndexOf(AClientIP);
     if vIndex >= 0 then
     begin
       vFlood := TRALClientList(vList.Objects[vIndex]);
+      vLastAccess := vFlood.LastAccess;
     end
     else
     begin
       vFlood := TRALClientList.Create;
       vList.AddObject(AClientIP, vFlood);
+      { an address seen for the first time has no interval to measure. It
+        used to measure one of zero against the stamp TRALClientList.Create
+        had just put in, so the FIRST request of every client was a flood }
+      vLastAccess := 0;
     end;
-
-    vLastAccess := vFlood.LastAccess;
-    vFlood.LastAccess := Now;
+    vFlood.LastAccess := vNow;
   finally
     FFloodList.Unlock;
   end;
 
-  vInterval := MilliSecondsBetween(Now, vLastAccess);
+  Result := CheckBlockClientIP(AClientIP) or
+    ((vLastAccess <> 0) and
+     (MilliSecondsBetween(vNow, vLastAccess) <= FFloodTimeInterval));
+end;
 
-  { unchanged on purpose, including the part that surprises: TRALClientList
-    .Create stamps LastAccess with Now, so a brand new address measures an
-    interval of zero and the FIRST request of every client counts as a flood.
-    Changing that is a decision about what the protection means, not a
-    refactor, so it stays as it was }
-  if (CheckBlockClientIP(AClientIP)) or (vInterval <= FFloodTimeInterval) then
-    Result := True;
+{ Drops every entry idle for AIdle ms or more, under ONE acquisition of the
+  list's lock - the objects included, as Remove(..., True) frees them }
+procedure PruneIdle(AList: TRALStringListSafe; AIdle: Int64RAL; ANow: TDateTime);
+var
+  vList: TStringList;
+  vInt: IntegerRAL;
+begin
+  vList := AList.Lock;
+  try
+    for vInt := vList.Count - 1 downto 0 do
+      if MilliSecondsBetween(ANow,
+           TRALClientList(vList.Objects[vInt]).LastAccess) >= AIdle then
+      begin
+        vList.Objects[vInt].Free;
+        vList.Delete(vInt);
+      end;
+  finally
+    AList.Unlock;
+  end;
+end;
+
+{ What ValidateRequest calls, at the top of every request on every request
+  thread: ClearExpiredIPs at most once a second. Both lists empty - the
+  default and the common case - costs two reads and no lock. The stamp is 32
+  bits so it is read and written whole on every CPU; two threads that both see
+  a new second both prune, each under the list's lock, which is harmless. An
+  expiration is minutes long; a second of slack costs nothing. }
+procedure TRALSecurity.ClearExpiredIPsOnRequest;
+var
+  vSecond: Cardinal;
+begin
+  if FBlockedList.IsEmpty and FFloodList.IsEmpty then
+    Exit;
+
+  vSecond := Cardinal(Trunc(Now * SecsPerDay));
+  if vSecond = FLastPrune then
+    Exit;
+  FLastPrune := vSecond;
+  ClearExpiredIPs;
 end;
 
 procedure TRALSecurity.ClearExpiredIPs;
 var
-  vInt: integer;
-  vBlock: TRALClientBlockList;
   vIdle: Int64RAL;
+  vNow: TDateTime;
+  vPruneBlocked: boolean;
 begin
   { No longer gated on rsoBruteForceProtection. BlockClient is reached from the
     401 and 403 paths and from an application calling it directly, so entries
@@ -1224,15 +1759,21 @@ begin
     every distinct address that ever failed stayed in the list for the life of
     the process. Expiration is what decides here, not the option: zero still
     means never expire, and with it set the list is bounded again. }
-  if (BruteForce.ExpirationTime > 0) and (not FBlockedList.IsEmpty) then
-  begin
-    for vInt := Pred(FBlockedList.Count) downto 0 do
-    begin
-      vBlock := TRALClientBlockList(FBlockedList.GetObject(vInt));
-      if MilliSecondsBetween(Now, vBlock.LastAccess) >= BruteForce.ExpirationTime then
-        FBlockedList.Remove(vInt, True);
-    end;
-  end;
+  vPruneBlocked := (BruteForce.ExpirationTime > 0) and (not FBlockedList.IsEmpty);
+  if (not vPruneBlocked) and FFloodList.IsEmpty then
+    Exit;
+
+  { ONE LOCK PER LIST FOR THE WHOLE WALK - see PruneIdle. It used to walk each
+    list taking the lock once per element - a critical section per entry, on
+    every request, the very convoy the IsEmpty checks above exist to avoid -
+    and to race while doing it: one thread asked for an index another had
+    just removed (EStringListError out of ValidateRequest), or removed the
+    live entry that had slid into it. How often is ClearExpiredIPsOnRequest's
+    business; called directly, this prunes at once. }
+  vNow := Now;
+
+  if vPruneBlocked then
+    PruneIdle(FBlockedList, BruteForce.ExpirationTime, vNow);
 
   { the flood list grew one entry per distinct client address forever: a
     scan from random sources was a memory leak. An entry only matters for
@@ -1243,11 +1784,18 @@ begin
     vIdle := 60000;
     if Int64RAL(FFloodTimeInterval) * 10 > vIdle then
       vIdle := Int64RAL(FFloodTimeInterval) * 10;
-    for vInt := Pred(FFloodList.Count) downto 0 do
-      if MilliSecondsBetween(Now,
-           TRALClientList(FFloodList.GetObject(vInt)).LastAccess) >= vIdle then
-        FFloodList.Remove(vInt, True);
+    PruneIdle(FFloodList, vIdle, vNow);
   end;
+end;
+
+procedure TRALSecurity.AssignTo(Dest: TPersistent);
+begin
+  { the configuration only: the blocked and flood lists are this server's
+    own history and are not published }
+  if Dest is TRALSecurity then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
 end;
 
 constructor TRALSecurity.Create;
@@ -1258,11 +1806,20 @@ begin
   FWhiteIPList := TRALStringListSafe.Create;
   FFloodList := TRALStringListSafe.Create;
 
+  FBlackIPView := TStringList.Create;
+  FBlackIPView.OnChange := {$IFDEF FPC}@{$ENDIF}IPViewChange;
+  FWhiteIPView := TStringList.Create;
+  FWhiteIPView.OnChange := {$IFDEF FPC}@{$ENDIF}IPViewChange;
+
   FFloodTimeInterval := 30; // miliseconds
 end;
 
 destructor TRALSecurity.Destroy;
 begin
+  // the views first: a change on the way out still finds both lists
+  FreeAndNil(FBlackIPView);
+  FreeAndNil(FWhiteIPView);
+
   FBlackIPList.Clear(True);
   FBlockedList.Clear(True);
   FWhiteIPList.Clear(True);
@@ -1274,18 +1831,6 @@ begin
   FreeAndNil(FBruteForce);
   FreeAndNil(FFloodList);
   inherited;
-end;
-
-function TRALSecurity.GetBlackIPList: TStringList;
-var
-  vInt: IntegerRAL;
-  vList: TStringList;
-begin
-  Result := TStringList.Create;
-  vList := FBlackIPList.Lock;
-  for vInt := 0 to pred(vList.Count) do
-    Result.Add(vList.Strings[vInt]);
-  FBlackIPList.Unlock;
 end;
 
 function TRALSecurity.GetBlockClient(const AClientIP: StringRAL): TRALClientBlockList;
@@ -1305,12 +1850,23 @@ end;
 
 function TRALSecurity.GetBlockClientTry(const AClientIP: StringRAL): integer;
 var
-  vBlock: TRALClientBlockList;
+  vList: TStringList;
+  vIndex: IntegerRAL;
 begin
   Result := 0;
-  vBlock := TRALClientBlockList(FBlockedList.ObjectByItem(AClientIP));
-  if vBlock <> nil then
-    Result := vBlock.NumTry;
+  if FBlockedList.IsEmpty then
+    Exit;
+
+  { NumTry read under the lock: the moment it is let go, the entry can be
+    pruned or unblocked by another request - and its object freed }
+  vList := FBlockedList.Lock;
+  try
+    vIndex := vList.IndexOf(AClientIP);
+    if vIndex >= 0 then
+      Result := TRALClientBlockList(vList.Objects[vIndex]).NumTry;
+  finally
+    FBlockedList.Unlock;
+  end;
 end;
 
 function TRALSecurity.GetClientList(const AClientIP: StringRAL): TRALClientList;
@@ -1318,25 +1874,47 @@ begin
   Result := TRALClientList(FFloodList.ObjectByItem(AClientIP));
 end;
 
-function TRALSecurity.GetWhiteIPList: TStringList;
+{ BlackIPList and WhiteIPList are lists that stay with the component, and every
+  change to one is copied whole into the locked list the requests read. The
+  getters used to build a new TStringList on every read, which nobody freed -
+  the DFM writer and the Object Inspector read them too - and that copy is what
+  the DFM reader filled: a list set at design time never reached the server,
+  and BlackIPList.Add did nothing either. }
+procedure TRALSecurity.IPViewChange(Sender: TObject);
 var
+  vSource, vTarget: TStringList;
+  vSafe: TRALStringListSafe;
   vInt: IntegerRAL;
-  vList: TStringList;
 begin
-  Result := TStringList.Create;
-  vList := FWhiteIPList.Lock;
-  for vInt := 0 to pred(vList.Count) do
-    Result.Add(vList.Strings[vInt]);
-  FWhiteIPList.Unlock;
+  vSource := TStringList(Sender);
+  if vSource = FBlackIPView then
+    vSafe := FBlackIPList
+  else
+    vSafe := FWhiteIPList;
+
+  vTarget := vSafe.Lock;
+  try
+    vTarget.Clear;
+    for vInt := 0 to Pred(vSource.Count) do
+      vTarget.Add(vSource.Strings[vInt]);
+  finally
+    vSafe.Unlock;
+  end;
+end;
+
+{ nil empties the list, and a list assigned to itself is left alone: Assign
+  clears before it copies }
+procedure AssignIPList(AView, AValue: TStringList);
+begin
+  if AValue = nil then
+    AView.Clear
+  else if AValue <> AView then
+    AView.Assign(AValue);
 end;
 
 procedure TRALSecurity.SetBlackIPList(AValue: TStringList);
-var
-  vInt: IntegerRAL;
 begin
-  FBlackIPList.Clear;
-  for vInt := 0 to pred(AValue.Count) do
-    FBlackIPList.Add(AValue.Strings[vInt]);
+  AssignIPList(FBlackIPView, AValue);
 end;
 
 procedure TRALSecurity.SetBruteForce(const Value: TRALBruteForceProtection);
@@ -1344,11 +1922,7 @@ begin
   { copy the values instead of taking the object: the one created in the
     constructor is the one Destroy frees, and swapping the pointer both leaked
     it and left the server holding an object the caller may free }
-  if (Value <> nil) and (Value <> FBruteForce) then
-  begin
-    FBruteForce.ExpirationTime := Value.ExpirationTime;
-    FBruteForce.MaxTry := Value.MaxTry;
-  end;
+  RALAssignOwned(FBruteForce, Value);
 end;
 
 procedure TRALSecurity.SetFloodTimeInterval(const Value: IntegerRAL);
@@ -1362,21 +1936,16 @@ begin
 end;
 
 procedure TRALSecurity.SetWhiteIPList(AValue: TStringList);
-var
-  vInt: IntegerRAL;
 begin
-  FWhiteIPList.Clear;
-  for vInt := 0 to pred(AValue.Count) do
-    FWhiteIPList.Add(AValue.Strings[vInt]);
+  AssignIPList(FWhiteIPView, AValue);
 end;
 
 procedure TRALSecurity.UnblockClient(const AClientIP: StringRAL);
 begin
-  { ProcessCommands calls this on the way to every route that answers, so this
-    runs on every SUCCESSFUL request - the hottest path there is. Remove takes
-    the lock and walks the list; with nothing blocked, which is the normal
-    state of a server, that was a critical section per request for a list that
-    has nothing to remove. }
+  { runs on every request whose credentials were accepted - nearly every
+    request of an authenticated server. Remove takes the lock and walks the
+    list; with nothing blocked, which is the normal state of a server, that was
+    a critical section per request for a list that has nothing to remove. }
   if FBlockedList.IsEmpty then
     Exit;
 

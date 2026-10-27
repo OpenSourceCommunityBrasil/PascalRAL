@@ -46,7 +46,9 @@ implementation
     {$ENDIF}
     vLen := (Length(vStr) + 1) * SizeOf(WideChar);
     Result := GetMemory(vLen);
-    Move(vStr[POSINISTR], Result^, vLen);
+    { through the pointer: an empty text - a key missing from the file -
+      has no first character, and PWideChar of it is the terminator alone }
+    Move(PWideChar(vStr)^, Result^, vLen);
   end;
 
   procedure SetResourceString(ARes: PResStringRec; AValue: PChar);

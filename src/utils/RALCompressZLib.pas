@@ -43,14 +43,19 @@ var
   vCRC32: TRALCRC32;
   vStreamCRC32: TStream;
 begin
+  { an empty body goes through like any other: a gzip, zlib or deflate stream
+    of nothing is still a stream - 20, 8 and 2 bytes. Leaving the output empty,
+    as this did, sent a body of no bytes under a Content-Encoding that promised
+    a stream, which a strict decoder refuses; zstd and brotli always wrote
+    theirs. Decompress still takes an empty body as an empty one }
   vSize := AInStream.Size;
-  if vSize = 0 then
-    Exit;
 
-  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
-    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
-  else
-    SetLength(vBuf, AInStream.Size);
+  { a work buffer of a fixed size. Sized from the input, it came out empty
+    for an empty one - and vBuf[0] of it is a range error - and, on the way
+    back, as small as the compressed body: a 20-byte deflate of a megabyte of
+    zeros took fifty thousand turns of the loop. Nor does a body of 40 MB
+    need a 40 MB copy of itself to go through the compressor }
+  SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE);
 
   {$IFDEF FPC}
   if Format = ctGZip then
@@ -107,8 +112,31 @@ begin
   AOutStream.Position := 0;
 end;
 
+{ Whether the stream starts with a zlib header (RFC 1950): method 8 (deflate),
+  window of at most 32 KB, and the check bits that make the first two bytes a
+  multiple of 31. HTTP's "deflate" IS zlib (RFC 9110 8.4.1.2) - what most
+  servers send - while RAL, and a few old servers, send it raw; asking the
+  stream is what reads both. Leaves the position where it was }
+function StartsWithZlibHeader(AStream: TStream): boolean;
+var
+  vHead: array[0..1] of Byte;
+  vPos: Int64;
+begin
+  Result := False;
+  vPos := AStream.Position;
+  try
+    if AStream.Read(vHead[0], 2) <> 2 then
+      Exit;
+    Result := ((vHead[0] and $0F) = 8) and ((vHead[0] shr 4) <= 7) and
+              (((Word(vHead[0]) shl 8) or vHead[1]) mod 31 = 0);
+  finally
+    AStream.Position := vPos;
+  end;
+end;
+
 procedure TRALCompressZLib.InitDeCompress(AInStream, AOutStream: TStream);
 var
+  vFormat: TRALCompressType;
   vBuf: TBytes;
   vZip: TDeCompressionStream;
   vCount: Integer;
@@ -139,21 +167,22 @@ begin
     AInStream.Position := 0;
   {$ENDIF}
 
-  if AInStream.Size > DEFAULTBUFFERSTREAMSIZE then
-    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE)
-  else
-    SetLength(vBuf, AInStream.Size);
+  SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE); // see InitCompress
+
+  vFormat := Format;
+  if (vFormat = ctDeflate) and StartsWithZlibHeader(AInStream) then
+    vFormat := ctZLib;
 
   {$IFDEF FPC}
-  if Format = ctZLib then
+  if vFormat = ctZLib then
     vZip := TDeCompressionStream.Create(AInStream)
   else
     vZip := TDeCompressionStream.Create(AInStream, True);
   {$ELSE}
   // same windowBits mapping as Compress: ctDeflate is raw, not gzip
-  if Format = ctZLib then
+  if vFormat = ctZLib then
     vZip := TDeCompressionStream.Create(AInStream, 15)
-  else if Format = ctDeflate then
+  else if vFormat = ctDeflate then
     vZip := TDeCompressionStream.Create(AInStream, -15)
   else
     vZip := TDeCompressionStream.Create(AInStream, 31);

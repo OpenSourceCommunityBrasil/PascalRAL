@@ -17,6 +17,7 @@ type
     function GetDisplayName: string; override;
 
     procedure SetPage(const AValue: TStrings);
+    procedure AssignTo(Dest: TPersistent); override;
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
@@ -90,6 +91,7 @@ begin
   CreatePage(HTTP_Unauthorized, Format(RALPage, [SLangHTTP, 401, SError401, SError401Page]));
   CreatePage(HTTP_Forbidden, Format(RALPage, [SLangHTTP, 403, SError403, SError403Page]));
   CreatePage(HTTP_NotFound, Format(RALPage, [SLangHTTP, 404, SError404, SError404Page]));
+  CreatePage(HTTP_NotAcceptable, Format(RALPage, [SLangHTTP, 406, SError406, SError406Page]));
   CreatePage(HTTP_UnsupportedMedia, Format(RALPage, [SLangHTTP, 415, SError415, SError415Page]));
   CreatePage(HTTP_TooManyRequests, Format(RALPage, [SLangHTTP, 429, SError429, SError429Page]));
   CreatePage(HTTP_InternalError, Format(RALPage, [SLangHTTP, 500, SError500, SError500Page]));
@@ -109,6 +111,8 @@ begin
       Result := Format(RALPage, [SLangHTTP, AStatusCode, SError403, SError403Page]);
     HTTP_NotFound:
       Result := Format(RALPage, [SLangHTTP, AStatusCode, SError404, SError404Page]);
+    HTTP_NotAcceptable:
+      Result := Format(RALPage, [SLangHTTP, AStatusCode, SError406, SError406Page]);
     HTTP_UnsupportedMedia:
       Result := Format(RALPage, [SLangHTTP, AStatusCode, SError415, SError415Page]);
     HTTP_TooManyRequests:
@@ -123,6 +127,16 @@ begin
 end;
 
 { TRALResponsePage }
+
+procedure TRALResponsePage.AssignTo(Dest: TPersistent);
+begin
+  { TCollection.Assign copies item by item: without this, assigning
+    ResponsePages raised }
+  if Dest is TRALResponsePage then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
 
 constructor TRALResponsePage.Create(ACollection: TCollection);
 begin

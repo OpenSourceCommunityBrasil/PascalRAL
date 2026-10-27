@@ -30,12 +30,17 @@ type
     procedure WriteFloat(AStream: TStream; AValue: Double);
     procedure WriteDateTime(AStream: TStream; AValue: TDateTime);
     procedure WriteStream(AStream: TStream; AValue: TStream);
+    /// The text of a memo, as UTF-16LE in the layout WriteStream gives a
+    /// stream - never the field's own bytes (see the implementation)
+    procedure WriteMemo(AStream: TStream; AField: TField);
 
     // read
     function ReadHeader(AStream: TStream): boolean;
     procedure ReadFields(ADataset: TDataSet; AStream: TStream);
     procedure ReadRecords(ADataset: TDataSet; AStream: TStream);
 
+    /// Reads exactly ACount bytes or raises - every Read* goes through it
+    procedure ReadExact(AStream: TStream; var ABuffer; ACount: IntegerRAL);
     function ReadString(AStream: TStream): StringRAL;
     function ReadShortint(AStream: TStream): Shortint;
     function ReadByte(AStream: TStream): Byte;
@@ -48,6 +53,8 @@ type
     function ReadFloat(AStream: TStream): Double;
     function ReadDateTime(AStream: TStream): TDateTime;
     function ReadStream(AStream: TStream): TStream;
+    /// Reads what WriteMemo writes into AField, which may be nil
+    procedure ReadMemo(AStream: TStream; AField: TField);
   public
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
@@ -108,6 +115,11 @@ begin
 
     // size
     WriteInteger(AStream, ADataset.Fields[vInt].Size);
+
+    // a decimal also says its precision - Size is its scale. Only for sftBCD,
+    // which no reader before it knew, so no stream an older RAL reads changes
+    if vType = sftBCD then
+      WriteInteger(AStream, RALFieldPrecision(ADataset.Fields[vInt]));
   end;
 end;
 
@@ -162,16 +174,9 @@ begin
               vMem.Free
             end;
           end;
-          sftMemo     : begin
-            vMem := TMemoryStream.Create;
-            try
-              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-              WriteStream(AStream, vMem);
-            finally
-              vMem.Free
-            end;
-          end;
+          sftMemo     : WriteMemo(AStream, ADataset.Fields[vInt]);
           sftDateTime : WriteDateTime(AStream, ADataset.Fields[vInt].AsDateTime);
+          sftBCD      : WriteString(AStream, RALBCDToText(ADataset.Fields[vInt].AsBCD));
         end;
       end;
     end;
@@ -204,7 +209,10 @@ begin
   vBytes := StringToBytesUTF8(AValue);
   vSize := Length(vBytes);
   AStream.Write(vSize, SizeOf(vSize));
-  AStream.Write(vBytes[0], vSize);
+  { an empty text - a VARCHAR holding '' - has no [0] to take: with range
+    checks on, every answer carrying one was a 500 }
+  if vSize > 0 then
+    AStream.Write(vBytes[0], vSize);
 end;
 
 procedure TRALStorageBIN.WriteShortint(AStream: TStream; AValue: Shortint);
@@ -268,6 +276,25 @@ begin
   AStream.CopyFrom(AValue, vSize);
 end;
 
+{ It used to be the bytes TBlobField.SaveToStream gives, which are in the
+  field's own encoding - ANSI for a Delphi ftMemo, UTF-8 for an FPC one,
+  UTF-16 for an ftWideMemo on both - and the reader loaded them as they came
+  into the field it built, an ftWideMemo: every memo that was not wide on the
+  writer's side arrived as garbage, an sqldb server's included. UTF-16 is
+  what the wide memos already sent, so a reader of before still reads those,
+  and now every other memo as well. Little-endian, as every target is }
+procedure TRALStorageBIN.WriteMemo(AStream: TStream; AField: TField);
+var
+  vText: UnicodeString;
+  vSize: Int64RAL;
+begin
+  vText := AField.AsWideString;
+  vSize := Length(vText) * SizeOf(WideChar);
+  AStream.Write(vSize, SizeOf(vSize));
+  if vSize > 0 then
+    AStream.Write(vText[1], vSize);
+end;
+
 function TRALStorageBIN.ReadHeader(AStream: TStream): boolean;
 var
   vHeader: TBytes;
@@ -299,6 +326,11 @@ begin
 
   // fieldscount
   vFields := ReadInteger(AStream);
+  { it sizes three arrays before a single field is read, and a field takes at
+    least ten bytes (name size, type, flags, size): a count the rest of the
+    stream cannot hold is a lie, refused before it is allocated }
+  if (vFields < 0) or (Int64RAL(vFields) * 10 > AStream.Size - AStream.Position) then
+    raise Exception.Create(emStreamSizeBeyondEnd);
 
   SetLength(FFieldNames, vFields);
   SetLength(FFieldTypes, vFields);
@@ -311,8 +343,11 @@ begin
     vName := ReadString(AStream);
     FFieldNames[vInt] := vName;
 
-    // type
+    // type - checked before it becomes an enum: every record below is read
+    // by a case over it, and past the last member that is no type at all
     vByte := ReadByte(AStream);
+    if not RALIsFieldTypeOrdinal(vByte) then
+      raise Exception.Create(emStorageInvalidBinary);
     vType := TRALDB.RALFieldTypeToFieldType(TRALFieldType(vByte));
     FFieldTypes[vInt] := TRALFieldType(vByte);
 
@@ -326,10 +361,14 @@ begin
     vField.Name := vName;
     vField.DataType := vType;
 
-    if FFieldTypes[vInt] = sftString then
+    if FFieldTypes[vInt] in [sftString, sftBCD] then
       vField.Size := vSize
     else
       vField.Size := 0;
+
+    // a decimal also says its precision - Size is its scale
+    if FFieldTypes[vInt] = sftBCD then
+      vField.Precision := RALDecimalPrecision(ReadInteger(AStream));
 
     if (FFieldTypes[vInt] = sftDouble) and (vSize > 0) then
       vField.Precision := vSize;
@@ -372,67 +411,78 @@ begin
   // records count
   vRecords := ReadInt64(AStream);
   vFields := Length(FFieldTypes);
+  { each value starts with its null flag, so a record takes at least a byte
+    per field. A count the rest of the stream cannot hold is a lie - and with
+    no field at all every record took nothing, and the loop ran as many times
+    as the count said }
+  if (vRecords < 0) or ((vRecords > 0) and ((vFields = 0) or
+     (vRecords > (AStream.Size - AStream.Position) div vFields))) then
+    raise Exception.Create(emStreamSizeBeyondEnd);
 
   ADataset.DisableControls;
-
   LiftReadOnly;
-
-  vInt64 := 1;
-  while vInt64 <= vRecords do
-  begin
-
-    ADataset.Append;
-
-    for vInt := 0 to Pred(vFields) do
+  try
+    vInt64 := 1;
+    while vInt64 <= vRecords do
     begin
-      // is null
-      vIsNull := ReadBoolean(AStream);
+      ADataset.Append;
 
-      if not vIsNull then
+      for vInt := 0 to Pred(vFields) do
       begin
-        case FFieldTypes[vInt] of
-          sftShortInt : ReadFieldShortint(FFoundFields[vInt], ReadShortint(AStream));
-          sftSmallInt : ReadFieldSmallint(FFoundFields[vInt], ReadSmallint(AStream));
-          sftInteger  : ReadFieldInteger(FFoundFields[vInt], ReadInteger(AStream));
-          sftInt64    : ReadFieldInt64(FFoundFields[vInt], ReadInt64(AStream));
-          sftByte     : ReadFieldByte(FFoundFields[vInt], ReadByte(AStream));
-          sftWord     : ReadFieldWord(FFoundFields[vInt], ReadWord(AStream));
-          sftCardinal : ReadFieldLongWord(FFoundFields[vInt], ReadInt64(AStream));
-          sftQWord    : ReadFieldInt64(FFoundFields[vInt], ReadInt64(AStream));
-          sftDouble   : ReadFieldFloat(FFoundFields[vInt], ReadFloat(AStream));
-          sftBoolean  : ReadFieldBoolean(FFoundFields[vInt], ReadBoolean(AStream));
-          sftString   : ReadFieldString(FFoundFields[vInt], ReadString(AStream));
-          sftBlob     : begin
-            vMem := ReadStream(AStream);
-            try
-              ReadFieldStream(FFoundFields[vInt], vMem);
-            finally
-              vMem.Free
+        // is null
+        vIsNull := ReadBoolean(AStream);
+
+        if not vIsNull then
+        begin
+          case FFieldTypes[vInt] of
+            sftShortInt : ReadFieldShortint(FFoundFields[vInt], ReadShortint(AStream));
+            sftSmallInt : ReadFieldSmallint(FFoundFields[vInt], ReadSmallint(AStream));
+            sftInteger  : ReadFieldInteger(FFoundFields[vInt], ReadInteger(AStream));
+            sftInt64    : ReadFieldInt64(FFoundFields[vInt], ReadInt64(AStream));
+            sftByte     : ReadFieldByte(FFoundFields[vInt], ReadByte(AStream));
+            sftWord     : ReadFieldWord(FFoundFields[vInt], ReadWord(AStream));
+            sftCardinal : ReadFieldLongWord(FFoundFields[vInt], ReadInt64(AStream));
+            sftQWord    : ReadFieldInt64(FFoundFields[vInt], ReadInt64(AStream));
+            sftDouble   : ReadFieldFloat(FFoundFields[vInt], ReadFloat(AStream));
+            sftBoolean  : ReadFieldBoolean(FFoundFields[vInt], ReadBoolean(AStream));
+            sftString   : ReadFieldString(FFoundFields[vInt], ReadString(AStream));
+            sftBlob     : begin
+              vMem := ReadStream(AStream);
+              try
+                ReadFieldStream(FFoundFields[vInt], vMem);
+              finally
+                vMem.Free
+              end;
             end;
+            sftMemo     : ReadMemo(AStream, FFoundFields[vInt]);
+            sftDateTime : ReadFieldDateTime(FFoundFields[vInt], ReadDateTime(AStream));
+            sftBCD      : ReadFieldBCD(FFoundFields[vInt], RALTextToBCD(ReadString(AStream)));
           end;
-          sftMemo     : begin
-            vMem := ReadStream(AStream);
-            try
-              ReadFieldStream(FFoundFields[vInt], vMem);
-            finally
-              vMem.Free
-            end;
-          end;
-          sftDateTime : ReadFieldDateTime(FFoundFields[vInt], ReadDateTime(AStream));
         end;
       end;
+      ADataset.Post;
+      vInt64 := vInt64 + 1;
     end;
-    ADataset.Post;
-    vInt64 := vInt64 + 1;
+  finally
+    { in a finally, as the CSV reader already had it: a record that failed -
+      a stream cut short now raises emStreamSizeBeyondEnd in the middle of it -
+      left the read-only fields writable and the controls disabled }
+    RestoreReadOnly;
+    ADataset.EnableControls;
   end;
-
-  RestoreReadOnly;
-
-  ADataset.EnableControls;
 
   SetLength(FFieldNames, 0);
   SetLength(FFieldTypes, 0);
   SetLength(FFoundFields, 0);
+end;
+
+{ The same fix TRALBinaryWriter.ReadExact got: Stream.Read returns how much it
+  read and nothing looked, so at the end of the stream - a response cut short,
+  or one that lies about its counts - a value was whatever the stack held. }
+procedure TRALStorageBIN.ReadExact(AStream: TStream; var ABuffer; ACount: IntegerRAL);
+begin
+  if AStream.Read(ABuffer, ACount) <> ACount then
+    raise Exception.Create(emStreamSizeBeyondEnd);
 end;
 
 function TRALStorageBIN.ReadString(AStream: TStream): StringRAL;
@@ -441,77 +491,110 @@ var
   vBytes: TBytes;
 begin
   Result := '';
-  vSize := 0;
-  AStream.Read(vSize, SizeOf(vSize));
+  ReadExact(AStream, vSize, SizeOf(vSize));
   if vSize > 0 then
   begin
+    // refused before it is allocated: a size the stream cannot hold is a lie
+    if vSize > AStream.Size - AStream.Position then
+      raise Exception.Create(emStreamSizeBeyondEnd);
     SetLength(vBytes, vSize);
-    AStream.Read(vBytes[0], vSize);
+    ReadExact(AStream, vBytes[0], vSize);
     Result := BytesToStringUTF8(vBytes);
   end;
 end;
 
 function TRALStorageBIN.ReadShortint(AStream: TStream): Shortint;
 begin
-  AStream.Read(Result, SizeOf(Result));
+  ReadExact(AStream, Result, SizeOf(Result));
 end;
 
 function TRALStorageBIN.ReadByte(AStream: TStream): Byte;
 begin
-  AStream.Read(Result, SizeOf(Result));
+  ReadExact(AStream, Result, SizeOf(Result));
 end;
 
 function TRALStorageBIN.ReadLongWord(AStream: TStream): LongWord;
 begin
-  AStream.Read(Result, SizeOf(Result));
+  ReadExact(AStream, Result, SizeOf(Result));
 end;
 
 function TRALStorageBIN.ReadSmallint(AStream: TStream): Smallint;
 begin
-  AStream.Read(Result, SizeOf(Result));
+  ReadExact(AStream, Result, SizeOf(Result));
 end;
 
 function TRALStorageBIN.ReadWord(AStream: TStream): Word;
 begin
-  AStream.Read(Result, SizeOf(Result));
+  ReadExact(AStream, Result, SizeOf(Result));
 end;
 
 function TRALStorageBIN.ReadInteger(AStream: TStream): Integer;
 begin
-  AStream.Read(Result, SizeOf(Result));
+  ReadExact(AStream, Result, SizeOf(Result));
 end;
 
 function TRALStorageBIN.ReadInt64(AStream: TStream): Int64RAL;
 begin
-  AStream.Read(Result, SizeOf(Result));
+  ReadExact(AStream, Result, SizeOf(Result));
 end;
 
 function TRALStorageBIN.ReadBoolean(AStream: TStream): Boolean;
 begin
-  AStream.Read(Result, SizeOf(Result));
+  ReadExact(AStream, Result, SizeOf(Result));
 end;
 
 function TRALStorageBIN.ReadFloat(AStream: TStream): Double;
 begin
-  AStream.Read(Result, SizeOf(Result));
+  ReadExact(AStream, Result, SizeOf(Result));
 end;
 
 function TRALStorageBIN.ReadDateTime(AStream: TStream): TDateTime;
 begin
-  AStream.Read(Result, SizeOf(Result));
+  ReadExact(AStream, Result, SizeOf(Result));
+end;
+
+procedure TRALStorageBIN.ReadMemo(AStream: TStream; AField: TField);
+var
+  vText: UnicodeString;
+  vSize: Int64RAL;
+  vOdd: Byte;
+begin
+  ReadExact(AStream, vSize, SizeOf(vSize));
+  if (vSize < 0) or (vSize > AStream.Size - AStream.Position) then
+    raise Exception.Create(emStreamSizeBeyondEnd);
+  SetLength(vText, vSize div SizeOf(WideChar));
+  if vText <> '' then
+    ReadExact(AStream, vText[1], Length(vText) * SizeOf(WideChar));
+  { an odd size is a narrow memo from a writer of before: the last byte is
+    consumed all the same, so the next field is read where it starts }
+  if Odd(vSize) then
+    ReadExact(AStream, vOdd, 1);
+  if AField <> nil then
+    AField.AsWideString := vText;
 end;
 
 function TRALStorageBIN.ReadStream(AStream: TStream): TStream;
 var
   vSize : Int64RAL;
 begin
+  { the size first, and checked: the stream used to be created before
+    anything was read - and leaked by every read that failed - and then grown
+    to whatever size the data announced }
+  ReadExact(AStream, vSize, SizeOf(vSize));
+  if vSize > AStream.Size - AStream.Position then
+    raise Exception.Create(emStreamSizeBeyondEnd);
+
   Result := TMemoryStream.Create;
-  AStream.Read(vSize, SizeOf(vSize));
-  if vSize > 0 then
-  begin
-    Result.Size := vSize;
-    Result.Position := 0;
-    Result.CopyFrom(AStream, vSize);
+  try
+    if vSize > 0 then
+    begin
+      Result.Size := vSize;
+      Result.Position := 0;
+      Result.CopyFrom(AStream, vSize);
+    end;
+  except
+    Result.Free;
+    raise;
   end;
 end;
 
@@ -552,5 +635,8 @@ end;
 
 initialization
   RegisterClass(TRALStorageBINLink);
+
+finalization
+  UnregisterStorageLink(TRALStorageBINLink);
 
 end.

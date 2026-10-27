@@ -23,11 +23,12 @@ type
   TRALIndySSL = class(TRALSSL)
   private
     FSSLOptions: TIdSSLOptionsRAL;
+    procedure SetSSLOptions(const AValue: TIdSSLOptionsRAL);
   public
     constructor Create;
     destructor Destroy; override;
   published
-    property SSLOptions: TIdSSLOptionsRAL read FSSLOptions write FSSLOptions;
+    property SSLOptions: TIdSSLOptionsRAL read FSSLOptions write SetSSLOptions;
   end;
 
   { TRALIndyServer }
@@ -60,11 +61,37 @@ type
     destructor Destroy; override;
   published
     property ListenQueue: IntegerRAL read GetListenQueue write SetListenQueue;
+    /// Ceiling on how many connections may be open AT THE SAME TIME, the same
+    /// knob TRALfpHTTPServer, TRALSaguiServer and TRALSynopseServer publish
+    /// under this name: past it Indy refuses a NEW connection
+    /// (DoMaxConnectionsExceeded), so no existing client is dropped to make
+    /// room. 0 means no ceiling.
     property MaxConnections: IntegerRAL read GetMaxConnections write SetMaxConnections;
     property SSL: TRALIndySSL read GetSSL write SetSSL;
   end;
 
 implementation
+
+{ The answer to a request whose handling raised outside ProcessCommands -
+  decoding it, or building the answer. The exception used to be swallowed and
+  Indy then wrote its own default page: "200 OK" over a failure. Whatever the
+  answer had been given already goes with it, since a Content-Encoding or a
+  cipher header over a plain-text error would have the client misread it }
+procedure AnswerFailure(AResponseInfo: TIdHTTPResponseInfo; const AMessage: string);
+begin
+  if AResponseInfo.HeaderHasBeenWritten then
+    Exit;
+  AResponseInfo.ContentStream.Free; // this request's, whatever FreeContentStream says
+  AResponseInfo.ContentStream := nil;
+  AResponseInfo.CustomHeaders.Clear;
+  AResponseInfo.Cookies.Clear;
+  AResponseInfo.WWWAuthenticate.Clear;
+  AResponseInfo.ContentEncoding := '';
+  AResponseInfo.ContentDisposition := '';
+  AResponseInfo.ResponseNo := HTTP_InternalError;
+  AResponseInfo.ContentType := rctTEXTPLAIN;
+  AResponseInfo.ContentText := AMessage;
+end;
 
 { TRALIndyServer }
 
@@ -87,7 +114,9 @@ begin
     thing on its own, in TCrtSocket.SetupConnection. }
   FHttp.UseNagle := False;
 
-  MaxConnections := -1;
+  { 0, not -1: Indy reads anything <= 0 as "no ceiling" all the same, and 0 is
+    what the other three RAL servers publish under this name }
+  MaxConnections := 0;
   ListenQueue := -1;
   FHandlerSSL := TIdServerIOHandlerSSLOpenSSL.Create(nil);
 
@@ -141,7 +170,6 @@ var
   vRequest: TRALRequest;
   vResponse: TRALResponse;
   vInt: IntegerRAL;
-  vIdCookie: TIdCookie;
   vCookies: TStringList;
   vParam: TRALParam;
   vKeepAlive: boolean;
@@ -156,6 +184,13 @@ begin
         AddHeader('RALEngine', ENGINEINDY);
         ClientInfo.IP := ARequestInfo.RemoteIP;
         ClientInfo.Port := AContext.Binding.PeerPort;
+        { the socket of THIS connection: Indy keeps one TIdContext per
+          connection, so a kept-alive client's requests all report the same
+          handle. With the peer's port above it, as http.sys is keyed: the
+          system hands a closed socket's handle to the next connection, and
+          a hundred connections one after another counted as one }
+        ClientInfo.ConnectionID := (Int64RAL(AContext.Binding.PeerPort) shl 48) xor
+          Int64RAL(AContext.Binding.Handle);
         ClientInfo.MACAddress := '';
         ClientInfo.UserAgent := ARequestInfo.UserAgent;
 
@@ -192,19 +227,14 @@ begin
         ValidateRequest(vRequest, vResponse);
         if vResponse.StatusCode < HTTP_BadRequest then
         begin
-          Params.AppendParams(ARequestInfo.Params, rpkQUERY);
-
-          if ARequestInfo.Params.Count = 0 then
-          begin
-            Params.AppendParamsUrl(ARequestInfo.QueryParams, rpkQUERY);
-            Params.AppendParamsUrl(ARequestInfo.UnparsedParams, rpkQUERY);
-          end;
-
-          for vInt := 0 to Pred(ARequestInfo.Cookies.Count) do
-          begin
-            vIdCookie := ARequestInfo.Cookies.Cookies[vInt];
-            Params.AddParam(vIdCookie.CookieName, vIdCookie.Value, rpkCOOKIE);
-          end;
+          { each param with the kind of where it came from, decoded once.
+            Indy's Params mixes the query string with a urlencoded form, both already
+            decoded - and AppendParamLine decoded them again, so a '%2B' turned into a
+            space. The raw texts go through the one parser; the cookies come from
+            their header, as on every engine }
+          Params.AppendParamsText(ARequestInfo.QueryParams, rpkQUERY);
+          Params.AppendParamsText(ARequestInfo.FormParams, rpkFIELD);
+          AddCookies(Params.GetKind['Cookie', rpkHEADER].AsString);
 
           { Indy parsed the Authorization header in OnParseAuthentication;
             without one, the JWT may still be in the raltoken cookie, which
@@ -219,17 +249,17 @@ begin
           RequestStream := ARequestInfo.PostStream;
 
           Host := ARequestInfo.Host;
+          { HttpVersion is the scheme, which the request line does not carry -
+            it says HTTP/1.1 over TLS too, and this used to copy the 'HTTP' }
+          if Self.SSLEnabled then
+            HttpVersion := 'HTTPS'
+          else
+            HttpVersion := 'HTTP';
           vInt := Pos('/', ARequestInfo.Version);
           if vInt > 0 then
-          begin
-            HttpVersion := Copy(ARequestInfo.Version, 1, vInt - 1);
-            Protocol := Copy(ARequestInfo.Version, vInt + 1, 3);
-          end
+            Protocol := Copy(ARequestInfo.Version, vInt + 1, 3)
           else
-          begin
-            HttpVersion := 'HTTP';
             Protocol := '1.0';
-          end;
 
           // limpando para economia de memoria
           if (ARequestInfo.PostStream <> nil) then
@@ -254,7 +284,7 @@ begin
         vParam := Params.GetKind['WWW-Authenticate', rpkHEADER];
         if vParam <> nil then
         begin
-          AResponseInfo.WWWAuthenticate.Add(vParam.AsString);
+          AResponseInfo.WWWAuthenticate.Add(RALSafeHeaderText(vParam.AsString));
           vResponse.Params.DelParam('WWW-Authenticate');
         end;
 
@@ -266,25 +296,14 @@ begin
 
         Params.AssignParams(AResponseInfo.CustomHeaders, rpkHEADER, ': ');
 
+        { every cookie whole, on its own Set-Cookie line, from the builder all
+          engines share - a TIdCookie made a cookie CALLED Set-Cookie out of an
+          AddCookie(TRALCookie) one, which is why that case went out raw }
         vCookies := TStringList.Create;
         try
-          Params.AssignParams(vCookies, rpkCOOKIE);
+          GetParamsCookies(vCookies, IncMinute(Now, CookieLife));
           for vInt := 0 to Pred(vCookies.Count) do
-          begin
-            { a param named Set-Cookie carries a complete Set-Cookie value
-              (AddCookie(TRALCookie), the JWT UseCookie): it goes out raw.
-              Building a TIdCookie from it made a cookie CALLED Set-Cookie }
-            if SameText(vCookies.Names[vInt], 'Set-Cookie') then
-            begin
-              AResponseInfo.CustomHeaders.AddValue('Set-Cookie', vCookies.ValueFromIndex[vInt]);
-              Continue;
-            end;
-            vIdCookie := AResponseInfo.Cookies.Add;
-            vIdCookie.CookieName := vCookies.Names[vInt];
-            vIdCookie.Value := vCookies.ValueFromIndex[vInt];
-            vIdCookie.Expires := RALDateTimeToGMT(IncMinute(Now, CookieLife));
-            vIdCookie.Path := '/';
-          end;
+            AResponseInfo.CustomHeaders.AddValue('Set-Cookie', vCookies[vInt]);
         finally
           FreeAndNil(vCookies);
         end;
@@ -297,16 +316,26 @@ begin
         if AResponseInfo.ContentStream = nil then
           AResponseInfo.ContentStream := TMemoryStream.Create;
 
+        { Indy sends no body for a HEAD and leaves its length uncounted, then
+          writes Content-Length: 0 - which RFC 9110 9.3.2 forbids unless the
+          GET would send nothing. The size of what a GET would send goes
+          instead; Indy still keeps the body itself back }
+        if ARequestInfo.CommandType = hcHEAD then
+          AResponseInfo.ContentLength := AResponseInfo.ContentStream.Size;
+
         AResponseInfo.FreeContentStream := True;
 
         AResponseInfo.WriteContent;
       end;
     except
       on e: exception do
+      begin
+        AnswerFailure(AResponseInfo, string(ErrorText(e)));
         if Assigned(OnServerError) then
           OnServerError(e)
         else if RaiseError then
           raise;
+      end;
     end;
   finally
     FreeAndNil(vResponse);
@@ -387,7 +416,17 @@ begin
     IPVersion := Id_IPv4;
   end;
 
-  FHttp.Active := AValue;
+  { a bind that fails - port in use, no rights - must leave Active False: the
+    base already wrote True, and a server that says it is active while nothing
+    listens cannot even be started again, since SetActive(True) is then a
+    no-op. Same guard on every engine. }
+  try
+    FHttp.Active := AValue;
+  except
+    if AValue then
+      inherited SetActive(False);
+    raise;
+  end;
 end;
 
 procedure TRALIndyServer.SetListenQueue(const AValue: IntegerRAL);
@@ -448,6 +487,12 @@ begin
   FreeAndNil(FSSLOptions);
   inherited;
 end;
+
+procedure TRALIndySSL.SetSSLOptions(const AValue: TIdSSLOptionsRAL);
+begin
+  RALAssignOwned(FSSLOptions, AValue);
+end;
+
 
 { TIdSSLOptionsRAL }
 

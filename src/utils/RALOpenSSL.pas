@@ -1,5 +1,12 @@
 unit RALOpenSSL;
 
+{ Delphi mode on FPC: the bindings are procedural variables, and in ObjFPC a
+  parameterless one named without () is not called - EVP_sha256 would hand
+  back the variable instead of the digest }
+{$IFDEF FPC}
+  {$MODE DELPHI}
+{$ENDIF}
+
 {$I ..\base\PascalRAL.inc}
 
 interface
@@ -94,7 +101,6 @@ end;
 
 procedure TRALOpenSSL.LoadProcs;
 begin
-  inherited;
   LoadProc(@EVP_EncryptInit_ex, 'EVP_EncryptInit_ex');
   LoadProc(@EVP_EncryptUpdate, 'EVP_EncryptUpdate');
   LoadProc(@EVP_EncryptFinal_ex, 'EVP_EncryptFinal_ex');

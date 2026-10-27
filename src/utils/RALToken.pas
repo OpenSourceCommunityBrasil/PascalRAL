@@ -37,6 +37,7 @@ type
     FHeaderType: StringRAL;
     FKeyID: StringRAL;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     function GetAsJSON: StringRAL;
     procedure Initialize;
     procedure SetAsJSON(const AValue: StringRAL);
@@ -65,11 +66,13 @@ type
     FNotBefore: TDateTime;
     FSubject: StringRAL;
   protected
+    procedure AssignTo(Dest: TPersistent); override;
     function GetAsJSON: StringRAL;
     procedure SetAsJSON(const AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
+    /// Sets a custom claim; one already there with the same key is replaced
     procedure AddClaim(const AKey: StringRAL; const AValue: StringRAL);
     procedure Clear;
     procedure createNewId;
@@ -94,7 +97,12 @@ type
     FPayload: TRALJWTParams;
     FSignature: StringRAL;
     FSignSecretKey: StringRAL;
+    { the header and the payload as the token carried them, joined by their
+      dot - what the signature was computed over }
+    FSigningInput: StringRAL;
     FToken: StringRAL;
+    procedure SetHeader(const AValue: TRALJWTHeader);
+    procedure SetPayload(const AValue: TRALJWTParams);
   protected
     function signHS256(const ASource: StringRAL): StringRAL;
     function signHS384(const ASource: StringRAL): StringRAL;
@@ -110,8 +118,10 @@ type
 
     function IsValidToken(const AValue: StringRAL = ''): boolean;
   published
-    property Header: TRALJWTHeader read FHeader write FHeader;
-    property Payload: TRALJWTParams read FPayload write FPayload;
+    { both copy what they are given (RALAssignOwned): the objects are the
+      token's own, and freed with it }
+    property Header: TRALJWTHeader read FHeader write SetHeader;
+    property Payload: TRALJWTParams read FPayload write SetPayload;
     property Signature: StringRAL read FSignature;
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
     property Token: StringRAL read GetToken write SetToken;
@@ -177,6 +187,8 @@ type
     FSessAlgorithm: boolean;
     FStale: StringRAL;
     FUserHash: boolean;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
   published
     property Algorithm: TRALDigestAlgorithm read FAlgorithm write FAlgorithm;
     property Charset: StringRAL read FCharset write FCharset;
@@ -221,6 +233,16 @@ type
   end;
 
 implementation
+
+{ TRALDigestParams }
+
+procedure TRALDigestParams.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALDigestParams then
+    RALAssignProperties(Self, Dest)
+  else
+    inherited AssignTo(Dest);
+end;
 
 { TRALDigest }
 
@@ -575,18 +597,37 @@ begin
   FKeyID := '';
 end;
 
+procedure TRALJWTHeader.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALJWTHeader then
+  begin
+    RALAssignProperties(Self, Dest);
+    TRALJWTHeader(Dest).FHeaderType := FHeaderType; // read-only, not copied above
+  end
+  else
+    inherited AssignTo(Dest);
+end;
+
 procedure TRALJWTHeader.SetAsJSON(const AValue: StringRAL);
 var
+  vParsed: TRALJSONValue;
   vJson: TRALJSONObject;
   vInt: IntegerRAL;
   vName: StringRAL;
   vValue: TRALJSONValue;
   vAux1: StringRAL;
 begin
-  vJson := TRALJSONObject(TRALJSON.ParseJSON(AValue));
+  vParsed := TRALJSON.ParseJSON(AValue);
   try
-    if vJson <> nil then
+    { only an object is a header. Anything else - an array, a string, a
+      number - used to be cast to TRALJSONObject all the same and walked with
+      the object's Count/GetName/Get: type confusion, reachable by any Bearer
+      before its signature is checked, since TRALRequest parses the header of
+      every request that carries one. It leaves the header as it was, like
+      text that does not parse at all }
+    if vParsed is TRALJSONObject then
     begin
+      vJson := TRALJSONObject(vParsed);
       Initialize;
       vInt := 0;
       while vInt < vJson.Count do
@@ -618,7 +659,7 @@ begin
       end;
     end;
   finally
-    FreeAndNil(vJson);
+    FreeAndNil(vParsed);
   end;
 end;
 
@@ -626,7 +667,25 @@ end;
 
 procedure TRALJWTParams.AddClaim(const AKey, AValue: StringRAL);
 begin
+  { a claim set twice is replaced, not duplicated: the list is sorted by the
+    whole "key=value" line, so a second value for the same key went in next to
+    the first and the token carried the key twice - invalid JSON, read back as
+    whichever came first. Renewing a token (OnRenewToken) is exactly that }
+  DelClaim(AKey);
   FCustomClaims.Add(AKey + '=' + AValue);
+end;
+
+procedure TRALJWTParams.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALJWTParams then
+  begin
+    RALAssignProperties(Self, Dest);
+    { the claims of the application's own, which are not published:
+      name=value lines, no objects }
+    TRALJWTParams(Dest).FCustomClaims.Assign(FCustomClaims);
+  end
+  else
+    inherited AssignTo(Dest);
 end;
 
 constructor TRALJWTParams.Create;
@@ -733,16 +792,19 @@ end;
 
 procedure TRALJWTParams.SetAsJSON(const AValue: StringRAL);
 var
+  vParsed: TRALJSONValue;
   vJson: TRALJSONObject;
   vInt: IntegerRAL;
   vName: StringRAL;
   vValue: TRALJSONValue;
 begin
   Clear;
-  vJson := TRALJSONObject(TRALJSON.ParseJSON(AValue));
+  vParsed := TRALJSON.ParseJSON(AValue);
   try
-    if vJson <> nil then
+    { the claim set is an object or nothing - see TRALJWTHeader.SetAsJSON }
+    if vParsed is TRALJSONObject then
     begin
+      vJson := TRALJSONObject(vParsed);
       vInt := 0;
       while vInt < vJson.Count do
       begin
@@ -787,14 +849,21 @@ begin
         end
         else
         begin
-          AddClaim(vName, vValue.AsString);
+          { an object or an array as its JSON text, the same on both
+            compilers: AsString handed it to fpjson on FPC, which raises for
+            an object - a token from another library with one in its claims
+            was no token there, while Delphi's backend answered the text }
+          if vValue.JsonType in [rjtObject, rjtArray] then
+            AddClaim(vName, vValue.ToJSON)
+          else
+            AddClaim(vName, vValue.AsString);
         end;
 
         vInt := vInt + 1;
       end;
     end;
   finally
-    FreeAndNil(vJson);
+    FreeAndNil(vParsed);
   end;
 end;
 
@@ -813,6 +882,7 @@ var
   vInt: IntegerRAL;
   vStr: TStringList;
   vWhole: StringRAL;
+  vOk: boolean;
 begin
   FToken := '';
   vWhole := AValue;
@@ -830,19 +900,49 @@ begin
       end;
     until vInt = 0;
 
-    if vStr.Count = 3 then
-    begin
+    vOk := vStr.Count = 3;
+    if vOk then
+    try
+      FHeader.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[0]));
+      FPayload.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
       { the loop above eats AValue segment by segment, and FToken used to be
         assigned AFTER it - always empty, so IsValidToken with no argument
         answered False for a token that had just been assigned }
       FToken := vWhole;
-      FHeader.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[0]));
-      FPayload.AsJSON := TRALBase64.Decode(TRALBase64.FromBase64Url(vStr.Strings[1]));
+      FSigningInput := vStr.Strings[0] + '.' + vStr.Strings[1];
       FSignature := vStr.Strings[2];
+    except
+      { a segment that is not base64, or not JSON: not a token, like a text
+        without its three segments. It raised - on FPC whatever the JSON was,
+        whose parser raises where Delphi's answers nil - and a Bearer of
+        garbage turned into a 500 before any authentication had a say }
+      vOk := False;
+    end;
+
+    if not vOk then
+    begin
+      { not a token, so nothing of the previous one may stay: anything
+        malformed handed to an object that had validated a good token came
+        back valid, with that token's claims. The header keeps its Algorithm,
+        which is the caller's configuration }
+      FToken := '';
+      FPayload.Clear;
+      FSigningInput := '';
+      FSignature := '';
     end;
   finally
     FreeAndNil(vStr);
   end;
+end;
+
+procedure TRALJWT.SetHeader(const AValue: TRALJWTHeader);
+begin
+  RALAssignOwned(FHeader, AValue);
+end;
+
+procedure TRALJWT.SetPayload(const AValue: TRALJWTParams);
+begin
+  RALAssignOwned(FPayload, AValue);
 end;
 
 function TRALJWT.CreateToken(AHeader, APayload: StringRAL;
@@ -941,10 +1041,23 @@ begin
   if AValue <> '' then
     Token := AValue;
 
+  { SetToken leaves FToken empty for anything that is not three segments }
+  if FToken = '' then
+    Exit;
+
   if vAlgorithm = FHeader.Algorithm then
   begin
-    vSignature := FSignature;
-    GetToken;
+    { over the header and the payload as they arrived. It signed what
+      GetToken wrote back from the objects they were read into, and any
+      difference in that writing - the order of the keys, a number, a claim
+      the objects do not keep - changed what was signed: every token another
+      library issued was refused }
+    case FHeader.Algorithm of
+      tjaHSHA384: vSignature := signHS384(FSigningInput);
+      tjaHSHA512: vSignature := signHS512(FSigningInput);
+    else
+      vSignature := signHS256(FSigningInput);
+    end;
     { constant time: the signature is the secret here }
     if RALSameSecret(vSignature, FSignature) then
     begin
@@ -968,7 +1081,16 @@ var
   vInt: IntegerRAL;
 begin
   FAuthString := AValue;
-  vString := TRALBase64.Decode(FAuthString);
+  FUserName := '';
+  FPassword := '';
+  { credentials that are not base64 are no credentials - a 401, as for a
+    wrong password. The decoder raises on them now, where it used to answer
+    garbage, and raised here they came out of the engine as a 500 }
+  try
+    vString := TRALBase64.Decode(FAuthString);
+  except
+    vString := '';
+  end;
   vInt := Pos(':', vString);
   if vInt > 0 then begin
     FUserName := Copy(vString, 1, vInt - 1);

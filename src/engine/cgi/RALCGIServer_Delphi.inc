@@ -2,9 +2,9 @@ uses
   {$IFDEF RALWindows}
     Windows,
   {$ENDIF}
-  Classes, SysUtils,
+  Classes, SysUtils, DateUtils,
   Web.HTTPApp, CGIApp, Web.WebBroker, Web.WebReq,
-  RALServer, RALRequest, RALResponse, RALTools, RALTypes, RALParams;
+  RALServer, RALRequest, RALResponse, RALTools, RALTypes, RALParams, RALNetwork;
 
 type
   TRALCGIServerHandler = class(TCustomWebDispatcher)
@@ -21,12 +21,51 @@ type
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
+    /// The address of the web server that started the program, as it tells
+    /// it (SERVER_ADDR, or LOCAL_ADDR on IIS); the machine's otherwise
+    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
   end;
 
 implementation
 
 var
   FCGIApp : TCGIApplication;
+
+{ One cookie of GetParamsCookies, as Web.HTTPApp can send it. TWebResponse
+  writes its custom headers by name (Values[Name]), so a second Set-Cookie line
+  there went out as a copy of the first: each cookie goes into Cookies instead.
+  TCookie has no Max-Age, so one becomes the moment it stands for, and SameSite
+  is written when the cookie names one - as GetCookieText does. TCookie gained
+  HttpOnly and SameSite late; below 10.4 they are not set }
+procedure AddWebCookie(AResponse: TWebResponse; const ACookie: TRALCookie);
+var
+  vCookie: TCookie;
+begin
+  if ACookie.Name = '' then
+    Exit;
+  vCookie := AResponse.Cookies.Add;
+  vCookie.Name := string(ACookie.Name);
+  vCookie.Value := string(ACookie.Value);
+  vCookie.Domain := string(ACookie.Domain);
+  vCookie.Path := string(ACookie.Path);
+  if ACookie.MaxAge < 0 then
+    vCookie.Expires := EncodeDate(1970, 1, 1)
+  else if ACookie.MaxAge > 0 then
+    vCookie.Expires := IncSecond(RALDateTimeToGMT(Now), ACookie.MaxAge)
+  else if ACookie.Expires <> 0 then
+    { TCookie writes Expires as it is, with GMT after it; the line carried
+      UTC, which GetRALCookieFromText brings to local time }
+    vCookie.Expires := RALDateTimeToGMT(ACookie.Expires);
+  vCookie.Secure := ACookie.Secure;
+  {$IFDEF DELPHI10_4UP}
+  vCookie.HttpOnly := ACookie.HttpOnly;
+  case ACookie.SameSite of
+    cssLax: vCookie.SameSite := 'Lax';
+    cssNone: vCookie.SameSite := 'None';
+    cssStrict: vCookie.SameSite := 'Strict';
+  end;
+  {$ENDIF}
+end;
 
 { TRALCGIServer }
 
@@ -96,6 +135,17 @@ begin
   inherited;
 end;
 
+function TRALCGIServer.GetServerAddress(AMode: TRALIpMode): StringRAL;
+begin
+  { a CGI program listens on nothing: the web server that started it does,
+    and it says which of its addresses took the request }
+  Result := StringRAL(GetEnvironmentVariable('SERVER_ADDR'));
+  if Result = '' then
+    Result := StringRAL(GetEnvironmentVariable('LOCAL_ADDR'));
+  if not RALIsIPAddress(Result, AMode) then
+    Result := inherited GetServerAddress(AMode);
+end;
+
 procedure TRALCGIServer.SetActive(const AValue: boolean);
 begin
   inherited;
@@ -132,7 +182,7 @@ var
   vResponse: TRALResponse;
   vAux1, vAux2: StringRAL;
   vInt, vPos: IntegerRAL;
-  vParam: TRALParam;
+  vCookies: TStringList;
 begin
   vServer := TRALCGIServer(FCGIApp.Owner);
 
@@ -154,27 +204,42 @@ begin
     vAux2 := ARequest.GetFieldByName('QUERY_STRING');
     vRequest.Params.AppendParamsUrl(vAux2, rpkQUERY);
 
+    { The version the FRONT-END server received, which is the only one that
+      exists here: a CGI process never sees a socket. It is also the one place
+      in RAL where HTTP/2 can turn up without any engine implementing it, since
+      nginx or IIS may well have taken the request on h2 and handed it over as
+      SERVER_PROTOCOL. Protocol/ProtocolVersion are two faces of one field, so
+      this fills both.      Anything the parse does not recognise leaves rhvDefault. }
+    vRequest.Protocol := ARequest.ProtocolVersion;
+    { the scheme and the host, which every other engine fills and this one
+      left empty: Request.URL came out as ':/' and the path. HTTPS is 'on'
+      under TLS on Apache and IIS, 'off' or absent otherwise }
+    vRequest.Host := ARequest.Host;
+    if SameText(GetEnvironmentVariable('HTTPS'), 'on') then
+      vRequest.HttpVersion := 'HTTPS'
+    else
+      vRequest.HttpVersion := 'HTTP';
+
     vRequest.Method := HTTPMethodToRALMethod(ARequest.Method);
 
+    { the request's headers and nothing else of the environment: CGI hands
+      them over as HTTP_ACCEPT_ENCODING and the like, plus CONTENT_TYPE and
+      CONTENT_LENGTH without the prefix. Every other variable - PATH, the user
+      name, whatever secret a deployment keeps there - became a form field, and
+      ParamByName('path') answered the server's PATH to a client that sent none }
     for vInt := 1 to GetEnvironmentVariableCount do
     begin
       vAux1 := GetEnvironmentString(vInt);
       vPos := Pos('=', vAux1);
       vAux2 := Copy(vAux1, 1, vPos - 1);
-
-      vParam := vRequest.Params.NewParam;
       if Copy(vAux2, 1, 5) = 'HTTP_' then
-      begin
-        Delete(vAux2, 1, 5);
-        vParam.Kind := rpkHEADER;
-      end
-      else
-      begin
-        vParam.Kind := rpkFIELD;
-      end;
-      vParam.ParamName := vAux2;
-      vParam.AsString := Copy(vAux1, vPos + 1, Length(vAux1));
+        Delete(vAux2, 1, 5)
+      else if (vAux2 <> 'CONTENT_TYPE') and (vAux2 <> 'CONTENT_LENGTH') then
+        Continue;
+      vRequest.Params.AddParam(StringReplace(vAux2, '_', '-', [rfReplaceAll]),
+        Copy(vAux1, vPos + 1, Length(vAux1)), rpkHEADER);
     end;
+    vRequest.AddCookies(vRequest.Params.GetKind['Cookie', rpkHEADER].AsString);
 
     vRequest.Params.CompressType := vRequest.ContentCompress;
     vRequest.Params.CriptoOptions.CriptType := vRequest.ContentCripto;
@@ -196,6 +261,17 @@ begin
       vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);
 
     vResponse.Params.AssignParams(AResponse.CustomHeaders, rpkHEADER, '=');
+
+    { cookies never left this engine - AddCookie and the JWT UseCookie did
+      nothing here. Built like every other engine's (GetParamsCookies) }
+    vCookies := TStringList.Create;
+    try
+      vResponse.GetParamsCookies(vCookies, IncMinute(Now, vServer.CookieLife));
+      for vInt := 0 to Pred(vCookies.Count) do
+        AddWebCookie(AResponse, GetRALCookieFromText(vCookies[vInt]));
+    finally
+      FreeAndNil(vCookies);
+    end;
 
     AResponse.Server := 'RAL_CGIDelphi';
     AResponse.ContentType := vResponse.ContentType;

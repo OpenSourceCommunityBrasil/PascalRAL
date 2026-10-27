@@ -19,6 +19,7 @@ type
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
     FCharacterSet: StringRAL;
+    FConnectionParams: TStrings;
     FLibLocation: String;
     FPassword: StringRAL;
     FPool: TRALDBConnectionPool;
@@ -30,6 +31,7 @@ type
     FOnErrorConnect: TRALDBOnError;
     FOnErrorQuery: TRALDBOnError;
     FOnValidateSQL: TRALDBOnValidateSQL;
+    procedure SetConnectionParams(AValue: TStrings);
     procedure SetLibLocation(AValue: String);
     /// Asks OnValidateSQL about a statement from the wire; raises when refused
     procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
@@ -89,6 +91,9 @@ type
     property LibLocation: String read FLibLocation write SetLibLocation;
     { Connection charset; empty lets the driver choose (UTF8 on Firebird) }
     property CharacterSet: StringRAL read FCharacterSet write FCharacterSet;
+    { Name=Value settings handed to the database library before it connects -
+      Zeos Properties, FireDAC or sqldb Params. See TRALDBBase.ConnectionParams }
+    property ConnectionParams: TStrings read FConnectionParams write SetConnectionParams;
 
     property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
     property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
@@ -105,6 +110,23 @@ type
 
 implementation
 
+{ The answers of a SQL cache as the body of AResponse - one param, 'Stream',
+  that the body encoder sends as the whole body. It is the result of a query,
+  and it used to be alive four times at once: in the query's answer, in the
+  serialized cache, in the param that copied it, and in the body copied from
+  the param - 100 MB of result took 400 MB of the server. The cache is
+  serialized once, and that stream is shared, not copied, with what the engine
+  sends (TRALBufferStream); the request's body was read where it is, too, not
+  copied first }
+procedure AnswerSQLCache(AResponse: TRALResponse; ACache: TRALDBSQLCache);
+var
+  vParam: TRALParam;
+begin
+  AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
+  vParam := AResponse.Params.AddParam('Stream', TStream(nil), rpkBODY);
+  vParam.AdoptStream(TRALBufferStream.Create(TMemoryStream(ACache.ResponseToStream)));
+end;
+
 { TRALDBModule }
 
 procedure TRALDBModule.SetLibLocation(AValue: String);
@@ -120,13 +142,20 @@ begin
   // the two branches were swapped: a plain exception answered 429 and a pool
   // timeout answered 408. the intent on record ("pool exhaustion now answers
   // HTTP 429 instead of 503") is pool -> 429 and anything else -> 500.
-  if AException is ERALDBPoolTimeout then
-    AResponse.StatusCode := HTTP_TooManyRequests
-  else
-    AResponse.StatusCode := HTTP_InternalError;
-
   AResponse.ContentType := rctTEXTPLAIN;
-  AResponse.Params.AddParam('Exception', AException.Message, rpkBODY);
+  if AException is ERALDBPoolTimeout then
+  begin
+    { RAL's own words, which say nothing of the database }
+    AResponse.StatusCode := HTTP_TooManyRequests;
+    AResponse.Params.AddParam('Exception', AException.Message, rpkBODY);
+  end
+  else
+  begin
+    { the driver's, which names tables and quotes SQL: hidden with the
+      server's HideErrorDetails }
+    AResponse.StatusCode := HTTP_InternalError;
+    AResponse.Params.AddParam('Exception', ErrorText(AException), rpkBODY);
+  end;
 end;
 
 function TRALDBModule.CreatePoolConnection(ASender: TObject): TRALDBBase;
@@ -218,7 +247,9 @@ begin
       ADBSQL.Response.ContentType := vContentType;
       ADBSQL.Response.RowsAffected := 0;
       ADBSQL.Response.LastId := 0;
-      ADBSQL.Response.Stream := vResult;
+      { handed over, not copied: Stream := held the result twice }
+      ADBSQL.Response.AdoptStream(TMemoryStream(vResult));
+      vResult := nil;
     finally
       FreeAndNil(vResult);
     end;
@@ -259,12 +290,24 @@ begin
       vField.FieldName := ADataset.Fields[vInt].FieldName;
       vField.FieldType := ADataset.Fields[vInt].DataType;
       vField.Flags := TRALDB.GetFieldProviderFlags(ADataset.Fields[vInt]);
+      { which client gets this field in the native format - the one of this
+        driver, when the driver exports natively at all (see OpenSQLResponse).
+        A client building fields from the schema needs to know, or the ones it
+        builds will not match what it loads }
+      if ADatabase.CanExportNative then
+        vField.NativeDriver := Ord(ADatabase.DriverType);
 
       vField.Length := 0;
       vField.Precision := 0;
 
+      { a decimal's Size is its scale; its precision is a property of its own.
+        Precision carried the scale and Scale stayed 0, which no client could
+        rebuild an exact decimal field from }
       if ADataset.Fields[vInt].DataType in [ftBCD, ftFMTBcd] then
-        vField.Precision := ADataset.Fields[vInt].Size
+      begin
+        vField.Precision := RALFieldPrecision(ADataset.Fields[vInt]);
+        vField.Scale := ADataset.Fields[vInt].Size;
+      end
       else
         vField.Length := ADataset.Fields[vInt].Size
     end;
@@ -297,6 +340,8 @@ begin
     Result.Port := FPort;
     Result.LibLocation := FLibLocation;
     Result.CharacterSet := FCharacterSet;
+    if FConnectionParams.Count > 0 then
+      Result.ConnectionParams := FConnectionParams;
     Result.Request := ARequest;
     Result.Response := AResponse;
 
@@ -314,7 +359,7 @@ end;
 procedure TRALDBModule.OpenSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
-  vMem, vResult: TStream;
+  vMem: TStream;
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
 begin
@@ -324,34 +369,25 @@ begin
       vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
-        vMem := ARequest.Body.AsStream;
-        try
-          if (vMem <> nil) and (vMem.Size > 0) then
-          begin
-            vSQLCache := TRALDBSQLCache.Create;
-            try
-              vSQLCache.LoadFromStream(vMem);
-              vDBSQL := vSQLCache.SQLList[0];
+        { the body where it is - see AnswerSQLCache }
+        vMem := ARequest.Body.Content;
+        if (vMem <> nil) and (vMem.Size > 0) then
+        begin
+          vSQLCache := TRALDBSQLCache.Create;
+          try
+            vSQLCache.LoadFromStream(vMem);
+            vDBSQL := vSQLCache.SQLList[0];
 
-              OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
+            OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
 
-              vResult := vSQLCache.ResponseToStream;
-              try
-                AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-                AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-              finally
-                FreeAndNil(vResult);
-              end;
-            finally
-              FreeAndNil(vSQLCache);
-            end;
-          end
-          else
-          begin
-            raise Exception.Create(emDBEmptyBody);
+            AnswerSQLCache(AResponse, vSQLCache);
+          finally
+            FreeAndNil(vSQLCache);
           end;
-        finally
-          FreeAndNil(vMem);
+        end
+        else
+        begin
+          raise Exception.Create(emDBEmptyBody);
         end;
       end
       else
@@ -371,7 +407,7 @@ procedure TRALDBModule.ApplyUpdates(ARequest: TRALRequest;
   AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
-  vMem, vResult: TStream;
+  vMem: TStream;
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
   vInt: IntegerRAL;
@@ -382,46 +418,38 @@ begin
       vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
-        vMem := ARequest.Body.AsStream;
-        try
-          if (vMem <> nil) and (vMem.Size > 0) then
-          begin
-            vSQLCache := TRALDBSQLCache.Create;
-            try
-              vSQLCache.LoadFromStream(vMem);
-              for vInt := 0 to Pred(vSQLCache.Count) do
-              begin
-                vDBSQL := vSQLCache.SQLList[vInt];
-                vDBSQL.Response.Clear;
+        vMem := ARequest.Body.Content;
+        if (vMem <> nil) and (vMem.Size > 0) then
+        begin
+          vSQLCache := TRALDBSQLCache.Create;
+          try
+            vSQLCache.LoadFromStream(vMem);
+            for vInt := 0 to Pred(vSQLCache.Count) do
+            begin
+              vDBSQL := vSQLCache.SQLList[vInt];
+              vDBSQL.Response.Clear;
 
-                try
-                  if vDBSQL.ExecType = etExecute then
-                    ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage)
-                  else
-                    OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
-                except
-                  on e: Exception do
-                    vDBSQL.Response.StrError := e.Message;
-                end;
-              end;
-
-              vResult := vSQLCache.ResponseToStream;
               try
-                AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-                AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-              finally
-                FreeAndNil(vResult);
+                if vDBSQL.ExecType = etExecute then
+                  ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage)
+                else
+                  OpenSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
+              except
+                { each statement's own failure, the driver's words - hidden
+                  like a 500's with the server's HideErrorDetails }
+                on e: Exception do
+                  vDBSQL.Response.StrError := ErrorText(e);
               end;
-            finally
-              FreeAndNil(vSQLCache);
             end;
-          end
-          else
-          begin
-            raise Exception.Create(emDBEmptyBody);
+
+            AnswerSQLCache(AResponse, vSQLCache);
+          finally
+            FreeAndNil(vSQLCache);
           end;
-        finally
-          FreeAndNil(vMem);
+        end
+        else
+        begin
+          raise Exception.Create(emDBEmptyBody);
         end;
       end
       else
@@ -440,7 +468,7 @@ end;
 procedure TRALDBModule.ExecSQL(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vDB: TRALDBBase;
-  vMem, vResult: TStream;
+  vMem: TStream;
   vSQLCache: TRALDBSQLCache;
   vDBSQL: TRALDBSQL;
 begin
@@ -450,36 +478,26 @@ begin
       vDB := AcquireDatabase(ARequest, AResponse);
       if vDB <> nil then
       begin
-        vMem := ARequest.Body.AsStream;
-        try
-          if (vMem <> nil) and (vMem.Size > 0) then
-          begin
-            vSQLCache := TRALDBSQLCache.Create;
-            try
-              vSQLCache.LoadFromStream(vMem);
+        vMem := ARequest.Body.Content;
+        if (vMem <> nil) and (vMem.Size > 0) then
+        begin
+          vSQLCache := TRALDBSQLCache.Create;
+          try
+            vSQLCache.LoadFromStream(vMem);
 
-              vDBSQL := vSQLCache.SQLList[0];
-              vDBSQL.Response.Clear;
+            vDBSQL := vSQLCache.SQLList[0];
+            vDBSQL.Response.Clear;
 
-              ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
+            ExecSQLResponse(vDB, vDBSQL, vSQLCache.Storage);
 
-              vResult := vSQLCache.ResponseToStream;
-              try
-                AResponse.ContentType := rctAPPLICATIONOCTETSTREAM;
-                AResponse.Params.AddParam('Stream', vResult, rpkBODY);
-              finally
-                FreeAndNil(vResult);
-              end;
-            finally
-              FreeAndNil(vSQLCache);
-            end;
-          end
-          else
-          begin
-            raise Exception.Create(emDBEmptyBody);
+            AnswerSQLCache(AResponse, vSQLCache);
+          finally
+            FreeAndNil(vSQLCache);
           end;
-        finally
-          FreeAndNil(vMem);
+        end
+        else
+        begin
+          raise Exception.Create(emDBEmptyBody);
         end;
       end
       else
@@ -651,9 +669,14 @@ var
       vField.RALFieldType := sftDateTime;
     end
     else if (Pos(StringRAL('double'), AType) > 0) or (Pos(StringRAL('numeric'), AType) > 0) or
-            (Pos(StringRAL('decimal'), AType) > 0) then
+            (Pos(StringRAL('decimal'), AType) > 0) or (Pos(StringRAL('real'), AType) > 0) or
+            (Pos(StringRAL('float'), AType) > 0) then
     begin
-      vField.RALFieldType := sftDouble;
+      // NUMERIC and DECIMAL are exact, the others are floats
+      if (Pos(StringRAL('numeric'), AType) > 0) or (Pos(StringRAL('decimal'), AType) > 0) then
+        vField.RALFieldType := RALDecimalFieldType
+      else
+        vField.RALFieldType := sftDouble;
 
       vInt := Pos('(', AType);
       if vInt > 0 then
@@ -707,16 +730,22 @@ var
   var
     vfbType: TRALFieldType;
   begin
+    { a type not listed below - INT128 and DECFLOAT among them - travels as
+      text; vfbType had no value at all for them, and indexed the type name
+      table with whatever it held }
+    vfbType := sftString;
     case vQuery.FieldByName('rdb$field_type').AsInteger of
+      { an integer with a sub type is a NUMERIC (1) or a DECIMAL (2) stored in
+        it - exact, as RALDecimalFieldType carries it }
       007: begin
             vfbType := sftSmallInt;
             if vQuery.FieldByName('rdb$field_sub_type').AsInteger > 0 then
-              vfbType := sftDouble;
+              vfbType := RALDecimalFieldType;
       end;
       008: begin
             vfbType := sftInteger;
             if vQuery.FieldByName('rdb$field_sub_type').AsInteger > 0 then
-              vfbType := sftDouble;
+              vfbType := RALDecimalFieldType;
       end;
       009: vfbType := sftInt64;
       010,
@@ -728,10 +757,13 @@ var
       014,
       037,
       040: vfbType := sftString;
+      023: vfbType := sftBoolean;  // BOOLEAN, Firebird 3
+      028,
+      029: vfbType := sftDateTime; // TIME and TIMESTAMP WITH TIME ZONE, Firebird 4
       016: begin
             vfbType := sftInt64;
             if vQuery.FieldByName('rdb$field_sub_type').AsInteger > 0 then
-              vfbType := sftDouble;
+              vfbType := RALDecimalFieldType;
       end;
       261: begin
         vfbType := sftBlob;
@@ -759,7 +791,7 @@ var
     else if vQuery.FieldByName('rdb$field_type').AsInteger in [7, 8, 16, 27] then
     begin
       // numeric
-      if vfbType = sftDouble then
+      if vfbType in [sftDouble, sftBCD] then
         vField.Precision := vQuery.FieldByName('rdb$field_precision').AsInteger;
 
       if (vQuery.FieldByName('rdb$field_scale').AsInteger < 0) then
@@ -791,6 +823,9 @@ var
       vTypMod := vQuery.FieldByName('atttypmod').AsInteger;
     end;
 
+    { an OID not listed below - uuid, json, jsonb among them - travels as text;
+      vpgType had no value at all for them, same as Firebird above }
+    vpgType := sftString;
     case vType of
       16   : vpgType := sftBoolean;
       17   : vpgType := sftBlob;
@@ -799,8 +834,10 @@ var
       25   : vpgType := sftMemo;
       20,
       26   : vpgType := sftInt64;
-      701,
-      1700 : vpgType := sftDouble;
+      700,
+      701  : vpgType := sftDouble;
+      1700 : vpgType := RALDecimalFieldType; // numeric
+      1083 : vpgType := sftDateTime; // time
       1042,
       1043: vpgType := sftString;
       1082,
@@ -997,6 +1034,7 @@ var
 begin
   inherited Create(AOwner);
 
+  FConnectionParams := TStringList.Create;
   FPool := TRALDBConnectionPool.Create;
   FPool.OnCreateConnection := {$IFDEF FPC}@{$ENDIF}CreatePoolConnection;
 
@@ -1067,9 +1105,15 @@ begin
   vParam.Required := False;
 end;
 
+procedure TRALDBModule.SetConnectionParams(AValue: TStrings);
+begin
+  FConnectionParams.Assign(AValue);
+end;
+
 destructor TRALDBModule.Destroy;
 begin
   FreeAndNil(FPool);
+  FreeAndNil(FConnectionParams);
   inherited Destroy;
 end;
 

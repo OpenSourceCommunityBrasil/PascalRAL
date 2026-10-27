@@ -7,10 +7,15 @@ interface
 uses
   System.SysUtils, System.Classes, Data.DB, System.TypInfo, System.Variants,
   Firedac.Stan.Def, Firedac.Stan.StorageBin, Firedac.DApt, Firedac.comp.Client,
-  Firedac.comp.DataSet, {$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait,
-{$ENDIF}
+  Firedac.comp.DataSet,
+  { Linux first: PascalRAL.inc defines HAS_FMX for every LINUX64, and the
+    FireDAC there ships the console wait cursor only - FMXUI.Wait made the unit
+    stop compiling on Linux }
+  {$IFDEF RALLinux}FireDAC.ConsoleUI.Wait,
+  {$ELSE}{$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait, {$ENDIF}
+  {$ENDIF}
   Firedac.Stan.Intf,
-  RALClient, RALRoutes, RALTypes, RALDBTypes, RALServer, RALWebModule, RALRequest, RALResponse,
+  RALClient, RALRoutes, RALTypes, RALDBTypes, RALServer, RALDBBase, RALRequest, RALResponse,
   RALConsts,
   System.SyncObjs;
 
@@ -18,7 +23,7 @@ type
 
   TOnQueryRemoteFinish = procedure(ASender: TObject; AException: Exception) of object;
 
-  [ComponentPlatforms(pidAllPlatforms)]
+  {$IF Declared(pidAllPlatforms)}[ComponentPlatforms(pidAllPlatforms)]{$IFEND}
   TRALFDQuery = class(TFDQuery)
   private
     vQueryBehavior: TRALExecBehavior;
@@ -48,7 +53,7 @@ type
     procedure OpenRemote;
   published
     property QueryBehavior: TRALExecBehavior read vQueryBehavior write vQueryBehavior
-      default ebMultiThread;
+      default ebSingleThread;
     property RALClient: TRALClient read vRALClient write SetRALClient;
     property RALFDConnectionServer: StringRAL read vRALFDConnectionServer
       write SetRALFDConnectionServer;
@@ -61,19 +66,23 @@ type
     of object;
   TOnQueryAfterOpen = procedure(DataSet: TDataSet) of object;
 
-  [ComponentPlatforms(pidAllPlatforms)]
+  {$IF Declared(pidAllPlatforms)}[ComponentPlatforms(pidAllPlatforms)]{$IFEND}
   TRALFDConnection = class(TFDConnection)
   private
     vDriverName: StringRAL;
     vRALServer: TRALServer;
-    vRALWebModule: TRALWebModule;
+    vRALModule: TRALModuleRoutes;
     vOnQueryError: TOnQueryError;
     vOnQueryAfterOpen: TOnQueryAfterOpen;
+    vOnValidateSQL: TRALDBOnValidateSQL;
+    vOnValidateApplyUpdates: TRALDBOnValidateSQL;
     procedure SetDriverName(const value: StringRAL);
     procedure SetOnQueryError(const value: TOnQueryError);
     procedure SetOnQueryAfterOpen(const value: TOnQueryAfterOpen);
     procedure SetRALServer(const value: TRALServer);
     procedure OnReplyQuery(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
+    procedure CheckApplyUpdates(ARequest: TRALRequest; const ASQL: StringRAL);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -83,11 +92,29 @@ type
     property OnQueryAfterOpen: TOnQueryAfterOpen read vOnQueryAfterOpen
       write SetOnQueryAfterOpen;
     property RALServer: TRALServer read vRALServer write SetRALServer;
+    { Fired before a statement that came over the wire reaches the database.
+      The DAO route carries whatever SQL the client sends, so without this the
+      caller can run anything the connection user is allowed to run. Set AAllow
+      to False and the request gets an error, nothing is executed.
+      ApplyUpdates passes its SELECT here too, but what it runs are the
+      INSERT/UPDATE/DELETE FireDAC builds on the server from the client's
+      delta - see OnValidateApplyUpdates }
+    property OnValidateSQL: TRALDBOnValidateSQL read vOnValidateSQL
+      write vOnValidateSQL;
+    { Fired for an ApplyUpdates, after OnValidateSQL accepted its SELECT: ASQL
+      is that SELECT, and saying yes lets the client insert, change and delete
+      rows of the tables behind it. With OnValidateSQL assigned and this one
+      not, ApplyUpdates is refused - a validator that only ever saw a SELECT
+      cannot have meant to allow writes }
+    property OnValidateApplyUpdates: TRALDBOnValidateSQL read vOnValidateApplyUpdates
+      write vOnValidateApplyUpdates;
   end;
 
 resourcestring
   emTypeNotImplemented = 'Type not Implemented.';
   emInvalidServer = 'RALServer not configured.';
+  emApplyUpdatesNotValidated = 'ApplyUpdates refused: OnValidateSQL is assigned and ' +
+    'OnValidateApplyUpdates is not.';
 
 procedure Register;
 
@@ -95,7 +122,7 @@ implementation
 
 { Reads the AffectedRows the server sent back, by name and then anonymously.
 
-  OnReplyQuery answers Type='1' (ExecSQL) and Type='2' (ApplyUpdates) with a
+  OnReplyQuery answers Type='1' (ApplyUpdates) and Type='2' (ExecSQL) with a
   single body param. EncodeBody skips multipart for a lone body param and sends
   the raw value, so the param name never reaches the wire and DecodeBody names
   whatever arrives 'ral_body' - ParamByName('AffectedRows') came back nil and
@@ -120,7 +147,10 @@ begin
   vRALClient := nil;
   vException := nil;
 
-  vQueryBehavior := ebMultiThread;
+  { the same default TRALClient.Get/Post carry: synchronous, results readable
+    on the next line; ebMultiThread is one assignment away for a form that
+    must not block }
+  vQueryBehavior := ebSingleThread;
 
   inherited;
 end;
@@ -143,7 +173,7 @@ begin
         Self.vRowsAffectedRemote := StrToInt(AffectedRowsFromResponse(AResponse));
       end
       else
-        raise Exception.Create(AResponse.ResponseText);
+        raise Exception.Create(RALDBResponseError(AResponse));
     except
       on e: Exception do
       begin
@@ -294,7 +324,7 @@ begin
         Self.vRowsAffectedRemote := StrToInt(AffectedRowsFromResponse(AResponse));
       end
       else
-        raise Exception.Create(AResponse.ResponseText);
+        raise Exception.Create(RALDBResponseError(AResponse));
     except
       on e: Exception do
       begin
@@ -438,37 +468,38 @@ var
 begin
   try
     try
-      vStreamAux := nil;
-
       if AException <> '' then
         raise Exception.Create(AException);
 
       if AResponse.StatusCode = HTTP_OK then
       begin
-        vStreamAux := TMemoryStream.Create;
-        TMemoryStream(vStreamAux).Clear;
-        vStreamAux.Position := 0;
-
-        AResponse.ParamByName('Stream').SaveToStream(vStreamAux);
-        vStreamAux.Position := 0;
+        { the param's own stream: it was copied whole into another first }
+        vStreamAux := AResponse.ParamByName('Stream').Content;
+        if vStreamAux <> nil then
+          vStreamAux.Position := 0;
 
         if Assigned(Self.Connection) = false then
         begin
           Self.Connection := TFDConnection.Create(Self);
         end;
 
-        TThread.Synchronize(nil,
-          procedure
-          begin
-            Self.LoadFromStream(vStreamAux, TFDStorageFormat.sfBinary);
-          end);
+        { loaded on the thread that delivers the answer - the main one under
+          ebMultiThread, the caller's under ebSingleThread - as the memtables
+          do, and as TFDQuery.Open itself does. It went through Synchronize,
+          which under the default ebSingleThread waited for a main thread that
+          was not coming: one blocked in TTask.Wait, or that of a service or
+          console program, which runs no loop - and WakeMainThread does not
+          tell those apart, since this unit links Vcl.Forms through the
+          FireDAC wait cursor. A dataset bound to controls is opened from the
+          main thread, here as with FireDAC }
+        Self.LoadFromStream(vStreamAux, TFDStorageFormat.sfBinary);
 
         Self.vRowsAffectedRemote := StrToInt(AffectedRowsFromResponse(AResponse));
 
         Self.CachedUpdates := true;
       end
       else
-        raise Exception.Create(AResponse.ResponseText);
+        raise Exception.Create(RALDBResponseError(AResponse));
     except
       on e: Exception do
       begin
@@ -478,8 +509,6 @@ begin
       end;
     end;
   finally
-    FreeAndNil(vStreamAux);
-
     if Assigned(OnQueryRemoteFinish) then
       OnQueryRemoteFinish(Self, vException);
   end;
@@ -617,17 +646,42 @@ end;
 
 constructor TRALFDConnection.Create(AOwner: TComponent);
 begin
-  vRALWebModule := nil;
+  vRALModule := nil;
   inherited;
 end;
 
 destructor TRALFDConnection.Destroy;
 begin
-  if Assigned(vRALWebModule) then
-  begin
-    FreeAndNil(vRALWebModule);
-  end;
+  FreeAndNil(vRALModule);
   inherited;
+end;
+
+procedure TRALFDConnection.CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
+var
+  vAllow: Boolean;
+begin
+  if not Assigned(vOnValidateSQL) then
+    Exit;
+
+  vAllow := True;
+  vOnValidateSQL(Self, ARequest, ASQL, vAllow);
+  if not vAllow then
+    raise Exception.Create(emDBSQLRejected);
+end;
+
+procedure TRALFDConnection.CheckApplyUpdates(ARequest: TRALRequest; const ASQL: StringRAL);
+var
+  vAllow: Boolean;
+begin
+  if Assigned(vOnValidateApplyUpdates) then
+  begin
+    vAllow := True;
+    vOnValidateApplyUpdates(Self, ARequest, ASQL, vAllow);
+    if not vAllow then
+      raise Exception.Create(emDBSQLRejected);
+  end
+  else if Assigned(vOnValidateSQL) then
+    raise Exception.Create(emApplyUpdatesNotValidated);
 end;
 
 procedure TRALFDConnection.OnReplyQuery(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -642,6 +696,9 @@ var
   vAuxException: string;
   i: integer;
   vAuxConnClone: TFDConnection;
+  vSQL: StringRAL;
+  { 0 Open, 1 ApplyUpdates, 2 ExecSQL - see TRALFDQuery }
+  vType: StringRAL;
 begin
   try
     try
@@ -664,6 +721,14 @@ begin
       ARequest.ParamByName('SQL').SaveToStream(vAuxStringStream);
       vAuxStringStream.Position := 0;
 
+      { Read once: both queries get the same text, and OnValidateSQL has to see
+        it before either of them reaches the database }
+      vSQL := TStringStream(vAuxStringStream).DataString;
+      vType := ARequest.ParamByName('Type').AsString;
+      CheckSQL(ARequest, vSQL);
+      if vType = '1' then
+        CheckApplyUpdates(ARequest, vSQL);
+
       { nil owner, not Self: this runs on the server's thread pool and Self is
         the one TRALFDConnection of the datamodule, so concurrent requests were
         all inserting into and removing from the same component list, which is
@@ -671,13 +736,13 @@ begin
         relied on the owner to clean them up. }
       vQueryAux := TFDQuery.Create(nil);
       vQueryAux.Connection := vAuxConnClone;
-      vQueryAux.SQL.Text := TStringStream(vAuxStringStream).DataString;
+      vQueryAux.SQL.Text := vSQL;
 
-      if ARequest.ParamByName('Type').AsString = '1' then
+      if vType = '1' then
       begin
         vQueryAux2 := TFDQuery.Create(nil);
         vQueryAux2.Connection := vAuxConnClone;
-        vQueryAux2.SQL.Text := TStringStream(vAuxStringStream).DataString;
+        vQueryAux2.SQL.Text := vSQL;
       end;
 
       if StrToInt(ARequest.ParamByName('ParamCount').AsString) > 0 then
@@ -711,7 +776,7 @@ begin
           if ARequest.ParamByName('N' + i.ToString).AsString = 'true' then
             vQueryAux.Params[i].Clear;
 
-          if ARequest.ParamByName('Type').AsString = '1' then
+          if vType = '1' then
           begin
             if vNeedAddParam then
               vQueryAux2.Params.Add;
@@ -736,7 +801,7 @@ begin
       if Assigned(vOnQueryAfterOpen) then
         vQueryAux.AfterOpen := vOnQueryAfterOpen;
 
-      if ARequest.ParamByName('Type').AsString = '1' then
+      if vType = '1' then
       begin
         vQueryAux.Close;
         vQueryAux.CachedUpdates := true;
@@ -783,21 +848,23 @@ begin
         AResponse.Params.AddParam('AffectedRows',
           vQueryAux2.Delta.DataView.Rows.Count.ToString, rpkBODY);
       end
-      else if ARequest.ParamByName('Type').AsString = '0' then
+      else if vType = '0' then
       begin
         vQueryAux.Open;
 
         vQueryAux.SaveToStream(vAuxStream, TFDStorageFormat.sfBinary);
         vAuxStream.Position := 0;
 
-        AResponse.Params.AddParam('Stream', vAuxStream, rpkBODY);
+        { handed over, not copied: AddParam held the result twice }
+        AResponse.Params.AddParam('Stream', TStream(nil), rpkBODY).AdoptStream(vAuxStream);
+        vAuxStream := nil;
 
         AResponse.Params.AddParam('AffectedRows',
           vQueryAux.RowsAffected.ToString, rpkBODY);
 
         vQueryAux.Close;
       end
-      else if ARequest.ParamByName('Type').AsString = '2' then
+      else if vType = '2' then
       begin
         vQueryAux.ExecSQL;
 
@@ -816,9 +883,19 @@ begin
     except
       on e: Exception do
       begin
+        { a 501 says which request type is missing, RAL's own words; a 500
+          is the driver's, which names tables and quotes SQL - hidden with
+          the server's HideErrorDetails, as every 500 of the server is }
         if AResponse.StatusCode <> HTTP_NotImplemented then
+        begin
           AResponse.StatusCode := HTTP_InternalError;
-        AResponse.ResponseText := e.Message;
+          if vRALServer <> nil then
+            AResponse.ResponseText := vRALServer.ErrorText(e)
+          else
+            AResponse.ResponseText := e.Message;
+        end
+        else
+          AResponse.ResponseText := e.Message;
       end;
     end
   finally
@@ -850,25 +927,28 @@ begin
 end;
 
 procedure TRALFDConnection.SetRALServer(const value: TRALServer);
-var
-  vRALRoute: TRALRoute;
 begin
   vRALServer := value;
 
-  if not(csDesigning in Self.Owner.ComponentState) then
+  { the component's OWN state: a form at design time marks every component on
+    it csDesigning, and a connection created in code with a nil owner used to
+    die here reading Owner.ComponentState }
+  if not(csDesigning in ComponentState) then
   begin
     if not(Assigned(vRALServer)) then
       raise Exception.Create(emInvalidServer);
 
-    if Assigned(vRALWebModule) then
-    begin
-      FreeAndNil(vRALWebModule);
-    end;
+    FreeAndNil(vRALModule);
 
-    vRALWebModule := TRALWebModule.Create(Self);
-    vRALWebModule.Server := vRALServer;
+    { A plain TRALModuleRoutes, not a TRALWebModule: this needs one route and
+      nothing else. TRALWebModule also registers a default route that skips
+      authentication and serves files, falling back to the executable's own
+      directory when DocumentRoot is empty - which it always was here, since
+      the module is created internally and never configured }
+    vRALModule := TRALModuleRoutes.Create(Self);
+    vRALModule.Server := vRALServer;
 
-    vRALRoute := vRALWebModule.CreateRoute(Self.Name + 'Route/Query', OnReplyQuery);
+    vRALModule.CreateRoute(Self.Name + 'Route/Query', OnReplyQuery);
   end;
 
 end;

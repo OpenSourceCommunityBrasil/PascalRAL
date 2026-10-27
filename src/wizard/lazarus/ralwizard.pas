@@ -304,6 +304,7 @@ begin
     begin
       vFile.Add('    FWebModule := TRALWebModule.Create(nil);');
       vFile.Add('    FWebModule.Server := FServer;');
+      vFile.Add('    FWebModule.DocumentRoot := ''www'';');
     end;
     vFile.Add('  end;');
     vFile.Add('');
@@ -689,6 +690,7 @@ begin
       vFile.Add('  object webmodule: TRALWebModule');
       vFile.Add('    Server = server');
       vFile.Add('    Domain = ''/''');
+      vFile.Add('    DocumentRoot = ''www''');
       vFile.Add('    Routes = <>');
       vFile.Add('    Left = 284');
       vFile.Add('    Top = 228');
