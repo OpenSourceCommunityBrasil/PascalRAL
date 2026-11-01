@@ -26,6 +26,27 @@ Windows, Linux, macOS and Android. These are the differences that have bitten.
   refuses at run time elsewhere; its `Supports*` class functions answer what the class
   does, outside the `{$IFDEF}` (the IDE asks them on Windows).
 
+## Capabilities (optional sugar)
+
+Code that needs anonymous methods, attributes, extended RTTI, `TVirtualInterface` or
+generics in its API is **sugar**: it lives in a unit of its own whose whole content
+sits under the capability symbol of `PascalRAL.inc`, so the unit compiles empty where
+the compiler lacks it, and the RAD way (methods `of object`, published properties)
+always exists beside it. `RALRoutesAnon` is the model.
+
+| symbol | where it is defined |
+|---|---|
+| `RALHasGenerics` | every compiler of the floor |
+| `RALHasAnonMethods`, `RALHasAttributes` | Delphi 2010+; FPC after 3.2 (the unit turns on `{$MODESWITCH FUNCTIONREFERENCES}`/`ANONYMOUSFUNCTIONS`/`PREFIXEDATTRIBUTES`) |
+| `RALHasExtRTTI` | Delphi 2010+ (FPC 3.3.1's fails at run time) |
+| `RALHasVirtualInterface` | Delphi XE2+ (FPC needs the ffi invoke manager off Windows) |
+
+The floor is Delphi XE (checked on the oldest installed, XE2) and FPC 3.2.x with
+Lazarus 2.x. After changing a symbol, build `.agents/tools/capabilities` with every
+compiler: it prints the symbols and exercises each, so a symbol that promises too much
+does not compile. In the `.inc`, test FPC versions with `VERx_y`, not
+`FPC_FULLVERSION`: Delphi XE2 parses `{$IF}` even in a skipped `{$IFDEF FPC}` block.
+
 ## Language differences
 
 | on | do |

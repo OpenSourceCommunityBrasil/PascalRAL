@@ -101,6 +101,7 @@ or with Lazarus, `lazbuild <tool>.lpi` (output in `.agents\local\bin\fpc`). Crea
 | `bplunits` | lists the units inside each `.bpl` and flags units of another package or third-party units linked in (`ral-build`) |
 | `commitsection` | prints the CHANGELOG section a commit message lands in (`ral-commit`) |
 | `checkskills` | checks the skills and this file: frontmatter, names, the table above, cited paths, forbidden references; run it after changing a skill |
+| `capabilities` | prints the capability symbols of `PascalRAL.inc` for the compiler that builds it, and exercises each one (`ral-portability`); build it with every compiler of the floor after changing them |
 
 ## Reference
 

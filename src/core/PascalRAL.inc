@@ -488,6 +488,37 @@
 
 (* End of General functional Directives *)
 (******************************************************************************)
+(* Capability symbols: what the language and RTL of this compiler offer. Optional
+   sugar (anonymous handlers, attribute controllers, extended-RTTI serialisation,
+   interface proxies) lives in units whose whole content sits under one of these, so
+   the unit compiles empty where the feature is missing. Measured on 01/11/2026 with
+   the probes of .agents/tools/capabilities: Delphi XE2, 10, 10.4 and 13 have all of
+   them (TVirtualInterface needs XE2); FPC 3.2.x has generics only; FPC 3.3.1 adds
+   anonymous methods and attributes (each unit turns on its modeswitch), while its
+   extended RTTI still fails at run time and TVirtualInterface needs the ffi invoke
+   manager off Windows. *)
+
+{$DEFINE RALHasGenerics}
+{$IFDEF FPC}
+  // FPC 3.3.1 on (VERx_y, not FPC_FULLVERSION: Delphi XE2 parses $IF in skipped blocks)
+  {$IF Defined(VER2) or Defined(VER3_0) or Defined(VER3_2)}
+  {$ELSE}
+    {$DEFINE RALHasAnonMethods}
+    {$DEFINE RALHasAttributes}
+  {$IFEND}
+{$ELSE}
+  {$IFDEF DELPHI2010UP}
+    {$DEFINE RALHasAnonMethods}
+    {$DEFINE RALHasAttributes}
+    {$DEFINE RALHasExtRTTI}
+  {$ENDIF}
+  {$IFDEF DELPHIXE2UP}
+    {$DEFINE RALHasVirtualInterface}
+  {$ENDIF}
+{$ENDIF}
+
+(* End of Capability symbols *)
+(******************************************************************************)
 (* CPU Architecture Directives *)
 
 {$IFDEF FPC}
