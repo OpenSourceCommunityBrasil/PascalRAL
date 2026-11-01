@@ -84,7 +84,11 @@ Routes: `Server.CreateRoute('name', Handler, 'description')`, chained `.Allow([.
 prefer the constants of `RALConsts`/`RALMIMETypes`. Routes match by path, then method;
 a path some route has but not with that method is 405 (`TRALRoutes.AllowedMethodsOf`).
 An exception in a handler answers 500 with `ErrorText` (`HideErrorDetails` hides the
-message), then `OnServerError`, or re-raises with `RaiseError`.
+message), then `OnServerError`, or re-raises with `RaiseError`. `ErrorFormat :=
+efProblemJSON` turns every error RAL builds (and `AResponse.AnswerError`/`AnswerProblem`)
+into RFC 9457 JSON with the `traceId`; `ExceptionMap` maps an exception class (or its
+closest ancestor) to a status; `DeveloperMode` adds class, message and stack for
+`DeveloperIPs` only.
 
 Routing details (`RALRoutes`):
 
@@ -132,10 +136,24 @@ Routing details (`RALRoutes`):
   (react to the verdict; brute force counts there). No post-module phase.
 - **The route is resolved once** (`TRALPluginHost.FindRoute`) and kept in the request
   (`ResolvedRoute`/`RouteOwner`, typed `TObject`; `ARequest.Route` is the same route).
-- **Priority**, highest first, ties in linking order (`RALPriority*`): security headers
+- **Priority**, highest first, ties in linking order (`RALPriority*`): log 990, trace
+  985, method override 975, HTTPS redirect 960, maintenance 955, security headers
   950, limits 900, compression 890, crypto 880, white list 870, black list 860, brute
-  force 850, flood 840, path traversal 830, CORS 700, authentication 500, JSON body 400,
-  default 100, concurrency 50 (last validator, so a refused request takes no slot).
+  force 850, rate limit 845, flood 840, path traversal 830, CORS 700, authentication
+  500, JSON body 400, response cache 150, default 100, concurrency 50 (last validator,
+  so a refused request takes no slot).
+- **Plugins that need the finished answer** (log, metrics, trace, cache; packages
+  `RALPluginObservabilityPackage`, `RALPluginTrafficPackage`, `RALPluginCachePackage`)
+  register `TRALRequest.AddFinishHandler` or `TRALResponse.AddWireHandler` (once, at the
+  start of `TakeWire*`). `ProcessCommands` clears `ARequest.Params` before the answer
+  goes out: copy what the end needs in `ValidateRequest`/`ProcessRequest`. The handler
+  is a method of a reference-counted object (`TRALLogSink`, `TRALMetricsRegistry`,
+  `TRALTraceCollector`), never of the plugin, which a form may free first. The request
+  carries `StartTick`, `ResponseStatus`, `BytesSent` (-1 when streamed) and `TraceId`.
+  A `ppValidate` answer below 400 does not end the request: a redirect answers in
+  `ppProcess` with `AHandled`. The text body of an answer is `Params.SingleBody`, not a
+  `ral_body` param. Shared state lives in a `TRALKeyValueStore` (`TRALMemoryStore`,
+  `TRALFileStore` for several processes).
 - What became what: `TRALLimitsPlugin.MaxRequestSize` (MsQuic reads it through
   `FindPlugin` while receiving), `TRALCompressPlugin.CompressType` (`ctNone` follows the
   client; it owns the 415/406 checks), `TRALCriptoPlugin.Key` (handed to
@@ -230,7 +248,9 @@ a worker pool (`TRALfpHttpWorker`); on fcl-web 3.3 the pool sits behind a connec
 handler (`RALFPHTTPHANDLER`, conditions by `DECLARED(...)`, not by version), and 3.3's
 new limits are set off so it serves what 3.2 served. `MaxConnections` maps to
 `MaxLiveConnectionCount`. The thread's destructor terminates and waits; `Active := False`
-wakes `accept()` itself.
+wakes `accept()` itself. fcl-web parses the headers it knows (Host, User-Agent,
+Referer...) into fields: they are filed as headers before `ValidateRequest`, as every
+engine does.
 
 **fpHTTP client**: `KeepConnection` follows `KeepAlive` per request;
 `TRALfpHttpClientCore` replaces fphttpclient's broken resend (it read `Connection:
@@ -284,6 +304,11 @@ OkHttp, floor applied on assignment (`MinKeepAliveInterval`).
   decides; `StatusCode` is 0 when no answer came. A connect failure tries the next
   `BaseURL` with any method, a timeout only with an idempotent one. The budget is one
   attempt per URL; a 401 with `AutoGetToken` resends once. Test `ErrorCode <> 0`.
+  Around that (`SendAttempts`), `Retry` repeats the whole call on a `RetryOn` status
+  or, with `RetryTransport`, a transport error (idempotent methods unless
+  `RetryNonIdempotent`, never after a streamed piece, honouring `Retry-After`), and
+  `CircuitBreaker` fails at once with `rteCircuitOpen` per `scheme://host:port`.
+  `RALTraceParentProvider` adds `traceparent` to every call.
 - **`OnBeforeExecute`/`OnAfterExecute`** run per attempt on the calling thread, always
   paired; `ACancel` fails with `rteCancelled`. `CopyProperties` carries them.
 - An object that passes a method as a callback calls `DropCallbacks(Self)` in its

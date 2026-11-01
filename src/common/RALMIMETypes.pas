@@ -38,6 +38,8 @@ const
   rctAPPLICATIONGZIP = 'application/gzip';
   rctAPPLICATIONJAVASCRIPT = 'application/javascript';
   rctAPPLICATIONJSON = 'application/json';
+  /// RFC 9457 problem details, the body of TRALServer.ErrorFormat = efProblemJSON.
+  rctAPPLICATIONPROBLEMJSON = 'application/problem+json';
   rctAPPLICATIONNDJSON = 'application/x-ndjson';
   rctAPPLICATIONBSON = 'application/bson';
   rctAPPLICATIONOCTETSTREAM = 'application/octet-stream';

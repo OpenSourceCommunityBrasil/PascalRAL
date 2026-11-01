@@ -854,6 +854,13 @@ begin
 
         DecodeAuth(ARequest, vRequest);
         Params.AppendParams(ARequest.CustomHeaders, rpkHEADER);
+        { fcl-web's "fields" are the request headers it knows by name - Host,
+          Authorization, Content-Length, User-Agent, Referer - and they were
+          filed as form fields, so AssignParamsUrl(rpkFIELD) handed back the
+          client's credentials. They are headers, filed before ValidateRequest
+          as on every other engine: a validating plugin reads them too }
+        for vInt := 0 to ARequest.FieldCount - 1 do
+          Params.AddParam(ARequest.FieldNames[vInt], ARequest.FieldValues[vInt], rpkHEADER);
 
         { Only take what the params actually carry. FPC parses the standard
           headers into TRequest's own properties and leaves just the unknown
@@ -875,13 +882,6 @@ begin
         FParent.ValidateRequest(vRequest, vResponse);
         if vResponse.StatusCode < HTTP_BadRequest then
         begin
-          { fcl-web's "fields" are the request headers it knows by name - Host,
-            Authorization, Content-Length - and they were filed as form
-            fields, so AssignParamsUrl(rpkFIELD) handed back the client's
-            credentials. They are headers }
-          for vInt := 0 to ARequest.FieldCount - 1 do
-            Params.AddParam(ARequest.FieldNames[vInt], ARequest.FieldValues[vInt], rpkHEADER);
-
           { the query string was parsed off the URI by Query above, and the
             cookies come from their header as on every engine: QueryFields and
             CookieFields arrive decoded by fcl-web, and AppendParamLine decoded

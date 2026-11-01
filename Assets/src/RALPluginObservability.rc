@@ -1,0 +1,4 @@
+TRALLogPlugin BITMAP "..\components\base\plugins\TRALLogPlugin.bmp"
+TRALTracePlugin BITMAP "..\components\base\plugins\TRALTracePlugin.bmp"
+TRALMetricsPlugin BITMAP "..\components\base\plugins\TRALMetricsPlugin.bmp"
+TRALHealthPlugin BITMAP "..\components\base\plugins\TRALHealthPlugin.bmp"

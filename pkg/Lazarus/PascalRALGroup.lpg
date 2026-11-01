@@ -12,6 +12,9 @@
       <Target FileName="Engine\fphttpral.lpk"/>
       <Target FileName="Plugins\ralpluginauthpackage.lpk"/>
       <Target FileName="Plugins\ralplugintlspackage.lpk"/>
+      <Target FileName="Plugins\ralpluginobservabilitypackage.lpk"/>
+      <Target FileName="Plugins\ralplugintrafficpackage.lpk"/>
+      <Target FileName="Plugins\ralplugincachepackage.lpk"/>
       <Target FileName="Storage\ralstoragepackage.lpk"/>
       <Target FileName="Storage\ralstoragebsonpackage.lpk"/>
       <Target FileName="Database\raldbpackage.lpk"/>

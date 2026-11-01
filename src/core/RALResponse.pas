@@ -10,8 +10,19 @@ uses
 
 type
   /// A response: status, headers, cookies and body.
+  TRALResponse = class;
+
+  { Runs once, just before the engine takes the body (TakeWireStream or
+    TakeWireString): the answer is final and the body still decoded, so a cache
+    can keep it and an ETag can be computed or turn it into a 304. }
+  TRALOnResponseWire = procedure(AResponse: TRALResponse) of object;
+  /// A list of wire handlers.
+  TRALOnResponseWireList = array of TRALOnResponseWire;
+
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
+    /// The wire handlers, run once by RunWireHandlers.
+    FWireHandlers: TRALOnResponseWireList;
     /// Stream handed out by BodyStream while it is the body.
     FBodyStream: TStream;
     FCommitted: boolean;
@@ -71,8 +82,22 @@ type
       sends it as it is and frees it, otherwise it is copied. }
     procedure Answer(AStatusCode: IntegerRAL; AStream: TStream;
                      const AContentType: StringRAL; AOwnsStream: boolean); overload;
-    /// Answers AStatusCode, with the server's page for it when there is one.
+    { Answers AStatusCode, with the server's page for it when there is one (or the
+      problem details of TRALServer.ErrorFormat, for a status of 400 or above). }
     procedure Answer(AStatusCode: IntegerRAL); overload;
+    { AHandler runs once, before the engine takes the body; in order of addition.
+      A plugin adds one in its ppProcess phase to see the answer the module gave. }
+    procedure AddWireHandler(AHandler: TRALOnResponseWire);
+    /// Answers AStatusCode with the server's status page (ResponsePages), as text.
+    procedure AnswerPage(AStatusCode: IntegerRAL);
+    { An error RAL itself answers (a plugin, the server): ADetail as text, or the
+      body TRALServer.ErrorFormat chooses; without ADetail, the status page. }
+    procedure AnswerError(AStatusCode: IntegerRAL; const ADetail: StringRAL = '');
+    { Answers AStatusCode as RFC 9457 problem details (application/problem+json),
+      whatever ErrorFormat is: type (about:blank when empty), title (the reason
+      phrase when empty), status, detail, instance (the path) and traceId. }
+    procedure AnswerProblem(AStatusCode: IntegerRAL; const ADetail: StringRAL = '';
+      const AType: StringRAL = ''; const ATitle: StringRAL = '');
     /// Answers with the file AFileName, inline unless DispositionInline is False.
     procedure Answer(const AFileName: StringRAL; const DispositionInline: boolean = true); overload;
     { Commits the response without a body piece yet: status and headers go out now
@@ -192,7 +217,7 @@ type
 implementation
 
 uses
-  RALServer, RALRequest, RALSSE;
+  RALServer, RALRequest, RALSSE, RALJson, RALResponsePages;
 
 { TRALResponse }
 
@@ -276,11 +301,35 @@ begin
   Result := FBodyStream;
 end;
 
+procedure TRALResponse.AddWireHandler(AHandler: TRALOnResponseWire);
+begin
+  SetLength(FWireHandlers, Length(FWireHandlers) + 1);
+  FWireHandlers[High(FWireHandlers)] := AHandler;
+end;
+
+{ Runs the wire handlers once: they are taken out first, so a handler that asks
+  for the body (or TakeWire* called twice) does not run them again. }
+procedure RunWireHandlers(AResponse: TRALResponse; const AHandlers: TRALOnResponseWireList);
+var
+  vInt: IntegerRAL;
+begin
+  for vInt := 0 to High(AHandlers) do
+    if Assigned(AHandlers[vInt]) then
+      AHandlers[vInt](AResponse);
+end;
+
 function TRALResponse.TakeWireStream: TStream;
 var
   vParam: TRALParam;
   vEncoding: StringRAL;
+  vHandlers: TRALOnResponseWireList;
 begin
+  if Length(FWireHandlers) > 0 then
+  begin
+    vHandlers := FWireHandlers;
+    FWireHandlers := nil;
+    RunWireHandlers(Self, vHandlers);
+  end;
   // BodyStream may have been asked before the handler set the content type
   vParam := Body;
   if (FBodyStream <> nil) and (vParam <> nil) and (not vParam.IsText) and
@@ -298,13 +347,29 @@ begin
   end
   else
     Result := inherited TakeWireStream;
+  // what the finish handlers (log, metrics) read: the answer as it goes out
+  if FStreamRequest is TRALRequest then
+  begin
+    TRALRequest(FStreamRequest).ResponseStatus := StatusCode;
+    if Result <> nil then
+      TRALRequest(FStreamRequest).BytesSent := Result.Size
+    else
+      TRALRequest(FStreamRequest).BytesSent := 0;
+  end;
 end;
 
 function TRALResponse.TakeWireString: RawByteString;
 var
   vParam: TRALParam;
   vEncoding: StringRAL;
+  vHandlers: TRALOnResponseWireList;
 begin
+  if Length(FWireHandlers) > 0 then
+  begin
+    vHandlers := FWireHandlers;
+    FWireHandlers := nil;
+    RunWireHandlers(Self, vHandlers);
+  end;
   vParam := Body;
   if (FBodyStream <> nil) and (vParam <> nil) and (not vParam.IsText) and
      (vParam.Content = FBodyStream) then
@@ -319,6 +384,11 @@ begin
   end
   else
     Result := inherited TakeWireString;
+  if FStreamRequest is TRALRequest then
+  begin
+    TRALRequest(FStreamRequest).ResponseStatus := StatusCode;
+    TRALRequest(FStreamRequest).BytesSent := Length(Result);
+  end;
 end;
 
 procedure TRALResponse.GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
@@ -384,10 +454,66 @@ begin
 end;
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL);
+begin
+  CheckNotCommitted;
+  if (AStatusCode >= HTTP_BadRequest) and Parent.InheritsFrom(TRALServer) and
+     TRALServer(Parent).FormatsErrors then
+  begin
+    TRALServer(Parent).FormatError(TRALRequest(FStreamRequest), Self, AStatusCode, '', nil);
+    Exit;
+  end;
+  AnswerPage(AStatusCode);
+end;
+
+procedure TRALResponse.AnswerError(AStatusCode: IntegerRAL; const ADetail: StringRAL);
+begin
+  CheckNotCommitted;
+  if Parent.InheritsFrom(TRALServer) then
+    TRALServer(Parent).FormatError(TRALRequest(FStreamRequest), Self, AStatusCode,
+      ADetail, nil)
+  else if ADetail = '' then
+    AnswerPage(AStatusCode)
+  else
+    Answer(AStatusCode, ADetail, rctTEXTPLAIN);
+end;
+
+procedure TRALResponse.AnswerProblem(AStatusCode: IntegerRAL; const ADetail,
+  AType, ATitle: StringRAL);
+var
+  vJson: TRALJSONObject;
+  vTitle: StringRAL;
+begin
+  CheckNotCommitted;
+  vJson := TRALJSONObject.Create;
+  try
+    if AType <> '' then
+      vJson.Add('type', AType)
+    else
+      vJson.Add('type', 'about:blank');
+    vTitle := ATitle;
+    if vTitle = '' then
+      vTitle := RALHTTPReason(AStatusCode);
+    if vTitle <> '' then
+      vJson.Add('title', vTitle);
+    vJson.Add('status', AStatusCode);
+    if ADetail <> '' then
+      vJson.Add('detail', ADetail);
+    if FStreamRequest is TRALRequest then
+    begin
+      vJson.Add('instance', TRALRequest(FStreamRequest).Query);
+      if TRALRequest(FStreamRequest).TraceId <> '' then
+        vJson.Add('traceId', TRALRequest(FStreamRequest).TraceId);
+    end;
+    Answer(AStatusCode, vJson.ToJSON, rctAPPLICATIONPROBLEMJSON);
+  finally
+    vJson.Free;
+  end;
+end;
+
+procedure TRALResponse.AnswerPage(AStatusCode: IntegerRAL);
 var
   vResp: StringRAL;
 begin
-  CheckNotCommitted;
   FStatusCode := AStatusCode;
   if AStatusCode >= HTTP_BadRequest then
     ContentType := rctTEXTHTML;

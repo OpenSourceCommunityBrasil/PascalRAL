@@ -177,10 +177,14 @@ type
     function AcceptEncodingFor(ARequest: TRALRequest): StringRAL;
     /// Judges a server certificate: the event decides, else the pin, else the engine.
     function AcceptServerCert(const ACert: TRALCertInfo): boolean;
-    { Sends a request: URL failover, TLS and HTTP version checks, authentication
-      and the execute events around SendUrl; raises when the request failed. }
+    { Sends a request: the circuit breaker and the retries (Retry) around the
+      URL failover, TLS and HTTP version checks, authentication and the execute
+      events around SendUrl; raises when the request failed. }
     procedure BeforeSendUrl(ARoute: StringRAL; ARequest: TRALRequest;
                             AResponse: TRALResponse; AMethod: TRALMethod);
+    /// One round of BeforeSendUrl: every BaseURL once, and the 401 resend.
+    procedure SendAttempts(ARoute: StringRAL; ARequest: TRALRequest;
+                           AResponse: TRALResponse; AMethod: TRALMethod);
     /// True when a failed attempt may go to the next BaseURL.
     function CanSwitchURL(AMethod: TRALMethod;
                           AError: TRALTransportError): boolean; virtual;
@@ -429,6 +433,79 @@ type
 
   { Client component: sends requests to BaseURL through the engine EngineType
     names, with failover, authentication and the TLS policy. }
+  /// How the wait between two attempts of TRALClientRetry grows.
+  TRALRetryBackoff = (rbConstant, rbLinear, rbExponential);
+
+  { Sends a request again when it failed for a reason worth waiting for: a
+    status in RetryOn (408, 429, 502, 503, 504) or a transport failure. Off with
+    MaxAttempts = 1 (the default). Only idempotent methods unless
+    RetryNonIdempotent; never after a piece of the answer was handed over; a
+    Retry-After of the answer is waited for (up to MaxDelay). }
+  TRALClientRetry = class(TPersistent)
+  private
+    FBackoff: TRALRetryBackoff;
+    FDelay: IntegerRAL;
+    FJitter: boolean;
+    FMaxAttempts: IntegerRAL;
+    FMaxDelay: IntegerRAL;
+    FRetryNonIdempotent: boolean;
+    FRetryOn: StringRAL;
+    FRetryTransport: boolean;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+  public
+    constructor Create;
+
+    { Milliseconds to wait before attempt AAttempt (2 or more); ARetryAfter is the
+      server's, in seconds, or -1. }
+    function DelayFor(AAttempt, ARetryAfter: IntegerRAL): IntegerRAL;
+    /// Whether AStatus is in RetryOn.
+    function RetriesStatus(AStatus: IntegerRAL): boolean;
+  published
+    /// How the wait grows between attempts.
+    property Backoff: TRALRetryBackoff read FBackoff write FBackoff default rbExponential;
+    /// Milliseconds of the first wait.
+    property Delay: IntegerRAL read FDelay write FDelay default 200;
+    /// Spreads the waits at random (half to the whole of each), so clients do not retry in step.
+    property Jitter: boolean read FJitter write FJitter default True;
+    /// Attempts in all, the first included; 1 = no retry.
+    property MaxAttempts: IntegerRAL read FMaxAttempts write FMaxAttempts default 1;
+    /// Most milliseconds one wait takes, Retry-After included.
+    property MaxDelay: IntegerRAL read FMaxDelay write FMaxDelay default 10000;
+    /// Also retries POST and PATCH (the server may apply them twice).
+    property RetryNonIdempotent: boolean read FRetryNonIdempotent write FRetryNonIdempotent default False;
+    /// Statuses that are retried, separated by commas.
+    property RetryOn: StringRAL read FRetryOn write FRetryOn;
+    /// Retries a transport failure (no answer, timeout).
+    property RetryTransport: boolean read FRetryTransport write FRetryTransport default True;
+  end;
+
+  { Stops calling a server that keeps failing: after FailureThreshold failures in
+    a row (transport failures or 5xx), the circuit of that scheme://host:port
+    opens and every request fails at once with rteCircuitOpen for OpenTime ms;
+    then HalfOpenProbes requests go through, and one success closes it again.
+    Shared by every TRALClient of the process. }
+  TRALClientCircuitBreaker = class(TPersistent)
+  private
+    FEnabled: boolean;
+    FFailureThreshold: IntegerRAL;
+    FHalfOpenProbes: IntegerRAL;
+    FOpenTime: IntegerRAL;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+  public
+    constructor Create;
+  published
+    /// Whether the client uses the circuit breaker.
+    property Enabled: boolean read FEnabled write FEnabled default False;
+    /// Failures in a row that open the circuit.
+    property FailureThreshold: IntegerRAL read FFailureThreshold write FFailureThreshold default 5;
+    /// Requests let through while the circuit is half open.
+    property HalfOpenProbes: IntegerRAL read FHalfOpenProbes write FHalfOpenProbes default 1;
+    /// Milliseconds the circuit stays open.
+    property OpenTime: IntegerRAL read FOpenTime write FOpenTime default 30000;
+  end;
+
   TRALClient = class(TRALComponent)
   private
     FAcceptEncoding: StringRAL;
@@ -482,6 +559,8 @@ type
     FRequestTimeout: IntegerRAL;
     FShareConnection: boolean;
     FSkipCompressedTypes: boolean;
+    FRetry: TRALClientRetry;
+    FCircuitBreaker: TRALClientCircuitBreaker;
     FSkipCompressTypes: TStrings;
     FSpoolAbove: Int64RAL;
     FSSL: TRALClientSSL;
@@ -491,6 +570,8 @@ type
 
     /// Cookie jar for an engine of class AEngine; the caller holds FCookieLock.
     function GetCookieJar(AEngine: TRALClientHTTPClass): TObject;
+    procedure SetCircuitBreaker(const AValue: TRALClientCircuitBreaker);
+    procedure SetRetry(const AValue: TRALClientRetry);
   protected
     /// Engine for a request of the calling thread, from the pool or new.
     function AcquireEngine: TRALClientHTTP;
@@ -674,6 +755,10 @@ type
       same host with the same settings, on engines with SupportsSharedConnection. }
     property ShareConnection: boolean read FShareConnection
                                       write FShareConnection default True;
+    /// Opens a circuit for a server that keeps failing.
+    property CircuitBreaker: TRALClientCircuitBreaker read FCircuitBreaker write SetCircuitBreaker;
+    /// Sends a failed request again, with a growing wait.
+    property Retry: TRALClientRetry read FRetry write SetRetry;
     /// Sends already compressed types (images, archives, pdf) uncompressed.
     property SkipCompressedTypes: boolean read FSkipCompressedTypes
       write FSkipCompressedTypes default True;
@@ -706,7 +791,128 @@ type
   procedure RALSplitHostPort(const AValue: StringRAL; out AHost: StringRAL;
                              out APort: IntegerRAL);
 
+
+type
+  { The traceparent of the request the calling thread is serving, or ''; a
+    tracing plugin sets it so that a TRALClient called from a handler carries
+    the trace on. }
+  TRALTraceParentProvider = function: StringRAL;
+
+var
+  /// Asked before each request a client sends; nil = no trace propagation.
+  RALTraceParentProvider: TRALTraceParentProvider = nil;
+
 implementation
+
+
+{ TRALClientRetry }
+
+constructor TRALClientRetry.Create;
+begin
+  inherited Create;
+  FBackoff := rbExponential;
+  FDelay := 200;
+  FJitter := True;
+  FMaxAttempts := 1;
+  FMaxDelay := 10000;
+  FRetryOn := '408,429,502,503,504';
+  FRetryTransport := True;
+end;
+
+procedure TRALClientRetry.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALClientRetry then
+  begin
+    TRALClientRetry(Dest).Backoff := FBackoff;
+    TRALClientRetry(Dest).Delay := FDelay;
+    TRALClientRetry(Dest).Jitter := FJitter;
+    TRALClientRetry(Dest).MaxAttempts := FMaxAttempts;
+    TRALClientRetry(Dest).MaxDelay := FMaxDelay;
+    TRALClientRetry(Dest).RetryNonIdempotent := FRetryNonIdempotent;
+    TRALClientRetry(Dest).RetryOn := FRetryOn;
+    TRALClientRetry(Dest).RetryTransport := FRetryTransport;
+  end
+  else
+    inherited AssignTo(Dest);
+end;
+
+function TRALClientRetry.DelayFor(AAttempt, ARetryAfter: IntegerRAL): IntegerRAL;
+var
+  vInt: IntegerRAL;
+begin
+  if ARetryAfter >= 0 then
+    Result := ARetryAfter * 1000
+  else
+  begin
+    case FBackoff of
+      rbLinear: Result := FDelay * (AAttempt - 1);
+      rbExponential:
+        begin
+          Result := FDelay;
+          for vInt := 3 to AAttempt do
+          begin
+            Result := Result * 2;
+            if Result > FMaxDelay then
+              Break;
+          end;
+        end;
+    else
+      Result := FDelay;
+    end;
+    if FJitter and (Result > 1) then
+      Result := Result div 2 + Random(Result div 2 + 1);
+  end;
+  if Result > FMaxDelay then
+    Result := FMaxDelay;
+  if Result < 0 then
+    Result := 0;
+end;
+
+function TRALClientRetry.RetriesStatus(AStatus: IntegerRAL): boolean;
+var
+  vList: TStringList;
+begin
+  vList := TStringList.Create;
+  try
+    vList.CommaText := string(FRetryOn);
+    Result := vList.IndexOf(IntToStr(AStatus)) >= 0;
+  finally
+    vList.Free;
+  end;
+end;
+
+{ TRALClientCircuitBreaker }
+
+constructor TRALClientCircuitBreaker.Create;
+begin
+  inherited Create;
+  FFailureThreshold := 5;
+  FHalfOpenProbes := 1;
+  FOpenTime := 30000;
+end;
+
+procedure TRALClientCircuitBreaker.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALClientCircuitBreaker then
+  begin
+    TRALClientCircuitBreaker(Dest).Enabled := FEnabled;
+    TRALClientCircuitBreaker(Dest).FailureThreshold := FFailureThreshold;
+    TRALClientCircuitBreaker(Dest).HalfOpenProbes := FHalfOpenProbes;
+    TRALClientCircuitBreaker(Dest).OpenTime := FOpenTime;
+  end
+  else
+    inherited AssignTo(Dest);
+end;
+
+procedure TRALClient.SetCircuitBreaker(const AValue: TRALClientCircuitBreaker);
+begin
+  FCircuitBreaker.Assign(AValue);
+end;
+
+procedure TRALClient.SetRetry(const AValue: TRALClientRetry);
+begin
+  FRetry.Assign(AValue);
+end;
 
 type
   /// Sends the requests of an authenticator through the engine of the request.
@@ -1478,6 +1684,8 @@ begin
   ADest.CompressType := Self.CompressType;
   ADest.AcceptEncoding := Self.AcceptEncoding;
   ADest.SkipCompressedTypes := Self.SkipCompressedTypes;
+  ADest.Retry := Self.Retry;
+  ADest.CircuitBreaker := Self.CircuitBreaker;
   ADest.SkipCompressTypes := Self.SkipCompressTypes;
   ADest.SpoolAbove := Self.SpoolAbove;
 
@@ -1624,6 +1832,8 @@ begin
   FMaxRedirects := DEFAULTMAXREDIRECTS;
   FCompressType := ctGZip;
   FSkipCompressedTypes := True;
+  FRetry := TRALClientRetry.Create;
+  FCircuitBreaker := TRALClientCircuitBreaker.Create;
   FSkipCompressTypes := TStringList.Create;
   FSpoolAbove := 0;
   FEnginePool := TList.Create;
@@ -1661,6 +1871,8 @@ begin
   FreeAndNil(FPoolConnection);
   FreeAndNil(FCriptoOptions);
   FreeAndNil(FSSL);
+  FreeAndNil(FRetry);
+  FreeAndNil(FCircuitBreaker);
   if FRequests <> nil then
   begin
     while FRequests.Count > 0 do
@@ -2523,12 +2735,12 @@ begin
     Result := GetAcceptCompress;
 end;
 
-procedure TRALClientHTTP.BeforeSendUrl(ARoute: StringRAL;
+procedure TRALClientHTTP.SendAttempts(ARoute: StringRAL;
   ARequest: TRALRequest; AResponse: TRALResponse; AMethod: TRALMethod);
 var
   vConta, vMaxUrls, vResp, vErrorCode: IntegerRAL;
   vParams: TStringList;
-  vURL, vCancelReason: StringRAL;
+  vURL, vCancelReason, vTrace: StringRAL;
   vRepeat, vTriedToken, vCancel, vDone: boolean;
   vInfo: TRALExecInfo;
   vStart: TDateTime;
@@ -2628,6 +2840,15 @@ begin
           vCancelReason := StringRAL(Format(emRequestCancelled, [vURL]));
         SetTransportError(AResponse, rteCancelled, 0, vCancelReason);
         raise Exception.Create(string(vCancelReason));
+      end;
+
+      // the trace of the request this thread serves goes on with this one
+      if Assigned(RALTraceParentProvider) and
+         (ARequest.Params.GetKind['traceparent', rpkHEADER] = nil) then
+      begin
+        vTrace := RALTraceParentProvider();
+        if vTrace <> '' then
+          ARequest.Params.AddParam('traceparent', vTrace, rpkHEADER);
       end;
 
       // read by Prepare and SetAuthHeader: Digest signs the method and the url
@@ -2778,6 +2999,174 @@ begin
 
   if Assigned(ARequest) and (ARequest.Params.Count(rpkQUERY) > 0) then
     Result := Result + '?' + ARequest.Params.AssignParamsUrl(rpkQUERY);
+end;
+
+{ The circuits of the process, by scheme://host:port. }
+type
+  TRALCircuit = class
+  public
+    Failures: IntegerRAL;
+    OpenUntil: Int64RAL;
+    Probes: IntegerRAL;
+  end;
+
+var
+  gCircuits: TStringList = nil;
+  gCircuitLock: TCriticalSection = nil;
+
+/// scheme://host:port of AURL, the key of its circuit.
+function CircuitKeyOf(const AURL: StringRAL): string;
+var
+  vHost: StringRAL;
+  vPort: IntegerRAL;
+begin
+  RALURLHostPort(AURL, vHost, vPort);
+  if Pos('https:', LowerCase(string(AURL))) = 1 then
+    Result := 'https://'
+  else
+    Result := 'http://';
+  Result := Result + LowerCase(string(vHost)) + ':' + IntToStr(vPort);
+end;
+
+{ Whether the circuit of AKey lets a request through now (a half-open one
+  counts the probe). }
+function CircuitAllows(const AKey: string; ABreaker: TRALClientCircuitBreaker): boolean;
+var
+  vIdx: Integer;
+  vCircuit: TRALCircuit;
+  vNow: Int64RAL;
+begin
+  Result := True;
+  gCircuitLock.Enter;
+  try
+    if not gCircuits.Find(AKey, vIdx) then
+      Exit;
+    vCircuit := TRALCircuit(gCircuits.Objects[vIdx]);
+    if vCircuit.OpenUntil = 0 then
+      Exit;
+    vNow := RALTickMicro div 1000;
+    if vNow < vCircuit.OpenUntil then
+      Result := False
+    else if vCircuit.Probes < ABreaker.HalfOpenProbes then
+      Inc(vCircuit.Probes)
+    else
+      Result := False;
+  finally
+    gCircuitLock.Leave;
+  end;
+end;
+
+/// Records the outcome of a request to AKey: a success closes the circuit.
+procedure CircuitRecord(const AKey: string; ASuccess: boolean;
+  ABreaker: TRALClientCircuitBreaker);
+var
+  vIdx: Integer;
+  vCircuit: TRALCircuit;
+begin
+  gCircuitLock.Enter;
+  try
+    if gCircuits.Find(AKey, vIdx) then
+      vCircuit := TRALCircuit(gCircuits.Objects[vIdx])
+    else
+    begin
+      if ASuccess then
+        Exit;
+      vCircuit := TRALCircuit.Create;
+      gCircuits.AddObject(AKey, vCircuit);
+    end;
+    if ASuccess then
+    begin
+      vCircuit.Failures := 0;
+      vCircuit.OpenUntil := 0;
+      vCircuit.Probes := 0;
+      Exit;
+    end;
+    Inc(vCircuit.Failures);
+    // a failed probe, or the threshold reached: open (again) for OpenTime
+    if (vCircuit.OpenUntil <> 0) or (vCircuit.Failures >= ABreaker.FailureThreshold) then
+    begin
+      vCircuit.OpenUntil := RALTickMicro div 1000 + ABreaker.OpenTime;
+      vCircuit.Probes := 0;
+    end;
+  finally
+    gCircuitLock.Leave;
+  end;
+end;
+
+procedure TRALClientHTTP.BeforeSendUrl(ARoute: StringRAL; ARequest: TRALRequest;
+  AResponse: TRALResponse; AMethod: TRALMethod);
+var
+  vAttempt, vWait, vRetryAfter: IntegerRAL;
+  vRetry: TRALClientRetry;
+  vBreaker: TRALClientCircuitBreaker;
+  vKey: string;
+  vParam: TRALParam;
+  vFailed, vAgain: boolean;
+  vError: Exception;
+begin
+  vRetry := FParent.Retry;
+  vBreaker := FParent.CircuitBreaker;
+  vKey := '';
+  if vBreaker.Enabled then
+  begin
+    vKey := CircuitKeyOf(GetURL(ARoute, ARequest));
+    if not CircuitAllows(vKey, vBreaker) then
+    begin
+      SetTransportError(AResponse, rteCircuitOpen, 0,
+        StringRAL(Format(emCircuitOpen, [vKey])));
+      raise Exception.Create(Format(emCircuitOpen, [vKey]));
+    end;
+  end;
+
+  vAttempt := 1;
+  repeat
+    vAgain := False;
+    vError := nil;
+    try
+      SendAttempts(ARoute, ARequest, AResponse, AMethod);
+    except
+      on e: Exception do
+        vError := Exception(AcquireExceptionObject);
+    end;
+    vFailed := (vError <> nil) or (AResponse.StatusCode >= 500);
+    if vBreaker.Enabled then
+      CircuitRecord(vKey, not vFailed, vBreaker);
+
+    if (vAttempt < vRetry.MaxAttempts) and (not FStreamDelivered) and
+       (not FStreamCancelled) and
+       (vRetry.RetryNonIdempotent or (AMethod in RALIdempotentMethods)) then
+    begin
+      if vError <> nil then
+        vAgain := vRetry.RetryTransport and
+          (AResponse.TransportError in [rteConnect, rteTimeout, rteOther])
+      else
+        vAgain := vRetry.RetriesStatus(AResponse.StatusCode);
+    end;
+    if vAgain and vBreaker.Enabled and (not CircuitAllows(vKey, vBreaker)) then
+      vAgain := False;
+
+    if not vAgain then
+    begin
+      if vError <> nil then
+        raise vError;
+      Exit;
+    end;
+
+    vError.Free;
+    vRetryAfter := -1;
+    vParam := AResponse.Params.GetKind['Retry-After', rpkHEADER];
+    if vParam <> nil then
+      vRetryAfter := StrToIntDef(string(RALTrim(vParam.AsString)), -1);
+    Inc(vAttempt);
+    vWait := vRetry.DelayFor(vAttempt, vRetryAfter);
+    if vWait > 0 then
+      Sleep(vWait);
+    // a clean answer for the next attempt
+    AResponse.Params.ClearParams;
+    AResponse.StatusCode := -1;
+    AResponse.ErrorCode := 0;
+    SetTransportError(AResponse, rteNone, 0, '');
+  until False;
 end;
 
 function TRALClientHTTP.CanSwitchURL(AMethod: TRALMethod;
@@ -3045,11 +3434,27 @@ begin
   inherited Destroy;
 end;
 
+{ Frees the circuits of the process. }
+procedure DoneCircuits;
+var
+  vInt: IntegerRAL;
+begin
+  if gCircuits <> nil then
+    for vInt := 0 to gCircuits.Count - 1 do
+      gCircuits.Objects[vInt].Free;
+  FreeAndNil(gCircuits);
+  FreeAndNil(gCircuitLock);
+end;
+
 initialization
   EnginesDefs := nil;
+  gCircuitLock := TCriticalSection.Create;
+  gCircuits := TStringList.Create;
+  gCircuits.Sorted := True;
 
 finalization
   DoneEngineDefs;
+  DoneCircuits;
 
 end.
 

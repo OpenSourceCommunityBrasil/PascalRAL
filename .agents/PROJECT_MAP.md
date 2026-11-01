@@ -58,7 +58,10 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/others/` | (the package that uses each) | submodules only: ZSTD, pascal_brotli, kxBSON |
 | `src/plugins/` | `PascalRAL` | core plugins: security, CORS, content (limits, compression, cipher, JSON body), concurrency |
 | `src/plugins/auth/` | `RALPluginAuthPackage` | Basic and JWT (`RALAuthentication`), Digest, OAuth2 |
+| `src/plugins/cache/` | `RALPluginCachePackage` | response cache and dynamic ETag (`RALResponseCache`) |
+| `src/plugins/observability/` | `RALPluginObservabilityPackage` | access log, trace context and OTLP export, Prometheus metrics, health checks (`RALObservability`) |
 | `src/plugins/tls/` | `RALPluginTLSPackage` | self-signed certificate plugin (`RALSelfSigned`) |
+| `src/plugins/traffic/` | `RALPluginTrafficPackage` | rate limit, HTTPS redirect, maintenance, method override (`RALTraffic`) |
 | `src/storage/` | `RALStoragePackage` | dataset storage: base, types (`RALStorageTypes`; `RALDBTypes` is the deprecated old name), BIN, JSON, CSV |
 | `src/storage/bson/` | `RALStorageBSONPackage` | BSON storage (submodule kxBSON in `src/others/kxBSON`) |
 | `src/wizard/delphi/` | `RALWizardDsgn` | Delphi project wizards (`cgi/`, `console/`, `standalone/`) |
@@ -82,6 +85,8 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 - `RALServer.pas` - `TRALServer`, `TRALModuleRoutes` (modules)
 - `RALClient.pas` - `TRALClient` and the engine base `TRALClientHTTP`
 - `RALAuthBase.pas` - authentication base classes (`TRALAuthServer`, `TRALAuthClient`)
+- `RALKeyValueStore.pas` - key/value stores with expiry shared by plugins
+  (`TRALMemoryStore`, `TRALFileStore`)
 
 ### `src/bindings/`
 
@@ -189,8 +194,15 @@ raised; an impossible explicit choice raises.
   traversal)
 - `auth/` (RALPluginAuthPackage): `RALAuthentication` (Basic, JWT), `RALDigest`,
   `RALOAuth2`, `RALPluginAuthReg`
+- `cache/` (RALPluginCachePackage): `RALResponseCache` (`TRALResponseCachePlugin`),
+  `RALPluginCacheReg`
+- `observability/` (RALPluginObservabilityPackage): `RALObservability` (`TRALLogPlugin`,
+  `TRALTracePlugin`, `TRALMetricsPlugin`, `TRALHealthPlugin`), `RALPluginObservabilityReg`
 - `tls/` (RALPluginTLSPackage): `RALSelfSigned` (`TRALSelfSignedPlugin`),
   `RALPluginTLSReg`
+- `traffic/` (RALPluginTrafficPackage): `RALTraffic` (`TRALRateLimitPlugin`,
+  `TRALHttpsRedirectPlugin`, `TRALMaintenancePlugin`, `TRALMethodOverridePlugin`),
+  `RALPluginTrafficReg`
 
 ### `src/storage/`
 

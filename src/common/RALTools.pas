@@ -18,10 +18,16 @@ uses
   {$IF Defined(POSIX) and not Defined(FPC)}
     Posix.SysStat, // RALFileInfo, RALIsLink
     Posix.Unistd,  // FileClose is inline over close()
+    Posix.Time,    // RALTickMicro
+  {$IFEND}
+  {$IF Defined(FPC) and Defined(LINUX)}
+    Linux,         // RALTickMicro
   {$IFEND}
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
   RALTypes, RALConsts, RALCompress;
 
+/// A monotonic clock in microseconds, for durations only (not the time of day).
+function RALTickMicro: Int64RAL;
 function CriptoToStrCripto(ACripto: TRALCriptoType): StringRAL;
 function FixRoute(ARoute: StringRAL): StringRAL;
 function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
@@ -151,6 +157,47 @@ uses
 var
   gAtomic64: System.TRTLCriticalSection;
 {$IFEND}
+
+{$IFDEF RALWindows}
+var
+  /// QueryPerformanceFrequency, read once.
+  gTickFrequency: Int64 = 0;
+{$ENDIF}
+
+function RALTickMicro: Int64RAL;
+{$IFDEF RALWindows}
+var
+  vCount: Int64;
+begin
+  if gTickFrequency = 0 then
+    QueryPerformanceFrequency(gTickFrequency);
+  QueryPerformanceCounter(vCount);
+  // split to keep the product within Int64 for counters that run for years
+  Result := (vCount div gTickFrequency) * 1000000 +
+    ((vCount mod gTickFrequency) * 1000000) div gTickFrequency;
+end;
+{$ELSE}
+  {$IF Defined(FPC) and Defined(LINUX)}
+var
+  vTime: TTimeSpec;
+begin
+  clock_gettime(CLOCK_MONOTONIC, @vTime);
+  Result := Int64RAL(vTime.tv_sec) * 1000000 + vTime.tv_nsec div 1000;
+end;
+  {$ELSEIF Defined(FPC)}
+begin
+  // other FPC targets: the millisecond tick
+  Result := Int64RAL(GetTickCount64) * 1000;
+end;
+  {$ELSE}
+var
+  vTime: timespec;
+begin
+  clock_gettime(CLOCK_MONOTONIC, @vTime);
+  Result := Int64RAL(vTime.tv_sec) * 1000000 + vTime.tv_nsec div 1000;
+end;
+  {$IFEND}
+{$ENDIF}
 
 const
   { method names without the 'am' prefix, in the order of the enum }

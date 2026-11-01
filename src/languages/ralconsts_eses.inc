@@ -339,6 +339,10 @@
   emRouteBadConstraint = 'Restricción de ruta desconocida: %s';
   // Client methods
   emMethodUnsupported = 'El motor %1:s no admite el método %0:s.';
+  // Key-value store (RALKeyValueStore)
+  emStoreLockTimeout = 'El almacén no pudo bloquear la clave "%s" a tiempo.';
+  // Client resilience (RALClient)
+  emCircuitOpen = 'El circuito de %s está abierto: el servidor falló demasiadas veces, intente más tarde.';
   // MQTT (RALModuleMQTTPackage)
   emMQTTUnknownProperty = 'Identificador de propiedad MQTT desconocido: 0x%x.';
   emMQTTPropertyNotAllowed = 'La propiedad MQTT 0x%x no puede venir en un paquete %s.';

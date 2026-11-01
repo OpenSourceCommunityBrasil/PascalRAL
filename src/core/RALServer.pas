@@ -111,6 +111,56 @@ type
   /// Where the API version of a request is read from.
   TRALApiVersionSource = (avPath, avHeader, avQuery, avMediaType);
 
+  { Body of the errors RAL answers itself (404, 405, 413, 429, 500...): efText as
+    always (the status page or a text), efProblemJSON the RFC 9457 problem details. }
+  TRALErrorFormat = (efText, efProblemJSON);
+
+  { An error RAL is about to answer: set AHandled after answering it in AResponse
+    to replace the body ErrorFormat would give. AException is set on a 500. }
+  TRALOnFormatError = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
+    AStatusCode: IntegerRAL; const ADetail: StringRAL; AException: Exception;
+    var AHandled: boolean) of object;
+
+  /// The stack of AException for DeveloperMode (JclDebug, madExcept, FPC lineinfo).
+  TRALOnGetStackTrace = procedure(AException: Exception; var AStack: StringRAL) of object;
+
+  { An exception class a handler may raise and what it answers: the status, and
+    the type and title of the problem details. Matched by class name, the class
+    of the exception or any of its ancestors. }
+  TRALExceptionMapItem = class(TCollectionItem)
+  private
+    FExceptionClass: StringRAL;
+    FProblemType: StringRAL;
+    FStatusCode: IntegerRAL;
+    FTitle: StringRAL;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+    function GetDisplayName: string; override;
+  public
+    constructor Create(ACollection: TCollection); override;
+  published
+    /// Name of the class ('EDatabaseError'); its descendants match too.
+    property ExceptionClass: StringRAL read FExceptionClass write FExceptionClass;
+    /// The type URI of the problem details; empty is about:blank.
+    property ProblemType: StringRAL read FProblemType write FProblemType;
+    /// Status the exception answers.
+    property StatusCode: IntegerRAL read FStatusCode write FStatusCode default 500;
+    /// Title of the problem details; empty is the reason phrase of the status.
+    property Title: StringRAL read FTitle write FTitle;
+  end;
+
+  /// The exception classes a server maps to answers.
+  TRALExceptionMap = class(TOwnedCollection)
+  public
+    constructor Create(AOwner: TPersistent);
+
+    /// Adds a mapping of AClassName to AStatusCode.
+    function AddMapping(const AClassName: StringRAL; AStatusCode: IntegerRAL;
+      const AProblemType: StringRAL = ''; const ATitle: StringRAL = ''): TRALExceptionMapItem;
+    /// The item for AException (its class or the closest ancestor), or nil.
+    function Find(AException: Exception): TRALExceptionMapItem;
+  end;
+
   { Versions of the API of a server. When Enabled, each request gets its
     version (TRALRequest.ApiVersion) from Source - the first path segment ('/v2/
     users', removed from the path), a header, a query param or the media type
@@ -162,8 +212,14 @@ type
     FBaseModule: TRALModuleRoutes;
     FCookieLife: IntegerRAL;
     FEngine: StringRAL;
+    FDeveloperIPs: TStrings;
+    FDeveloperMode: boolean;
+    FErrorFormat: TRALErrorFormat;
+    FExceptionMap: TRALExceptionMap;
     FHideErrorDetails: boolean;
     FIPConfig: TRALIPConfig;
+    FOnFormatError: TRALOnFormatError;
+    FOnGetStackTrace: TRALOnGetStackTrace;
     /// Modules linked to the server.
     FListSubModules: TList;
     FOnClientBlock: TRALOnClientBlock;
@@ -224,6 +280,8 @@ type
     procedure SetAuthentication(const AValue: TRALAuthServer);
     /// Sets Engine, the name of the engine.
     procedure SetEngine(const AValue: StringRAL);
+    procedure SetDeveloperIPs(const AValue: TStrings);
+    procedure SetExceptionMap(const AValue: TRALExceptionMap);
     procedure SetIPConfig(const AValue: TRALIPConfig);
     procedure SetPort(const AValue: IntegerRAL); virtual;
     procedure SetResponsePages(const AValue: TRALResponsePages);
@@ -270,6 +328,14 @@ type
     procedure DecodeAuth(AResult: TRALRequest);
     /// Fills Request.Authorization from the value of an Authorization header.
     procedure DecodeAuthValue(AResult: TRALRequest; const AValue: StringRAL);
+    { Answers an error RAL itself produces, in the body ErrorFormat says (or
+      OnFormatError's). AException is the one a 500 answers for, else nil; with
+      DeveloperMode and the request from DeveloperIPs, its class, message and stack
+      go in the answer (an HTML page for a browser). }
+    procedure FormatError(ARequest: TRALRequest; AResponse: TRALResponse;
+      AStatusCode: IntegerRAL; const ADetail: StringRAL; AException: Exception);
+    /// Whether an error answered without a body is formatted (efProblemJSON or OnFormatError).
+    function FormatsErrors: boolean;
     /// Text a 500 answers for AException, generic with HideErrorDetails.
     function ErrorText(AException: Exception): StringRAL;
     { IP address clients reach the server at: the bound address, or the machine's
@@ -333,6 +399,16 @@ type
     /// A 500 says only 'Internal Server Error'; OnServerError still gets the exception.
     property HideErrorDetails: boolean read FHideErrorDetails write FHideErrorDetails
       default False;
+    /// Addresses that DeveloperMode shows the exception to, one per line.
+    property DeveloperIPs: TStrings read FDeveloperIPs write SetDeveloperIPs;
+    { The class, message and stack of an exception go in the 500 a request from
+      DeveloperIPs gets (an HTML page when it accepts HTML), even with
+      HideErrorDetails; for development only. }
+    property DeveloperMode: boolean read FDeveloperMode write FDeveloperMode default False;
+    /// Body of the errors RAL answers itself: text (as always) or problem details.
+    property ErrorFormat: TRALErrorFormat read FErrorFormat write FErrorFormat default efText;
+    /// Exception classes and the status, type and title they answer.
+    property ExceptionMap: TRALExceptionMap read FExceptionMap write SetExceptionMap;
     /// Addresses the server listens on.
     property IPConfig: TRALIPConfig read FIPConfig write SetIPConfig;
     /// Fired when a plugin blocks an address.
@@ -343,6 +419,10 @@ type
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
     /// Fired with an exception the server caught.
     property OnServerError: TRALOnServerError read FOnServerError write FOnServerError;
+    /// Fired for every error RAL answers itself, to give it another body.
+    property OnFormatError: TRALOnFormatError read FOnFormatError write FOnFormatError;
+    /// Gives DeveloperMode the stack of an exception.
+    property OnGetStackTrace: TRALOnGetStackTrace read FOnGetStackTrace write FOnGetStackTrace;
     /// Fired once when a streamed response closes, with why.
     property OnStreamClosed: TRALOnStreamClosed read FOnStreamClosed write FOnStreamClosed;
     /// Port to listen on.
@@ -581,7 +661,9 @@ procedure RALClearTLSCertificate(out ACertificate: TRALTLSCertificate);
 implementation
 
 uses
-  RALNetwork;
+  RALNetwork, RALJson;
+
+function RALHtmlEscape(const AText: StringRAL): StringRAL; forward;
 procedure RALClearTLSCertificate(out ACertificate: TRALTLSCertificate);
 begin
   ACertificate.CertificateFile := '';
@@ -719,6 +801,12 @@ begin
 
   FIPConfig := TRALIPConfig.Create(Self);
   FApiVersioning := TRALApiVersioning.Create;
+  FExceptionMap := TRALExceptionMap.Create(Self);
+  FDeveloperIPs := TStringList.Create;
+  FDeveloperIPs.Add('127.0.0.1');
+  FDeveloperIPs.Add('::1');
+  FErrorFormat := efText;
+  FDeveloperMode := False;
   FListSubModules := TList.Create;
   FRoutes := TRALRoutes.Create(Self);
   FServerStatus := TStringList.Create;
@@ -747,6 +835,8 @@ begin
   FreeAndNil(FBaseModule);
   FreeAndNil(FRoutes);
   FreeAndNil(FApiVersioning);
+  FreeAndNil(FExceptionMap);
+  FreeAndNil(FDeveloperIPs);
   FreeAndNil(FServerStatus);
   FreeAndNil(FIPConfig);
   FreeAndNil(FListSubModules);
@@ -856,6 +946,9 @@ begin
     Exit;
   vStream := AResponse.Stream;
   vRef := vStream;
+  // a stream is still going: the finish handlers see its status, not its size
+  ARequest.ResponseStatus := AResponse.StatusCode;
+  ARequest.BytesSent := -1;
   { the handler returned: what a plugin took for the request - a concurrency
     slot - goes back now, even when the stream goes on after Detach }
   try
@@ -1149,6 +1242,113 @@ begin
   end;
 end;
 
+function TRALServer.FormatsErrors: boolean;
+begin
+  Result := (FErrorFormat = efProblemJSON) or Assigned(FOnFormatError);
+end;
+
+procedure TRALServer.FormatError(ARequest: TRALRequest; AResponse: TRALResponse;
+  AStatusCode: IntegerRAL; const ADetail: StringRAL; AException: Exception);
+var
+  vHandled, vDeveloper: boolean;
+  vItem: TRALExceptionMapItem;
+  vType, vTitle, vDetail, vStack, vAccept: StringRAL;
+  vJson: TRALJSONObject;
+  vParam: TRALParam;
+begin
+  vType := '';
+  vTitle := '';
+  vDetail := ADetail;
+  // the status an exception answers, as the map says
+  vItem := FExceptionMap.Find(AException);
+  if vItem <> nil then
+  begin
+    AStatusCode := vItem.StatusCode;
+    vType := vItem.ProblemType;
+    vTitle := vItem.Title;
+  end;
+
+  if Assigned(FOnFormatError) then
+  begin
+    vHandled := False;
+    FOnFormatError(ARequest, AResponse, AStatusCode, vDetail, AException, vHandled);
+    if vHandled then
+      Exit;
+  end;
+
+  vDeveloper := FDeveloperMode and (AException <> nil) and (ARequest <> nil) and
+    (FDeveloperIPs.IndexOf(string(ARequest.ClientInfo.IP)) >= 0);
+  vStack := '';
+  if vDeveloper then
+  begin
+    vDetail := StringRAL(AException.Message);
+    if Assigned(FOnGetStackTrace) then
+      FOnGetStackTrace(AException, vStack);
+    vAccept := '';
+    vParam := ARequest.Params.GetKind['Accept', rpkHEADER];
+    if vParam <> nil then
+      vAccept := vParam.AsString;
+    // a browser gets a page it shows; everything else the structured body
+    if RALPosText('text/html', vAccept) > 0 then
+    begin
+      AResponse.Answer(AStatusCode, '<!DOCTYPE html><html><head><title>' +
+        RALHtmlEscape(StringRAL(AException.ClassName)) + '</title></head><body><h1>' +
+        IntToStr(AStatusCode) + ' ' + RALHtmlEscape(StringRAL(AException.ClassName)) +
+        '</h1><p>' + RALHtmlEscape(vDetail) + '</p><p>' + RALHtmlEscape(ARequest.Query) +
+        '</p><pre>' + RALHtmlEscape(vStack) + '</pre></body></html>', rctTEXTHTML);
+      Exit;
+    end;
+  end;
+
+  if FErrorFormat = efProblemJSON then
+  begin
+    if not vDeveloper then
+    begin
+      AResponse.AnswerProblem(AStatusCode, vDetail, vType, vTitle);
+      Exit;
+    end;
+    vJson := TRALJSONObject.Create;
+    try
+      if vType = '' then
+        vType := 'about:blank';
+      vJson.Add('type', vType);
+      if vTitle = '' then
+        vTitle := RALHTTPReason(AStatusCode);
+      vJson.Add('title', vTitle);
+      vJson.Add('status', AStatusCode);
+      vJson.Add('detail', vDetail);
+      vJson.Add('instance', ARequest.Query);
+      if ARequest.TraceId <> '' then
+        vJson.Add('traceId', ARequest.TraceId);
+      vJson.Add('exception', StringRAL(AException.ClassName));
+      if vStack <> '' then
+        vJson.Add('stack', vStack);
+      AResponse.Answer(AStatusCode, vJson.ToJSON, rctAPPLICATIONPROBLEMJSON);
+    finally
+      vJson.Free;
+    end;
+    Exit;
+  end;
+
+  // efText: as RAL always answered
+  if vDeveloper and (vStack <> '') then
+    vDetail := StringRAL(AException.ClassName) + ': ' + vDetail + sLineBreak + vStack;
+  if vDetail = '' then
+    AResponse.AnswerPage(AStatusCode)
+  else
+    AResponse.Answer(AStatusCode, vDetail, rctTEXTPLAIN);
+end;
+
+procedure TRALServer.SetDeveloperIPs(const AValue: TStrings);
+begin
+  FDeveloperIPs.Assign(AValue);
+end;
+
+procedure TRALServer.SetExceptionMap(const AValue: TRALExceptionMap);
+begin
+  FExceptionMap.Assign(AValue);
+end;
+
 procedure TRALServer.SetRoutes(const AValue: TRALRoutes);
 begin
   RALAssignOwned(FRoutes, AValue);
@@ -1185,13 +1385,14 @@ var
   vInt: IntegerRAL;
   vHandled: boolean;
 begin
+  // set first: a request refused by a validator still reports its status at the end
+  AResponse.StreamRequest := ARequest;
   if AResponse.StatusCode >= HTTP_BadRequest then
     Exit;
-  AResponse.StreamRequest := ARequest;
   // a body the engine could not take apart is the client's error, answered first
   if ARequest.Params.BodyError <> '' then
   begin
-    AResponse.Answer(HTTP_BadRequest, ARequest.Params.BodyError, rctTEXTPLAIN);
+    FormatError(ARequest, AResponse, HTTP_BadRequest, ARequest.Params.BodyError, nil);
     Exit;
   end;
   try
@@ -1250,13 +1451,13 @@ begin
       end
       else if e is ERALStreamLimit then
       begin
-        AResponse.Answer(HTTP_ServiceUnavailable, e.Message, rctTEXTPLAIN);
+        FormatError(ARequest, AResponse, HTTP_ServiceUnavailable, StringRAL(e.Message), nil);
         AResponse.Params.ReplaceParam('Retry-After', '1', rpkHEADER);
       end
       else
-      { The 500 comes first, so a failed handler never leaves a 200; then
-        OnServerError, or the exception goes up with RaiseError. }
-        AResponse.Answer(HTTP_InternalError, ErrorText(e), rctTEXTPLAIN);
+      { The 500 (or what ExceptionMap says) comes first, so a failed handler never
+        leaves a 200; then OnServerError, or the exception goes up with RaiseError. }
+        FormatError(ARequest, AResponse, HTTP_InternalError, ErrorText(e), e);
       if assigned(OnServerError) then
         OnServerError(e)
       else if RaiseError then
@@ -1472,6 +1673,10 @@ var
   vPath: StringRAL;
   vLen: IntegerRAL;
 begin
+  // the clock of the request starts here: every engine calls ValidateRequest first
+  if ARequest.StartTick = 0 then
+    ARequest.StartTick := RALTickMicro;
+  AResponse.StreamRequest := ARequest;
   { the path the proxy put in front comes off first: plugins, routes and modules
     see the path of the application }
   if FPathBase <> '' then
@@ -1500,6 +1705,79 @@ begin
     the plugins (flood counts it like any other request) }
   if RunValidate(ARequest, AResponse) and (ARequest.Method = amUNKNOWN) then
     AResponse.Answer(HTTP_NotImplemented);
+end;
+
+{ TRALExceptionMapItem }
+
+constructor TRALExceptionMapItem.Create(ACollection: TCollection);
+begin
+  inherited Create(ACollection);
+  FStatusCode := HTTP_InternalError;
+end;
+
+procedure TRALExceptionMapItem.AssignTo(Dest: TPersistent);
+begin
+  if Dest is TRALExceptionMapItem then
+  begin
+    TRALExceptionMapItem(Dest).ExceptionClass := FExceptionClass;
+    TRALExceptionMapItem(Dest).ProblemType := FProblemType;
+    TRALExceptionMapItem(Dest).StatusCode := FStatusCode;
+    TRALExceptionMapItem(Dest).Title := FTitle;
+  end
+  else
+    inherited AssignTo(Dest);
+end;
+
+function TRALExceptionMapItem.GetDisplayName: string;
+begin
+  Result := string(FExceptionClass) + ' = ' + IntToStr(FStatusCode);
+end;
+
+{ TRALExceptionMap }
+
+constructor TRALExceptionMap.Create(AOwner: TPersistent);
+begin
+  inherited Create(AOwner, TRALExceptionMapItem);
+end;
+
+function TRALExceptionMap.AddMapping(const AClassName: StringRAL; AStatusCode: IntegerRAL;
+  const AProblemType, ATitle: StringRAL): TRALExceptionMapItem;
+begin
+  Result := TRALExceptionMapItem(Add);
+  Result.ExceptionClass := AClassName;
+  Result.StatusCode := AStatusCode;
+  Result.ProblemType := AProblemType;
+  Result.Title := ATitle;
+end;
+
+function TRALExceptionMap.Find(AException: Exception): TRALExceptionMapItem;
+var
+  vClass: TClass;
+  vInt: IntegerRAL;
+begin
+  Result := nil;
+  if (AException = nil) or (Count = 0) then
+    Exit;
+  // the class itself first, then each ancestor: the closest mapping wins
+  vClass := AException.ClassType;
+  while vClass <> nil do
+  begin
+    for vInt := 0 to Count - 1 do
+      if RALSameName(TRALExceptionMapItem(Items[vInt]).ExceptionClass, StringRAL(vClass.ClassName)) then
+      begin
+        Result := TRALExceptionMapItem(Items[vInt]);
+        Exit;
+      end;
+    vClass := vClass.ClassParent;
+  end;
+end;
+
+{ HTML-escapes AText, for the developer page. }
+function RALHtmlEscape(const AText: StringRAL): StringRAL;
+begin
+  Result := StringRAL(StringReplace(StringReplace(StringReplace(StringReplace(string(AText),
+    '&', '&amp;', [rfReplaceAll]), '<', '&lt;', [rfReplaceAll]), '>', '&gt;', [rfReplaceAll]),
+    '"', '&quot;', [rfReplaceAll]));
 end;
 
 { TRALApiVersioning }

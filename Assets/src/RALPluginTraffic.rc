@@ -1,0 +1,4 @@
+TRALRateLimitPlugin BITMAP "..\components\base\plugins\TRALRateLimitPlugin.bmp"
+TRALHttpsRedirectPlugin BITMAP "..\components\base\plugins\TRALHttpsRedirectPlugin.bmp"
+TRALMaintenancePlugin BITMAP "..\components\base\plugins\TRALMaintenancePlugin.bmp"
+TRALMethodOverridePlugin BITMAP "..\components\base\plugins\TRALMethodOverridePlugin.bmp"

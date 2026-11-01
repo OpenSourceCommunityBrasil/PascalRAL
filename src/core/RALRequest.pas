@@ -72,6 +72,10 @@ type
   /// A request: method, route, query, headers, body, credentials and client data.
   TRALRequest = class(TRALHTTPHeaderInfo)
   private
+    FBytesSent: Int64RAL;
+    FResponseStatus: IntegerRAL;
+    FStartTick: Int64RAL;
+    FTraceId: StringRAL;
     FApiVersion: StringRAL;
     /// The path FPathRaw and FPathTrimmed were split from.
     FPathKey: StringRAL;
@@ -154,6 +158,16 @@ type
     function TryGetPathSegments(const APath: StringRAL; out ARaw,
       ATrimmed: TRALPathSegments): boolean;
 
+    { Bytes of the response body that went out, known when the finish handlers
+      run; -1 for a streamed response (Send), still going. }
+    property BytesSent: Int64RAL read FBytesSent write FBytesSent;
+    /// Status of the response, known when the finish handlers run; 0 before.
+    property ResponseStatus: IntegerRAL read FResponseStatus write FResponseStatus;
+    /// RALTickMicro when the server took the request (ValidateRequest); 0 on a client.
+    property StartTick: Int64RAL read FStartTick write FStartTick;
+    { Trace id of the request (W3C trace context, set by a tracing plugin), used by
+      the log and the error body; empty without one. }
+    property TraceId: StringRAL read FTraceId write FTraceId;
     { Version of the API the request asked for (TRALServer.ApiVersioning), or the
       default one; empty when the server does not version its API. }
     property ApiVersion: StringRAL read FApiVersion write FApiVersion;

@@ -339,6 +339,10 @@
   emRouteBadConstraint = 'Unknown route constraint: %s';
   // Client methods
   emMethodUnsupported = 'The %s method is not supported by the %s engine.';
+  // Key-value store (RALKeyValueStore)
+  emStoreLockTimeout = 'The store could not lock the key "%s" in time.';
+  // Client resilience (RALClient)
+  emCircuitOpen = 'The circuit of %s is open: the server failed too often, try later.';
   // MQTT (RALModuleMQTTPackage)
   emMQTTUnknownProperty = 'Unknown MQTT property identifier 0x%x.';
   emMQTTPropertyNotAllowed = 'The MQTT property 0x%x cannot be carried by a %s packet.';

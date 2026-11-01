@@ -497,8 +497,8 @@ begin
           says when to come back }
         if FRetryAfter > 0 then
           AResponse.Params.AddParam('Retry-After', StringRAL(IntToStr(FRetryAfter)), rpkHEADER);
-        AResponse.Answer(HTTP_ServiceUnavailable,
-          StringRAL(Format(emConcurrencyQueueTimeout, [FMaxQueueWait])), rctTEXTPLAIN);
+        AResponse.AnswerError(HTTP_ServiceUnavailable,
+          StringRAL(Format(emConcurrencyQueueTimeout, [FMaxQueueWait])));
       end;
     grClosed:
       ; // the plugin is being freed: the request goes on without a limit

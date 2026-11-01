@@ -11,6 +11,12 @@ echo RALPluginAuth
 %path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginAuthPackage.dcr" "RALPluginAuth.rc"
 echo RALPluginTLS
 %path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginTLSPackage.dcr" "RALPluginTLS.rc"
+echo RALPluginObservability
+%path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginObservabilityPackage.dcr" "RALPluginObservability.rc"
+echo RALPluginTraffic
+%path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginTrafficPackage.dcr" "RALPluginTraffic.rc"
+echo RALPluginCache
+%path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginCachePackage.dcr" "RALPluginCache.rc"
 echo RALStorage
 %path_brcc32% -fo "..\..\pkg\Delphi\Storage\RALStoragePackage.dcr" "RALStorage.rc"
 echo RALStorageBSON

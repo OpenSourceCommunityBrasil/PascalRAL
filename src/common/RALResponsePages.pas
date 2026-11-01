@@ -41,7 +41,54 @@ type
     property HTMLPage[AStatusCode: IntegerRAL] : StringRAL read GetHTMLPage;
   end;
 
+/// The reason phrase of an HTTP status (RFC 9110), in English; '' for one it does not know.
+function RALHTTPReason(AStatusCode: IntegerRAL): StringRAL;
+
 implementation
+
+function RALHTTPReason(AStatusCode: IntegerRAL): StringRAL;
+begin
+  case AStatusCode of
+    400: Result := 'Bad Request';
+    401: Result := 'Unauthorized';
+    402: Result := 'Payment Required';
+    403: Result := 'Forbidden';
+    404: Result := 'Not Found';
+    405: Result := 'Method Not Allowed';
+    406: Result := 'Not Acceptable';
+    407: Result := 'Proxy Authentication Required';
+    408: Result := 'Request Timeout';
+    409: Result := 'Conflict';
+    410: Result := 'Gone';
+    411: Result := 'Length Required';
+    412: Result := 'Precondition Failed';
+    413: Result := 'Content Too Large';
+    414: Result := 'URI Too Long';
+    415: Result := 'Unsupported Media Type';
+    416: Result := 'Range Not Satisfiable';
+    417: Result := 'Expectation Failed';
+    421: Result := 'Misdirected Request';
+    422: Result := 'Unprocessable Content';
+    423: Result := 'Locked';
+    424: Result := 'Failed Dependency';
+    425: Result := 'Too Early';
+    426: Result := 'Upgrade Required';
+    428: Result := 'Precondition Required';
+    429: Result := 'Too Many Requests';
+    431: Result := 'Request Header Fields Too Large';
+    451: Result := 'Unavailable For Legal Reasons';
+    500: Result := 'Internal Server Error';
+    501: Result := 'Not Implemented';
+    502: Result := 'Bad Gateway';
+    503: Result := 'Service Unavailable';
+    504: Result := 'Gateway Timeout';
+    505: Result := 'HTTP Version Not Supported';
+    507: Result := 'Insufficient Storage';
+    511: Result := 'Network Authentication Required';
+  else
+    Result := '';
+  end;
+end;
 
 { TRALResponsePages }
 

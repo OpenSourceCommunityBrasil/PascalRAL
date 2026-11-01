@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Core"/>
     <Version Major="2"/>
-    <Files Count="52">
+    <Files Count="53">
       <Item1>
         <Filename Value="..\..\src\core\RALTypes.pas"/>
         <UnitName Value="RALTypes"/>
@@ -235,6 +235,10 @@
         <Filename Value="..\..\src\core\RALRoutesAnon.pas"/>
         <UnitName Value="RALRoutesAnon"/>
       </Item52>
+      <Item53>
+        <Filename Value="..\..\src\core\RALKeyValueStore.pas"/>
+        <UnitName Value="RALKeyValueStore"/>
+      </Item53>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

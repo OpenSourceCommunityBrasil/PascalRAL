@@ -22,7 +22,7 @@ uses
   // generic
   RALConsts, RALCompress, RALTypes, RALCustomObjects,
   // server
-  RALServer, RALSecurity, RALCORS, RALContent, RALConcurrency,
+  RALServer, RALSecurity, RALCORS, RALContent, RALConcurrency, RALKeyValueStore,
   // client
   RALClient;
 
@@ -148,6 +148,8 @@ begin
     TRALCriptoPlugin, TRALWhiteListPlugin, TRALBlackListPlugin, TRALBruteForcePlugin,
     TRALFloodPlugin, TRALPathTraversalPlugin, TRALCORSPlugin, TRALJSONBodyPlugin,
     TRALSecurityHeadersPlugin, TRALConcurrencyPlugin]);
+  // stores shared by plugins (rate limit, response cache)
+  RegisterComponents('RAL - Plugins', [TRALMemoryStore, TRALFileStore]);
 
   // registered for the base classes: the IDE also applies them to every descendant
   RegisterSelectionEditor(TRALServer, TRALServerSelectionEditor);

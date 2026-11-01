@@ -235,7 +235,7 @@ function TRALServerJWTAuth.HasSecretKey(AResponse: TRALResponse): boolean;
 begin
   Result := RALTrim(FSignSecretKey) <> '';
   if not Result then
-    AResponse.Answer(HTTP_InternalError, emJWTNoSecretKey, rctTEXTPLAIN);
+    AResponse.AnswerError(HTTP_InternalError, emJWTNoSecretKey);
 end;
 
 function TRALServerJWTAuth.CanIssue: boolean;

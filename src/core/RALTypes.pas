@@ -112,7 +112,9 @@ type
     /// The server certificate was refused (engine, SSL.Pins or OnValidateServerCert).
     rteCertificate,
     /// OnBeforeExecute refused the attempt; nothing was sent.
-    rteCancelled);
+    rteCancelled,
+    /// The circuit breaker of the server is open: nothing was sent.
+    rteCircuitOpen);
 
   { HTTP version a client asks for, or the one a message travelled on
     (TRALHTTPHeaderInfo.ProtocolVersion). }

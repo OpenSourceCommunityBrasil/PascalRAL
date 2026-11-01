@@ -127,6 +127,10 @@ form, `Server` property set; or `Plugin.Server := FServer` in code):
 | JSON body as params | `TRALJSONBodyPlugin` (`RALContent`) |
 | security headers, IP lists, brute force, flood, `../` | `TRALSecurityHeadersPlugin`, `TRALWhiteListPlugin`, `TRALBlackListPlugin`, `TRALBruteForcePlugin`, `TRALFloodPlugin`, `TRALPathTraversalPlugin` (`RALSecurity`) |
 | a cap on concurrent requests (503 + `Retry-After`) | `TRALConcurrencyPlugin` (`RALConcurrency`) |
+| access log, trace context, Prometheus `/metrics`, `/health/live` and `/health/ready` | `TRALLogPlugin`, `TRALTracePlugin`, `TRALMetricsPlugin`, `TRALHealthPlugin` (`RALObservability`, package `RALPluginObservabilityPackage`) |
+| rate limit (429), HTTPS redirect, maintenance (503), `X-HTTP-Method-Override` | `TRALRateLimitPlugin`, `TRALHttpsRedirectPlugin`, `TRALMaintenancePlugin`, `TRALMethodOverridePlugin` (`RALTraffic`, package `RALPluginTrafficPackage`) |
+| response cache, `ETag` and 304 | `TRALResponseCachePlugin` (`RALResponseCache`, package `RALPluginCachePackage`) |
+| errors as `application/problem+json` | `Server.ErrorFormat := efProblemJSON`, `Server.ExceptionMap` (no plugin) |
 | login | `ral-auth` |
 | HTTPS | `ral-https` |
 

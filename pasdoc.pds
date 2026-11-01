@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=44
+Count=47
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -112,8 +112,11 @@ Item_40=src\wizard\delphi\console
 Item_41=src\wizard\delphi\standalone
 Item_42=src\wizard\delphi\cgi
 Item_43=src\languages
+Item_44=src\plugins\observability
+Item_45=src\plugins\traffic
+Item_46=src\plugins\cache
 [Files]
-Count=161
+Count=168
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -275,6 +278,13 @@ Item_157=src\core\RALResponseStream.pas
 Item_158=src\common\RALSSE.pas
 Item_159=src\common\RALRegex.pas
 Item_160=src\core\RALRoutesAnon.pas
+Item_161=src\core\RALKeyValueStore.pas
+Item_162=src\plugins\observability\RALObservability.pas
+Item_163=src\plugins\observability\RALPluginObservabilityReg.pas
+Item_164=src\plugins\traffic\RALTraffic.pas
+Item_165=src\plugins\traffic\RALPluginTrafficReg.pas
+Item_166=src\plugins\cache\RALResponseCache.pas
+Item_167=src\plugins\cache\RALPluginCacheReg.pas
 [AdditionalFiles]
 Count=0
 

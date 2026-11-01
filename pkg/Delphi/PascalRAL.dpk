@@ -53,6 +53,7 @@ contains
   RALSSE in '..\..\src\common\RALSSE.pas',
   RALRegex in '..\..\src\common\RALRegex.pas',
   RALRoutesAnon in '..\..\src\core\RALRoutesAnon.pas',
+  RALKeyValueStore in '..\..\src\core\RALKeyValueStore.pas',
   RALUrlCoder in '..\..\src\common\RALUrlCoder.pas',
   RALMultipartCoder in '..\..\src\common\RALMultipartCoder.pas',
   RALNetwork in '..\..\src\common\RALNetwork.pas',
