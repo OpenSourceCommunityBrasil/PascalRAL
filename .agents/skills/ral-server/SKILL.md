@@ -61,6 +61,29 @@ end;
 - Reading the request (query, path params, fields, headers, body, uploads) and
   answering streams and files: `ral-body`.
 
+## Typed params, groups, versions
+
+```pascal
+FServer.CreateRoute('users/:id<int:range(1,9999)>', {$IFDEF FPC}@{$ENDIF}GetUser);
+FServer.CreateRoute('files/*path', {$IFDEF FPC}@{$ENDIF}Files);          // the rest of the path
+FServer.RouteGroups.AddGroup('api', '/api/v1').SkipAuthMethods := [amGET];
+FServer.CreateRoute('orders', {$IFDEF FPC}@{$ENDIF}Orders).InGroup('api'); // /api/v1/orders
+```
+
+- A typed or constrained path param (`<int>`, `<number>`, `<bool>`, `<date>`,
+  `<regex(...)>`, `range`, `length`, `values`, or the same in `URIParams`) is checked
+  by RAL: a value it refuses makes the route not match, so the handler never sees it.
+  `:name?` is optional at the end; `*name` takes the rest.
+- Regular expressions are `RALRegex` (RE2 syntax, linear time, no backreferences or
+  lookaround), the same on Delphi and FPC.
+- A group's `OnBeforeExecute` (and a route's) runs before the handler; answering 400 or
+  more there ends the request. Plugins are server-wide; `IncludePaths`/`ExcludePaths`
+  limit one to some paths.
+- `amQUERY` (a GET with a body), `ApiVersioning` (`ARequest.ApiVersion`, route and
+  group `Versions`), `PathBase` (behind a proxy subpath).
+- Anonymous handlers where the compiler has them: `uses RALRoutesAnon`, then
+  `FServer.Get('/ping', procedure(ARequest: TRALRequest; AResponse: TRALResponse) begin ... end)`.
+
 ## Answer in pieces (streaming, Server-Sent Events)
 
 ```pascal

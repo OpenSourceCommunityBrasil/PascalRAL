@@ -230,6 +230,9 @@ begin
     begin
       if (vMethod = amOPTIONS) and (not FAllowCORSVerbs) then
         Continue;
+      // QUERY only where the route names it: amALL routes keep the classic methods
+      if (vMethod = amQUERY) and (not (amQUERY in ARoute.AllowedMethods)) then
+        Continue;
 
       vRoute := TRALJSONObject.Create;
 

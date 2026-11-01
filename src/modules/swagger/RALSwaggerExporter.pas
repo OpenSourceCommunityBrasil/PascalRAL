@@ -107,8 +107,12 @@ begin
     if vArr <> nil then
       vJson.Add('servers', vArr);
 
-    if SwaggerModule.PostmanTag then
-      vJson.Add('tags', getTags(AServer));
+    // the Postman tag and the groups of routes; nothing when there is neither
+    vArr := getTags(AServer);
+    if vArr.Count > 0 then
+      vJson.Add('tags', vArr)
+    else
+      vArr.Free;
     vJson.Add('paths', getPaths(AServer));
 
     vAux := getComponents(AServer);
@@ -274,6 +278,25 @@ end;
 function TRALSwaggerExporter.getTags(AServer: TRALServer): TRALJSONArray;
 var
   vItem1, vItem2: TRALJSONObject;
+  vInt: IntegerRAL;
+
+  procedure AddGroups(AGroups: TRALRouteGroups);
+  var
+    vGroup: IntegerRAL;
+    vTag: TRALJSONObject;
+  begin
+    if AGroups = nil then
+      Exit;
+    for vGroup := 0 to AGroups.Count - 1 do
+    begin
+      vTag := TRALJSONObject.Create;
+      vTag.Add('name', AGroups[vGroup].Name);
+      if Trim(AGroups[vGroup].Description.Text) <> '' then
+        vTag.Add('description', StringRAL(Trim(AGroups[vGroup].Description.Text)));
+      Result.Add(vTag);
+    end;
+  end;
+
 begin
   Result := TRALJSONArray.Create;
 
@@ -287,9 +310,14 @@ begin
     vItem1.Add('name', 'Postman');
     vItem1.Add('description', 'Export API to Postman');
     vItem1.Add('externalDocs', vItem2);
+    // inside the if: without the Postman tag vItem1 was never created
+    Result.Add(vItem1);
   end;
 
-  Result.Add(vItem1);
+  // a group of routes is a tag, with its description
+  AddGroups(AServer.RouteGroups);
+  for vInt := 0 to AServer.CountSubModules - 1 do
+    AddGroups(AServer.SubModule[vInt].RouteGroups);
 end;
 
 procedure TRALSwaggerExporter.RouteToJSON(AItem: TRALJSONObject; AServer: TRALServer;
@@ -490,12 +518,24 @@ begin
       begin
         if (vMethod = amOPTIONS) and (not SwaggerModule.AllowCORSVerbs) then
           Continue;
+        { OpenAPI 3.1 has no QUERY operation (it arrives in 3.2): a route that
+          takes it is documented by its other methods }
+        if vMethod = amQUERY then
+          Continue;
 
         vjMethod := TRALJSONObject.Create;
 
         vStrMethod := LowerCase(RALMethodToHTTPMethod(vMethod));
 
-        if (AModule <> nil) and (AModule.Name <> '') then
+        // the route's group is its tag; without one, the module or the server
+        if ARoute.GetRouteGroup <> nil then
+        begin
+          vTags := TRALJSONArray.Create;
+          vTags.Add(ARoute.GetRouteGroup.Name);
+
+          vjMethod.Add('tags', vTags);
+        end
+        else if (AModule <> nil) and (AModule.Name <> '') then
         begin
           vTags := TRALJSONArray.Create;
           vTags.Add(AModule.Name);

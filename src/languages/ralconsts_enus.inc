@@ -315,6 +315,30 @@
   cmSOAPImported = '%d operations imported.';
   cmSOAPWSDLSource = 'Address or file of the WSDL:';
 
+  // Regex (RALRegex)
+  emRegexBackReference = 'Backreferences are not supported: they need backtracking.';
+  emRegexBadClass = 'Invalid character class.';
+  emRegexBadEscape = 'Invalid escape sequence.';
+  emRegexBadFlags = 'Invalid flags in group.';
+  emRegexBadGroupName = 'Invalid group name.';
+  emRegexBadRange = 'Invalid character range.';
+  emRegexBadRepeat = 'Repetition operator applied twice.';
+  emRegexDupGroupName = 'Duplicate group name.';
+  emRegexLookaround = 'Lookahead and lookbehind are not supported: they need backtracking.';
+  emRegexMissingBracket = 'Missing closing ].';
+  emRegexMissingParen = 'Missing closing ).';
+  emRegexMissingRepeatArg = 'Repetition operator with nothing to repeat.';
+  emRegexRepeatSize = 'Invalid repetition count (at most 1000).';
+  emRegexTooDeep = 'Pattern nests too deeply.';
+  emRegexTooLarge = 'Pattern is too large.';
+  emRegexTrailingBackslash = 'Pattern ends with a backslash.';
+  emRegexUnexpectedEnd = 'Pattern ends unexpectedly.';
+  emRegexUnicodeClass = 'Unicode classes (\p) are not supported.';
+  emRegexUnmatchedParen = 'Unmatched ).';
+  // Routes (RALRoutes)
+  emRouteBadConstraint = 'Unknown route constraint: %s';
+  // Client methods
+  emMethodUnsupported = 'The %s method is not supported by the %s engine.';
   // MQTT (RALModuleMQTTPackage)
   emMQTTUnknownProperty = 'Unknown MQTT property identifier 0x%x.';
   emMQTTPropertyNotAllowed = 'The MQTT property 0x%x cannot be carried by a %s packet.';

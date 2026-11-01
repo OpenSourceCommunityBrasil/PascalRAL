@@ -79,12 +79,43 @@ TRALOnReply    = procedure(ARequest: TRALRequest; AResponse: TRALResponse) of ob
 TRALOnReplyGen = procedure(ARequest: TRALRequest; AResponse: TRALResponse);
 ```
 
-Routes: `Server.CreateRoute('name', Handler, 'description')`, chained `.Allow([...])`
-and `.SkipAuth([...])`. Answer with `AResponse.Answer(HTTP_OK, 'pong', rctTEXTPLAIN)`;
+Routes: `Server.CreateRoute('name', Handler, 'description')`, chained `.Allow([...])`,
+`.SkipAuth([...])` and `.InGroup('g')`. Answer with `AResponse.Answer(HTTP_OK, 'pong', rctTEXTPLAIN)`;
 prefer the constants of `RALConsts`/`RALMIMETypes`. Routes match by path, then method;
 a path some route has but not with that method is 405 (`TRALRoutes.AllowedMethodsOf`).
 An exception in a handler answers 500 with `ErrorText` (`HideErrorDetails` hides the
 message), then `OnServerError`, or re-raises with `RaiseError`.
+
+Routing details (`RALRoutes`):
+
+- **Typed and constrained params**: a `URIParams` item whose `ParamType` is not
+  `prtString`/`prtXML`, or that has `MinValue`/`MaxValue`, `MinLength`/`MaxLength`,
+  `Values` or `Pattern` (`RALRegex`, whole value), is checked inside `MatchRoute`: a
+  value it refuses makes the route not match (another may, else 404). The route text
+  may carry it: `:id<int:range(1,9)>`, `:b?` (optional, trailing only), `*rest`
+  (wildcard, last segment); `SetRoute` reads it once into `URIParams`, and
+  `GetFullRoute` stays clean (`:id`) for Swagger. A repeated param name keeps one param.
+- **Choice**: lowest weight (10 per extra segment with `AllowURIParams`, 2 per missing
+  optional, 1 + 10 per segment a wildcard takes), ties to the first route. From
+  `RALRouteTreeAbove` (16) routes a `TRALRouteTree` narrows the candidates (built lazily
+  after a change, read without a lock, old trees kept until the collection dies); the
+  same rule then chooses. The request path is split once per request
+  (`TRALRequest.SetPathSegments`/`TryGetPathSegments`).
+- **Groups** (`TRALRouteGroups`, `Server.RouteGroups`, `Module.RouteGroups`): `Prefix`
+  (after the module's `Domain`), `SkipAuthMethods`, `Versions`, `Description` (Swagger
+  tag), events. Order around a route: module `BeforeExecute`, group and route
+  `OnBeforeExecute` (a status >= 400 there ends the request), handler, route and group
+  `OnAfterExecute`, module `AfterExecute`. There are no per-route plugins:
+  `TRALServerPlugin.IncludePaths`/`ExcludePaths` limit a plugin's validate and process
+  phases to paths.
+- **`amQUERY`** sits just before `amUNKNOWN` (the QUIC frame carries the ordinal; an
+  older RAL answers it 501). Clients ask `SupportsMethod`; Swagger (OpenAPI 3.1) leaves
+  it out.
+- **`TRALServer.PathBase`** and **`ApiVersioning`** (path, header, query or media type;
+  `ARequest.ApiVersion`; `Deprecation`/`Sunset`) act in `ValidateRequest`, before the
+  plugins; `FinishAnswer` puts `PathBase` back on a relative `Location`.
+- **Anonymous handlers**: `RALRoutesAnon` (`Server.Get('/x', procedure ...)`), whose whole
+  content sits under `RALHasAnonMethods`.
 
 ### Plugins (`src/core/RALPlugin.pas`)
 
@@ -525,7 +556,10 @@ broker itself; the wake callback runs under the broker's lock). Wire text is
   standard order (skill `ral-document`; wiki `padrao-codigo`).
 - `src/core/PascalRAL.inc` is the only place compiler/OS symbols are defined (`DELPHIXE7UP`,
   `RALWindows`, `RALLinuxFPC`, `NewDelphiAndLazarus`, `HAS_FMX`, `CPU64`...); never
-  `CompilerVersion`/`VERxxx`. Its IFEND block stays at the top. It also selects the
+  `CompilerVersion`/`VERxxx`. Capability symbols (`RALHasAnonMethods`,
+  `RALHasAttributes`, `RALHasExtRTTI`, `RALHasVirtualInterface`, `RALHasGenerics`)
+  guard optional sugar units, which compile empty without them (`.agents/tools/
+  capabilities` prints and exercises them). Its IFEND block stays at the top. It also selects the
   language (`LANG_ENUS`, `LANG_ESES`, `LANG_PTBR`), the JSON backend (`RALlkJSON`,
   `RALuJSON`) and `RAL_DEBUG`.
 - User-facing strings are constants in `src/languages/ralconsts_*.inc` (all three),

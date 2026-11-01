@@ -315,6 +315,30 @@
   cmSOAPImported = '%d operaciones importadas.';
   cmSOAPWSDLSource = 'Dirección o archivo del WSDL:';
 
+  // Regex (RALRegex)
+  emRegexBackReference = 'Las retrorreferencias no son compatibles: exigen retroceso.';
+  emRegexBadClass = 'Clase de caracteres no válida.';
+  emRegexBadEscape = 'Secuencia de escape no válida.';
+  emRegexBadFlags = 'Indicadores no válidos en el grupo.';
+  emRegexBadGroupName = 'Nombre de grupo no válido.';
+  emRegexBadRange = 'Rango de caracteres no válido.';
+  emRegexBadRepeat = 'Operador de repetición aplicado dos veces.';
+  emRegexDupGroupName = 'Nombre de grupo duplicado.';
+  emRegexLookaround = 'Lookahead y lookbehind no son compatibles: exigen retroceso.';
+  emRegexMissingBracket = 'Falta el ] de cierre.';
+  emRegexMissingParen = 'Falta el ) de cierre.';
+  emRegexMissingRepeatArg = 'Operador de repetición sin nada que repetir.';
+  emRegexRepeatSize = 'Cantidad de repetición no válida (máximo 1000).';
+  emRegexTooDeep = 'El patrón tiene demasiados niveles de anidación.';
+  emRegexTooLarge = 'El patrón es demasiado grande.';
+  emRegexTrailingBackslash = 'El patrón termina con una barra invertida.';
+  emRegexUnexpectedEnd = 'El patrón termina de forma inesperada.';
+  emRegexUnicodeClass = 'Las clases Unicode (\p) no son compatibles.';
+  emRegexUnmatchedParen = ') sin pareja.';
+  // Routes (RALRoutes)
+  emRouteBadConstraint = 'Restricción de ruta desconocida: %s';
+  // Client methods
+  emMethodUnsupported = 'El motor %1:s no admite el método %0:s.';
   // MQTT (RALModuleMQTTPackage)
   emMQTTUnknownProperty = 'Identificador de propiedad MQTT desconocido: 0x%x.';
   emMQTTPropertyNotAllowed = 'La propiedad MQTT 0x%x no puede venir en un paquete %s.';

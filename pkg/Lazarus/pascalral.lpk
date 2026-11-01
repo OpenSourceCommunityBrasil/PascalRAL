@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Core"/>
     <Version Major="2"/>
-    <Files Count="50">
+    <Files Count="52">
       <Item1>
         <Filename Value="..\..\src\core\RALTypes.pas"/>
         <UnitName Value="RALTypes"/>
@@ -227,6 +227,14 @@
         <Filename Value="..\..\src\common\RALSSE.pas"/>
         <UnitName Value="RALSSE"/>
       </Item50>
+      <Item51>
+        <Filename Value="..\..\src\common\RALRegex.pas"/>
+        <UnitName Value="RALRegex"/>
+      </Item51>
+      <Item52>
+        <Filename Value="..\..\src\core\RALRoutesAnon.pas"/>
+        <UnitName Value="RALRoutesAnon"/>
+      </Item52>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

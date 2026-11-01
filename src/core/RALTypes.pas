@@ -61,9 +61,12 @@ type
   TRALCriptoType = (crNone, crAES128, crAES192, crAES256);
   /// Kind of a JSON value.
   TRALJSONType = (rjtString, rjtNumber, rjtBoolean, rjtObject, rjtArray);
-  /// HTTP method; amALL means every method, amUNKNOWN one the server answers 501.
+  { HTTP method; amALL means every method, amUNKNOWN one the server answers 501.
+    amQUERY is the safe, idempotent method with a body (a GET whose parameters
+    are too large for the URL); it stays just before amUNKNOWN: its ordinal is
+    the one a RAL older than it reads as unknown on the QUIC frame. }
   TRALMethod = (amALL, amGET, amPOST, amPUT, amPATCH, amDELETE, amOPTIONS,
-    amHEAD, amTRACE, amUNKNOWN);
+    amHEAD, amTRACE, amQUERY, amUNKNOWN);
   /// Set of HTTP methods.
   TRALMethods = set of TRALMethod;
   /// Where a param travels (body, field, header, query, cookie); rpkNONE is not sent.
@@ -151,7 +154,7 @@ const
   EmptyStr: StringRAL = StringRAL('');
 
   /// Idempotent methods (RFC 9110 9.2.2): the ones a client may send again.
-  RALIdempotentMethods = [amGET, amHEAD, amOPTIONS, amTRACE, amPUT, amDELETE];
+  RALIdempotentMethods = [amGET, amHEAD, amOPTIONS, amTRACE, amPUT, amDELETE, amQUERY];
 
 /// Returns the index of the last character of AStr.
 function RALHighStr(const AStr: StringRAL): integer;

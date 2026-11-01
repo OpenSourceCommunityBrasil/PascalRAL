@@ -71,6 +71,7 @@ type
                       AMethod: TRALMethod); override;
 
     class function EngineName: StringRAL; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
 
@@ -462,6 +463,8 @@ begin
             vResult := vHttp.Request(vAddress, 'HEAD', vKeepAlive, vHeader, '', '', True, vSource, vSink);
           amOPTIONS:
             vResult := vHttp.Request(vAddress, 'OPTIONS', vKeepAlive, vHeader, '', '', True, vSource, vSink);
+          amQUERY:
+            vResult := vHttp.Request(vAddress, 'QUERY', vKeepAlive, vHeader, '', '', True, vSource, vSink);
         end;
 
         { mORMot does not raise on a client-side failure: Request returns
@@ -561,6 +564,12 @@ begin
      ((FHttp <> nil) and ((FHttp.Server <> vUri.Server) or (FHttp.Port <> vUri.Port) or
                           (FHttp.ServerTls <> vUri.Https))) then
     DropSocket;
+end;
+
+class function TRALSynopseClientHTTP.SupportsMethod(AMethod: TRALMethod): boolean;
+begin
+  // Request takes any method name
+  Result := (AMethod > amALL) and (AMethod < amUNKNOWN);
 end;
 
 class function TRALSynopseClientHTTP.EngineName: StringRAL;

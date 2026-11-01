@@ -113,7 +113,7 @@ Item_41=src\wizard\delphi\standalone
 Item_42=src\wizard\delphi\cgi
 Item_43=src\languages
 [Files]
-Count=159
+Count=161
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -273,6 +273,8 @@ Item_155=src\wizard\delphi\standalone\RALWizardProjStandAlone.pas
 Item_156=src\wizard\delphi\cgi\RALWizardProjCGI.pas
 Item_157=src\core\RALResponseStream.pas
 Item_158=src\common\RALSSE.pas
+Item_159=src\common\RALRegex.pas
+Item_160=src\core\RALRoutesAnon.pas
 [AdditionalFiles]
 Count=0
 

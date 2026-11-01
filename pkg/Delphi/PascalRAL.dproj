@@ -191,6 +191,8 @@
         <DCCReference Include="..\..\src\common\RALJson.pas"/>
         <DCCReference Include="..\..\src\common\RALMIMETypes.pas"/>
         <DCCReference Include="..\..\src\common\RALSSE.pas"/>
+        <DCCReference Include="..\..\src\common\RALRegex.pas"/>
+        <DCCReference Include="..\..\src\core\RALRoutesAnon.pas"/>
         <DCCReference Include="..\..\src\common\RALUrlCoder.pas"/>
         <DCCReference Include="..\..\src\common\RALMultipartCoder.pas"/>
         <DCCReference Include="..\..\src\common\RALNetwork.pas"/>

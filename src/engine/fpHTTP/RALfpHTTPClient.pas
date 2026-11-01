@@ -70,6 +70,7 @@ type
                       AMethod: TRALMethod); override;
 
     class function EngineName: StringRAL; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
 
@@ -590,6 +591,7 @@ begin
         amTRACE  : FHttp.HTTPMethod('TRACE', AURL, vDest, []); // sem funcao
         amHEAD   : FHttp.HTTPMethod('HEAD', AURL, vDest, []); // trata diferente
         amOPTIONS: FHttp.HTTPMethod('OPTIONS', AURL, vDest, []);
+        amQUERY  : FHttp.HTTPMethod('QUERY', AURL, vDest, []);
       end;
       { the Set-Cookie headers become the answer's cookies right there
         (AddSetCookie). FHttp.Cookies is not read: fphttpclient splits each
@@ -713,6 +715,12 @@ begin
     FreeAndNil(vResult);
     FreeAndNil(vSource);
   end;
+end;
+
+class function TRALfpHttpClientHTTP.SupportsMethod(AMethod: TRALMethod): boolean;
+begin
+  // HTTPMethod takes any method name
+  Result := (AMethod > amALL) and (AMethod < amUNKNOWN);
 end;
 
 class function TRALfpHttpClientHTTP.EngineName: StringRAL;

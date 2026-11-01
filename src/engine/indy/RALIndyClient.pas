@@ -59,6 +59,7 @@ type
                       AMethod: TRALMethod); override;
 
     class function EngineName : StringRAL; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     class function EngineVersion : StringRAL; override;
     class function PackageDependency : StringRAL; override;
 
@@ -66,6 +67,10 @@ type
   end;
 
 implementation
+
+type
+  /// Reaches TIdHTTP.DoRequest, the protected method behind Get, Post and the rest.
+  TIdHTTPAccess = class(TIdHTTP);
 
 { TRALIndyClientHTTP }
 
@@ -466,6 +471,9 @@ begin
           FHttp.Head(AURL);
         amOPTIONS:
           FHttp.Options(AURL, vDest);
+        amQUERY:
+          // TIdHTTP has no QUERY of its own: the method it uses for all of them
+          TIdHTTPAccess(FHttp).DoRequest('QUERY', AURL, vSource, vDest, []);
       end;
       AResponse.Params.AppendParams(FHttp.Response.RawHeaders, rpkHEADER);
       AResponse.Params.AppendParams(FHttp.Response.CustomHeaders, rpkHEADER);
@@ -547,6 +555,12 @@ begin
     FreeAndNil(vResult);
     FreeAndNil(vSource);
   end;
+end;
+
+class function TRALIndyClientHTTP.SupportsMethod(AMethod: TRALMethod): boolean;
+begin
+  // QUERY goes through DoRequest, which takes any method name
+  Result := (AMethod > amALL) and (AMethod < amUNKNOWN);
 end;
 
 class function TRALIndyClientHTTP.EngineName: StringRAL;

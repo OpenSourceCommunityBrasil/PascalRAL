@@ -75,7 +75,9 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 - `RALRequest.pas`, `RALResponse.pas` - request and response
 - `RALResponseStream.pas` - a response sent in pieces (`Send`): the channel
   (`TRALResponseStream`, `IRALResponseStream`) and the writer each engine implements
-- `RALRoutes.pas` - routes and route lookup
+- `RALRoutes.pas` - routes, their params and constraints, route groups, the route tree
+- `RALRoutesAnon.pas` - anonymous route handlers (`Server.Get('/x', procedure ...)`);
+  empty without `RALHasAnonMethods`
 - `RALPlugin.pas` - plugin base, phases, priorities, the plugin host
 - `RALServer.pas` - `TRALServer`, `TRALModuleRoutes` (modules)
 - `RALClient.pas` - `TRALClient` and the engine base `TRALClientHTTP`
@@ -89,7 +91,8 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 
 `RALBase64`, `RALExternalsLibraries` (dynamic library loading), `RALHexadecimal`,
 `RALJson` (+ `RALJSON_Delphi/FPC/lkJSON/uJSON.inc` backends), `RALMIMETypes`,
-`RALMultipartCoder`, `RALNetwork` (the server's own address), `RALQuicFrame` (RAL's
+`RALMultipartCoder`, `RALNetwork` (the server's own address), `RALRegex` (RAL's own
+regular expressions: RE2 syntax, lazy DFA and Pike VM, linear time), `RALQuicFrame` (RAL's
 frame over QUIC), `RALResponsePages`, `RALSSE` (Server-Sent Events writer and
 parser), `RALStream` (views, chunked and temp-file
 streams, body ownership), `RALThreadSafe`, `RALTools`, `RALUrlCoder`; `RALTranslate`

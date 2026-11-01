@@ -156,7 +156,7 @@ const
   { method names without the 'am' prefix, in the order of the enum }
   RALMethodNames: array [TRALMethod] of StringRAL = (
     'ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD', 'TRACE',
-    '');
+    'QUERY', '');
 
 function RALTrimRight(const A: StringRAL): StringRAL;
 var

@@ -150,6 +150,7 @@ type
                       AMethod: TRALMethod); override;
 
     class function EngineName: StringRAL; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
 
@@ -521,6 +522,12 @@ end;
 class function TRALKwikClientHTTP.SupportsHTTPVersion: boolean;
 begin
   Result := False;
+end;
+
+class function TRALKwikClientHTTP.SupportsMethod(AMethod: TRALMethod): boolean;
+begin
+  // the frame carries the ordinal; a RAL older than QUERY answers it 501
+  Result := (AMethod > amALL) and (AMethod < amUNKNOWN);
 end;
 
 class function TRALKwikClientHTTP.EngineName: StringRAL;

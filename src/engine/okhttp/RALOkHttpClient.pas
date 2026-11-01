@@ -133,6 +133,7 @@ type
                       AMethod: TRALMethod); override;
 
     class function EngineName: StringRAL; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
 
@@ -566,6 +567,12 @@ end;
 class function TRALOkHttpClientHTTP.SupportsKeepAliveInterval: boolean;
 begin
   Result := True;
+end;
+
+class function TRALOkHttpClientHTTP.SupportsMethod(AMethod: TRALMethod): boolean;
+begin
+  // the Java side builds the request with the method name, and OkHttp takes a body on QUERY
+  Result := (AMethod > amALL) and (AMethod < amUNKNOWN);
 end;
 
 class function TRALOkHttpClientHTTP.EngineName: StringRAL;

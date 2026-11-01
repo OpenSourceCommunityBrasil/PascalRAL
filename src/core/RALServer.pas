@@ -108,9 +108,55 @@ type
 
   { Base of the server components: answers each request through its plugins, then
     its modules. Every feature other than routing is a plugin. }
+  /// Where the API version of a request is read from.
+  TRALApiVersionSource = (avPath, avHeader, avQuery, avMediaType);
+
+  { Versions of the API of a server. When Enabled, each request gets its
+    version (TRALRequest.ApiVersion) from Source - the first path segment ('/v2/
+    users', removed from the path), a header, a query param or the media type
+    ('application/vnd.app.v2+json' or ';version=2' in Accept) - or Default; a
+    route or group answers only its Versions. A version in Deprecated gets the
+    Deprecation header in its answers, and Sunset when a date follows ('1=Sat, 01
+    Jan 2028 00:00:00 GMT'). }
+  TRALApiVersioning = class(TPersistent)
+  private
+    FDefault: StringRAL;
+    FDeprecated: TStrings;
+    FEnabled: boolean;
+    FHeaderName: StringRAL;
+    FQueryName: StringRAL;
+    FSource: TRALApiVersionSource;
+
+    procedure SetDeprecated(const AValue: TStrings);
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    /// Adds Deprecation (and Sunset) to AResponse when ARequest's version is deprecated.
+    procedure MarkResponse(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Sets ARequest.ApiVersion; with avPath the version segment leaves the path.
+    procedure Resolve(ARequest: TRALRequest);
+  published
+    /// Version of a request that names none; empty = no version (every route).
+    property Default: StringRAL read FDefault write FDefault;
+    /// Deprecated versions, one per line, optionally 'version=sunset date'.
+    property Deprecated: TStrings read FDeprecated write SetDeprecated;
+    /// Whether requests carry a version at all.
+    property Enabled: boolean read FEnabled write FEnabled default False;
+    /// Header of avHeader.
+    property HeaderName: StringRAL read FHeaderName write FHeaderName;
+    /// Query param of avQuery.
+    property QueryName: StringRAL read FQueryName write FQueryName;
+    /// Where the version is read from.
+    property Source: TRALApiVersionSource read FSource write FSource default avPath;
+  end;
+
   TRALServer = class(TRALPluginHost)
   private
     FActive: boolean;
+    FApiVersioning: TRALApiVersioning;
     FAuthentication: TRALAuthServer;
     /// Internal module of the server's own routes and of its status page.
     FBaseModule: TRALModuleRoutes;
@@ -124,6 +170,7 @@ type
     FOnRequest: TRALOnReply;
     FOnResponse: TRALOnReply;
     FOnServerError: TRALOnServerError;
+    FPathBase: StringRAL;
     FPort: IntegerRAL;
     FRaiseError: boolean;
     FResponsePages: TRALResponsePages;
@@ -180,6 +227,10 @@ type
     procedure SetIPConfig(const AValue: TRALIPConfig);
     procedure SetPort(const AValue: IntegerRAL); virtual;
     procedure SetResponsePages(const AValue: TRALResponsePages);
+    function GetRouteGroups: TRALRouteGroups;
+    procedure SetApiVersioning(const AValue: TRALApiVersioning);
+    procedure SetPathBase(const AValue: StringRAL);
+    procedure SetRouteGroups(const AValue: TRALRouteGroups);
     procedure SetRoutes(const AValue: TRALRoutes);
     procedure SetServerStatus(AValue: TStringList);
     procedure SetSessionTimeout(const AValue: IntegerRAL); virtual;
@@ -240,6 +291,8 @@ type
     { ENGINE API: fires OnResponse; TRALServer.ProcessCommands and the commit of a
       stream call it, once per response }
     procedure NotifyResponse(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// What every answer gets at the end: the version headers, the PathBase on Location.
+    procedure FinishAnswer(ARequest: TRALRequest; AResponse: TRALResponse);
     /// Number of streams open now.
     function OpenStreamCount: IntegerRAL;
     /// Answers a request: the plugins loop, then the modules loop, else 404.
@@ -293,11 +346,19 @@ type
     /// Fired once when a streamed response closes, with why.
     property OnStreamClosed: TRALOnStreamClosed read FOnStreamClosed write FOnStreamClosed;
     /// Port to listen on.
+    { Path the server lives under behind a proxy ('/myapp'): taken off every
+      request path before anything else (a path outside it is 404) and put back
+      on a relative Location the handlers answer; empty = none. }
+    property PathBase: StringRAL read FPathBase write SetPathBase;
     property Port: IntegerRAL read FPort write SetPort;
     /// Raises the exceptions of the handlers when OnServerError is not assigned.
     property RaiseError: boolean read FRaiseError write FRaiseError default false;
     /// HTML page answered with each error status.
     property ResponsePages: TRALResponsePages read FResponsePages write SetResponsePages;
+    /// Versions of the API: where a request says its version, the default, the deprecated ones.
+    property ApiVersioning: TRALApiVersioning read FApiVersioning write SetApiVersioning;
+    /// Groups of the server's routes: path prefix, events, authentication.
+    property RouteGroups: TRALRouteGroups read GetRouteGroups write SetRouteGroups;
     /// Routes of the server.
     property Routes: TRALRoutes read FRoutes write SetRoutes;
     /// Text answered at '/' by ShowServerStatus; the default page when empty.
@@ -467,6 +528,8 @@ type
       still run, and an exception goes to OnServerError. }
     procedure ServerDeactivating; virtual;
     procedure SetDomain(const AValue: StringRAL); virtual;
+    function GetRouteGroups: TRALRouteGroups;
+    procedure SetRouteGroups(const AValue: TRALRouteGroups);
     procedure SetRoutes(const AValue: TRALRoutes);
     procedure SetServer(AValue: TRALServer); virtual;
   public
@@ -499,6 +562,8 @@ type
     function ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse): boolean;
       virtual;
 
+    /// Groups of the module's routes; a module that publishes Routes publishes this too.
+    property RouteGroups: TRALRouteGroups read GetRouteGroups write SetRouteGroups;
     /// Routes of the module.
     property Routes: TRALRoutes read FRoutes write SetRoutes;
   published
@@ -653,6 +718,7 @@ begin
   inherited;
 
   FIPConfig := TRALIPConfig.Create(Self);
+  FApiVersioning := TRALApiVersioning.Create;
   FListSubModules := TList.Create;
   FRoutes := TRALRoutes.Create(Self);
   FServerStatus := TStringList.Create;
@@ -680,6 +746,7 @@ begin
 
   FreeAndNil(FBaseModule);
   FreeAndNil(FRoutes);
+  FreeAndNil(FApiVersioning);
   FreeAndNil(FServerStatus);
   FreeAndNil(FIPConfig);
   FreeAndNil(FListSubModules);
@@ -1048,9 +1115,54 @@ begin
   RALAssignOwned(FResponsePages, AValue);
 end;
 
+procedure TRALServer.SetApiVersioning(const AValue: TRALApiVersioning);
+begin
+  FApiVersioning.Assign(AValue);
+end;
+
+procedure TRALServer.SetPathBase(const AValue: StringRAL);
+begin
+  FPathBase := FixRoute(RALTrim(AValue));
+  if FPathBase = '/' then
+    FPathBase := '';
+end;
+
+procedure TRALServer.FinishAnswer(ARequest: TRALRequest; AResponse: TRALResponse);
+var
+  vParam: TRALParam;
+  vValue: StringRAL;
+begin
+  if FApiVersioning.Enabled then
+    FApiVersioning.MarkResponse(ARequest, AResponse);
+  // a relative Location points inside the application: the proxy's path goes back on it
+  if FPathBase <> '' then
+  begin
+    vParam := AResponse.Params.GetKind['Location', rpkHEADER];
+    if vParam <> nil then
+    begin
+      vValue := vParam.AsString;
+      if (vValue <> '') and (vValue[POSINISTR] = '/') and
+         ((Length(vValue) < 2) or (vValue[POSINISTR + 1] <> '/')) and
+         (not RALSameName(Copy(vValue, 1, Length(FPathBase) + 1), FPathBase + '/')) then
+        vParam.AsString := FPathBase + vValue;
+    end;
+  end;
+end;
+
 procedure TRALServer.SetRoutes(const AValue: TRALRoutes);
 begin
   RALAssignOwned(FRoutes, AValue);
+end;
+
+function TRALServer.GetRouteGroups: TRALRouteGroups;
+begin
+  Result := FRoutes.Groups;
+end;
+
+procedure TRALServer.SetRouteGroups(const AValue: TRALRouteGroups);
+begin
+  if AValue <> FRoutes.Groups then
+    FRoutes.Groups.Assign(AValue);
 end;
 
 procedure TRALServer.Notification(AComponent: TComponent; Operation: TOperation);
@@ -1095,6 +1207,8 @@ begin
     vPlugins := Snapshot.ByPhase[ppProcess];
     for vInt := 0 to High(vPlugins) do
     begin
+      if not vPlugins[vInt].AppliesTo(ARequest) then
+        Continue;
       vPlugins[vInt].ProcessRequest(ARequest, AResponse, vHandled);
       if vHandled then
         Break;
@@ -1115,6 +1229,8 @@ begin
 
     // the handler returned: a committed response takes the engine's changes again
     AResponse.Unguard;
+    if not AResponse.Committed then
+      FinishAnswer(ARequest, AResponse);
     // a stream fired OnResponse at its commit, before the first byte
     if not AResponse.Committed then
       NotifyResponse(ARequest, AResponse);
@@ -1352,12 +1468,228 @@ begin
 end;
 
 procedure TRALServer.ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
+var
+  vPath: StringRAL;
+  vLen: IntegerRAL;
 begin
+  { the path the proxy put in front comes off first: plugins, routes and modules
+    see the path of the application }
+  if FPathBase <> '' then
+  begin
+    vPath := ARequest.Query;
+    vLen := Length(FPathBase);
+    if RALSameName(Copy(vPath, 1, vLen), FPathBase) and
+       ((Length(vPath) = vLen) or (vPath[POSINISTR + vLen] = '/')) then
+    begin
+      Delete(vPath, 1, vLen);
+      if vPath = '' then
+        vPath := '/';
+      ARequest.Query := vPath;
+    end
+    else
+    begin
+      AResponse.Answer(HTTP_NotFound);
+      Exit;
+    end;
+  end;
+  if FApiVersioning.Enabled then
+    FApiVersioning.Resolve(ARequest);
+
   { RFC 9110 9.1: a method the server does not implement is answered 501,
     here and not in a route - before the engine decodes the body, and after
     the plugins (flood counts it like any other request) }
   if RunValidate(ARequest, AResponse) and (ARequest.Method = amUNKNOWN) then
     AResponse.Answer(HTTP_NotImplemented);
+end;
+
+{ TRALApiVersioning }
+
+constructor TRALApiVersioning.Create;
+begin
+  inherited Create;
+  FDeprecated := TStringList.Create;
+  FEnabled := False;
+  FSource := avPath;
+  FHeaderName := 'Api-Version';
+  FQueryName := 'api-version';
+  FDefault := '';
+end;
+
+destructor TRALApiVersioning.Destroy;
+begin
+  FreeAndNil(FDeprecated);
+  inherited Destroy;
+end;
+
+procedure TRALApiVersioning.AssignTo(Dest: TPersistent);
+var
+  vDest: TRALApiVersioning;
+begin
+  if not (Dest is TRALApiVersioning) then
+  begin
+    inherited AssignTo(Dest);
+    Exit;
+  end;
+  vDest := TRALApiVersioning(Dest);
+  vDest.Default := FDefault;
+  vDest.Deprecated.Assign(FDeprecated);
+  vDest.Enabled := FEnabled;
+  vDest.HeaderName := FHeaderName;
+  vDest.QueryName := FQueryName;
+  vDest.Source := FSource;
+end;
+
+procedure TRALApiVersioning.SetDeprecated(const AValue: TStrings);
+begin
+  FDeprecated.Assign(AValue);
+end;
+
+{ Byte position of ASub in AText from byte AFrom, or 0: StrUtils.PosEx on Delphi
+  goes through UTF-16 and counts its own units. }
+function BytePos(const ASub, AText: StringRAL; AFrom: IntegerRAL): IntegerRAL;
+var
+  vInt, vLen: IntegerRAL;
+begin
+  Result := 0;
+  vLen := Length(ASub);
+  if vLen = 0 then
+    Exit;
+  for vInt := AFrom to Length(AText) - vLen + 1 do
+    if CompareMem(PAnsiChar(Pointer(AText)) + vInt - 1, Pointer(ASub), vLen) then
+    begin
+      Result := vInt;
+      Exit;
+    end;
+end;
+
+{ The 'v2' of a path segment as '2', or '' when the segment is not a version. }
+function VersionOfSegment(const ASegment: StringRAL): StringRAL;
+var
+  vInt: IntegerRAL;
+begin
+  Result := '';
+  if (Length(ASegment) < 2) or not (ASegment[POSINISTR] in ['v', 'V']) or
+     not (ASegment[POSINISTR + 1] in ['0'..'9']) then
+    Exit;
+  for vInt := 2 to Length(ASegment) do
+    if not (ASegment[POSINISTR - 1 + vInt] in ['0'..'9', '.']) then
+      Exit;
+  Result := Copy(ASegment, 2, MaxInt);
+end;
+
+{ The version a media type names: 'version=2' as a parameter, or the '.v2' of a
+  vendor type ('application/vnd.app.v2+json'). }
+function VersionOfMediaType(const AType: StringRAL): StringRAL;
+var
+  vPos, vEnd: IntegerRAL;
+  vLower: StringRAL;
+begin
+  Result := '';
+  vLower := StringRAL(LowerCase(string(AType)));
+  vPos := BytePos('version=', vLower, 1);
+  if vPos > 0 then
+  begin
+    Result := Copy(AType, vPos + 8, MaxInt);
+    vEnd := BytePos(';', Result, 1);
+    if vEnd = 0 then
+      vEnd := BytePos(',', Result, 1);
+    if vEnd > 0 then
+      Result := Copy(Result, 1, vEnd - 1);
+    Result := RALTrim(Result);
+    Exit;
+  end;
+  vPos := BytePos('.v', vLower, 1);
+  while vPos > 0 do
+  begin
+    vEnd := vPos + 2;
+    while (vEnd <= Length(vLower)) and (vLower[POSINISTR - 1 + vEnd] in ['0'..'9', '.']) do
+      Inc(vEnd);
+    if (vEnd > vPos + 2) and ((vEnd > Length(vLower)) or (vLower[POSINISTR - 1 + vEnd] in ['+', ';', ','])) then
+    begin
+      Result := Copy(AType, vPos + 2, vEnd - vPos - 2);
+      Exit;
+    end;
+    vPos := BytePos('.v', vLower, vPos + 2);
+  end;
+end;
+
+procedure TRALApiVersioning.Resolve(ARequest: TRALRequest);
+var
+  vVersion, vPath: StringRAL;
+  vParam: TRALParam;
+  vEnd: IntegerRAL;
+begin
+  vVersion := '';
+  case FSource of
+    avPath:
+      begin
+        vPath := ARequest.Query;
+        vEnd := BytePos('/', vPath, 2);
+        if vEnd = 0 then
+          vEnd := Length(vPath) + 1;
+        vVersion := VersionOfSegment(Copy(vPath, 2, vEnd - 2));
+        if vVersion <> '' then
+        begin
+          // the routes are declared without the version segment
+          Delete(vPath, 1, vEnd - 1);
+          if vPath = '' then
+            vPath := '/';
+          ARequest.Query := vPath;
+        end;
+      end;
+    avHeader:
+      begin
+        vParam := ARequest.Params.GetKind[FHeaderName, rpkHEADER];
+        if vParam <> nil then
+          vVersion := RALTrim(vParam.AsString);
+      end;
+    avQuery:
+      begin
+        vParam := ARequest.Params.GetKind[FQueryName, rpkQUERY];
+        if vParam <> nil then
+          vVersion := RALTrim(vParam.AsString);
+      end;
+    avMediaType:
+      begin
+        vParam := ARequest.Params.GetKind['Accept', rpkHEADER];
+        if vParam <> nil then
+          vVersion := VersionOfMediaType(vParam.AsString);
+        if vVersion = '' then
+          vVersion := VersionOfMediaType(ARequest.ContentType);
+      end;
+  end;
+  if (vVersion <> '') and (vVersion[POSINISTR] in ['v', 'V']) then
+    Delete(vVersion, 1, 1);
+  if vVersion = '' then
+    vVersion := FDefault;
+  ARequest.ApiVersion := vVersion;
+end;
+
+procedure TRALApiVersioning.MarkResponse(ARequest: TRALRequest; AResponse: TRALResponse);
+var
+  vInt, vPos: IntegerRAL;
+  vLine, vName: StringRAL;
+begin
+  if ARequest.ApiVersion = '' then
+    Exit;
+  for vInt := 0 to FDeprecated.Count - 1 do
+  begin
+    vLine := StringRAL(Trim(FDeprecated[vInt]));
+    vPos := Pos(StringRAL('='), vLine);
+    if vPos > 0 then
+      vName := RALTrim(Copy(vLine, 1, vPos - 1))
+    else
+      vName := vLine;
+    if (vName <> '') and (vName[POSINISTR] in ['v', 'V']) then
+      Delete(vName, 1, 1);
+    if RALSameName(vName, ARequest.ApiVersion) then
+    begin
+      AResponse.AddHeader('Deprecation', 'true');
+      if vPos > 0 then
+        AResponse.AddHeader('Sunset', RALTrim(Copy(vLine, vPos + 1, MaxInt)));
+      Exit;
+    end;
+  end;
 end;
 
 { TRALModuleRequest }
@@ -1678,7 +2010,9 @@ function TRALModuleRoutes.ProcessRequest(ARequest: TRALRequest;
   AResponse: TRALResponse): boolean;
 var
   vRoute: TRALRoute;
+  vGroup: TRALRouteGroup;
   vType: StringRAL;
+  vStop: boolean;
 begin
   if ARequest.RouteResolved then
   begin
@@ -1709,8 +2043,30 @@ begin
   else if vRoute.IsMethodAllowed(ARequest.Method) then
   begin
     try
+      { module, group, route, the handler, then back: a group or route before
+        event that answers 400 or above ends the request there (the module's
+        BeforeExecute keeps its old meaning: the route always ran after it) }
       BeforeExecute(ARequest, AResponse);
-      ExecuteRoute(vRoute, ARequest, AResponse);
+      vStop := False;
+      vGroup := vRoute.GetRouteGroup;
+      if (vGroup <> nil) and Assigned(vGroup.OnBeforeExecute) then
+      begin
+        vGroup.OnBeforeExecute(ARequest, AResponse);
+        vStop := AResponse.StatusCode >= HTTP_BadRequest;
+      end;
+      if (not vStop) and Assigned(vRoute.OnBeforeExecute) then
+      begin
+        vRoute.OnBeforeExecute(ARequest, AResponse);
+        vStop := AResponse.StatusCode >= HTTP_BadRequest;
+      end;
+      if not vStop then
+      begin
+        ExecuteRoute(vRoute, ARequest, AResponse);
+        if Assigned(vRoute.OnAfterExecute) then
+          vRoute.OnAfterExecute(ARequest, AResponse);
+        if (vGroup <> nil) and Assigned(vGroup.OnAfterExecute) then
+          vGroup.OnAfterExecute(ARequest, AResponse);
+      end;
       AfterExecute(ARequest, AResponse);
     except
       on e: Exception do
@@ -1743,6 +2099,17 @@ begin
   if FRoutes <> nil then
     for vInt := 0 to Pred(FRoutes.Count) do
       TRALBaseRoute(FRoutes.Items[vInt]).UpdateSegments;
+end;
+
+function TRALModuleRoutes.GetRouteGroups: TRALRouteGroups;
+begin
+  Result := FRoutes.Groups;
+end;
+
+procedure TRALModuleRoutes.SetRouteGroups(const AValue: TRALRouteGroups);
+begin
+  if AValue <> FRoutes.Groups then
+    FRoutes.Groups.Assign(AValue);
 end;
 
 procedure TRALModuleRoutes.AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse);

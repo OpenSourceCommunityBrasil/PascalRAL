@@ -190,6 +190,7 @@ type
     /// connection's callback: the event, else the pin, else the library.
     function JudgeServerCert(const AInfo: TRALCertInfo): boolean;
     class function EngineName: StringRAL; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     /// The version of the msquic actually loaded, asked of the library itself.
     /// Empty when it has not been loaded yet - there is nothing to report
     /// before the first request, and inventing a number would be worse.
@@ -933,6 +934,12 @@ begin
   DropShared;
   DropOwn;
   inherited Destroy;
+end;
+
+class function TRALMsQuicClientHTTP.SupportsMethod(AMethod: TRALMethod): boolean;
+begin
+  // the frame carries the ordinal; a RAL older than QUERY answers it 501
+  Result := (AMethod > amALL) and (AMethod < amUNKNOWN);
 end;
 
 class function TRALMsQuicClientHTTP.EngineName: StringRAL;

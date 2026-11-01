@@ -252,6 +252,10 @@ type
     class function SupportsCertPin: boolean; virtual;
     /// True when the engine can speak HTTP/2; else HTTPVersion rhv2 raises.
     class function SupportsHTTP2: boolean; virtual;
+    { Whether the engine sends AMethod; every engine sends the classic ones,
+      QUERY only those that take any method name. A method it does not send
+      raises before connecting. }
+    class function SupportsMethod(AMethod: TRALMethod): boolean; virtual;
     /// True when the engine carries HTTP; False on the QUIC engines.
     class function SupportsHTTPVersion: boolean; virtual;
     /// True when the engine honours KeepAliveInterval.
@@ -589,6 +593,11 @@ type
     /// Sends a POST whose event stream goes to AOnEvent event by event - see Get.
     procedure Post(ARoute: StringRAL; AOnEvent: TRALOnServerEvent;
                    var AResponse: TRALResponse); overload;
+    /// Sends a QUERY (a GET with a body) and returns the response, which the caller frees.
+    procedure Query(ARoute: StringRAL; var AResponse : TRALResponse); overload;
+    /// Sends a QUERY and hands the answer to AOnResponse.
+    procedure Query(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
+                    AExecBehavior : TRALExecBehavior = ebSingleThread); overload;
     /// Sends a PUT and returns the response, which the caller frees.
     procedure Put(ARoute: StringRAL; var AResponse : TRALResponse); overload;
     /// Sends a PUT and hands the answer to AOnResponse.
@@ -1836,6 +1845,18 @@ begin
   ExecuteThread(ARoute, amPATCH, AOnResponse, AExecBehavior);
 end;
 
+procedure TRALClient.Query(ARoute: StringRAL; var AResponse: TRALResponse);
+begin
+  AResponse := nil; // see Get
+  AResponse := ExecuteSingle(ARoute, amQUERY);
+end;
+
+procedure TRALClient.Query(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse;
+                           AExecBehavior: TRALExecBehavior);
+begin
+  ExecuteThread(ARoute, amQUERY, AOnResponse, AExecBehavior);
+end;
+
 procedure TRALClient.Post(ARoute: StringRAL; var AResponse: TRALResponse);
 begin
   AResponse := nil; // see Get
@@ -2425,6 +2446,11 @@ begin
   Result := False;
 end;
 
+class function TRALClientHTTP.SupportsMethod(AMethod: TRALMethod): boolean;
+begin
+  Result := (AMethod > amALL) and (AMethod < amQUERY);
+end;
+
 class function TRALClientHTTP.SupportsHTTPVersion: boolean;
 begin
   { every engine but the QUIC ones carries HTTP over something }
@@ -2547,6 +2573,14 @@ begin
     { Same reasoning as the pin above, and in the same place: refuse before a
       socket is opened. rhv11 is what every engine does anyway, so asking for
       it is never a reason to refuse. }
+    if not SupportsMethod(AMethod) then
+    begin
+      SetTransportError(AResponse, rteOther, 0,
+        StringRAL(Format(emMethodUnsupported, [string(RALMethodToHTTPMethod(AMethod)), EngineName])));
+      raise Exception.Create(Format(emMethodUnsupported,
+        [string(RALMethodToHTTPMethod(AMethod)), EngineName]));
+    end;
+
     if (FParent.HTTPVersion = rhv2) and (not SupportsHTTP2) then
     begin
       SetTransportError(AResponse, rteOther, 0,

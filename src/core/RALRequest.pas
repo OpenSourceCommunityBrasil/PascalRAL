@@ -9,6 +9,9 @@ uses
   RALMIMETypes, RALStream, RALCompress, RALToken;
 
 type
+  /// Segments of a path: '/api/users/1' as api, users, 1.
+  TRALPathSegments = array of StringRAL;
+
   /// Data about the client of a request: address, port, connection and user agent.
   TRALClientInfo = class(TPersistent)
   private
@@ -69,6 +72,13 @@ type
   /// A request: method, route, query, headers, body, credentials and client data.
   TRALRequest = class(TRALHTTPHeaderInfo)
   private
+    FApiVersion: StringRAL;
+    /// The path FPathRaw and FPathTrimmed were split from.
+    FPathKey: StringRAL;
+    /// The path split as it came, for the route lookup.
+    FPathRaw: TRALPathSegments;
+    /// The path split and each segment trimmed.
+    FPathTrimmed: TRALPathSegments;
     /// Credentials; created on first read.
     FAuthorization: TRALAuthorization;
     FClientInfo: TRALClientInfo;
@@ -135,9 +145,18 @@ type
     function GetRequestEncStream(const AEncode: boolean = true): TStream; virtual; abstract;
     /// The body as text; on a client, encoded for the wire when AEncode.
     function GetRequestEncText(const AEncode: boolean = true): StringRAL; virtual; abstract;
+    /// Keeps the path APath split as ARaw and ATrimmed, for the next route lookup.
+    procedure SetPathSegments(const APath: StringRAL; const ARaw, ATrimmed: TRALPathSegments);
     /// Records the route that answers the request, and its owner; called once.
     procedure SetResolvedRoute(ARoute, AOwner: TObject);
+    { The segments SetPathSegments kept, when they were split from APath: every
+      module looks the route up, and the path is split once per request. }
+    function TryGetPathSegments(const APath: StringRAL; out ARaw,
+      ATrimmed: TRALPathSegments): boolean;
 
+    { Version of the API the request asked for (TRALServer.ApiVersioning), or the
+      default one; empty when the server does not version its API. }
+    property ApiVersion: StringRAL read FApiVersion write FApiVersion;
     /// True once Finish ran.
     property Finished: boolean read FFinished;
     /// The body: on a server the one that arrived, decoded; on a client the one to send.
@@ -279,6 +298,27 @@ begin
   else
     Result := LowerCase(FHttpVersion) + '://';
   Result := Result + FHost + FQuery;
+end;
+
+procedure TRALRequest.SetPathSegments(const APath: StringRAL; const ARaw,
+  ATrimmed: TRALPathSegments);
+begin
+  FPathKey := APath;
+  FPathRaw := ARaw;
+  FPathTrimmed := ATrimmed;
+end;
+
+function TRALRequest.TryGetPathSegments(const APath: StringRAL; out ARaw,
+  ATrimmed: TRALPathSegments): boolean;
+begin
+  // the same string, the common case, before comparing the text
+  Result := ((Pointer(APath) = Pointer(FPathKey)) and (FPathRaw <> nil)) or
+    ((FPathRaw <> nil) and (APath = FPathKey));
+  if Result then
+  begin
+    ARaw := FPathRaw;
+    ATrimmed := FPathTrimmed;
+  end;
 end;
 
 procedure TRALRequest.SetQuery(const AValue: StringRAL);

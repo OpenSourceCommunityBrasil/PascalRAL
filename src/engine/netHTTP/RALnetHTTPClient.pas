@@ -99,6 +99,7 @@ type
                       AMethod: TRALMethod); override;
 
     class function EngineName : StringRAL; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     class function EngineVersion : StringRAL; override;
     class function PackageDependency : StringRAL; override;
 
@@ -1148,6 +1149,12 @@ begin
   Result := FShared;
 end;
 
+class function TRALnetHTTPClientHTTP.SupportsMethod(AMethod: TRALMethod): boolean;
+begin
+  // QUERY goes through Execute, which takes any method name
+  Result := (AMethod > amALL) and (AMethod < amUNKNOWN);
+end;
+
 class function TRALnetHTTPClientHTTP.EngineName: StringRAL;
 begin
   Result := 'netHTTP';
@@ -1400,6 +1407,9 @@ begin
           vResponse := vHttp.Head(AURL, vHeaders);
         amOPTIONS:
           vResponse := vHttp.Options(AURL, vResult, vHeaders);
+        amQUERY:
+          // no Query of its own: Execute takes the method name
+          vResponse := vHttp.Execute('QUERY', string(AURL), vSource, vResult, vHeaders);
       end;
 	  
       if vResponse <> nil then // Antonio c Gomes AV

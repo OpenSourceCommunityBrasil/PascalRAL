@@ -41,6 +41,8 @@ const
 
 type
   TRALPluginHost = class;
+  /// Paths of IncludePaths/ExcludePaths, each in segments.
+  TRALPathPatterns = array of TRALRouteSegments;
 
   /// Point of a request where a plugin acts.
   TRALPluginPhase = (
@@ -73,10 +75,21 @@ type
   TRALServerPlugin = class(TRALComponent)
   private
     FEnabled: boolean;
+    FExcludePaths: TStrings;
+    /// ExcludePaths in segments.
+    FExcludeSegs: TRALPathPatterns;
     FHost: TRALPluginHost;
+    FIncludePaths: TStrings;
+    /// IncludePaths in segments.
+    FIncludeSegs: TRALPathPatterns;
+    /// Whether IncludePaths or ExcludePaths has an entry.
+    FPathFilter: boolean;
     FPriority: IntegerRAL;
 
+    procedure PathsChanged(Sender: TObject);
     procedure SetEnabled(AValue: boolean);
+    procedure SetExcludePaths(const AValue: TStrings);
+    procedure SetIncludePaths(const AValue: TStrings);
     procedure SetPriority(AValue: IntegerRAL);
   protected
     /// Tells the host to rebuild its lists after Priority, Phases or Enabled changed.
@@ -96,6 +109,10 @@ type
     /// ppAuthResult: hears the verdict and may change AResult.
     procedure AfterAuthenticate(ARequest: TRALRequest; AResponse: TRALResponse;
       var AResult: TRALAuthResult); virtual;
+    { Whether the plugin acts on the path of ARequest, by IncludePaths and
+      ExcludePaths; True when both are empty. The host asks it before
+      ValidateRequest and ProcessRequest. }
+    function AppliesTo(ARequest: TRALRequest): boolean;
     { ppAuthenticate: what the request this authenticator decided means to brute
       force. AOnOwnRoute is True on the plugin's own routes; the default is raaNone. }
     function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
@@ -128,6 +145,13 @@ type
   published
     /// A disabled plugin stays in the server and is skipped.
     property Enabled: boolean read FEnabled write SetEnabled default True;
+    { Paths the plugin leaves alone, one per line: '/health' is that path and
+      everything under it, '/api/*/admin' matches one segment at the '*'. }
+    property ExcludePaths: TStrings read FExcludePaths write SetExcludePaths;
+    { Paths the plugin acts on, one per line (as ExcludePaths); empty = every
+      path. Applies to the validation and process phases, not to authentication
+      (routes and groups have SkipAuthMethods). }
+    property IncludePaths: TStrings read FIncludePaths write SetIncludePaths;
     /// Running order: higher runs first (see the RALPriority* constants).
     property Priority: IntegerRAL read FPriority write SetPriority;
   end;
@@ -228,13 +252,84 @@ begin
   FEnabled := True;
   FPriority := DefaultPriority;
   FHost := nil;
+  FIncludePaths := TStringList.Create;
+  TStringList(FIncludePaths).OnChange := {$IFDEF FPC}@{$ENDIF}PathsChanged;
+  FExcludePaths := TStringList.Create;
+  TStringList(FExcludePaths).OnChange := {$IFDEF FPC}@{$ENDIF}PathsChanged;
 end;
 
 destructor TRALServerPlugin.Destroy;
 begin
   if FHost <> nil then
     FHost.RemovePlugin(Self);
+  FreeAndNil(FIncludePaths);
+  FreeAndNil(FExcludePaths);
   inherited Destroy;
+end;
+
+{ Whether APath falls under one of APatterns. }
+function PathInList(const APath: TRALRouteSegments; const APatterns: TRALPathPatterns): boolean;
+var
+  vInt: IntegerRAL;
+begin
+  Result := False;
+  for vInt := 0 to High(APatterns) do
+    if RALPathUnder(APath, APatterns[vInt]) then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+{ The lines of AList in segments, the blank ones left out. }
+function PatternsOf(AList: TStrings): TRALPathPatterns;
+var
+  vInt, vCount: IntegerRAL;
+begin
+  Result := nil;
+  if AList = nil then
+    Exit;
+  vCount := 0;
+  SetLength(Result, AList.Count);
+  for vInt := 0 to AList.Count - 1 do
+    if Trim(AList[vInt]) <> '' then
+    begin
+      Result[vCount] := RALPathSegments(StringRAL(Trim(AList[vInt])));
+      Inc(vCount);
+    end;
+  SetLength(Result, vCount);
+end;
+
+function TRALServerPlugin.AppliesTo(ARequest: TRALRequest): boolean;
+var
+  vRaw, vPath: TRALRouteSegments;
+begin
+  Result := True;
+  if not FPathFilter then
+    Exit;
+  RALSplitRequestPath(ARequest, vRaw, vPath);
+  if (Length(FIncludeSegs) > 0) and (not PathInList(vPath, FIncludeSegs)) then
+    Result := False
+  else if (Length(FExcludeSegs) > 0) and PathInList(vPath, FExcludeSegs) then
+    Result := False;
+end;
+
+procedure TRALServerPlugin.PathsChanged(Sender: TObject);
+begin
+  // split once, here: a request only compares
+  FIncludeSegs := PatternsOf(FIncludePaths);
+  FExcludeSegs := PatternsOf(FExcludePaths);
+  FPathFilter := (Length(FIncludeSegs) > 0) or (Length(FExcludeSegs) > 0);
+end;
+
+procedure TRALServerPlugin.SetExcludePaths(const AValue: TStrings);
+begin
+  FExcludePaths.Assign(AValue);
+end;
+
+procedure TRALServerPlugin.SetIncludePaths(const AValue: TStrings);
+begin
+  FIncludePaths.Assign(AValue);
 end;
 
 procedure TRALServerPlugin.AfterAuthenticate(ARequest: TRALRequest;
@@ -706,6 +801,8 @@ begin
   vList := FSnapshot.ByPhase[ppValidate];
   for vInt := 0 to High(vList) do
   begin
+    if not vList[vInt].AppliesTo(ARequest) then
+      Continue;
     vList[vInt].ValidateRequest(ARequest, AResponse);
     if AResponse.StatusCode >= HTTP_BadRequest then
       Exit(False);
