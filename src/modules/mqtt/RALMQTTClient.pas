@@ -22,10 +22,17 @@ interface
 uses
   Classes, SysUtils, SyncObjs, TypInfo,
   RALTypes, RALConsts, RALCustomObjects, RALClient, RALJson,
-  RALMQTTTypes, RALMQTTPacket, RALMQTTTopic, RALMQTTSocket, RALMQTTTLS,
-  RALMQTTWebSocket, RALMQTTProxy, RALMQTTAuth, RALMQTTStore, RALMQTTSession;
+  RALMQTTTypes, RALMQTTPacket, RALMQTTTopic, RALSocket, RALTLS,
+  RALWebSocket, RALSocketProxy, RALMQTTAuth, RALMQTTStore, RALMQTTSession;
 
 type
+  { TLS options of an MQTT client: TRALSocketSSL under the name the forms of
+    the MQTT components stream }
+  TRALMQTTSSL = class(TRALSocketSSL);
+
+  /// Proxy settings of an MQTT client (HTTP CONNECT or SOCKS5).
+  TRALMQTTProxy = class(TRALSocketProxy);
+
   TRALMQTTCustomClient = class;
   TRALMQTTSubscriptionItem = class;
   TRALMQTTMessage = class;
@@ -533,7 +540,7 @@ type
     FBrokerIndex: IntegerRAL;
     FBrokerURL: StringRAL;
     FBrokerURLs: TStrings;
-    FChannel: TRALMQTTChannel;
+    FChannel: TRALChannel;
     FCleanStart: boolean;
     FClientID: StringRAL;
     FConnected: boolean;
@@ -591,7 +598,7 @@ type
     FStore: TRALMQTTSessionStore;
     FSyncWrites: boolean;
     FThread: TRALMQTTClientThread;
-    FTLSContext: TRALMQTTTLSContext;
+    FTLSContext: TRALTLSContext;
     FTopicAliasMaximum: Word;
     FTransport: TRALMQTTTransport;
     FUserName: StringRAL;
@@ -2239,7 +2246,7 @@ end;
 
 procedure TRALMQTTClient.CloseChannel;
 var
-  vChannel: TRALMQTTChannel;
+  vChannel: TRALChannel;
 begin
   FIOLock.Acquire;
   try
@@ -2262,18 +2269,18 @@ end;
 
 procedure TRALMQTTClient.OpenChannel(const AURI: TRALMQTTURI);
 var
-  vSocket: TRALMQTTSocket;
-  vChannel: TRALMQTTChannel;
-  vTLS: TRALMQTTTLSChannel;
-  vWS: TRALMQTTWebSocketChannel;
+  vSocket: TRALSocket;
+  vChannel: TRALChannel;
+  vTLS: TRALTLSChannel;
+  vWS: TRALWebSocketChannel;
   vCert: TRALCertInfo;
   vName: StringRAL;
   vSecure: boolean;
   vDeadline: Int64RAL;
 begin
   vDeadline := RALMQTTNow + FConnectTimeout;
-  vSocket := TRALMQTTSocket.Create;
-  vChannel := TRALMQTTSocketChannel.Create(vSocket);
+  vSocket := TRALSocket.Create;
+  vChannel := TRALSocketChannel.Create(vSocket);
   try
     if FProxy.Kind <> mpkNoProxy then
     begin
@@ -2288,20 +2295,20 @@ begin
     if vSecure then
     begin
       FreeAndNil(FTLSContext);
-      FTLSContext := TRALMQTTTLSContext.Create(mtrClient);
+      FTLSContext := TRALTLSContext.Create(mtrClient);
       FTLSContext.SetMinVersion(FSSL.MinVersion);
       FTLSContext.ALPN := FSSL.ALPN;
       FTLSContext.LoadSystemCAs;
       FTLSContext.LoadCAFile(FSSL.CAFile);
       FTLSContext.UseCertificateFiles(FSSL.CertFile, FSSL.KeyFile, FSSL.KeyPassword);
-      vTLS := TRALMQTTTLSChannel.Create(vChannel, FTLSContext);
+      vTLS := TRALTLSChannel.Create(vChannel, FTLSContext);
       vChannel := vTLS;
       vName := FSSL.ServerName;
       if vName = '' then
         vName := AURI.Host;
       vTLS.Handshake(vName, vDeadline - RALMQTTNow);
       vCert := vTLS.PeerCertificate;
-      if not RALMQTTAcceptCertificate(Self, FSSL, FOnValidateServerCert, vCert,
+      if not RALTLSAcceptCertificate(Self, FSSL, FOnValidateServerCert, vCert,
            AURI.Host, AURI.Port) then
         raise ERALMQTTError.CreateReason(MQTTRC_NotAuthorized,
           Format(emMQTTCertRefused, [string(vCert.Error)]));
@@ -2309,7 +2316,8 @@ begin
     end;
     if AURI.Scheme in [musWS, musWSS] then
     begin
-      vWS := TRALMQTTWebSocketChannel.Create(vChannel, mwrClient);
+      vWS := TRALWebSocketChannel.Create(vChannel, mwrClient);
+      vWS.Protocol := RALMQTTWSProtocol;
       vChannel := vWS;
       vWS.MaxFrame := FMaxPacketSize;
       vWS.Handshake(AURI.Host, AURI.Port, AURI.Path, vSecure, vDeadline - RALMQTTNow,
@@ -2412,7 +2420,7 @@ var
   vRes, vLen: IntegerRAL;
   vData: Pointer;
   vDeadline, vNow: Int64RAL;
-  vChannel: TRALMQTTChannel;
+  vChannel: TRALChannel;
 begin
   Result := nil;
   vDeadline := RALMQTTNow + ATimeout;
@@ -2425,7 +2433,7 @@ begin
     end;
     vChannel := FChannel;
     if vChannel = nil then
-      raise ERALMQTTSocketError.CreateCode(0, emMQTTConnectionClosed);
+      raise ERALSocketError.CreateCode(0, emMQTTConnectionClosed);
     if not vChannel.HasBuffered then
     begin
       vNow := RALMQTTNow;
@@ -2439,7 +2447,7 @@ begin
     FIOLock.Acquire;
     try
       if FChannel = nil then
-        raise ERALMQTTSocketError.CreateCode(0, emMQTTConnectionClosed);
+        raise ERALSocketError.CreateCode(0, emMQTTConnectionClosed);
       repeat
         vRes := FChannel.Read(vBuffer, SizeOf(vBuffer));
         if vRes > 0 then
@@ -2458,7 +2466,7 @@ begin
         FLastReceived := RALMQTTNow;
         Exit;
       end;
-      raise ERALMQTTSocketError.CreateCode(0, emMQTTConnectionClosed);
+      raise ERALSocketError.CreateCode(0, emMQTTConnectionClosed);
     end;
     if (FThread <> nil) and FThread.Stopping then
       Exit;
@@ -2561,11 +2569,11 @@ begin
   FServerInfo.FBroker := RALMQTTURIText(AURI);
   FServerInfo.FVersion := FVersionInUse;
   FServerInfo.FSessionPresent := AConnack.SessionPresent;
-  if FChannel is TRALMQTTTLSChannel then
-    FServerInfo.FTLSVersion := TRALMQTTTLSChannel(FChannel).VersionName
-  else if (FChannel is TRALMQTTLayerChannel) and
-          (TRALMQTTLayerChannel(FChannel).Inner is TRALMQTTTLSChannel) then
-    FServerInfo.FTLSVersion := TRALMQTTTLSChannel(TRALMQTTLayerChannel(FChannel).Inner).VersionName;
+  if FChannel is TRALTLSChannel then
+    FServerInfo.FTLSVersion := TRALTLSChannel(FChannel).VersionName
+  else if (FChannel is TRALLayerChannel) and
+          (TRALLayerChannel(FChannel).Inner is TRALTLSChannel) then
+    FServerInfo.FTLSVersion := TRALTLSChannel(TRALLayerChannel(FChannel).Inner).VersionName;
   if FVersionInUse = mv50 then
   begin
     if vProps.Has(MQTTP_ReceiveMaximum) then
@@ -3311,13 +3319,13 @@ end;
 
 procedure TRALMQTTClient.SendPacket(APacket: TRALMQTTPacket);
 var
-  vChannel: TRALMQTTChannel;
+  vChannel: TRALChannel;
 begin
   FIOLock.Acquire;
   try
     vChannel := FChannel;
     if vChannel = nil then
-      raise ERALMQTTSocketError.CreateCode(0, emMQTTConnectionClosed);
+      raise ERALSocketError.CreateCode(0, emMQTTConnectionClosed);
     // the broker's limit [MQTT-3.2.2-15]: optional parts go, a PUBLISH does not fit
     if not APacket.EncodeTo(FWriteBuffer, FVersionInUse, FServerInfo.MaximumPacketSize) then
       raise ERALMQTTError.CreateReason(MQTTRC_PacketTooLarge,

@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=47
+Count=48
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -115,6 +115,7 @@ Item_43=src\languages
 Item_44=src\plugins\observability
 Item_45=src\plugins\traffic
 Item_46=src\plugins\cache
+Item_47=src\net
 [Files]
 Count=168
 Item_0=src\core\RALTypes.pas
@@ -243,10 +244,10 @@ Item_122=src\modules\soap\design\RALModuleSOAPReg.pas
 Item_123=src\modules\mqtt\RALMQTTTypes.pas
 Item_124=src\modules\mqtt\RALMQTTPacket.pas
 Item_125=src\modules\mqtt\RALMQTTTopic.pas
-Item_126=src\modules\mqtt\RALMQTTSocket.pas
-Item_127=src\modules\mqtt\RALMQTTTLS.pas
-Item_128=src\modules\mqtt\RALMQTTWebSocket.pas
-Item_129=src\modules\mqtt\RALMQTTProxy.pas
+Item_126=src\net\RALSocket.pas
+Item_127=src\net\RALTLS.pas
+Item_128=src\net\RALWebSocket.pas
+Item_129=src\net\RALSocketProxy.pas
 Item_130=src\modules\mqtt\RALMQTTAuth.pas
 Item_131=src\modules\mqtt\RALMQTTStore.pas
 Item_132=src\modules\mqtt\RALMQTTSession.pas

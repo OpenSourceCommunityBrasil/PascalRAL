@@ -546,12 +546,16 @@ into a `TBufDataset` merges the change log (`RALStoragePosted`/`RALStorageLoaded
 
 ### MQTT (`src/modules/mqtt`)
 
-`RALModuleMQTTPackage` (requires `PascalRAL` and `RALPluginAuthPackage`): client and
+`RALModuleMQTTPackage` (requires `PascalRAL`, `RALNetPackage` and `RALPluginAuthPackage`): client and
 broker for MQTT 3.1.1 and 5.0, MQTT-SN 1.2 and 2.0 (draft) client and gateway, a REST
 bridge (`TRALMQTTRestModule`); design in `RALModuleMQTTDsgn`, `TRALMQTTDataSetLink` in the
-optional `RALModuleMQTTDBPackage` (requires `RALDBPackage`). Its own sockets
-(`RALMQTTSocket`, one code for every OS) and OpenSSL loaded at run time
-(`RALMQTTTLS`, TLS and DTLS): no engine involved. `TRALMQTTBroker` is a `TRALServer`:
+optional `RALModuleMQTTDBPackage` (requires `RALDBPackage`). RAL's own sockets
+(`RALNetPackage` in `src/net`: `RALSocket`, one code for every OS; `RALTLS`, TLS and DTLS
+over OpenSSL loaded at run time; `RALWebSocket`; `RALSocketProxy`): no engine involved.
+The net units know nothing of MQTT: they raise `ERALSocketError`/`ERALTLSError`/
+`ERALWebSocketError` (a `CloseCode`), and the broker turns a WebSocket error into the
+DISCONNECT reason. `TRALMQTTSSL`/`TRALMQTTProxy` are empty subclasses of the net ones;
+published enum values keep their old names (`mtv12`, `mpkHTTP`), which forms stream. `TRALMQTTBroker` is a `TRALServer`:
 each CONNECT runs `ValidateRequest`/`ProcessCommands` on an internal route, so the
 server's plugins and authenticators judge MQTT logins. The client's certificate rule is
 `TRALClient`'s. The MQTT-SN gateway is a `TRALMQTTBrokerExtension` (sessions of the

@@ -47,6 +47,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/design/` | `PascalRALDsgn` | core design time (`RALRegister`, property editors) |
 | `src/engine/<engine>/` | `<Engine>RAL` | one transport engine per folder |
 | `src/languages/` | (included by `RALConsts`) | user-facing texts per language, UTF-8 with BOM |
+| `src/net/` | `RALNetPackage` | RAL's own sockets: TCP/UDP for every OS with poll, TLS and DTLS over OpenSSL loaded at run time, WebSocket channel, HTTP CONNECT/SOCKS5 proxy |
 | `src/modules/mqtt/` | `RALModuleMQTTPackage` | MQTT 3.1.1/5.0 and MQTT-SN client, broker, SN gateway, REST bridge |
 | `src/modules/mqtt/design/` | `RALModuleMQTTDsgn` | MQTT IDE registration and verbs |
 | `src/modules/mqtt/db/` | `RALModuleMQTTDBPackage` | `TRALMQTTDataSetLink` (messages into a dataset) |
@@ -160,14 +161,22 @@ A property that does not apply is hidden from the Object Inspector by the compon
 (`IsPropertyRelevant`, nested names such as `SSL.CertificateFile` included), never
 raised; an impossible explicit choice raises.
 
+### `src/net/` (RALNetPackage, requires PascalRAL)
+
+`RALSocket` (`TRALSocket`, the channels `TRALChannel`/`TRALSocketChannel`/
+`TRALLayerChannel`, `RALPoll`, `RALResolve`, `RALSocketNow`, `ERALSocketError`),
+`RALTLS` (`TRALSocketSSL`, `TRALTLSContext`, `TRALTLSChannel`, `TRALDTLSSession`,
+`ERALTLSError`), `RALWebSocket` (`TRALWebSocketChannel` with an optional `Protocol`,
+`ERALWebSocketError`), `RALSocketProxy` (`TRALSocketProxy`). Used by MQTT; meant for the
+other protocols RAL speaks on its own sockets.
+
 ### `src/modules/`
 
-- `mqtt/` (RALModuleMQTTPackage, requires PascalRAL and RALPluginAuthPackage; guide in
+- `mqtt/` (RALModuleMQTTPackage, requires PascalRAL, RALNetPackage and RALPluginAuthPackage; guide in
   `src/modules/mqtt/README.md`): `RALMQTTTypes` (reason codes, properties, reader and
   writer), `RALMQTTPacket` (3.1.1 and 5.0 packets), `RALMQTTTopic` (validation, matching,
-  the broker's topic tree), `RALMQTTSocket` (one socket code for every OS, poll),
-  `RALMQTTTLS` (OpenSSL TLS and DTLS), `RALMQTTWebSocket`, `RALMQTTProxy` (HTTP CONNECT,
-  SOCKS5), `RALMQTTAuth` (SCRAM, the client authenticators), `RALMQTTStore` (file session
+  the broker's topic tree), `RALMQTTAuth` (SCRAM, the client authenticators),
+  `RALMQTTStore` (file session
   store), `RALMQTTSession` (packet ids, aliases, broker URIs), `RALMQTTClient`
   (`TRALMQTTClient`), `RALMQTTActions` (connect, disconnect, publish actions),
   `RALMQTTSNTypes`/`RALMQTTSNPacket12`/`RALMQTTSNPacket20` (MQTT-SN codecs),

@@ -203,8 +203,8 @@ Not implemented on purpose: MQTT over QUIC (future step MQ18); the MQTT-SN 2.0 P
 | MQTT-3.15.2-3 | 3.15.2 AUTH Variable Header | both | RALMQTTPacket, RALMQTTAuth, RALMQTTClient, RALMQTTBroker | codec, auth, adapter | - |
 | MQTT-4.1.0-1 | 4.1 Session State | both | RALMQTTClient, RALMQTTBroker, RALMQTTStore, RALMQTTBrokerStore | client, persist, reliability | - |
 | MQTT-4.1.0-2 | 4.1 Session State | server | RALMQTTClient, RALMQTTBroker, RALMQTTStore, RALMQTTBrokerStore | client, persist, reliability | RALMQTTBroker |
-| MQTT-4.2.0-1 | 4.2 Network Connections | both | RALMQTTSocket | transport | - |
-| MQTT-4.2-1 | 4.2 Network Connections | both | RALMQTTSocket | transport | - |
+| MQTT-4.2.0-1 | 4.2 Network Connections | both | RALSocket | transport | - |
+| MQTT-4.2-1 | 4.2 Network Connections | both | RALSocket | transport | - |
 | MQTT-4.3.1-1 | 4.3.1 QoS 0: At most once delivery | both | RALMQTTClient, RALMQTTBroker | client, paho, reliability | - |
 | MQTT-4.3.2-1 | 4.3.2 QoS 1: At least once delivery | both | RALMQTTClient, RALMQTTBroker | client, paho, reliability | - |
 | MQTT-4.3.2-2 | 4.3.2 QoS 1: At least once delivery | both | RALMQTTClient, RALMQTTBroker | client, paho, reliability | - |
@@ -262,10 +262,10 @@ Not implemented on purpose: MQTT over QUIC (future step MQ18); the MQTT-SN 2.0 P
 | MQTT-4.12.1-2 | 4.12.1 Re-authentication | both | RALMQTTAuth, RALMQTTClient, RALMQTTBroker | auth, adapter, paho | RALMQTTBroker |
 | MQTT-4.13.1-1 | 4.13.1 Malformed Packet and Protocol Errors | server | RALMQTTPacket, RALMQTTClient, RALMQTTBroker | codec, paho | RALMQTTBroker |
 | MQTT-4.13.2-1 | 4.13.2 Other errors | both | RALMQTTPacket, RALMQTTClient, RALMQTTBroker | codec, paho | - |
-| MQTT-6.0.0-1 | 6 Using WebSocket as a network transport | both | RALMQTTWebSocket | transport, paho | RALMQTTWebSocket |
-| MQTT-6.0.0-2 | 6 Using WebSocket as a network transport | both | RALMQTTWebSocket | transport, paho | RALMQTTWebSocket |
-| MQTT-6.0.0-3 | 6 Using WebSocket as a network transport | client | RALMQTTWebSocket | transport, paho | RALMQTTWebSocket |
-| MQTT-6.0.0-4 | 6 Using WebSocket as a network transport | server | RALMQTTWebSocket | transport, paho | RALMQTTWebSocket |
+| MQTT-6.0.0-1 | 6 Using WebSocket as a network transport | both | RALWebSocket | transport, paho | RALWebSocket |
+| MQTT-6.0.0-2 | 6 Using WebSocket as a network transport | both | RALWebSocket | transport, paho | RALWebSocket |
+| MQTT-6.0.0-3 | 6 Using WebSocket as a network transport | client | RALWebSocket | transport, paho | RALWebSocket |
+| MQTT-6.0.0-4 | 6 Using WebSocket as a network transport | server | RALWebSocket | transport, paho | RALWebSocket |
 
 ## MQTT 3.1.1 (OASIS Standard with Errata 01, 10 December 2015)
 
@@ -405,10 +405,10 @@ Not implemented on purpose: MQTT over QUIC (future step MQ18); the MQTT-SN 2.0 P
 | MQTT-4.7.3-4 | 4.7.3 Topic semantic and usage | server | RALMQTTTopic | codec, client | RALMQTTTopic |
 | MQTT-4.8.0-1 | 4.8 Handling errors | both | RALMQTTBroker | client (RAL broker), paho | - |
 | MQTT-4.8.0-2 | 4.8 Handling errors | both | RALMQTTBroker | client (RAL broker), paho | - |
-| MQTT-6.0.0-1 | 6 Using WebSocket as a network transport | both | RALMQTTWebSocket | transport, paho | RALMQTTWebSocket |
-| MQTT-6.0.0-2 | 6 Using WebSocket as a network transport | both | RALMQTTWebSocket | transport, paho | RALMQTTWebSocket |
-| MQTT-6.0.0-3 | 6 Using WebSocket as a network transport | both | RALMQTTWebSocket | transport, paho | RALMQTTWebSocket |
-| MQTT-6.0.0-4 | 6 Using WebSocket as a network transport | both | RALMQTTWebSocket | transport, paho | RALMQTTWebSocket |
+| MQTT-6.0.0-1 | 6 Using WebSocket as a network transport | both | RALWebSocket | transport, paho | RALWebSocket |
+| MQTT-6.0.0-2 | 6 Using WebSocket as a network transport | both | RALWebSocket | transport, paho | RALWebSocket |
+| MQTT-6.0.0-3 | 6 Using WebSocket as a network transport | both | RALWebSocket | transport, paho | RALWebSocket |
+| MQTT-6.0.0-4 | 6 Using WebSocket as a network transport | both | RALWebSocket | transport, paho | RALWebSocket |
 | MQTT-7.0.0-1 | 7 Conformance | server | RALMQTTPacket | codec | - |
 | MQTT-7.0.0-2 | 7 Conformance | both | RALMQTTPacket | codec | - |
 | MQTT-7.1.1-1 | 7.1.1 MQTT Server | server | RALMQTTPacket | codec | - |

@@ -1,10 +1,10 @@
-/// The tunnels an MQTT client can go through to reach its broker: an HTTP
+/// The tunnels a client on RAL's sockets can go through to reach its server: an HTTP
 /// proxy (CONNECT, RFC 9110 9.3.6) and SOCKS5 (RFC 1928, with user name and
 /// password by RFC 1929). The tunnel is opened on the plain socket, before TLS
 /// or WebSocket.
-unit RALMQTTProxy;
+unit RALSocketProxy;
 
-{$I ..\..\core\PascalRAL.inc}
+{$I ..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}
@@ -17,23 +17,23 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALMQTTTypes, RALMQTTSocket;
+  RALTypes, RALConsts, RALSocket;
 
 type
   /// Kind of proxy.
-  TRALMQTTProxyKind = (
-    /// No proxy: the socket goes straight to the broker.
+  TRALSocketProxyKind = (
+    /// No proxy: the socket goes straight to the server.
     mpkNoProxy,
     /// An HTTP proxy, by CONNECT.
     mpkHTTP,
     /// A SOCKS5 proxy.
     mpkSOCKS5);
 
-  /// Proxy settings of an MQTT client.
-  TRALMQTTProxy = class(TPersistent)
+  /// Proxy settings of a client.
+  TRALSocketProxy = class(TPersistent)
   private
     FHost: StringRAL;
-    FKind: TRALMQTTProxyKind;
+    FKind: TRALSocketProxyKind;
     FPassword: StringRAL;
     FPort: IntegerRAL;
     FUserName: StringRAL;
@@ -41,13 +41,13 @@ type
     procedure Assign(Source: TPersistent); override;
     { Asks the proxy, over AChannel (a socket already connected to it), for a
       tunnel to AHost:APort, within ATimeout ms; raises when it refuses }
-    procedure OpenTunnel(AChannel: TRALMQTTChannel; const AHost: StringRAL;
+    procedure OpenTunnel(AChannel: TRALChannel; const AHost: StringRAL;
       APort, ATimeout: IntegerRAL);
   published
     /// Address of the proxy.
     property Host: StringRAL read FHost write FHost;
     /// Kind of proxy; mpkNoProxy turns it off.
-    property Kind: TRALMQTTProxyKind read FKind write FKind default mpkNoProxy;
+    property Kind: TRALSocketProxyKind read FKind write FKind default mpkNoProxy;
     /// Password, when the proxy asks for one.
     property Password: StringRAL read FPassword write FPassword;
     /// Port of the proxy.
@@ -63,12 +63,11 @@ uses
 
 procedure ProxyError(const AReason: string);
 begin
-  raise ERALMQTTError.CreateReason(MQTTRC_UnspecifiedError,
-    Format(emMQTTProxyRefused, [AReason]));
+  raise ERALSocketError.Create(Format(emProxyRefused, [AReason]));
 end;
 
 { reads exactly ACount bytes before the deadline }
-procedure ReadExact(AChannel: TRALMQTTChannel; var ABuffer; ACount: IntegerRAL;
+procedure ReadExact(AChannel: TRALChannel; var ABuffer; ACount: IntegerRAL;
   ADeadline: Int64RAL);
 var
   vData: PByte;
@@ -78,34 +77,34 @@ begin
   vDone := 0;
   while vDone < ACount do
   begin
-    vWait := ADeadline - RALMQTTNow;
+    vWait := ADeadline - RALSocketNow;
     if vWait <= 0 then
-      ProxyError(emMQTTProxyTimeout);
+      ProxyError(emProxyTimeout);
     vRes := AChannel.ReadWait(vData[vDone], ACount - vDone, vWait);
     if vRes = 0 then
-      ProxyError(emMQTTConnectionClosed);
+      ProxyError(emSocketClosed);
     if vRes > 0 then
       Inc(vDone, vRes);
   end;
 end;
 
-{ TRALMQTTProxy }
+{ TRALSocketProxy }
 
-procedure TRALMQTTProxy.Assign(Source: TPersistent);
+procedure TRALSocketProxy.Assign(Source: TPersistent);
 begin
-  if Source is TRALMQTTProxy then
+  if Source is TRALSocketProxy then
   begin
-    FHost := TRALMQTTProxy(Source).Host;
-    FKind := TRALMQTTProxy(Source).Kind;
-    FPassword := TRALMQTTProxy(Source).Password;
-    FPort := TRALMQTTProxy(Source).Port;
-    FUserName := TRALMQTTProxy(Source).UserName;
+    FHost := TRALSocketProxy(Source).Host;
+    FKind := TRALSocketProxy(Source).Kind;
+    FPassword := TRALSocketProxy(Source).Password;
+    FPort := TRALSocketProxy(Source).Port;
+    FUserName := TRALSocketProxy(Source).UserName;
   end
   else
     inherited Assign(Source);
 end;
 
-procedure TRALMQTTProxy.OpenTunnel(AChannel: TRALMQTTChannel; const AHost: StringRAL;
+procedure TRALSocketProxy.OpenTunnel(AChannel: TRALChannel; const AHost: StringRAL;
   APort, ATimeout: IntegerRAL);
 var
   vDeadline: Int64RAL;
@@ -118,7 +117,7 @@ var
   vHost: AnsiString;
   vUser, vPass: AnsiString;
 begin
-  vDeadline := RALMQTTNow + ATimeout;
+  vDeadline := RALSocketNow + ATimeout;
   case FKind of
     mpkHTTP:
     begin
@@ -184,10 +183,10 @@ begin
         AChannel.WriteAll(vBuf[0], Length(vBuf), ATimeout);
         ReadExact(AChannel, vHead, 2, vDeadline);
         if vHead[1] <> 0 then
-          ProxyError(emMQTTProxyAuth);
+          ProxyError(emProxyAuth);
       end
       else if vHead[1] <> 0 then
-        ProxyError(emMQTTProxyAuth);
+        ProxyError(emProxyAuth);
 
       // CONNECT by name: the proxy resolves it
       vHost := AnsiString(AHost);
@@ -205,7 +204,7 @@ begin
       AChannel.WriteAll(vBuf[0], Length(vBuf), ATimeout);
       ReadExact(AChannel, vHead, 4, vDeadline);
       if vHead[1] <> 0 then
-        ProxyError(Format(emMQTTProxySocksReply, [vHead[1]]));
+        ProxyError(Format(emProxySocksReply, [vHead[1]]));
       // the bound address that follows, whatever its type
       case vHead[3] of
         1: vLen := 4;

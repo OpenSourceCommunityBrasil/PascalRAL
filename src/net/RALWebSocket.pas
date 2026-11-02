@@ -1,10 +1,10 @@
-/// MQTT over WebSocket (RFC 6455, section 6 of both MQTT standards), client
-/// and server: the handshake with the "mqtt" subprotocol, binary frames, the
-/// MQTT bytes as one stream that may cross frame boundaries either way,
-/// ping/pong and closing with a status code.
-unit RALMQTTWebSocket;
+/// WebSocket (RFC 6455) as a channel over another one (RALNetPackage), client
+/// and server: the handshake with an optional subprotocol (Protocol; MQTT
+/// asks for "mqtt"), binary frames, the bytes as one stream that may cross
+/// frame boundaries either way, ping/pong and closing with a status code.
+unit RALWebSocket;
 
-{$I ..\..\core\PascalRAL.inc}
+{$I ..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}
@@ -17,11 +17,9 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALMQTTTypes, RALMQTTSocket;
+  RALTypes, RALConsts, RALSocket;
 
 const
-  /// The subprotocol both MQTT standards name.
-  RALMQTTWSProtocol = 'mqtt';
   /// Normal closure.
   RALWSCloseNormal = 1000;
   /// Going away (the server stops).
@@ -34,13 +32,24 @@ const
   RALWSCloseTooBig = 1009;
 
 type
+  /// Raised when the handshake or a frame breaks RFC 6455.
+  ERALWebSocketError = class(ERALSocketError)
+  private
+    FCloseCode: Word;
+  public
+    /// AMessage, with ACloseCode (RALWSClose*; 0 for a failed handshake).
+    constructor CreateClose(ACloseCode: Word; const AMessage: string);
+    /// The close code the failure calls for; 0 for a failed handshake.
+    property CloseCode: Word read FCloseCode;
+  end;
+
   /// Which side of the handshake a WebSocket channel plays.
-  TRALMQTTWSRole = (mwrClient, mwrServer);
+  TRALWSRole = (mwrClient, mwrServer);
 
   { WebSocket over another channel (a socket or TLS). Read hands out the bytes
     of binary frames as one stream; Write sends each call as one binary frame
     (masked on the client side, as RFC 6455 5.3 asks) }
-  TRALMQTTWebSocketChannel = class(TRALMQTTLayerChannel)
+  TRALWebSocketChannel = class(TRALLayerChannel)
   private
     FClosed: boolean;
     FCloseSent: boolean;
@@ -56,8 +65,9 @@ type
     FPayload: TBytes;
     FPayloadHead: IntegerRAL;
     FPayloadTail: IntegerRAL;
-    FRole: TRALMQTTWSRole;
+    FRole: TRALWSRole;
     FPeerProtocols: StringRAL;
+    FProtocol: StringRAL;
     FRequestHeaders: TStringList;
 
     procedure AppendIn(const ABuffer; ACount: IntegerRAL);
@@ -69,18 +79,18 @@ type
     function ServerHandshakeParse: boolean;
   public
     /// WebSocket over AInner in ARole.
-    constructor Create(AInner: TRALMQTTChannel; ARole: TRALMQTTWSRole;
+    constructor Create(AInner: TRALChannel; ARole: TRALWSRole;
       AOwnsInner: boolean = True);
     destructor Destroy; override;
 
-    { Client handshake: GET APath with the "mqtt" subprotocol to AHost (sent in
+    { Client handshake: GET APath, asking for Protocol when set, to AHost (sent in
       Host; with APort when it is not the default), within ATimeout ms.
       AHeaders are added to the request (name: value lines) }
     procedure Handshake(const AHost: StringRAL; APort: IntegerRAL; const APath: StringRAL;
       ASecure: boolean; ATimeout: IntegerRAL; AHeaders: TStrings = nil);
     { One step of the server handshake; True when it finished (the 101 was
-      queued). Raises when the request is not a WebSocket one for APath with
-      the "mqtt" subprotocol; a 400 or 404 is sent first }
+      queued). Raises when the request is not a WebSocket one for APath offering
+      Protocol (when set); a 400 or 404 is sent first }
     function ServerHandshakeStep(const APath: StringRAL): boolean;
     /// Sends a close frame with ACode, once.
     procedure SendClose(ACode: Word);
@@ -100,12 +110,15 @@ type
     property MaxFrame: Int64RAL read FMaxFrame write FMaxFrame;
     /// Server side: path the client asked for.
     property Path: StringRAL read FPath;
+    { Subprotocol asked for (client) or required of the client (server);
+      empty: none asked, none required }
+    property Protocol: StringRAL read FProtocol write FProtocol;
     /// Server side: headers of the client's request (name=value).
     property RequestHeaders: TStringList read FRequestHeaders;
   end;
 
 /// Sec-WebSocket-Accept for AKey (RFC 6455 4.2.2).
-function RALMQTTWSAccept(const AKey: StringRAL): StringRAL;
+function RALWSAccept(const AKey: StringRAL): StringRAL;
 
 implementation
 
@@ -116,7 +129,7 @@ const
   cGUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
   cMaxHandshake = 16384;
 
-function RALMQTTWSAccept(const AKey: StringRAL): StringRAL;
+function RALWSAccept(const AKey: StringRAL): StringRAL;
 var
   vSHA: TRALSHA1;
   vText: StringRAL;
@@ -177,33 +190,40 @@ end;
 
 procedure HandshakeError(const AReason: string);
 begin
-  raise ERALMQTTError.CreateReason(MQTTRC_UnspecifiedError,
-    Format(emMQTTWSHandshake, [AReason]));
+  raise ERALWebSocketError.CreateClose(0, Format(emWSHandshake, [AReason]));
 end;
 
 procedure FrameError(const AReason: string);
 begin
-  raise ERALMQTTProtocolError.CreateReason(MQTTRC_MalformedPacket,
-    Format(emMQTTWSBadFrame, [AReason]));
+  raise ERALWebSocketError.CreateClose(RALWSCloseProtocolError,
+    Format(emWSBadFrame, [AReason]));
 end;
 
-{ TRALMQTTWebSocketChannel }
+{ ERALWebSocketError }
 
-constructor TRALMQTTWebSocketChannel.Create(AInner: TRALMQTTChannel;
-  ARole: TRALMQTTWSRole; AOwnsInner: boolean);
+constructor ERALWebSocketError.CreateClose(ACloseCode: Word; const AMessage: string);
+begin
+  inherited Create(AMessage);
+  FCloseCode := ACloseCode;
+end;
+
+{ TRALWebSocketChannel }
+
+constructor TRALWebSocketChannel.Create(AInner: TRALChannel;
+  ARole: TRALWSRole; AOwnsInner: boolean);
 begin
   inherited Create(AInner, AOwnsInner);
   FRole := ARole;
   FRequestHeaders := TStringList.Create;
 end;
 
-destructor TRALMQTTWebSocketChannel.Destroy;
+destructor TRALWebSocketChannel.Destroy;
 begin
   FreeAndNil(FRequestHeaders);
   inherited Destroy;
 end;
 
-procedure TRALMQTTWebSocketChannel.AppendIn(const ABuffer; ACount: IntegerRAL);
+procedure TRALWebSocketChannel.AppendIn(const ABuffer; ACount: IntegerRAL);
 begin
   if FInHead > 0 then
   begin
@@ -218,7 +238,7 @@ begin
   Inc(FInTail, ACount);
 end;
 
-procedure TRALMQTTWebSocketChannel.AppendPayload(AData: PByte; ACount: IntegerRAL);
+procedure TRALWebSocketChannel.AppendPayload(AData: PByte; ACount: IntegerRAL);
 begin
   if ACount <= 0 then
     Exit;
@@ -236,8 +256,8 @@ begin
 end;
 
 { reads what the channel below has; the bytes read, 0 when it closed,
-  RALMQTTWouldBlock when there was nothing }
-function TRALMQTTWebSocketChannel.Fill: IntegerRAL;
+  RALSocketWouldBlock when there was nothing }
+function TRALWebSocketChannel.Fill: IntegerRAL;
 var
   vBuf: array[0..16383] of Byte;
 begin
@@ -246,14 +266,14 @@ begin
     AppendIn(vBuf, Result);
 end;
 
-procedure TRALMQTTWebSocketChannel.QueueFrame(AOpcode: Byte; AData: PByte;
+procedure TRALWebSocketChannel.QueueFrame(AOpcode: Byte; AData: PByte;
   ACount: IntegerRAL);
 var
   vHeader: array[0..13] of Byte;
   vLen, vInt, vNeed: IntegerRAL;
   vMask: TBytes;
 begin
-  vHeader[0] := $80 or AOpcode; // FIN: MQTT never needs fragmented frames out
+  vHeader[0] := $80 or AOpcode; // FIN: nothing here sends fragmented frames
   vLen := 2;
   if ACount < 126 then
     vHeader[1] := ACount
@@ -305,7 +325,7 @@ begin
   end;
 end;
 
-procedure TRALMQTTWebSocketChannel.FlushOut;
+procedure TRALWebSocketChannel.FlushOut;
 var
   vRes: IntegerRAL;
 begin
@@ -320,19 +340,19 @@ begin
   FOutTail := 0;
 end;
 
-function TRALMQTTWebSocketChannel.Flush: boolean;
+function TRALWebSocketChannel.Flush: boolean;
 begin
   FlushOut;
   Result := (FOutHead >= FOutTail) and Inner.Flush;
 end;
 
-function TRALMQTTWebSocketChannel.HasPendingWrite: boolean;
+function TRALWebSocketChannel.HasPendingWrite: boolean;
 begin
   Result := FOutHead < FOutTail;
 end;
 
 { takes every whole frame out of FIn; False when a close frame ended it }
-function TRALMQTTWebSocketChannel.ParseFrames: boolean;
+function TRALWebSocketChannel.ParseFrames: boolean;
 var
   vAvail, vHeader, vInt: IntegerRAL;
   vFirst, vSecond, vOpcode: Byte;
@@ -378,8 +398,8 @@ begin
         FrameError('length');
     end;
     if (FMaxFrame > 0) and (vLen > FMaxFrame) then
-      raise ERALMQTTProtocolError.CreateReason(MQTTRC_PacketTooLarge,
-        Format(emMQTTWSBadFrame, ['size']));
+      raise ERALWebSocketError.CreateClose(RALWSCloseTooBig,
+        Format(emWSBadFrame, ['size']));
     if vLen > MaxInt - 64 then
       FrameError('length');
     if vMasked then
@@ -399,12 +419,12 @@ begin
     Inc(FInHead, vHeader + IntegerRAL(vLen));
 
     case vOpcode of
-      0, 2: // continuation, binary: the MQTT bytes, frames or not [MQTT-6.0.0-2]
+      0, 2: // continuation, binary: the bytes, frames or not [MQTT-6.0.0-2]
         AppendPayload(vData, IntegerRAL(vLen));
       1: // text [MQTT-6.0.0-1]
       begin
         SendClose(RALWSCloseUnsupported);
-        raise ERALMQTTProtocolError.CreateReason(MQTTRC_MalformedPacket, emMQTTWSTextFrame);
+        raise ERALWebSocketError.CreateClose(RALWSCloseUnsupported, emWSTextFrame);
       end;
       8: // close: answered with the same code, then the stream ends
       begin
@@ -430,7 +450,7 @@ begin
   end;
 end;
 
-procedure TRALMQTTWebSocketChannel.Handshake(const AHost: StringRAL; APort: IntegerRAL;
+procedure TRALWebSocketChannel.Handshake(const AHost: StringRAL; APort: IntegerRAL;
   const APath: StringRAL; ASecure: boolean; ATimeout: IntegerRAL; AHeaders: TStrings);
 var
   vKey, vRequest, vHostLine: StringRAL;
@@ -451,8 +471,9 @@ begin
               'Upgrade: websocket'#13#10 +
               'Connection: Upgrade'#13#10 +
               'Sec-WebSocket-Key: ' + vKey + #13#10 +
-              'Sec-WebSocket-Version: 13'#13#10 +
-              'Sec-WebSocket-Protocol: ' + RALMQTTWSProtocol + #13#10; // [MQTT-6.0.0-3]
+              'Sec-WebSocket-Version: 13'#13#10;
+  if FProtocol <> '' then
+    vRequest := vRequest + 'Sec-WebSocket-Protocol: ' + FProtocol + #13#10; // [MQTT-6.0.0-3]
   if AHeaders <> nil then
     for vInt := 0 to AHeaders.Count - 1 do
       if Trim(AHeaders[vInt]) <> '' then
@@ -461,7 +482,7 @@ begin
   Inner.WriteAll(Pointer(vRequest)^, Length(vRequest), ATimeout);
 
   // the answer, up to the empty line; what follows it is already WebSocket
-  vDeadline := RALMQTTNow + ATimeout;
+  vDeadline := RALSocketNow + ATimeout;
   vEnd := -1;
   repeat
     for vInt := FInHead to FInTail - 4 do
@@ -474,15 +495,15 @@ begin
     if vEnd >= 0 then
       Break;
     if FInTail - FInHead > cMaxHandshake then
-      HandshakeError(emMQTTWSTooLarge);
+      HandshakeError(emWSTooLarge);
     vRes := Fill;
     if vRes = 0 then
-      HandshakeError(emMQTTConnectionClosed);
-    if vRes = RALMQTTWouldBlock then
+      HandshakeError(emSocketClosed);
+    if vRes = RALSocketWouldBlock then
     begin
-      vNow := RALMQTTNow;
+      vNow := RALSocketNow;
       if vNow >= vDeadline then
-        HandshakeError(Format(emMQTTWSTimeout, [ATimeout]));
+        HandshakeError(Format(emWSTimeout, [ATimeout]));
       Socket.WaitFor(Inner.WantedEvents, vDeadline - vNow);
     end;
   until False;
@@ -496,18 +517,19 @@ begin
     if (vHead.Count = 0) or (Pos(' 101', vHead[0]) = 0) then
     begin
       if vHead.Count > 0 then
-        HandshakeError(Format(emMQTTWSStatus, [vHead[0]]))
+        HandshakeError(Format(emWSStatus, [vHead[0]]))
       else
-        HandshakeError(Format(emMQTTWSStatus, ['']));
+        HandshakeError(Format(emWSStatus, ['']));
     end;
     if not SameText(HeaderValue(vHead, 'Upgrade'), 'websocket') then
       HandshakeError('Upgrade');
     if not ListHas(HeaderValue(vHead, 'Connection'), 'Upgrade') then
       HandshakeError('Connection');
-    if HeaderValue(vHead, 'Sec-WebSocket-Accept') <> string(RALMQTTWSAccept(vKey)) then
-      HandshakeError(emMQTTWSBadAccept);
-    if HeaderValue(vHead, 'Sec-WebSocket-Protocol') <> RALMQTTWSProtocol then // [MQTT-6.0.0-4]
-      HandshakeError(emMQTTWSNoProtocol);
+    if HeaderValue(vHead, 'Sec-WebSocket-Accept') <> string(RALWSAccept(vKey)) then
+      HandshakeError(emWSBadAccept);
+    if (FProtocol <> '') and
+       (HeaderValue(vHead, 'Sec-WebSocket-Protocol') <> string(FProtocol)) then // [MQTT-6.0.0-4]
+      HandshakeError(emWSNoProtocol);
   finally
     vHead.Free;
   end;
@@ -517,7 +539,7 @@ begin
 end;
 
 { parses the client request in FIn once it is whole; False while it is not }
-function TRALMQTTWebSocketChannel.ServerHandshakeParse: boolean;
+function TRALWebSocketChannel.ServerHandshakeParse: boolean;
 var
   vInt, vEnd, vPos: IntegerRAL;
   vText, vLine: string;
@@ -536,7 +558,7 @@ begin
   if vEnd < 0 then
   begin
     if FInTail - FInHead > cMaxHandshake then
-      HandshakeError(emMQTTWSTooLarge);
+      HandshakeError(emWSTooLarge);
     Exit;
   end;
   SetString(vRaw, PAnsiChar(@FIn[FInHead]), vEnd - FInHead);
@@ -586,8 +608,10 @@ begin
   vLine := 'HTTP/1.1 101 Switching Protocols'#13#10 +
            'Upgrade: websocket'#13#10 +
            'Connection: Upgrade'#13#10 +
-           'Sec-WebSocket-Accept: ' + string(RALMQTTWSAccept(StringRAL(vText))) + #13#10 +
-           'Sec-WebSocket-Protocol: ' + RALMQTTWSProtocol + #13#10#13#10;
+           'Sec-WebSocket-Accept: ' + string(RALWSAccept(StringRAL(vText))) + #13#10;
+  if FProtocol <> '' then
+    vLine := vLine + 'Sec-WebSocket-Protocol: ' + string(FProtocol) + #13#10;
+  vLine := vLine + #13#10;
   vRaw := AnsiString(vLine);
   Result := True;
   // the 101 goes through the frame queue, so a full socket does not lose it
@@ -603,7 +627,7 @@ begin
   Inc(FOutTail, Length(vRaw));
 end;
 
-function TRALMQTTWebSocketChannel.ServerHandshakeStep(const APath: StringRAL): boolean;
+function TRALWebSocketChannel.ServerHandshakeStep(const APath: StringRAL): boolean;
 var
   vRes: IntegerRAL;
   vText: AnsiString;
@@ -614,8 +638,8 @@ begin
   repeat
     vRes := Fill;
     if vRes = 0 then
-      HandshakeError(emMQTTConnectionClosed);
-  until vRes = RALMQTTWouldBlock;
+      HandshakeError(emSocketClosed);
+  until vRes = RALSocketWouldBlock;
   // the request goes first; refusals need its path and subprotocols
   if (FPath = '') and (FInTail = FInHead) then
     Exit;
@@ -631,14 +655,14 @@ begin
       Inner.Write(Pointer(vText)^, Length(vText));
       HandshakeError(string(FPath));
     end;
-    // the client must offer mqtt [MQTT-6.0.0-3]
-    if not ListHas(string(FPeerProtocols), RALMQTTWSProtocol) then
+    // the client must offer the subprotocol [MQTT-6.0.0-3]
+    if (FProtocol <> '') and not ListHas(string(FPeerProtocols), string(FProtocol)) then
     begin
       vText := 'HTTP/1.1 400 Bad Request'#13#10'Content-Length: 0'#13#10'Connection: close'#13#10#13#10;
       FOutHead := 0;
       FOutTail := 0;
       Inner.Write(Pointer(vText)^, Length(vText));
-      HandshakeError(emMQTTWSNoProtocol);
+      HandshakeError(emWSNoProtocol);
     end;
   end;
   FlushOut;
@@ -647,7 +671,7 @@ begin
   Result := True;
 end;
 
-procedure TRALMQTTWebSocketChannel.SendClose(ACode: Word);
+procedure TRALWebSocketChannel.SendClose(ACode: Word);
 var
   vData: array[0..1] of Byte;
 begin
@@ -664,25 +688,25 @@ begin
   end;
 end;
 
-procedure TRALMQTTWebSocketChannel.Close;
+procedure TRALWebSocketChannel.Close;
 begin
   if FHandshakeDone then
     SendClose(RALWSCloseNormal);
   inherited Close;
 end;
 
-function TRALMQTTWebSocketChannel.HasBuffered: boolean;
+function TRALWebSocketChannel.HasBuffered: boolean;
 begin
   Result := (FPayloadTail > FPayloadHead) or Inner.HasBuffered;
 end;
 
-function TRALMQTTWebSocketChannel.Read(var ABuffer; ACount: IntegerRAL): IntegerRAL;
+function TRALWebSocketChannel.Read(var ABuffer; ACount: IntegerRAL): IntegerRAL;
 var
   vRes: IntegerRAL;
 begin
   if not FHandshakeDone then
   begin
-    Result := RALMQTTWouldBlock;
+    Result := RALSocketWouldBlock;
     Exit;
   end;
   // a pong or a queued frame goes out whenever the link has room
@@ -698,7 +722,7 @@ begin
     end;
     if not ParseFrames then
       Break;
-    if vRes = RALMQTTWouldBlock then
+    if vRes = RALSocketWouldBlock then
       Break;
   end;
   if FPayloadTail > FPayloadHead then
@@ -717,17 +741,17 @@ begin
   else if FClosed then
     Result := 0
   else
-    Result := RALMQTTWouldBlock;
+    Result := RALSocketWouldBlock;
 end;
 
-function TRALMQTTWebSocketChannel.WantedEvents: Word;
+function TRALWebSocketChannel.WantedEvents: Word;
 begin
   Result := Inner.WantedEvents;
   if FOutHead < FOutTail then
-    Result := Result or RALMQTTPollOut;
+    Result := Result or RALPollOut;
 end;
 
-function TRALMQTTWebSocketChannel.Write(const ABuffer; ACount: IntegerRAL): IntegerRAL;
+function TRALWebSocketChannel.Write(const ABuffer; ACount: IntegerRAL): IntegerRAL;
 begin
   // what was queued goes first; new data waits until it is gone
   if FOutHead < FOutTail then
@@ -735,7 +759,7 @@ begin
     FlushOut;
     if FOutHead < FOutTail then
     begin
-      Result := RALMQTTWouldBlock;
+      Result := RALSocketWouldBlock;
       Exit;
     end;
   end;

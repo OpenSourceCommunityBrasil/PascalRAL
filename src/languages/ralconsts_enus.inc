@@ -343,6 +343,38 @@
   emStoreLockTimeout = 'The store could not lock the key "%s" in time.';
   // Client resilience (RALClient)
   emCircuitOpen = 'The circuit of %s is open: the server failed too often, try later.';
+  // Network (RALNetPackage)
+  emSocketErrorCode = 'socket error %d';
+  emSocketError = '%s failed: %s (%d).';
+  emSocketResolveFailed = 'The name "%s" could not be resolved.';
+  emSocketConnectTimeout = 'No answer from %s:%d within %d ms.';
+  emSocketConnectTo = 'Connecting to %s:%d';
+  emSocketBindTo = 'Listening on %s:%d';
+  emSocketWriteStalled = 'The connection took nothing for %d ms; it was given up.';
+  emSocketClosed = 'The connection is closed.';
+  emTLSNoLibCrypto = 'OpenSSL (libcrypto) could not be loaded: TLS needs libcrypto 1.1.1 or 3.x next to the application or on the system.';
+  emTLSNoLibSSL = 'OpenSSL (libssl) could not be loaded: TLS needs libssl 1.1.1 or 3.x next to the application or on the system.';
+  emTLSOldOpenSSL = 'The OpenSSL found is older than 1.1.1; TLS needs 1.1.1 or 3.x.';
+  emTLSError = 'TLS failed in %s: %s';
+  emTLSFile = 'reading %s';
+  emTLSKeyMismatch = 'the private key does not belong to the certificate';
+  emTLSClosed = 'The connection closed during the TLS handshake.';
+  emTLSTimeout = 'The TLS handshake did not finish within %d ms.';
+  emTLSNoCertificate = 'The server sent no certificate.';
+  emWSHandshake = 'The WebSocket handshake failed: %s';
+  emWSNoProtocol = 'the server did not select the "mqtt" subprotocol';
+  emWSBadAccept = 'Sec-WebSocket-Accept does not match the key sent';
+  emWSStatus = 'the server answered "%s" instead of 101';
+  emWSTooLarge = 'the handshake is larger than 16 KB';
+  emWSTimeout = 'no answer within %d ms';
+  emWSTextFrame = 'A WebSocket text frame arrived; MQTT travels only in binary frames.';
+  emWSBadFrame = 'Invalid WebSocket frame: %s';
+  emProxyRefused = 'The proxy refused the tunnel: %s';
+  emProxyTimeout = 'no answer in time';
+  emProxyAuth = 'the user name or password was refused';
+  emProxySocksReply = 'SOCKS5 reply %d';
+  // end of Network
+
   // MQTT (RALModuleMQTTPackage)
   emMQTTUnknownProperty = 'Unknown MQTT property identifier 0x%x.';
   emMQTTPropertyNotAllowed = 'The MQTT property 0x%x cannot be carried by a %s packet.';
@@ -372,36 +404,10 @@
   emMQTTNoTopicFilter = 'A SUBSCRIBE or UNSUBSCRIBE needs at least one Topic Filter.';
   emMQTTNoReasonCode = 'The acknowledgement carries no reason code.';
   emMQTTPacketOverLimit = 'The MQTT packet has %d bytes, more than the limit of %d.';
-  emMQTTSocketErrorCode = 'socket error %d';
-  emMQTTSocketError = '%s failed: %s (%d).';
   emMQTTResolveFailed = 'The name "%s" could not be resolved.';
-  emMQTTConnectTimeout = 'No answer from %s:%d within %d ms.';
-  emMQTTConnectTo = 'Connecting to %s:%d';
-  emMQTTBindTo = 'Listening on %s:%d';
-  emMQTTWriteStalled = 'The connection took nothing for %d ms; it was given up.';
   emMQTTConnectionClosed = 'The connection is closed.';
-  emMQTTNoLibCrypto = 'OpenSSL (libcrypto) could not be loaded: TLS needs libcrypto 1.1.1 or 3.x next to the application or on the system.';
-  emMQTTNoLibSSL = 'OpenSSL (libssl) could not be loaded: TLS needs libssl 1.1.1 or 3.x next to the application or on the system.';
-  emMQTTOldOpenSSL = 'The OpenSSL found is older than 1.1.1; TLS needs 1.1.1 or 3.x.';
-  emMQTTTLSError = 'TLS failed in %s: %s';
-  emMQTTTLSFile = 'reading %s';
-  emMQTTTLSKeyMismatch = 'the private key does not belong to the certificate';
-  emMQTTTLSClosed = 'The connection closed during the TLS handshake.';
   emMQTTTLSTimeout = 'The TLS handshake did not finish within %d ms.';
-  emMQTTTLSNoCertificate = 'The server sent no certificate.';
   emMQTTCertRefused = 'The server certificate was refused: %s';
-  emMQTTWSHandshake = 'The WebSocket handshake failed: %s';
-  emMQTTWSNoProtocol = 'the server did not select the "mqtt" subprotocol';
-  emMQTTWSBadAccept = 'Sec-WebSocket-Accept does not match the key sent';
-  emMQTTWSStatus = 'the server answered "%s" instead of 101';
-  emMQTTWSTooLarge = 'the handshake is larger than 16 KB';
-  emMQTTWSTimeout = 'no answer within %d ms';
-  emMQTTWSTextFrame = 'A WebSocket text frame arrived; MQTT travels only in binary frames.';
-  emMQTTWSBadFrame = 'Invalid WebSocket frame: %s';
-  emMQTTProxyRefused = 'The proxy refused the tunnel: %s';
-  emMQTTProxyTimeout = 'no answer in time';
-  emMQTTProxyAuth = 'the user name or password was refused';
-  emMQTTProxySocksReply = 'SOCKS5 reply %d';
   emMQTTStoreLocked = 'The session file %s could not be opened (another client with the same identifier may be using it): %s';
   emMQTTStoreInvalid = 'The file %s is not an MQTT session file of PascalRAL.';
   emMQTTAuthFailed = 'Authentication failed: %s';

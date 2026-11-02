@@ -32,16 +32,13 @@ package RALModuleMQTTPackage;
 requires
   rtl,
   PascalRAL,
+  RALNetPackage,
   RALPluginAuthPackage;
 
 contains
   RALMQTTTypes in '..\..\..\src\modules\mqtt\RALMQTTTypes.pas',
   RALMQTTPacket in '..\..\..\src\modules\mqtt\RALMQTTPacket.pas',
   RALMQTTTopic in '..\..\..\src\modules\mqtt\RALMQTTTopic.pas',
-  RALMQTTSocket in '..\..\..\src\modules\mqtt\RALMQTTSocket.pas',
-  RALMQTTTLS in '..\..\..\src\modules\mqtt\RALMQTTTLS.pas',
-  RALMQTTWebSocket in '..\..\..\src\modules\mqtt\RALMQTTWebSocket.pas',
-  RALMQTTProxy in '..\..\..\src\modules\mqtt\RALMQTTProxy.pas',
   RALMQTTAuth in '..\..\..\src\modules\mqtt\RALMQTTAuth.pas',
   RALMQTTStore in '..\..\..\src\modules\mqtt\RALMQTTStore.pas',
   RALMQTTSession in '..\..\..\src\modules\mqtt\RALMQTTSession.pas',

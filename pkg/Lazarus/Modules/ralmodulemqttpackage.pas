@@ -8,8 +8,8 @@ unit RALModuleMQTTPackage;
 interface
 
 uses
-  RALMQTTTypes, RALMQTTPacket, RALMQTTTopic, RALMQTTSocket, RALMQTTTLS, 
-  RALMQTTWebSocket, RALMQTTProxy, RALMQTTAuth, RALMQTTStore, RALMQTTSession, 
+  RALMQTTTypes, RALMQTTPacket, RALMQTTTopic, 
+  RALMQTTAuth, RALMQTTStore, RALMQTTSession, 
   RALMQTTClient, RALMQTTActions, RALMQTTSNTypes, RALMQTTSNPacket12, 
   RALMQTTSNPacket20, RALMQTTSNClient, RALMQTTBrokerStore, RALMQTTBroker, 
   RALMQTTSNGateway, RALMQTTRestModule;

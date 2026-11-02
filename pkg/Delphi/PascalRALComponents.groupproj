@@ -93,8 +93,11 @@
         <Projects Include="Modules\RALModuleSOAPDsgn.dproj">
             <Dependencies>Modules\RALModuleSOAPPackage.dproj</Dependencies>
         </Projects>
+        <Projects Include="Net\RALNetPackage.dproj">
+            <Dependencies>PascalRAL.dproj</Dependencies>
+        </Projects>
         <Projects Include="Modules\RALModuleMQTTPackage.dproj">
-            <Dependencies>Plugins\RALPluginAuthPackage.dproj</Dependencies>
+            <Dependencies>Net\RALNetPackage.dproj;Plugins\RALPluginAuthPackage.dproj</Dependencies>
         </Projects>
         <Projects Include="Modules\RALModuleMQTTDsgn.dproj">
             <Dependencies>Modules\RALModuleMQTTPackage.dproj</Dependencies>
@@ -386,13 +389,22 @@
     <Target Name="RALModuleSOAPDsgn:Make" DependsOnTargets="RALModuleSOAPPackage:Make">
         <MSBuild Projects="Modules\RALModuleSOAPDsgn.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALModuleMQTTPackage" DependsOnTargets="RALPluginAuthPackage">
+    <Target Name="RALNetPackage" DependsOnTargets="PascalRAL">
+        <MSBuild Projects="Net\RALNetPackage.dproj"/>
+    </Target>
+    <Target Name="RALNetPackage:Clean" DependsOnTargets="PascalRAL:Clean">
+        <MSBuild Projects="Net\RALNetPackage.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALNetPackage:Make" DependsOnTargets="PascalRAL:Make">
+        <MSBuild Projects="Net\RALNetPackage.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALModuleMQTTPackage" DependsOnTargets="RALNetPackage;RALPluginAuthPackage">
         <MSBuild Projects="Modules\RALModuleMQTTPackage.dproj"/>
     </Target>
-    <Target Name="RALModuleMQTTPackage:Clean" DependsOnTargets="RALPluginAuthPackage:Clean">
+    <Target Name="RALModuleMQTTPackage:Clean" DependsOnTargets="RALNetPackage:Clean;RALPluginAuthPackage:Clean">
         <MSBuild Projects="Modules\RALModuleMQTTPackage.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALModuleMQTTPackage:Make" DependsOnTargets="RALPluginAuthPackage:Make">
+    <Target Name="RALModuleMQTTPackage:Make" DependsOnTargets="RALNetPackage:Make;RALPluginAuthPackage:Make">
         <MSBuild Projects="Modules\RALModuleMQTTPackage.dproj" Targets="Make"/>
     </Target>
     <Target Name="RALModuleMQTTDsgn" DependsOnTargets="RALModuleMQTTPackage">
@@ -404,13 +416,13 @@
     <Target Name="RALModuleMQTTDsgn:Make" DependsOnTargets="RALModuleMQTTPackage:Make">
         <MSBuild Projects="Modules\RALModuleMQTTDsgn.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALModuleMQTTDBPackage" DependsOnTargets="RALModuleMQTTPackage;RALDBPackage">
+    <Target Name="RALModuleMQTTDBPackage" DependsOnTargets="RALNetPackage;RALModuleMQTTPackage;RALDBPackage">
         <MSBuild Projects="Modules\RALModuleMQTTDBPackage.dproj"/>
     </Target>
-    <Target Name="RALModuleMQTTDBPackage:Clean" DependsOnTargets="RALModuleMQTTPackage:Clean;RALDBPackage:Clean">
+    <Target Name="RALModuleMQTTDBPackage:Clean" DependsOnTargets="RALNetPackage:Clean;RALModuleMQTTPackage:Clean;RALDBPackage:Clean">
         <MSBuild Projects="Modules\RALModuleMQTTDBPackage.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALModuleMQTTDBPackage:Make" DependsOnTargets="RALModuleMQTTPackage:Make;RALDBPackage:Make">
+    <Target Name="RALModuleMQTTDBPackage:Make" DependsOnTargets="RALNetPackage:Make;RALModuleMQTTPackage:Make;RALDBPackage:Make">
         <MSBuild Projects="Modules\RALModuleMQTTDBPackage.dproj" Targets="Make"/>
     </Target>
     <Target Name="RALCompressZStdPackage" DependsOnTargets="PascalRAL">

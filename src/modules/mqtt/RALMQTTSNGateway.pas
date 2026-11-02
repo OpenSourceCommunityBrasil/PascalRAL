@@ -18,7 +18,7 @@ interface
 uses
   Classes, SysUtils, SyncObjs,
   RALTypes,
-  RALMQTTTypes, RALMQTTTopic, RALMQTTSocket, RALMQTTTLS, RALMQTTAuth, RALMQTTSession,
+  RALMQTTTypes, RALMQTTTopic, RALSocket, RALTLS, RALMQTTAuth, RALMQTTSession,
   RALMQTTBroker, RALMQTTSNTypes, RALMQTTSNPacket12, RALMQTTSNPacket20;
 
 type
@@ -86,24 +86,24 @@ type
   private
     FGateway: TRALMQTTSNGateway;
     FBroker: TRALMQTTBroker;
-    FPlain: TRALMQTTSocket;
-    FSecure: TRALMQTTSocket;
-    FWaker: TRALMQTTSocket;
-    FWakerAddress: TRALMQTTAddress;
+    FPlain: TRALSocket;
+    FSecure: TRALSocket;
+    FWaker: TRALSocket;
+    FWakerAddress: TRALSocketAddress;
     FWakePending: IntegerRAL;
     FPeers: TStringList;
     FByClient: TStringList;
     FCodecs: array[TRALMQTTSNVersion] of TRALMQTTSNCodec;
-    FDTLSContext: TRALMQTTTLSContext;
+    FDTLSContext: TRALTLSContext;
     FLock: TCriticalSection;
     FNextAdvertise: Int64RAL;
 
-    procedure Receive(ASocket: TRALMQTTSocket; ASecure: boolean);
-    procedure Process(ASocket: TRALMQTTSocket; const AFrom: TRALMQTTAddress; ASecure: boolean;
+    procedure Receive(ASocket: TRALSocket; ASecure: boolean);
+    procedure Process(ASocket: TRALSocket; const AFrom: TRALSocketAddress; ASecure: boolean;
       APeer: TObject; const AData: TBytes);
     procedure Handle(APeer: TObject; APacket: TRALMQTTSNPacket);
     procedure Send(APeer: TObject; APacket: TRALMQTTSNPacket);
-    procedure SendTo(ASocket: TRALMQTTSocket; const AAddress: TRALMQTTAddress;
+    procedure SendTo(ASocket: TRALSocket; const AAddress: TRALSocketAddress;
       APacket: TRALMQTTSNPacket; AVersion: TRALMQTTSNVersion);
     procedure Connect_(APeer: TObject; APacket: TRALMQTTSNPacket);
     procedure Reply(APeer: TObject; AKind: TRALMQTTSNKind; AMsgId: Word; ACode: Byte;
@@ -118,7 +118,7 @@ type
     procedure ReturnPending(APeer: TObject);
     procedure Timers;
     procedure WakeSession(Sender: TObject);
-    function PeerOf(ASocket: TRALMQTTSocket; const AAddress: TRALMQTTAddress; ASecure: boolean;
+    function PeerOf(ASocket: TRALSocket; const AAddress: TRALSocketAddress; ASecure: boolean;
       ACreate: boolean): TObject;
     function TopicOf(APeer: TObject; AType: TRALMQTTSNTopicType; AId: Word;
       const AName: StringRAL): StringRAL;
@@ -159,11 +159,11 @@ type
   { one MQTT-SN client }
   TRALMQTTSNPeer = class
   public
-    Address: TRALMQTTAddress;
+    Address: TRALSocketAddress;
     Key: string;
-    Socket: TRALMQTTSocket;
+    Socket: TRALSocket;
     Secure: boolean;
-    DTLS: TRALMQTTDTLSSession;
+    DTLS: TRALDTLSSession;
     Version: TRALMQTTSNVersion;
     ClientID: StringRAL;
     Session: TRALMQTTBrokerSession;
@@ -386,20 +386,20 @@ begin
   FByClient.Sorted := True;
   for vVersion := Low(TRALMQTTSNVersion) to High(TRALMQTTSNVersion) do
     FCodecs[vVersion] := RALMQTTSNNewCodec(vVersion);
-  FWaker := TRALMQTTSocket.Create;
+  FWaker := TRALSocket.Create;
   FWaker.OpenUDP('127.0.0.1', 0, mifIPv4);
-  RALMQTTResolve('127.0.0.1', FWaker.LocalPort, mifIPv4, FWakerAddress);
+  RALResolve('127.0.0.1', FWaker.LocalPort, mifIPv4, FWakerAddress);
   try
     if AGateway.Port > 0 then
     begin
-      FPlain := TRALMQTTSocket.Create;
+      FPlain := TRALSocket.Create;
       FPlain.OpenUDP('', AGateway.Port, mifIPv4);
       FPlain.EnableBroadcast;
     end;
     if AGateway.DTLSPort > 0 then
     begin
       FDTLSContext := FBroker.NewServerContext(True);
-      FSecure := TRALMQTTSocket.Create;
+      FSecure := TRALSocket.Create;
       FSecure.OpenUDP('', AGateway.DTLSPort, mifIPv4);
     end;
   except
@@ -460,14 +460,14 @@ begin
   Wake;
 end;
 
-function TRALMQTTSNGatewayThread.PeerOf(ASocket: TRALMQTTSocket;
-  const AAddress: TRALMQTTAddress; ASecure: boolean; ACreate: boolean): TObject;
+function TRALMQTTSNGatewayThread.PeerOf(ASocket: TRALSocket;
+  const AAddress: TRALSocketAddress; ASecure: boolean; ACreate: boolean): TObject;
 var
   vKey: string;
   vIndex: IntegerRAL;
   vPeer: TRALMQTTSNPeer;
 begin
-  vKey := string(RALMQTTAddressText(AAddress)) + '|' + IntToStr(RALMQTTAddressPort(AAddress)) +
+  vKey := string(RALAddressText(AAddress)) + '|' + IntToStr(RALAddressPort(AAddress)) +
     '|' + IntToStr(Ord(ASecure));
   vIndex := FPeers.IndexOf(vKey);
   if vIndex >= 0 then
@@ -484,13 +484,13 @@ begin
   vPeer.Socket := ASocket;
   vPeer.Secure := ASecure;
   if ASecure then
-    vPeer.DTLS := TRALMQTTDTLSSession.Create(FDTLSContext, True);
+    vPeer.DTLS := TRALDTLSSession.Create(FDTLSContext, True);
   FPeers.AddObject(vKey, vPeer);
   Result := vPeer;
 end;
 
-procedure TRALMQTTSNGatewayThread.SendTo(ASocket: TRALMQTTSocket;
-  const AAddress: TRALMQTTAddress; APacket: TRALMQTTSNPacket; AVersion: TRALMQTTSNVersion);
+procedure TRALMQTTSNGatewayThread.SendTo(ASocket: TRALSocket;
+  const AAddress: TRALSocketAddress; APacket: TRALMQTTSNPacket; AVersion: TRALMQTTSNVersion);
 var
   vData: TBytes;
 begin
@@ -517,36 +517,36 @@ end;
 
 procedure TRALMQTTSNGatewayThread.Execute;
 var
-  vPoll: TRALMQTTPollItems;
+  vPoll: TRALPollItems;
   vCount: IntegerRAL;
   vBuf: array[0..15] of Byte;
-  vFrom: TRALMQTTAddress;
+  vFrom: TRALSocketAddress;
 begin
   while not Terminated do
   begin
     SetLength(vPoll, 3);
     vCount := 0;
     vPoll[vCount].Handle := FWaker.Handle;
-    vPoll[vCount].Events := RALMQTTPollIn;
+    vPoll[vCount].Events := RALPollIn;
     Inc(vCount);
     if FPlain <> nil then
     begin
       vPoll[vCount].Handle := FPlain.Handle;
-      vPoll[vCount].Events := RALMQTTPollIn;
+      vPoll[vCount].Events := RALPollIn;
       Inc(vCount);
     end;
     if FSecure <> nil then
     begin
       vPoll[vCount].Handle := FSecure.Handle;
-      vPoll[vCount].Events := RALMQTTPollIn;
+      vPoll[vCount].Events := RALPollIn;
       Inc(vCount);
     end;
     try
-      RALMQTTPoll(vPoll, vCount, 100);
+      RALPoll(vPoll, vCount, 100);
     except
       Sleep(10);
     end;
-    if (vPoll[0].Returned and RALMQTTPollIn) <> 0 then
+    if (vPoll[0].Returned and RALPollIn) <> 0 then
     begin
       FWakePending := 0;
       while FWaker.ReceiveFrom(vBuf, SizeOf(vBuf), vFrom) > 0 do
@@ -564,10 +564,10 @@ begin
   end;
 end;
 
-procedure TRALMQTTSNGatewayThread.Receive(ASocket: TRALMQTTSocket; ASecure: boolean);
+procedure TRALMQTTSNGatewayThread.Receive(ASocket: TRALSocket; ASecure: boolean);
 var
   vBuf: array[0..65535] of Byte;
-  vFrom: TRALMQTTAddress;
+  vFrom: TRALSocketAddress;
   vRes, vInt: IntegerRAL;
   vData, vOut: TBytes;
   vPeer: TRALMQTTSNPeer;
@@ -598,14 +598,14 @@ begin
       except
         // a handshake gone wrong starts over at the next datagram
         FreeAndNil(vPeer.DTLS);
-        vPeer.DTLS := TRALMQTTDTLSSession.Create(FDTLSContext, True);
+        vPeer.DTLS := TRALDTLSSession.Create(FDTLSContext, True);
       end;
       vOut := vPeer.DTLS.TakeOutput;
       if vOut <> nil then
         ASocket.SendTo(vOut[0], Length(vOut), vFrom);
       for vInt := 0 to vPlain.Count - 1 do
         try
-          Process(ASocket, vFrom, True, vPeer, TRALMQTTDTLSPlain(vPlain[vInt]).Data);
+          Process(ASocket, vFrom, True, vPeer, TRALDTLSPlain(vPlain[vInt]).Data);
         except
           // dropped
         end;
@@ -617,8 +617,8 @@ begin
   until False;
 end;
 
-procedure TRALMQTTSNGatewayThread.Process(ASocket: TRALMQTTSocket;
-  const AFrom: TRALMQTTAddress; ASecure: boolean; APeer: TObject; const AData: TBytes);
+procedure TRALMQTTSNGatewayThread.Process(ASocket: TRALSocket;
+  const AFrom: TRALSocketAddress; ASecure: boolean; APeer: TObject; const AData: TBytes);
 var
   vPeer: TRALMQTTSNPeer;
   vPacket, vOuter, vReply: TRALMQTTSNPacket;
@@ -683,7 +683,7 @@ begin
       if (vPacket.Kind <> snkCONNECT) or not (vVersion in FGateway.Versions) then
         Exit; // nobody connected from there
       // the address lists and flood of the server
-      if FBroker.ValidateAddress(RALMQTTAddressText(AFrom), RALMQTTAddressPort(AFrom)) <> 0 then
+      if FBroker.ValidateAddress(RALAddressText(AFrom), RALAddressPort(AFrom)) <> 0 then
         Exit;
       FLock.Acquire;
       try
@@ -1402,7 +1402,7 @@ var
   vPeer: TRALMQTTSNPeer;
   vNow: Int64RAL;
   vAdvertise: TRALMQTTSNPacket;
-  vBroadcast: TRALMQTTAddress;
+  vBroadcast: TRALSocketAddress;
 begin
   vNow := RALMQTTNow;
   for vInt := FPeers.Count - 1 downto 0 do
@@ -1465,7 +1465,7 @@ begin
     try
       vAdvertise.GwId := FGateway.GatewayId;
       vAdvertise.Duration := FGateway.AdvertiseInterval;
-      if RALMQTTResolve('255.255.255.255', FGateway.Port, mifIPv4, vBroadcast) then
+      if RALResolve('255.255.255.255', FGateway.Port, mifIPv4, vBroadcast) then
         SendTo(FPlain, vBroadcast, vAdvertise, sv12);
     finally
       vAdvertise.Free;

@@ -3,10 +3,12 @@
 /// (ws2_32.dll, or the C library) and a handful of constants change, and they
 /// are all in the declarations block at the top of the implementation. Waiting
 /// is poll() everywhere (WSAPoll on Windows). Also the channel classes the
-/// MQTT transports stack on a socket (TLS, WebSocket).
-unit RALMQTTSocket;
+/// protocols stack on a socket (TLS, WebSocket, a proxy).
+/// Package RALNetPackage: used by MQTT, and meant for every protocol RAL speaks
+/// on its own sockets (e-mail, a balancer, WebSocket clients).
+unit RALSocket;
 
-{$I ..\..\core\PascalRAL.inc}
+{$I ..\core\PascalRAL.inc}
 
 {$IFDEF FPC}
   {$MODE OBJFPC}{$H+}
@@ -20,31 +22,31 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALMQTTTypes;
+  RALTypes, RALConsts;
 
 const
   /// Read or Write found nothing to do without waiting.
-  RALMQTTWouldBlock = -1;
+  RALSocketWouldBlock = -1;
   /// poll event: data to read (or a connection to accept).
-  RALMQTTPollIn = $0001;
+  RALPollIn = $0001;
   /// poll event: room to write (or a connect that finished).
-  RALMQTTPollOut = $0004;
+  RALPollOut = $0004;
   /// poll event: an error on the socket.
-  RALMQTTPollErr = $0008;
+  RALPollErr = $0008;
   /// poll event: the other side hung up.
-  RALMQTTPollHup = $0010;
+  RALPollHup = $0010;
 
 type
   {$IFDEF RALWindows}
   /// A socket handle of the system.
-  TRALMQTTSocketHandle = NativeUInt;
+  TRALSocketHandle = NativeUInt;
   {$ELSE}
   /// A socket handle of the system.
-  TRALMQTTSocketHandle = Integer;
+  TRALSocketHandle = Integer;
   {$ENDIF}
 
   /// Which IP family a socket uses.
-  TRALMQTTIPFamily = (
+  TRALIPFamily = (
     /// Whatever the name resolves to; IPv6 and IPv4 tried in turn (RFC 8305).
     mifAny,
     /// IPv4 only.
@@ -53,27 +55,27 @@ type
     mifIPv6);
 
   /// A socket address of any family: the system's sockaddr, as bytes.
-  TRALMQTTAddress = record
+  TRALSocketAddress = record
     /// The sockaddr.
     Data: array[0..127] of Byte;
     /// Bytes of Data in use.
     Size: IntegerRAL;
   end;
 
-  /// One entry of RALMQTTPoll: a handle, the events asked, the events that came.
-  TRALMQTTPollItem = record
+  /// One entry of RALPoll: a handle, the events asked, the events that came.
+  TRALPollItem = record
     /// Socket to watch.
-    Handle: TRALMQTTSocketHandle;
-    /// RALMQTTPollIn and/or RALMQTTPollOut.
+    Handle: TRALSocketHandle;
+    /// RALPollIn and/or RALPollOut.
     Events: Word;
-    /// Events that happened, after RALMQTTPoll.
+    /// Events that happened, after RALPoll.
     Returned: Word;
   end;
   /// Array of poll entries.
-  TRALMQTTPollItems = array of TRALMQTTPollItem;
+  TRALPollItems = array of TRALPollItem;
 
   /// Raised for a socket failure; Code is the system's error number.
-  ERALMQTTSocketError = class(ERALMQTTError)
+  ERALSocketError = class(Exception)
   private
     FCode: IntegerRAL;
   public
@@ -85,12 +87,12 @@ type
 
   { A TCP or UDP socket, always non-blocking underneath; the blocking calls
     (Connect, WaitFor) wait with poll and a deadline. TCP_NODELAY is set on
-    every TCP socket: MQTT writes small packets and Nagle's delay stalls a
+    every TCP socket: protocols write small packets and Nagle's delay stalls a
     request and its answer by 40 ms or more }
-  TRALMQTTSocket = class
+  TRALSocket = class
   private
     FFamily: IntegerRAL;
-    FHandle: TRALMQTTSocketHandle;
+    FHandle: TRALSocketHandle;
     FPeerAddress: StringRAL;
     FPeerPort: IntegerRAL;
 
@@ -99,16 +101,16 @@ type
   public
     constructor Create;
     /// A socket over a handle a listener accepted.
-    constructor CreateAccepted(AHandle: TRALMQTTSocketHandle; const AAddress: TRALMQTTAddress);
+    constructor CreateAccepted(AHandle: TRALSocketHandle; const AAddress: TRALSocketAddress);
     destructor Destroy; override;
 
     { Accepts a waiting connection of a listening socket; nil when none is
       waiting. The new socket is non-blocking with the TCP options set }
-    function Accept: TRALMQTTSocket;
+    function Accept: TRALSocket;
     { Binds to AAddress (empty is every address) and APort, and listens.
       AFamily mifAny opens IPv6 with IPv4 mapped where the system allows it }
     procedure Listen(const AAddress: StringRAL; APort: IntegerRAL;
-      AFamily: TRALMQTTIPFamily = mifIPv4; ABacklog: IntegerRAL = 128);
+      AFamily: TRALIPFamily = mifIPv4; ABacklog: IntegerRAL = 128);
     /// Closes the socket; safe to call twice.
     procedure Close;
     { Connects to AHost:APort within ATimeout milliseconds. The name is
@@ -117,28 +119,28 @@ type
       250 ms while the earlier ones still wait, and the first to answer wins
       (RFC 8305, the simple form) }
     procedure Connect(const AHost: StringRAL; APort: IntegerRAL;
-      ATimeout: IntegerRAL; AFamily: TRALMQTTIPFamily = mifAny);
+      ATimeout: IntegerRAL; AFamily: TRALIPFamily = mifAny);
     /// Opens a UDP socket bound to APort (0: any) on AAddress (empty: every address).
     procedure OpenUDP(const AAddress: StringRAL; APort: IntegerRAL;
-      AFamily: TRALMQTTIPFamily = mifIPv4);
+      AFamily: TRALIPFamily = mifIPv4);
     { Reads what is there, up to ACount bytes, without waiting: bytes read, 0
-      when the other side closed, RALMQTTWouldBlock when there is nothing yet.
+      when the other side closed, RALSocketWouldBlock when there is nothing yet.
       Raises on an error }
     function Receive(var ABuffer; ACount: IntegerRAL): IntegerRAL;
     { Reads one datagram into ABuffer (up to ACount bytes) and who sent it;
-      RALMQTTWouldBlock when none is waiting }
-    function ReceiveFrom(var ABuffer; ACount: IntegerRAL; out AFrom: TRALMQTTAddress): IntegerRAL;
+      RALSocketWouldBlock when none is waiting }
+    function ReceiveFrom(var ABuffer; ACount: IntegerRAL; out AFrom: TRALSocketAddress): IntegerRAL;
     { Writes what the system takes now, up to ACount bytes, without waiting:
-      bytes taken (maybe fewer), RALMQTTWouldBlock when none. Raises on an error }
+      bytes taken (maybe fewer), RALSocketWouldBlock when none. Raises on an error }
     function Send(const ABuffer; ACount: IntegerRAL): IntegerRAL;
     /// Sends one datagram to ATo.
-    procedure SendTo(const ABuffer; ACount: IntegerRAL; const ATo: TRALMQTTAddress);
+    procedure SendTo(const ABuffer; ACount: IntegerRAL; const ATo: TRALSocketAddress);
     /// Ends the sending side (FIN), keeping the socket open to read.
     procedure ShutdownSend;
     /// Lets a UDP socket send to a broadcast address (gateway discovery).
     procedure EnableBroadcast;
     { Waits up to ATimeout milliseconds (-1: no limit) for AEvents
-      (RALMQTTPollIn, RALMQTTPollOut); the events that came, 0 on timeout }
+      (RALPollIn, RALPollOut); the events that came, 0 on timeout }
     function WaitFor(AEvents: Word; ATimeout: IntegerRAL): Word;
     /// The port the socket is bound to (a listener on port 0 gets one from the system).
     function LocalPort: IntegerRAL;
@@ -146,27 +148,27 @@ type
     /// The socket is open.
     property Active: boolean read GetActive;
     /// The system handle.
-    property Handle: TRALMQTTSocketHandle read FHandle;
+    property Handle: TRALSocketHandle read FHandle;
     /// Numeric address of the other side, after Connect or Accept.
     property PeerAddress: StringRAL read FPeerAddress;
     /// Port of the other side, after Connect or Accept.
     property PeerPort: IntegerRAL read FPeerPort;
   end;
 
-  { A byte stream over a connection, the layer the MQTT transports stack:
+  { A byte stream over a connection, the layer the transports stack:
     the socket itself, TLS over it, WebSocket over either. Read and Write never
     wait; the Wait* helpers wait on the socket with a deadline }
-  TRALMQTTChannel = class
+  TRALChannel = class
   private
-    FSocket: TRALMQTTSocket;
+    FSocket: TRALSocket;
   protected
-    function GetSocket: TRALMQTTSocket; virtual;
+    function GetSocket: TRALSocket; virtual;
   public
     { Bytes read (up to ACount), 0 when the connection closed, or
-      RALMQTTWouldBlock when nothing is there yet }
+      RALSocketWouldBlock when nothing is there yet }
     function Read(var ABuffer; ACount: IntegerRAL): IntegerRAL; virtual; abstract;
     { Bytes taken (up to ACount, maybe 0 when the layer below is full), or
-      RALMQTTWouldBlock }
+      RALSocketWouldBlock }
     function Write(const ABuffer; ACount: IntegerRAL): IntegerRAL; virtual; abstract;
     /// True when bytes are already buffered in the layer, so Read will not need the socket.
     function HasBuffered: boolean; virtual;
@@ -178,7 +180,7 @@ type
     /// Closes the layer (a TLS close_notify, a WebSocket close) and the socket.
     procedure Close; virtual;
     { Reads up to ACount bytes, waiting up to ATimeout milliseconds for the
-      first of them: bytes read, 0 when closed, RALMQTTWouldBlock on timeout }
+      first of them: bytes read, 0 when closed, RALSocketWouldBlock on timeout }
     function ReadWait(var ABuffer; ACount, ATimeout: IntegerRAL): IntegerRAL;
     { Writes all ACount bytes. AStallTimeout is how long it may go without
       progress, not the whole time: a slow link that keeps moving is never cut.
@@ -186,16 +188,16 @@ type
     procedure WriteAll(const ABuffer; ACount, AStallTimeout: IntegerRAL);
 
     /// The socket at the bottom of the stack.
-    property Socket: TRALMQTTSocket read GetSocket;
+    property Socket: TRALSocket read GetSocket;
   end;
 
   /// The socket as a channel: plain TCP.
-  TRALMQTTSocketChannel = class(TRALMQTTChannel)
+  TRALSocketChannel = class(TRALChannel)
   private
     FOwnsSocket: boolean;
   public
     /// Channel over ASocket; AOwnsSocket frees it with the channel.
-    constructor Create(ASocket: TRALMQTTSocket; AOwnsSocket: boolean = True);
+    constructor Create(ASocket: TRALSocket; AOwnsSocket: boolean = True);
     destructor Destroy; override;
     procedure Close; override;
     function Read(var ABuffer; ACount: IntegerRAL): IntegerRAL; override;
@@ -203,44 +205,49 @@ type
   end;
 
   /// A channel over another channel; the base of TLS and WebSocket.
-  TRALMQTTLayerChannel = class(TRALMQTTChannel)
+  TRALLayerChannel = class(TRALChannel)
   private
-    FInner: TRALMQTTChannel;
+    FInner: TRALChannel;
     FOwnsInner: boolean;
   protected
-    function GetSocket: TRALMQTTSocket; override;
+    function GetSocket: TRALSocket; override;
   public
     /// Layer over AInner; AOwnsInner frees it with this one.
-    constructor Create(AInner: TRALMQTTChannel; AOwnsInner: boolean = True);
+    constructor Create(AInner: TRALChannel; AOwnsInner: boolean = True);
     destructor Destroy; override;
     procedure Close; override;
     /// The channel below.
-    property Inner: TRALMQTTChannel read FInner;
+    property Inner: TRALChannel read FInner;
   end;
 
 { Waits up to ATimeout milliseconds (-1: no limit) for any of the entries:
   the number with events, 0 on timeout. Interrupted waits are resumed }
-function RALMQTTPoll(var AItems: TRALMQTTPollItems; ACount, ATimeout: IntegerRAL): IntegerRAL;
+function RALPoll(var AItems: TRALPollItems; ACount, ATimeout: IntegerRAL): IntegerRAL;
 /// Numeric text of an address ('192.0.2.1', '2001:db8::1').
-function RALMQTTAddressText(const AAddress: TRALMQTTAddress): StringRAL;
+function RALAddressText(const AAddress: TRALSocketAddress): StringRAL;
 /// Port of an address.
-function RALMQTTAddressPort(const AAddress: TRALMQTTAddress): IntegerRAL;
+function RALAddressPort(const AAddress: TRALSocketAddress): IntegerRAL;
 /// True when both are the same address and port.
-function RALMQTTSameAddress(const A, B: TRALMQTTAddress): boolean;
+function RALSameAddress(const A, B: TRALSocketAddress): boolean;
 { Resolves AHost:APort into AAddress for a datagram socket of AFamily; False
   when the name does not resolve }
-function RALMQTTResolve(const AHost: StringRAL; APort: IntegerRAL;
-  AFamily: TRALMQTTIPFamily; out AAddress: TRALMQTTAddress): boolean;
+function RALResolve(const AHost: StringRAL; APort: IntegerRAL;
+  AFamily: TRALIPFamily; out AAddress: TRALSocketAddress): boolean;
 /// Text of a system socket error.
-function RALMQTTSocketErrorText(ACode: IntegerRAL): string;
+function RALSocketErrorText(ACode: IntegerRAL): string;
+{ Milliseconds of a clock that only goes forward, unaffected by changes of the
+  system time: the deadlines of the sockets and of the protocols above them }
+function RALSocketNow: Int64RAL;
 
 implementation
 
 {$IFNDEF FPC}
   {$IFDEF RALWindows}
+uses
+  Windows;
   {$ELSE}
 uses
-  Posix.Base;
+  Posix.Base, Posix.Time;
   {$ENDIF}
 {$ENDIF}
 
@@ -276,7 +283,7 @@ const
   cEINTR = 10004;
   cFIONBIO = Integer($8004667E);
   cSHUT_WR = 1;
-  cInvalid = TRALMQTTSocketHandle(not TRALMQTTSocketHandle(0));
+  cInvalid = TRALSocketHandle(not TRALSocketHandle(0));
   cSendFlags = 0;
 
 type
@@ -293,27 +300,27 @@ type
   end;
   TSockLen = Integer;
   TPollFd = record
-    fd: TRALMQTTSocketHandle;
+    fd: TRALSocketHandle;
     events: SmallInt;
     revents: SmallInt;
   end;
 
-function sys_socket(af, typ, protocol: Integer): TRALMQTTSocketHandle; stdcall; external cLib name 'socket';
-function sys_connect(s: TRALMQTTSocketHandle; name: Pointer; namelen: TSockLen): Integer; stdcall; external cLib name 'connect';
-function sys_bind(s: TRALMQTTSocketHandle; name: Pointer; namelen: TSockLen): Integer; stdcall; external cLib name 'bind';
-function sys_listen(s: TRALMQTTSocketHandle; backlog: Integer): Integer; stdcall; external cLib name 'listen';
-function sys_accept(s: TRALMQTTSocketHandle; addr: Pointer; var addrlen: TSockLen): TRALMQTTSocketHandle; stdcall; external cLib name 'accept';
-function sys_send(s: TRALMQTTSocketHandle; const buf; len, flags: Integer): Integer; stdcall; external cLib name 'send';
-function sys_recv(s: TRALMQTTSocketHandle; var buf; len, flags: Integer): Integer; stdcall; external cLib name 'recv';
-function sys_sendto(s: TRALMQTTSocketHandle; const buf; len, flags: Integer; addrto: Pointer; tolen: TSockLen): Integer; stdcall; external cLib name 'sendto';
-function sys_recvfrom(s: TRALMQTTSocketHandle; var buf; len, flags: Integer; from: Pointer; var fromlen: TSockLen): Integer; stdcall; external cLib name 'recvfrom';
-function sys_closesocket(s: TRALMQTTSocketHandle): Integer; stdcall; external cLib name 'closesocket';
-function sys_shutdown(s: TRALMQTTSocketHandle; how: Integer): Integer; stdcall; external cLib name 'shutdown';
-function sys_setsockopt(s: TRALMQTTSocketHandle; level, optname: Integer; optval: Pointer; optlen: TSockLen): Integer; stdcall; external cLib name 'setsockopt';
-function sys_getsockopt(s: TRALMQTTSocketHandle; level, optname: Integer; optval: Pointer; var optlen: TSockLen): Integer; stdcall; external cLib name 'getsockopt';
-function sys_getsockname(s: TRALMQTTSocketHandle; name: Pointer; var namelen: TSockLen): Integer; stdcall; external cLib name 'getsockname';
-function sys_getpeername(s: TRALMQTTSocketHandle; name: Pointer; var namelen: TSockLen): Integer; stdcall; external cLib name 'getpeername';
-function sys_ioctlsocket(s: TRALMQTTSocketHandle; cmd: Integer; var arg: Cardinal): Integer; stdcall; external cLib name 'ioctlsocket';
+function sys_socket(af, typ, protocol: Integer): TRALSocketHandle; stdcall; external cLib name 'socket';
+function sys_connect(s: TRALSocketHandle; name: Pointer; namelen: TSockLen): Integer; stdcall; external cLib name 'connect';
+function sys_bind(s: TRALSocketHandle; name: Pointer; namelen: TSockLen): Integer; stdcall; external cLib name 'bind';
+function sys_listen(s: TRALSocketHandle; backlog: Integer): Integer; stdcall; external cLib name 'listen';
+function sys_accept(s: TRALSocketHandle; addr: Pointer; var addrlen: TSockLen): TRALSocketHandle; stdcall; external cLib name 'accept';
+function sys_send(s: TRALSocketHandle; const buf; len, flags: Integer): Integer; stdcall; external cLib name 'send';
+function sys_recv(s: TRALSocketHandle; var buf; len, flags: Integer): Integer; stdcall; external cLib name 'recv';
+function sys_sendto(s: TRALSocketHandle; const buf; len, flags: Integer; addrto: Pointer; tolen: TSockLen): Integer; stdcall; external cLib name 'sendto';
+function sys_recvfrom(s: TRALSocketHandle; var buf; len, flags: Integer; from: Pointer; var fromlen: TSockLen): Integer; stdcall; external cLib name 'recvfrom';
+function sys_closesocket(s: TRALSocketHandle): Integer; stdcall; external cLib name 'closesocket';
+function sys_shutdown(s: TRALSocketHandle; how: Integer): Integer; stdcall; external cLib name 'shutdown';
+function sys_setsockopt(s: TRALSocketHandle; level, optname: Integer; optval: Pointer; optlen: TSockLen): Integer; stdcall; external cLib name 'setsockopt';
+function sys_getsockopt(s: TRALSocketHandle; level, optname: Integer; optval: Pointer; var optlen: TSockLen): Integer; stdcall; external cLib name 'getsockopt';
+function sys_getsockname(s: TRALSocketHandle; name: Pointer; var namelen: TSockLen): Integer; stdcall; external cLib name 'getsockname';
+function sys_getpeername(s: TRALSocketHandle; name: Pointer; var namelen: TSockLen): Integer; stdcall; external cLib name 'getpeername';
+function sys_ioctlsocket(s: TRALSocketHandle; cmd: Integer; var arg: Cardinal): Integer; stdcall; external cLib name 'ioctlsocket';
 function sys_poll(fds: Pointer; nfds: Cardinal; timeout: Integer): Integer; stdcall; external cLib name 'WSAPoll';
 function sys_getaddrinfo(node, service: PAnsiChar; hints: PAddrInfo; var res: PAddrInfo): Integer; stdcall; external cLib name 'getaddrinfo';
 procedure sys_freeaddrinfo(ai: PAddrInfo); stdcall; external cLib name 'freeaddrinfo';
@@ -333,9 +340,9 @@ end;
 function PollEventsToSys(AEvents: Word): SmallInt;
 begin
   Result := 0;
-  if (AEvents and RALMQTTPollIn) <> 0 then
+  if (AEvents and RALPollIn) <> 0 then
     Result := Result or $0300;
-  if (AEvents and RALMQTTPollOut) <> 0 then
+  if (AEvents and RALPollOut) <> 0 then
     Result := Result or $0010;
 end;
 
@@ -343,16 +350,16 @@ function PollEventsFromSys(AEvents: SmallInt): Word;
 begin
   Result := 0;
   if (AEvents and $0300) <> 0 then
-    Result := Result or RALMQTTPollIn;
+    Result := Result or RALPollIn;
   if (AEvents and $0010) <> 0 then
-    Result := Result or RALMQTTPollOut;
+    Result := Result or RALPollOut;
   if (AEvents and $0005) <> 0 then // POLLERR, POLLNVAL
-    Result := Result or RALMQTTPollErr;
+    Result := Result or RALPollErr;
   if (AEvents and $0002) <> 0 then
-    Result := Result or RALMQTTPollHup;
+    Result := Result or RALPollHup;
 end;
 
-function SetNonBlocking(AHandle: TRALMQTTSocketHandle): boolean;
+function SetNonBlocking(AHandle: TRALSocketHandle): boolean;
 var
   vArg: Cardinal;
 begin
@@ -363,9 +370,9 @@ end;
 const
   cAF_INET = 2;
   {$IF Defined(DARWIN) or Defined(MACOS) or Defined(IOS) or Defined(FREEBSD) or Defined(BSD)}
-    {$DEFINE RALMQTT_BSD}
+    {$DEFINE RALSOCKET_BSD}
   {$IFEND}
-  {$IFDEF RALMQTT_BSD}
+  {$IFDEF RALSOCKET_BSD}
   cAF_INET6 = 28 + {$IFDEF FREEBSD}0{$ELSE}2{$ENDIF}; // 30 on Apple, 28 on FreeBSD
   cSOL_SOCKET = $FFFF;
   cSO_REUSEADDR = $0004;
@@ -418,7 +425,7 @@ const
 
 type
   PAddrInfo = ^TAddrInfo;
-  {$IFDEF RALMQTT_BSD}
+  {$IFDEF RALSOCKET_BSD}
   TAddrInfo = record
     ai_flags: Integer;
     ai_family: Integer;
@@ -469,7 +476,7 @@ function sys_getaddrinfo(node, service: PAnsiChar; hints: PAddrInfo; var res: PA
 procedure sys_freeaddrinfo(ai: PAddrInfo); cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'freeaddrinfo';
 function sys_getnameinfo(sa: Pointer; salen: TSockLen; host: PAnsiChar; hostlen: Cardinal;
   serv: PAnsiChar; servlen: Cardinal; flags: Integer): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'getnameinfo';
-{$IFDEF RALMQTT_BSD}
+{$IFDEF RALSOCKET_BSD}
 function sys_errno: PInteger; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'__error';
 {$ELSE}
   {$IF Defined(ANDROID) or Defined(Android32) or Defined(Android64)}
@@ -487,15 +494,15 @@ end;
 { POSIX poll: the public constants are its own values }
 function PollEventsToSys(AEvents: Word): SmallInt;
 begin
-  Result := SmallInt(AEvents and (RALMQTTPollIn or RALMQTTPollOut));
+  Result := SmallInt(AEvents and (RALPollIn or RALPollOut));
 end;
 
 function PollEventsFromSys(AEvents: SmallInt): Word;
 begin
-  Result := Word(AEvents) and (RALMQTTPollIn or RALMQTTPollOut or RALMQTTPollErr or
-    RALMQTTPollHup or $0020); // $0020 POLLNVAL
+  Result := Word(AEvents) and (RALPollIn or RALPollOut or RALPollErr or
+    RALPollHup or $0020); // $0020 POLLNVAL
   if (Result and $0020) <> 0 then
-    Result := (Result and not Word($0020)) or RALMQTTPollErr;
+    Result := (Result and not Word($0020)) or RALPollErr;
 end;
 
 function sys_closesocket(s: Integer): Integer;
@@ -503,7 +510,7 @@ begin
   Result := sys_close(s);
 end;
 
-function SetNonBlocking(AHandle: TRALMQTTSocketHandle): boolean;
+function SetNonBlocking(AHandle: TRALSocketHandle): boolean;
 var
   vFlags: Integer;
 begin
@@ -516,7 +523,7 @@ end;
   From here on, the same code on every system.
   --------------------------------------------------------------------------- }
 
-function FamilyCode(AFamily: TRALMQTTIPFamily): Integer;
+function FamilyCode(AFamily: TRALIPFamily): Integer;
 begin
   case AFamily of
     mifIPv4: Result := cAF_INET;
@@ -526,36 +533,36 @@ begin
   end;
 end;
 
-function RALMQTTSocketErrorText(ACode: IntegerRAL): string;
+function RALSocketErrorText(ACode: IntegerRAL): string;
 begin
   Result := SysErrorMessage(ACode);
   if Result = '' then
-    Result := Format(emMQTTSocketErrorCode, [ACode]);
+    Result := Format(emSocketErrorCode, [ACode]);
 end;
 
 procedure RaiseSocket(const AWhat: string; ACode: IntegerRAL);
 begin
-  raise ERALMQTTSocketError.CreateCode(ACode, Format(emMQTTSocketError,
-    [AWhat, RALMQTTSocketErrorText(ACode), ACode]));
+  raise ERALSocketError.CreateCode(ACode, Format(emSocketError,
+    [AWhat, RALSocketErrorText(ACode), ACode]));
 end;
 
 { the family field: a word on Windows and Linux, a byte after sa_len on BSD }
-function AddressFamily(const AAddress: TRALMQTTAddress): Integer;
+function AddressFamily(const AAddress: TRALSocketAddress): Integer;
 begin
-  {$IFDEF RALMQTT_BSD}
+  {$IFDEF RALSOCKET_BSD}
   Result := AAddress.Data[1];
   {$ELSE}
   Result := PWord(@AAddress.Data[0])^;
   {$ENDIF}
 end;
 
-function RALMQTTAddressPort(const AAddress: TRALMQTTAddress): IntegerRAL;
+function RALAddressPort(const AAddress: TRALSocketAddress): IntegerRAL;
 begin
   // the port sits at offset 2, in network order, in both sockaddr_in and _in6
   Result := (AAddress.Data[2] shl 8) or AAddress.Data[3];
 end;
 
-function RALMQTTAddressText(const AAddress: TRALMQTTAddress): StringRAL;
+function RALAddressText(const AAddress: TRALSocketAddress): StringRAL;
 var
   vHost: array[0..63] of AnsiChar;
 begin
@@ -571,12 +578,12 @@ begin
     Delete(Result, 1, 7);
 end;
 
-function RALMQTTSameAddress(const A, B: TRALMQTTAddress): boolean;
+function RALSameAddress(const A, B: TRALSocketAddress): boolean;
 begin
   Result := (A.Size = B.Size) and (A.Size > 0) and CompareMem(@A.Data[0], @B.Data[0], A.Size);
 end;
 
-function Resolve(const AHost: StringRAL; APort: IntegerRAL; AFamily: TRALMQTTIPFamily;
+function Resolve(const AHost: StringRAL; APort: IntegerRAL; AFamily: TRALIPFamily;
   ASockType: Integer; APassive: boolean; out AList: PAddrInfo): Integer;
 var
   vHints: TAddrInfo;
@@ -602,8 +609,8 @@ begin
   Result := sys_getaddrinfo(vNode, PAnsiChar(vPort), @vHints, AList);
 end;
 
-function RALMQTTResolve(const AHost: StringRAL; APort: IntegerRAL;
-  AFamily: TRALMQTTIPFamily; out AAddress: TRALMQTTAddress): boolean;
+function RALResolve(const AHost: StringRAL; APort: IntegerRAL;
+  AFamily: TRALIPFamily; out AAddress: TRALSocketAddress): boolean;
 var
   vList: PAddrInfo;
 begin
@@ -621,7 +628,7 @@ begin
   end;
 end;
 
-function RALMQTTPoll(var AItems: TRALMQTTPollItems; ACount, ATimeout: IntegerRAL): IntegerRAL;
+function RALPoll(var AItems: TRALPollItems; ACount, ATimeout: IntegerRAL): IntegerRAL;
 var
   vFds: array of TPollFd;
   vInt: IntegerRAL;
@@ -644,7 +651,7 @@ begin
     AItems[vInt].Returned := 0;
   end;
   if ATimeout >= 0 then
-    vDeadline := RALMQTTNow + ATimeout
+    vDeadline := RALSocketNow + ATimeout
   else
     vDeadline := 0;
   vWait := ATimeout;
@@ -655,7 +662,7 @@ begin
     // a signal woke the wait: wait again for what is left
     if ATimeout >= 0 then
     begin
-      vNow := RALMQTTNow;
+      vNow := RALSocketNow;
       if vNow >= vDeadline then
       begin
         Result := 0;
@@ -670,51 +677,73 @@ begin
     AItems[vInt].Returned := PollEventsFromSys(vFds[vInt].revents);
 end;
 
-{ ERALMQTTSocketError }
+{$IF Defined(RALWindows) and not Defined(FPC)}
+function GetTickCount64: UInt64; stdcall; external kernel32 name 'GetTickCount64';
+{$IFEND}
 
-constructor ERALMQTTSocketError.CreateCode(ACode: IntegerRAL; const AMessage: string);
+function RALSocketNow: Int64RAL;
+{$IF Defined(POSIX) and not Defined(FPC)}
+var
+  vTime: timespec;
+{$IFEND}
 begin
-  inherited CreateReason(MQTTRC_UnspecifiedError, AMessage);
+  {$IFDEF FPC}
+  Result := Int64RAL(GetTickCount64);
+  {$ELSE}
+    {$IFDEF RALWindows}
+    Result := Int64RAL(GetTickCount64);
+    {$ELSE}
+    clock_gettime(CLOCK_MONOTONIC, @vTime);
+    Result := Int64RAL(vTime.tv_sec) * 1000 + vTime.tv_nsec div 1000000;
+    {$ENDIF}
+  {$ENDIF}
+end;
+
+{ ERALSocketError }
+
+constructor ERALSocketError.CreateCode(ACode: IntegerRAL; const AMessage: string);
+begin
+  inherited Create(AMessage);
   FCode := ACode;
 end;
 
-{ TRALMQTTSocket }
+{ TRALSocket }
 
-constructor TRALMQTTSocket.Create;
+constructor TRALSocket.Create;
 begin
   inherited Create;
   FHandle := cInvalid;
 end;
 
-constructor TRALMQTTSocket.CreateAccepted(AHandle: TRALMQTTSocketHandle;
-  const AAddress: TRALMQTTAddress);
+constructor TRALSocket.CreateAccepted(AHandle: TRALSocketHandle;
+  const AAddress: TRALSocketAddress);
 begin
   Create;
   FHandle := AHandle;
   FFamily := AddressFamily(AAddress);
-  FPeerAddress := RALMQTTAddressText(AAddress);
-  FPeerPort := RALMQTTAddressPort(AAddress);
+  FPeerAddress := RALAddressText(AAddress);
+  FPeerPort := RALAddressPort(AAddress);
   SetNonBlocking(FHandle);
   SetOptions(True);
 end;
 
-destructor TRALMQTTSocket.Destroy;
+destructor TRALSocket.Destroy;
 begin
   Close;
   inherited Destroy;
 end;
 
-function TRALMQTTSocket.GetActive: boolean;
+function TRALSocket.GetActive: boolean;
 begin
   Result := FHandle <> cInvalid;
 end;
 
-procedure TRALMQTTSocket.SetOptions(ATCP: boolean);
+procedure TRALSocket.SetOptions(ATCP: boolean);
 var
   vOne: Integer;
 begin
   vOne := 1;
-  {$IFDEF RALMQTT_BSD}
+  {$IFDEF RALSOCKET_BSD}
   {$IFNDEF FREEBSD}
   sys_setsockopt(FHandle, cSOL_SOCKET, cSO_NOSIGPIPE, @vOne, SizeOf(vOne));
   {$ENDIF}
@@ -722,11 +751,11 @@ begin
   if not ATCP then
     Exit;
   sys_setsockopt(FHandle, cIPPROTO_TCP, cTCP_NODELAY, @vOne, SizeOf(vOne));
-  { the TCP keep alive finds a dead path even when MQTT is quiet; where the
+  { the TCP keep alive finds a dead path even when the protocol is quiet; where the
     system lets the timing be set, a minute idle and three probes ten seconds
     apart, instead of the two hours most systems start with }
   sys_setsockopt(FHandle, cSOL_SOCKET, cSO_KEEPALIVE, @vOne, SizeOf(vOne));
-  {$IF not Defined(RALWindows) and not Defined(RALMQTT_BSD)}
+  {$IF not Defined(RALWindows) and not Defined(RALSOCKET_BSD)}
   vOne := 60;
   sys_setsockopt(FHandle, cIPPROTO_TCP, cTCP_KEEPIDLE, @vOne, SizeOf(vOne));
   vOne := 10;
@@ -736,11 +765,11 @@ begin
   {$IFEND}
 end;
 
-function TRALMQTTSocket.Accept: TRALMQTTSocket;
+function TRALSocket.Accept: TRALSocket;
 var
-  vAddress: TRALMQTTAddress;
+  vAddress: TRALSocketAddress;
   vLen: TSockLen;
-  vHandle: TRALMQTTSocketHandle;
+  vHandle: TRALSocketHandle;
   vError: IntegerRAL;
 begin
   Result := nil;
@@ -755,10 +784,10 @@ begin
     RaiseSocket('accept', vError);
   end;
   vAddress.Size := vLen;
-  Result := TRALMQTTSocket.CreateAccepted(vHandle, vAddress);
+  Result := TRALSocket.CreateAccepted(vHandle, vAddress);
 end;
 
-procedure TRALMQTTSocket.Close;
+procedure TRALSocket.Close;
 begin
   if FHandle = cInvalid then
     Exit;
@@ -766,25 +795,25 @@ begin
   FHandle := cInvalid;
 end;
 
-procedure TRALMQTTSocket.Connect(const AHost: StringRAL; APort: IntegerRAL;
-  ATimeout: IntegerRAL; AFamily: TRALMQTTIPFamily);
+procedure TRALSocket.Connect(const AHost: StringRAL; APort: IntegerRAL;
+  ATimeout: IntegerRAL; AFamily: TRALIPFamily);
 const
   cAttemptDelay = 250; // RFC 8305 5: the Connection Attempt Delay
 type
   TAttempt = record
-    Handle: TRALMQTTSocketHandle;
-    Address: TRALMQTTAddress;
+    Handle: TRALSocketHandle;
+    Address: TRALSocketAddress;
   end;
 var
   vList, vItem: PAddrInfo;
-  vAddresses: array of TRALMQTTAddress;
+  vAddresses: array of TRALSocketAddress;
   vFamilies: array of Integer;
   vOrdered: array of IntegerRAL;
   vAttempts: array of TAttempt;
-  vPoll: TRALMQTTPollItems;
+  vPoll: TRALPollItems;
   vCount, vInt, vNext, vV6, vV4, vRes, vError, vLastError: IntegerRAL;
   vDeadline, vNextStart, vNow: Int64RAL;
-  vHandle: TRALMQTTSocketHandle;
+  vHandle: TRALSocketHandle;
   vWinner: IntegerRAL;
   vDone: boolean;
 
@@ -795,7 +824,7 @@ var
     SetLength(vAttempts, Length(vAttempts) - 1);
   end;
 
-  function PendingError(AHandle: TRALMQTTSocketHandle): IntegerRAL;
+  function PendingError(AHandle: TRALSocketHandle): IntegerRAL;
   var
     vValue: Integer;
     vSize: TSockLen;
@@ -812,7 +841,7 @@ begin
   Close;
   vError := Resolve(AHost, APort, AFamily, cSOCK_STREAM, False, vList);
   if (vError <> 0) or (vList = nil) then
-    raise ERALMQTTSocketError.CreateCode(vError, Format(emMQTTResolveFailed, [string(AHost)]));
+    raise ERALSocketError.CreateCode(vError, Format(emSocketResolveFailed, [string(AHost)]));
   try
     vCount := 0;
     vItem := vList;
@@ -822,7 +851,7 @@ begin
       begin
         SetLength(vAddresses, vCount + 1);
         SetLength(vFamilies, vCount + 1);
-        FillChar(vAddresses[vCount], SizeOf(TRALMQTTAddress), 0);
+        FillChar(vAddresses[vCount], SizeOf(TRALSocketAddress), 0);
         vAddresses[vCount].Size := vItem^.ai_addrlen;
         if vAddresses[vCount].Size > SizeOf(vAddresses[vCount].Data) then
           vAddresses[vCount].Size := SizeOf(vAddresses[vCount].Data);
@@ -836,7 +865,7 @@ begin
     sys_freeaddrinfo(vList);
   end;
   if vCount = 0 then
-    raise ERALMQTTSocketError.CreateCode(0, Format(emMQTTResolveFailed, [string(AHost)]));
+    raise ERALSocketError.CreateCode(0, Format(emSocketResolveFailed, [string(AHost)]));
 
   { RFC 8305 4: the families take turns, in the order the system gave the
     first of each (its own preference, RFC 6724) }
@@ -864,7 +893,7 @@ begin
     end;
   end;
 
-  vDeadline := RALMQTTNow + ATimeout;
+  vDeadline := RALSocketNow + ATimeout;
   vNext := 0;
   vNextStart := 0;
   vWinner := -1;
@@ -873,7 +902,7 @@ begin
   SetLength(vAttempts, 0);
   try
     repeat
-      vNow := RALMQTTNow;
+      vNow := RALSocketNow;
       // start the next attempt when its turn comes, or when nothing is pending
       if (vNext < vCount) and ((vNow >= vNextStart) or (Length(vAttempts) = 0)) then
       begin
@@ -901,13 +930,13 @@ begin
         end
         else
           vLastError := LastError;
-        vNextStart := RALMQTTNow + cAttemptDelay;
+        vNextStart := RALSocketNow + cAttemptDelay;
         Continue;
       end;
       if Length(vAttempts) = 0 then
         Break; // every address failed
 
-      vNow := RALMQTTNow;
+      vNow := RALSocketNow;
       if vNow >= vDeadline then
         Break;
       vRes := vDeadline - vNow;
@@ -923,9 +952,9 @@ begin
       for vInt := 0 to High(vAttempts) do
       begin
         vPoll[vInt].Handle := vAttempts[vInt].Handle;
-        vPoll[vInt].Events := RALMQTTPollOut;
+        vPoll[vInt].Events := RALPollOut;
       end;
-      RALMQTTPoll(vPoll, Length(vPoll), vRes);
+      RALPoll(vPoll, Length(vPoll), vRes);
       vInt := 0;
       vDone := False;
       while vInt <= High(vAttempts) do
@@ -938,7 +967,7 @@ begin
           SetLength(vPoll, 0);
           Continue;
         end;
-        if (vInt < Length(vPoll)) and ((vPoll[vInt].Returned and RALMQTTPollOut) <> 0) then
+        if (vInt < Length(vPoll)) and ((vPoll[vInt].Returned and RALPollOut) <> 0) then
         begin
           vWinner := vInt;
           vDone := True;
@@ -950,15 +979,15 @@ begin
 
     if vWinner < 0 then
     begin
-      if RALMQTTNow >= vDeadline then
-        raise ERALMQTTSocketError.CreateCode(0, Format(emMQTTConnectTimeout,
+      if RALSocketNow >= vDeadline then
+        raise ERALSocketError.CreateCode(0, Format(emSocketConnectTimeout,
           [string(AHost), APort, ATimeout]));
-      RaiseSocket(Format(emMQTTConnectTo, [string(AHost), APort]), vLastError);
+      RaiseSocket(Format(emSocketConnectTo, [string(AHost), APort]), vLastError);
     end;
 
     FHandle := vAttempts[vWinner].Handle;
     FFamily := AddressFamily(vAttempts[vWinner].Address);
-    FPeerAddress := RALMQTTAddressText(vAttempts[vWinner].Address);
+    FPeerAddress := RALAddressText(vAttempts[vWinner].Address);
     FPeerPort := APort;
     vAttempts[vWinner] := vAttempts[High(vAttempts)];
     SetLength(vAttempts, Length(vAttempts) - 1);
@@ -969,13 +998,13 @@ begin
   end;
 end;
 
-procedure TRALMQTTSocket.Listen(const AAddress: StringRAL; APort: IntegerRAL;
-  AFamily: TRALMQTTIPFamily; ABacklog: IntegerRAL);
+procedure TRALSocket.Listen(const AAddress: StringRAL; APort: IntegerRAL;
+  AFamily: TRALIPFamily; ABacklog: IntegerRAL);
 var
   vList: PAddrInfo;
   vError: Integer;
   vOne, vZero: Integer;
-  vFamily: TRALMQTTIPFamily;
+  vFamily: TRALIPFamily;
 begin
   Close;
   vFamily := AFamily;
@@ -983,7 +1012,7 @@ begin
     vFamily := mifIPv6;
   vError := Resolve(AAddress, APort, vFamily, cSOCK_STREAM, True, vList);
   if (vError <> 0) or (vList = nil) then
-    raise ERALMQTTSocketError.CreateCode(vError, Format(emMQTTResolveFailed, [string(AAddress)]));
+    raise ERALSocketError.CreateCode(vError, Format(emSocketResolveFailed, [string(AAddress)]));
   try
     FHandle := sys_socket(vList^.ai_family, cSOCK_STREAM, cIPPROTO_TCP);
     if FHandle = cInvalid then
@@ -1005,7 +1034,7 @@ begin
     begin
       vError := LastError;
       Close;
-      RaiseSocket(Format(emMQTTBindTo, [string(AAddress), APort]), vError);
+      RaiseSocket(Format(emSocketBindTo, [string(AAddress), APort]), vError);
     end;
   finally
     sys_freeaddrinfo(vList);
@@ -1019,25 +1048,25 @@ begin
   SetNonBlocking(FHandle);
 end;
 
-function TRALMQTTSocket.LocalPort: IntegerRAL;
+function TRALSocket.LocalPort: IntegerRAL;
 var
-  vAddress: TRALMQTTAddress;
+  vAddress: TRALSocketAddress;
   vLen: TSockLen;
 begin
   Result := 0;
   FillChar(vAddress, SizeOf(vAddress), 0);
   vLen := SizeOf(vAddress.Data);
   if sys_getsockname(FHandle, @vAddress.Data[0], vLen) = 0 then
-    Result := RALMQTTAddressPort(vAddress);
+    Result := RALAddressPort(vAddress);
 end;
 
-procedure TRALMQTTSocket.OpenUDP(const AAddress: StringRAL; APort: IntegerRAL;
-  AFamily: TRALMQTTIPFamily);
+procedure TRALSocket.OpenUDP(const AAddress: StringRAL; APort: IntegerRAL;
+  AFamily: TRALIPFamily);
 var
   vList: PAddrInfo;
   vError: Integer;
   vZero: Integer;
-  vFamily: TRALMQTTIPFamily;
+  vFamily: TRALIPFamily;
 begin
   Close;
   vFamily := AFamily;
@@ -1045,7 +1074,7 @@ begin
     vFamily := mifIPv6;
   vError := Resolve(AAddress, APort, vFamily, cSOCK_DGRAM, True, vList);
   if (vError <> 0) or (vList = nil) then
-    raise ERALMQTTSocketError.CreateCode(vError, Format(emMQTTResolveFailed, [string(AAddress)]));
+    raise ERALSocketError.CreateCode(vError, Format(emSocketResolveFailed, [string(AAddress)]));
   try
     FHandle := sys_socket(vList^.ai_family, cSOCK_DGRAM, cIPPROTO_UDP);
     if FHandle = cInvalid then
@@ -1060,7 +1089,7 @@ begin
     begin
       vError := LastError;
       Close;
-      RaiseSocket(Format(emMQTTBindTo, [string(AAddress), APort]), vError);
+      RaiseSocket(Format(emSocketBindTo, [string(AAddress), APort]), vError);
     end;
   finally
     sys_freeaddrinfo(vList);
@@ -1069,7 +1098,7 @@ begin
   SetOptions(False);
 end;
 
-function TRALMQTTSocket.Receive(var ABuffer; ACount: IntegerRAL): IntegerRAL;
+function TRALSocket.Receive(var ABuffer; ACount: IntegerRAL): IntegerRAL;
 var
   vError: IntegerRAL;
 begin
@@ -1083,14 +1112,14 @@ begin
   begin
     vError := LastError;
     if (vError = cEAGAIN) or (vError = cEINTR) then
-      Result := RALMQTTWouldBlock
+      Result := RALSocketWouldBlock
     else
       RaiseSocket('recv', vError);
   end;
 end;
 
-function TRALMQTTSocket.ReceiveFrom(var ABuffer; ACount: IntegerRAL;
-  out AFrom: TRALMQTTAddress): IntegerRAL;
+function TRALSocket.ReceiveFrom(var ABuffer; ACount: IntegerRAL;
+  out AFrom: TRALSocketAddress): IntegerRAL;
 var
   vLen: TSockLen;
   vError: IntegerRAL;
@@ -1102,7 +1131,7 @@ begin
   begin
     vError := LastError;
     if (vError = cEAGAIN) or (vError = cEINTR) then
-      Result := RALMQTTWouldBlock
+      Result := RALSocketWouldBlock
     else
       RaiseSocket('recvfrom', vError);
   end
@@ -1110,7 +1139,7 @@ begin
     AFrom.Size := vLen;
 end;
 
-function TRALMQTTSocket.Send(const ABuffer; ACount: IntegerRAL): IntegerRAL;
+function TRALSocket.Send(const ABuffer; ACount: IntegerRAL): IntegerRAL;
 var
   vError: IntegerRAL;
 begin
@@ -1121,14 +1150,14 @@ begin
   begin
     vError := LastError;
     if (vError = cEAGAIN) or (vError = cEINTR) then
-      Result := RALMQTTWouldBlock
+      Result := RALSocketWouldBlock
     else
       RaiseSocket('send', vError);
   end;
 end;
 
-procedure TRALMQTTSocket.SendTo(const ABuffer; ACount: IntegerRAL;
-  const ATo: TRALMQTTAddress);
+procedure TRALSocket.SendTo(const ABuffer; ACount: IntegerRAL;
+  const ATo: TRALSocketAddress);
 var
   vRes: IntegerRAL;
   vError: IntegerRAL;
@@ -1143,7 +1172,7 @@ begin
   end;
 end;
 
-procedure TRALMQTTSocket.EnableBroadcast;
+procedure TRALSocket.EnableBroadcast;
 var
   vOne: Integer;
 begin
@@ -1152,15 +1181,15 @@ begin
     sys_setsockopt(FHandle, cSOL_SOCKET, cSO_BROADCAST, @vOne, SizeOf(vOne));
 end;
 
-procedure TRALMQTTSocket.ShutdownSend;
+procedure TRALSocket.ShutdownSend;
 begin
   if FHandle <> cInvalid then
     sys_shutdown(FHandle, cSHUT_WR);
 end;
 
-function TRALMQTTSocket.WaitFor(AEvents: Word; ATimeout: IntegerRAL): Word;
+function TRALSocket.WaitFor(AEvents: Word; ATimeout: IntegerRAL): Word;
 var
-  vPoll: TRALMQTTPollItems;
+  vPoll: TRALPollItems;
 begin
   Result := 0;
   if FHandle = cInvalid then
@@ -1168,49 +1197,49 @@ begin
   SetLength(vPoll, 1);
   vPoll[0].Handle := FHandle;
   vPoll[0].Events := AEvents;
-  if RALMQTTPoll(vPoll, 1, ATimeout) > 0 then
+  if RALPoll(vPoll, 1, ATimeout) > 0 then
     Result := vPoll[0].Returned;
 end;
 
-{ TRALMQTTChannel }
+{ TRALChannel }
 
-procedure TRALMQTTChannel.Close;
+procedure TRALChannel.Close;
 begin
   if FSocket <> nil then
     FSocket.Close;
 end;
 
-function TRALMQTTChannel.GetSocket: TRALMQTTSocket;
+function TRALChannel.GetSocket: TRALSocket;
 begin
   Result := FSocket;
 end;
 
-function TRALMQTTChannel.Flush: boolean;
+function TRALChannel.Flush: boolean;
 begin
   Result := True;
 end;
 
-function TRALMQTTChannel.HasBuffered: boolean;
+function TRALChannel.HasBuffered: boolean;
 begin
   Result := False;
 end;
 
-function TRALMQTTChannel.ReadWait(var ABuffer; ACount, ATimeout: IntegerRAL): IntegerRAL;
+function TRALChannel.ReadWait(var ABuffer; ACount, ATimeout: IntegerRAL): IntegerRAL;
 var
   vDeadline, vNow: Int64RAL;
   vWait: IntegerRAL;
 begin
   if ATimeout >= 0 then
-    vDeadline := RALMQTTNow + ATimeout
+    vDeadline := RALSocketNow + ATimeout
   else
     vDeadline := 0;
   repeat
     Result := Read(ABuffer, ACount);
-    if Result <> RALMQTTWouldBlock then
+    if Result <> RALSocketWouldBlock then
       Exit;
     if ATimeout >= 0 then
     begin
-      vNow := RALMQTTNow;
+      vNow := RALSocketNow;
       if vNow >= vDeadline then
         Exit;
       vWait := vDeadline - vNow;
@@ -1221,12 +1250,12 @@ begin
   until False;
 end;
 
-function TRALMQTTChannel.WantedEvents: Word;
+function TRALChannel.WantedEvents: Word;
 begin
-  Result := RALMQTTPollIn;
+  Result := RALPollIn;
 end;
 
-procedure TRALMQTTChannel.WriteAll(const ABuffer; ACount, AStallTimeout: IntegerRAL);
+procedure TRALChannel.WriteAll(const ABuffer; ACount, AStallTimeout: IntegerRAL);
 var
   vData: PByte;
   vDone, vRes: IntegerRAL;
@@ -1234,87 +1263,87 @@ var
 begin
   vData := @ABuffer;
   vDone := 0;
-  vLastProgress := RALMQTTNow;
+  vLastProgress := RALSocketNow;
   while (vDone < ACount) or not Flush do
   begin
     if vDone >= ACount then
     begin
       // all taken, part of it still queued in a layer
-      if (AStallTimeout > 0) and (RALMQTTNow - vLastProgress >= AStallTimeout) then
-        raise ERALMQTTSocketError.CreateCode(0, Format(emMQTTWriteStalled, [AStallTimeout]));
-      Socket.WaitFor(RALMQTTPollOut, 100);
+      if (AStallTimeout > 0) and (RALSocketNow - vLastProgress >= AStallTimeout) then
+        raise ERALSocketError.CreateCode(0, Format(emSocketWriteStalled, [AStallTimeout]));
+      Socket.WaitFor(RALPollOut, 100);
       Continue;
     end;
     vRes := Write(vData[vDone], ACount - vDone);
     if vRes > 0 then
     begin
       Inc(vDone, vRes);
-      vLastProgress := RALMQTTNow;
+      vLastProgress := RALSocketNow;
       Continue;
     end;
     // no progress: wait for room, but only as long as the link stays stuck
-    if (AStallTimeout > 0) and (RALMQTTNow - vLastProgress >= AStallTimeout) then
-      raise ERALMQTTSocketError.CreateCode(0, Format(emMQTTWriteStalled, [AStallTimeout]));
+    if (AStallTimeout > 0) and (RALSocketNow - vLastProgress >= AStallTimeout) then
+      raise ERALSocketError.CreateCode(0, Format(emSocketWriteStalled, [AStallTimeout]));
     if not Socket.Active then
-      raise ERALMQTTSocketError.CreateCode(0, emMQTTConnectionClosed);
-    Socket.WaitFor(RALMQTTPollOut or RALMQTTPollIn, 100);
+      raise ERALSocketError.CreateCode(0, emSocketClosed);
+    Socket.WaitFor(RALPollOut or RALPollIn, 100);
   end;
 end;
 
-{ TRALMQTTSocketChannel }
+{ TRALSocketChannel }
 
-constructor TRALMQTTSocketChannel.Create(ASocket: TRALMQTTSocket; AOwnsSocket: boolean);
+constructor TRALSocketChannel.Create(ASocket: TRALSocket; AOwnsSocket: boolean);
 begin
   inherited Create;
   FSocket := ASocket;
   FOwnsSocket := AOwnsSocket;
 end;
 
-destructor TRALMQTTSocketChannel.Destroy;
+destructor TRALSocketChannel.Destroy;
 begin
   if FOwnsSocket then
     FreeAndNil(FSocket);
   inherited Destroy;
 end;
 
-procedure TRALMQTTSocketChannel.Close;
+procedure TRALSocketChannel.Close;
 begin
   FSocket.Close;
 end;
 
-function TRALMQTTSocketChannel.Read(var ABuffer; ACount: IntegerRAL): IntegerRAL;
+function TRALSocketChannel.Read(var ABuffer; ACount: IntegerRAL): IntegerRAL;
 begin
   Result := FSocket.Receive(ABuffer, ACount);
 end;
 
-function TRALMQTTSocketChannel.Write(const ABuffer; ACount: IntegerRAL): IntegerRAL;
+function TRALSocketChannel.Write(const ABuffer; ACount: IntegerRAL): IntegerRAL;
 begin
   Result := FSocket.Send(ABuffer, ACount);
 end;
 
-{ TRALMQTTLayerChannel }
+{ TRALLayerChannel }
 
-constructor TRALMQTTLayerChannel.Create(AInner: TRALMQTTChannel; AOwnsInner: boolean);
+constructor TRALLayerChannel.Create(AInner: TRALChannel; AOwnsInner: boolean);
 begin
   inherited Create;
   FInner := AInner;
   FOwnsInner := AOwnsInner;
 end;
 
-destructor TRALMQTTLayerChannel.Destroy;
+destructor TRALLayerChannel.Destroy;
 begin
   if FOwnsInner then
     FreeAndNil(FInner);
   inherited Destroy;
 end;
 
-procedure TRALMQTTLayerChannel.Close;
+procedure TRALLayerChannel.Close;
 begin
   if FInner <> nil then
     FInner.Close;
 end;
 
-function TRALMQTTLayerChannel.GetSocket: TRALMQTTSocket;
+function TRALLayerChannel.GetSocket: TRALSocket;
 begin
   Result := FInner.Socket;
 end;

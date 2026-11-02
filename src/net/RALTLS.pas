@@ -1,15 +1,15 @@
-/// TLS for the MQTT transports, over OpenSSL (1.1.1 or 3.x) loaded at run
-/// time: the same code on every system. Client and server, SNI, ALPN, the
+/// TLS and DTLS for the protocols on RAL's own sockets (RALNetPackage), over
+/// OpenSSL (1.1.1 or 3.x) loaded at run time: the same code on every system. Client and server, SNI, ALPN, the
 /// server name checked against the certificate, mutual TLS, and the rule of
 /// TRALClient for which certificate is accepted: the event decides, else the
 /// pin, else the verdict of OpenSSL, which covers chain and name.
-unit RALMQTTTLS;
+unit RALTLS;
 
 {$IFDEF FPC}
   {$MODE DELPHI}
 {$ENDIF}
 
-{$I ..\..\core\PascalRAL.inc}
+{$I ..\core\PascalRAL.inc}
 
 {$IFDEF DELPHIXE3UP}
   {$ZEROBASEDSTRINGS OFF}
@@ -22,21 +22,24 @@ uses
   Windows,
   {$ENDIF}
   Classes, SysUtils, SyncObjs,
-  RALTypes, RALConsts, RALClient, RALExternalsLibraries, RALMQTTTypes, RALMQTTSocket;
+  RALTypes, RALConsts, RALClient, RALExternalsLibraries, RALSocket;
 
 type
   /// Lowest TLS version accepted.
-  TRALMQTTTLSVersion = (
+  TRALTLSVersion = (
     /// TLS 1.2 (RFC 5246) and above.
     mtv12,
     /// TLS 1.3 (RFC 8446) only.
     mtv13);
 
-  { TLS options of an MQTT client. Verify, Pins and Required work as on
+  /// Raised when TLS or DTLS fails (library, handshake, certificate files).
+  ERALTLSError = class(ERALSocketError);
+
+  { TLS options of a client on RAL's sockets. Verify, Pins and Required work as on
     TRALClient (the same class): with no pin and no event, svEngine and
     svAlways both take the verdict of OpenSSL (chain and host name), svNever
     accepts any certificate }
-  TRALMQTTSSL = class(TRALClientSSL)
+  TRALSocketSSL = class(TRALClientSSL)
   private
     FALPN: StringRAL;
     FCAFile: StringRAL;
@@ -44,14 +47,14 @@ type
     FEnabled: boolean;
     FKeyFile: StringRAL;
     FKeyPassword: StringRAL;
-    FMinVersion: TRALMQTTTLSVersion;
+    FMinVersion: TRALTLSVersion;
     FServerName: StringRAL;
   public
     constructor Create;
     procedure Assign(ASource: TPersistent); override;
   published
-    { ALPN protocols offered, separated by commas; empty offers none. Cloud
-      brokers on port 443 want 'mqtt' }
+    { ALPN protocols offered, separated by commas; empty offers none (cloud
+      MQTT brokers on port 443 want 'mqtt') }
     property ALPN: StringRAL read FALPN write FALPN;
     /// File of CA certificates (PEM) trusted besides the system's.
     property CAFile: StringRAL read FCAFile write FCAFile;
@@ -64,28 +67,28 @@ type
     /// Password of KeyFile, when it is encrypted.
     property KeyPassword: StringRAL read FKeyPassword write FKeyPassword;
     /// Lowest TLS version accepted.
-    property MinVersion: TRALMQTTTLSVersion read FMinVersion write FMinVersion default mtv12;
+    property MinVersion: TRALTLSVersion read FMinVersion write FMinVersion default mtv12;
     { Name sent in SNI and checked against the certificate; empty is the host
       connected to }
     property ServerName: StringRAL read FServerName write FServerName;
   end;
 
   /// What an SSL_CTX is made for.
-  TRALMQTTTLSRole = (mtrClient, mtrServer);
+  TRALTLSRole = (mtrClient, mtrServer);
 
   { An OpenSSL context: one per client connection, one per broker listener.
     Holds the certificate, key and trust settings; channels are made from it }
-  TRALMQTTTLSContext = class
+  TRALTLSContext = class
   private
     FALPN: StringRAL;
     FContext: Pointer;
     FDatagram: boolean;
     FKeyPassword: AnsiString;
-    FRole: TRALMQTTTLSRole;
+    FRole: TRALTLSRole;
   public
-    { A context for ARole; ADatagram makes it DTLS (MQTT-SN over UDP).
+    { A context for ARole; ADatagram makes it DTLS (over UDP, as MQTT-SN).
       Raises when OpenSSL cannot be loaded }
-    constructor Create(ARole: TRALMQTTTLSRole; ADatagram: boolean = False);
+    constructor Create(ARole: TRALTLSRole; ADatagram: boolean = False);
     destructor Destroy; override;
 
     /// Trusts the CA certificates in AFile (PEM) besides the system's.
@@ -93,7 +96,7 @@ type
     /// Trusts the system's CA certificates (the Windows root store included).
     procedure LoadSystemCAs;
     /// Lowest version accepted.
-    procedure SetMinVersion(AVersion: TRALMQTTTLSVersion);
+    procedure SetMinVersion(AVersion: TRALTLSVersion);
     { Certificate (with its chain) and key, from files; APassword opens an
       encrypted key }
     procedure UseCertificateFiles(const ACertFile, AKeyFile, APassword: StringRAL);
@@ -110,15 +113,15 @@ type
     /// The SSL_CTX.
     property Handle: Pointer read FContext;
     /// Client or server.
-    property Role: TRALMQTTTLSRole read FRole;
+    property Role: TRALTLSRole read FRole;
   end;
 
   { TLS over a socket channel. The client handshake waits with a deadline
     (Handshake); the server one advances a step per call (HandshakeStep), for
     the broker's event loop. After it, Read and Write never wait }
-  TRALMQTTTLSChannel = class(TRALMQTTLayerChannel)
+  TRALTLSChannel = class(TRALLayerChannel)
   private
-    FContext: TRALMQTTTLSContext;
+    FContext: TRALTLSContext;
     FDone: boolean;
     FSSL: Pointer;
     FWant: Word;
@@ -129,7 +132,7 @@ type
   public
     { TLS over AInner (a socket channel, already connected), from AContext;
       the context is not owned }
-    constructor Create(AInner: TRALMQTTChannel; AContext: TRALMQTTTLSContext;
+    constructor Create(AInner: TRALChannel; AContext: TRALTLSContext;
       AOwnsInner: boolean = True);
     destructor Destroy; override;
 
@@ -159,19 +162,19 @@ type
   end;
 
   /// One application datagram that came out of a DTLS session.
-  TRALMQTTDTLSPlain = class
+  TRALDTLSPlain = class
   public
     /// The packet, decrypted.
     Data: TBytes;
   end;
 
-  { DTLS (MQTT-SN over UDP) on memory: datagrams go in by Feed and come out by
+  { DTLS (over UDP, as MQTT-SN) on memory: datagrams go in by Feed and come out by
     TakeOutput, so the caller keeps its socket and many sessions can share one
     (a gateway answers every client on a single UDP port). A flight of the
     handshake leaves as one datagram, its records joined, which DTLS allows }
-  TRALMQTTDTLSSession = class
+  TRALDTLSSession = class
   private
-    FContext: TRALMQTTTLSContext;
+    FContext: TRALTLSContext;
     FDone: boolean;
     FRead: Pointer;
     FServer: boolean;
@@ -182,12 +185,12 @@ type
   public
     { A session of AContext (made with ADatagram); AServer answers a client's
       handshake, otherwise the session starts one for AServerName }
-    constructor Create(AContext: TRALMQTTTLSContext; AServer: boolean;
+    constructor Create(AContext: TRALTLSContext; AServer: boolean;
       const AServerName: StringRAL = '');
     destructor Destroy; override;
 
     { Takes a datagram from the peer: handshake records advance the handshake,
-      application records come back in APlain (one MQTT-SN packet each) }
+      application records come back in APlain (one datagram of the protocol each) }
     procedure Feed(const ADatagram: TBytes; APlain: TList);
     /// The datagram for one packet of the application, encrypted.
     function Seal(const APlain: TBytes): TBytes;
@@ -204,18 +207,18 @@ type
   end;
 
   /// Decides on a server certificate, with the same signature as TRALClient's event.
-  TRALMQTTOnValidateCert = TRALOnValidateCert;
+  TRALTLSOnValidateCert = TRALOnValidateCert;
 
 { The certificate rule of TRALClient: AEvent decides when assigned; else a pin
   of ASSL.Pins that applies to AHost:APort must match; else ACert.Trusted
   (svNever: anything). Fills the Host and Port of the certificate }
-function RALMQTTAcceptCertificate(ASender: TObject; ASSL: TRALClientSSL;
+function RALTLSAcceptCertificate(ASender: TObject; ASSL: TRALClientSSL;
   AEvent: TRALOnValidateCert; var ACert: TRALCertInfo; const AHost: StringRAL;
   APort: IntegerRAL): boolean;
 /// True when OpenSSL's libssl and libcrypto can be loaded here.
-function RALMQTTTLSAvailable: boolean;
+function RALTLSAvailable: boolean;
 /// Name and version of the OpenSSL loaded, or why it could not be.
-function RALMQTTTLSLibraryInfo: StringRAL;
+function RALTLSLibraryInfo: StringRAL;
 
 implementation
 
@@ -251,14 +254,14 @@ const
 
 type
   { the two libraries; libcrypto first, libssl needs it }
-  TRALMQTTCryptoLib = class(TRALExternalsLibraries)
+  TRALTLSCryptoLib = class(TRALExternalsLibraries)
   protected
     procedure LoadProcs; override;
   public
     constructor Create; override;
   end;
 
-  TRALMQTTSSLLib = class(TRALExternalsLibraries)
+  TRALTLSSSLLib = class(TRALExternalsLibraries)
   protected
     procedure LoadProcs; override;
   public
@@ -267,8 +270,8 @@ type
 
 var
   GLock: TCriticalSection;
-  GCrypto: TRALMQTTCryptoLib;
-  GSSL: TRALMQTTSSLLib;
+  GCrypto: TRALTLSCryptoLib;
+  GSSL: TRALTLSSSLLib;
   GLoaded: boolean;
   GLoadError: string;
 
@@ -376,9 +379,9 @@ function CertCloseStore(hCertStore: Pointer; dwFlags: Cardinal): LongBool; stdca
   external cCrypt32 name 'CertCloseStore';
 {$ENDIF}
 
-{ TRALMQTTCryptoLib }
+{ TRALTLSCryptoLib }
 
-constructor TRALMQTTCryptoLib.Create;
+constructor TRALTLSCryptoLib.Create;
 begin
   inherited Create;
   {$IFDEF RALWindows}
@@ -403,7 +406,7 @@ begin
   LoadLibrary;
 end;
 
-procedure TRALMQTTCryptoLib.LoadProcs;
+procedure TRALTLSCryptoLib.LoadProcs;
 begin
   LoadProc(@OpenSSL_version, 'OpenSSL_version');
   LoadProc(@X509_free, 'X509_free');
@@ -439,9 +442,9 @@ begin
   LoadProc(@ERR_clear_error, 'ERR_clear_error');
 end;
 
-{ TRALMQTTSSLLib }
+{ TRALTLSSSLLib }
 
-constructor TRALMQTTSSLLib.Create;
+constructor TRALTLSSSLLib.Create;
 begin
   inherited Create;
   {$IFDEF RALWindows}
@@ -466,7 +469,7 @@ begin
   LoadLibrary;
 end;
 
-procedure TRALMQTTSSLLib.LoadProcs;
+procedure TRALTLSSSLLib.LoadProcs;
 begin
   LoadProc(@OPENSSL_init_ssl, 'OPENSSL_init_ssl');
   LoadProc(@TLS_client_method, 'TLS_client_method');
@@ -550,17 +553,17 @@ begin
     begin
       GLoaded := True;
       try
-        GCrypto := TRALMQTTCryptoLib.Create;
-        GSSL := TRALMQTTSSLLib.Create;
+        GCrypto := TRALTLSCryptoLib.Create;
+        GSSL := TRALTLSSSLLib.Create;
         if GCrypto.LibraryHandle = 0 then
-          GLoadError := emMQTTNoLibCrypto
+          GLoadError := emTLSNoLibCrypto
         else if GSSL.LibraryHandle = 0 then
-          GLoadError := emMQTTNoLibSSL
+          GLoadError := emTLSNoLibSSL
         { 1.1.1 or later: TLS_client_method and SSL_set1_host came in 1.1.0,
           ASN1_TIME_to_tm in 1.1.1 }
         else if (not Assigned(TLS_client_method)) or (not Assigned(SSL_set1_host)) or
                 (not Assigned(ASN1_TIME_to_tm)) then
-          GLoadError := emMQTTOldOpenSSL
+          GLoadError := emTLSOldOpenSSL
         else
         begin
           // 3.0 renamed it; either one does
@@ -583,12 +586,12 @@ begin
   end;
 end;
 
-function RALMQTTTLSAvailable: boolean;
+function RALTLSAvailable: boolean;
 begin
   Result := LoadOpenSSL;
 end;
 
-function RALMQTTTLSLibraryInfo: StringRAL;
+function RALTLSLibraryInfo: StringRAL;
 begin
   if LoadOpenSSL then
   begin
@@ -628,8 +631,7 @@ begin
   vDetail := OpenSSLErrors;
   if vDetail = '' then
     vDetail := '-';
-  raise ERALMQTTError.CreateReason(MQTTRC_UnspecifiedError,
-    Format(emMQTTTLSError, [AWhat, vDetail]));
+  raise ERALTLSError.Create(Format(emTLSError, [AWhat, vDetail]));
 end;
 
 { ALPN on the wire: each name preceded by its length }
@@ -685,7 +687,7 @@ var
   vMineLen, vOfferLen: Byte;
 begin
   Result := SSL_TLSEXT_ERR_NOACK;
-  vMine := ALPNWire(TRALMQTTTLSContext(arg).ALPN);
+  vMine := ALPNWire(TRALTLSContext(arg).ALPN);
   vPos := 0;
   while vPos < Cardinal(Length(vMine)) do
   begin
@@ -708,7 +710,7 @@ begin
   end;
 end;
 
-function RALMQTTAcceptCertificate(ASender: TObject; ASSL: TRALClientSSL;
+function RALTLSAcceptCertificate(ASender: TObject; ASSL: TRALClientSSL;
   AEvent: TRALOnValidateCert; var ACert: TRALCertInfo; const AHost: StringRAL;
   APort: IntegerRAL): boolean;
 var
@@ -755,22 +757,22 @@ begin
     Result := ACert.Trusted;
 end;
 
-{ TRALMQTTSSL }
+{ TRALSocketSSL }
 
-constructor TRALMQTTSSL.Create;
+constructor TRALSocketSSL.Create;
 begin
   inherited Create;
   FMinVersion := mtv12;
 end;
 
-procedure TRALMQTTSSL.Assign(ASource: TPersistent);
+procedure TRALSocketSSL.Assign(ASource: TPersistent);
 var
-  vSource: TRALMQTTSSL;
+  vSource: TRALSocketSSL;
 begin
   inherited Assign(ASource);
-  if ASource is TRALMQTTSSL then
+  if ASource is TRALSocketSSL then
   begin
-    vSource := TRALMQTTSSL(ASource);
+    vSource := TRALSocketSSL(ASource);
     FALPN := vSource.ALPN;
     FCAFile := vSource.CAFile;
     FCertFile := vSource.CertFile;
@@ -782,9 +784,9 @@ begin
   end;
 end;
 
-{ TRALMQTTTLSContext }
+{ TRALTLSContext }
 
-constructor TRALMQTTTLSContext.Create(ARole: TRALMQTTTLSRole; ADatagram: boolean);
+constructor TRALTLSContext.Create(ARole: TRALTLSRole; ADatagram: boolean);
 var
   vMethod: Pointer;
 begin
@@ -792,7 +794,7 @@ begin
   FRole := ARole;
   FDatagram := ADatagram;
   if not LoadOpenSSL then
-    raise ERALMQTTError.CreateReason(MQTTRC_UnspecifiedError, GLoadError);
+    raise ERALTLSError.Create(GLoadError);
   if ADatagram then
   begin
     if ARole = mtrClient then
@@ -818,22 +820,22 @@ begin
     SSL_CTX_set_alpn_select_cb(FContext, @ALPNSelect, Self);
 end;
 
-destructor TRALMQTTTLSContext.Destroy;
+destructor TRALTLSContext.Destroy;
 begin
   if FContext <> nil then
     SSL_CTX_free(FContext);
   inherited Destroy;
 end;
 
-procedure TRALMQTTTLSContext.LoadCAFile(const AFile: StringRAL);
+procedure TRALTLSContext.LoadCAFile(const AFile: StringRAL);
 begin
   if AFile = '' then
     Exit;
   if SSL_CTX_load_verify_locations(FContext, PAnsiChar(AnsiString(AFile)), nil) <> 1 then
-    RaiseTLS(Format(emMQTTTLSFile, [string(AFile)]));
+    RaiseTLS(Format(emTLSFile, [string(AFile)]));
 end;
 
-procedure TRALMQTTTLSContext.LoadSystemCAs;
+procedure TRALTLSContext.LoadSystemCAs;
 {$IFDEF RALWindows}
 var
   vStore: Pointer;
@@ -876,7 +878,7 @@ begin
   {$ENDIF}
 end;
 
-procedure TRALMQTTTLSContext.RequestClientCertificate(ARequire: boolean;
+procedure TRALTLSContext.RequestClientCertificate(ARequire: boolean;
   const ACAFile: StringRAL);
 var
   vMode: Integer;
@@ -892,7 +894,7 @@ begin
   SSL_CTX_set_verify(FContext, vMode, nil);
 end;
 
-procedure TRALMQTTTLSContext.SetMinVersion(AVersion: TRALMQTTTLSVersion);
+procedure TRALTLSContext.SetMinVersion(AVersion: TRALTLSVersion);
 var
   vVersion: NativeInt;
 begin
@@ -905,7 +907,7 @@ begin
   SSL_CTX_ctrl(FContext, SSL_CTRL_SET_MIN_PROTO_VERSION, vVersion, nil);
 end;
 
-procedure TRALMQTTTLSContext.UseCertificateFiles(const ACertFile, AKeyFile,
+procedure TRALTLSContext.UseCertificateFiles(const ACertFile, AKeyFile,
   APassword: StringRAL);
 var
   vKey: StringRAL;
@@ -918,17 +920,17 @@ begin
   else
     SSL_CTX_set_default_passwd_cb_userdata(FContext, nil);
   if SSL_CTX_use_certificate_chain_file(FContext, PAnsiChar(AnsiString(ACertFile))) <> 1 then
-    RaiseTLS(Format(emMQTTTLSFile, [string(ACertFile)]));
+    RaiseTLS(Format(emTLSFile, [string(ACertFile)]));
   vKey := AKeyFile;
   if vKey = '' then
     vKey := ACertFile; // key and certificate in one PEM
   if SSL_CTX_use_PrivateKey_file(FContext, PAnsiChar(AnsiString(vKey)), SSL_FILETYPE_PEM) <> 1 then
-    RaiseTLS(Format(emMQTTTLSFile, [string(vKey)]));
+    RaiseTLS(Format(emTLSFile, [string(vKey)]));
   if SSL_CTX_check_private_key(FContext) <> 1 then
-    RaiseTLS(emMQTTTLSKeyMismatch);
+    RaiseTLS(emTLSKeyMismatch);
 end;
 
-procedure TRALMQTTTLSContext.UseCertificatePEM(const ACertPEM, AKeyPEM: StringRAL);
+procedure TRALTLSContext.UseCertificatePEM(const ACertPEM, AKeyPEM: StringRAL);
 var
   vBio: Pointer;
   vCert, vKey: Pointer;
@@ -962,13 +964,13 @@ begin
     BIO_free(vBio);
   end;
   if SSL_CTX_check_private_key(FContext) <> 1 then
-    RaiseTLS(emMQTTTLSKeyMismatch);
+    RaiseTLS(emTLSKeyMismatch);
 end;
 
-{ TRALMQTTTLSChannel }
+{ TRALTLSChannel }
 
-constructor TRALMQTTTLSChannel.Create(AInner: TRALMQTTChannel;
-  AContext: TRALMQTTTLSContext; AOwnsInner: boolean);
+constructor TRALTLSChannel.Create(AInner: TRALChannel;
+  AContext: TRALTLSContext; AOwnsInner: boolean);
 var
   vBio: Pointer;
   vWire: TBytes;
@@ -994,17 +996,17 @@ begin
     if vWire <> nil then
       SSL_set_alpn_protos(FSSL, @vWire[0], Length(vWire));
   end;
-  FWant := RALMQTTPollIn;
+  FWant := RALPollIn;
 end;
 
-destructor TRALMQTTTLSChannel.Destroy;
+destructor TRALTLSChannel.Destroy;
 begin
   if FSSL <> nil then
     SSL_free(FSSL);
   inherited Destroy;
 end;
 
-function TRALMQTTTLSChannel.CheckIO(ARes: Integer; const AWhat: string): IntegerRAL;
+function TRALTLSChannel.CheckIO(ARes: Integer; const AWhat: string): IntegerRAL;
 var
   vError: Integer;
 begin
@@ -1012,13 +1014,13 @@ begin
   case vError of
     SSL_ERROR_WANT_READ:
     begin
-      FWant := RALMQTTPollIn;
-      Result := RALMQTTWouldBlock;
+      FWant := RALPollIn;
+      Result := RALSocketWouldBlock;
     end;
     SSL_ERROR_WANT_WRITE:
     begin
-      FWant := RALMQTTPollOut;
-      Result := RALMQTTWouldBlock;
+      FWant := RALPollOut;
+      Result := RALSocketWouldBlock;
     end;
     SSL_ERROR_ZERO_RETURN:
       Result := 0; // the peer closed TLS (close_notify)
@@ -1031,7 +1033,7 @@ begin
   end;
 end;
 
-procedure TRALMQTTTLSChannel.Close;
+procedure TRALTLSChannel.Close;
 begin
   if (FSSL <> nil) and FDone then
   try
@@ -1042,7 +1044,7 @@ begin
   inherited Close;
 end;
 
-procedure TRALMQTTTLSChannel.Handshake(const AServerName: StringRAL; ATimeout: IntegerRAL);
+procedure TRALTLSChannel.Handshake(const AServerName: StringRAL; ATimeout: IntegerRAL);
 var
   vHost: AnsiString;
   vRes: Integer;
@@ -1062,24 +1064,23 @@ begin
       SSL_set1_host(FSSL, PAnsiChar(vHost));
     end;
   end;
-  vDeadline := RALMQTTNow + ATimeout;
+  vDeadline := RALSocketNow + ATimeout;
   repeat
     vRes := SSL_connect(FSSL);
     if vRes = 1 then
       Break;
-    if CheckIO(vRes, 'SSL_connect') <> RALMQTTWouldBlock then
-      raise ERALMQTTError.CreateReason(MQTTRC_UnspecifiedError, emMQTTTLSClosed);
-    vNow := RALMQTTNow;
+    if CheckIO(vRes, 'SSL_connect') <> RALSocketWouldBlock then
+      raise ERALTLSError.Create(emTLSClosed);
+    vNow := RALSocketNow;
     if vNow >= vDeadline then
-      raise ERALMQTTError.CreateReason(MQTTRC_UnspecifiedError,
-        Format(emMQTTTLSTimeout, [ATimeout]));
+      raise ERALTLSError.Create(Format(emTLSTimeout, [ATimeout]));
     Socket.WaitFor(FWant, vDeadline - vNow);
   until False;
   FDone := True;
-  FWant := RALMQTTPollIn;
+  FWant := RALPollIn;
 end;
 
-function TRALMQTTTLSChannel.HandshakeStep: boolean;
+function TRALTLSChannel.HandshakeStep: boolean;
 var
   vRes: Integer;
 begin
@@ -1090,15 +1091,15 @@ begin
   if vRes = 1 then
   begin
     FDone := True;
-    FWant := RALMQTTPollIn;
+    FWant := RALPollIn;
     Result := True;
     Exit;
   end;
-  if CheckIO(vRes, 'SSL_accept') <> RALMQTTWouldBlock then
-    raise ERALMQTTError.CreateReason(MQTTRC_UnspecifiedError, emMQTTTLSClosed);
+  if CheckIO(vRes, 'SSL_accept') <> RALSocketWouldBlock then
+    raise ERALTLSError.Create(emTLSClosed);
 end;
 
-function TRALMQTTTLSChannel.HasBuffered: boolean;
+function TRALTLSChannel.HasBuffered: boolean;
 begin
   Result := FDone and (SSL_pending(FSSL) > 0);
 end;
@@ -1125,7 +1126,7 @@ begin
   end;
 end;
 
-function TRALMQTTTLSChannel.PeerCertificateDER: TBytes;
+function TRALTLSChannel.PeerCertificateDER: TBytes;
 begin
   Result := CertificateDER(FSSL);
 end;
@@ -1203,36 +1204,36 @@ begin
   vResult := SSL_get_verify_result(ASSL);
   Result.Trusted := (vResult = X509_V_OK) and (vDER <> nil);
   if vDER = nil then
-    Result.Error := StringRAL(emMQTTTLSNoCertificate)
+    Result.Error := StringRAL(emTLSNoCertificate)
   else if vResult <> X509_V_OK then
     Result.Error := StringRAL(AnsiString(X509_verify_cert_error_string(vResult)));
 end;
 
-function TRALMQTTTLSChannel.PeerCertificate: TRALCertInfo;
+function TRALTLSChannel.PeerCertificate: TRALCertInfo;
 begin
   Result := CertificateOf(FSSL);
 end;
 
-function TRALMQTTTLSChannel.Read(var ABuffer; ACount: IntegerRAL): IntegerRAL;
+function TRALTLSChannel.Read(var ABuffer; ACount: IntegerRAL): IntegerRAL;
 var
   vRes: Integer;
 begin
   if not FDone then
   begin
-    Result := RALMQTTWouldBlock;
+    Result := RALSocketWouldBlock;
     Exit;
   end;
   vRes := SSL_read(FSSL, @ABuffer, ACount);
   if vRes > 0 then
   begin
-    FWant := RALMQTTPollIn;
+    FWant := RALPollIn;
     Result := vRes;
   end
   else
     Result := CheckIO(vRes, 'SSL_read');
 end;
 
-function TRALMQTTTLSChannel.SelectedALPN: StringRAL;
+function TRALTLSChannel.SelectedALPN: StringRAL;
 var
   vData: PByte;
   vLen: Cardinal;
@@ -1248,23 +1249,23 @@ begin
   end;
 end;
 
-function TRALMQTTTLSChannel.VersionName: StringRAL;
+function TRALTLSChannel.VersionName: StringRAL;
 begin
   Result := StringRAL(AnsiString(SSL_get_version(FSSL)));
 end;
 
-function TRALMQTTTLSChannel.WantedEvents: Word;
+function TRALTLSChannel.WantedEvents: Word;
 begin
   Result := FWant;
 end;
 
-function TRALMQTTTLSChannel.Write(const ABuffer; ACount: IntegerRAL): IntegerRAL;
+function TRALTLSChannel.Write(const ABuffer; ACount: IntegerRAL): IntegerRAL;
 var
   vRes: Integer;
 begin
   if not FDone then
   begin
-    Result := RALMQTTWouldBlock;
+    Result := RALSocketWouldBlock;
     Exit;
   end;
   if ACount = 0 then
@@ -1279,18 +1280,18 @@ begin
   begin
     Result := CheckIO(vRes, 'SSL_write');
     if Result = 0 then
-      raise ERALMQTTSocketError.CreateCode(0, emMQTTConnectionClosed);
+      raise ERALSocketError.CreateCode(0, emSocketClosed);
   end;
 end;
 
-{ TRALMQTTDTLSSession }
+{ TRALDTLSSession }
 
 const
   BIO_CTRL_PENDING = 10;
   SSL_CTRL_SET_MTU = 17;
   DTLS_CTRL_HANDLE_TIMEOUT = 74;
 
-constructor TRALMQTTDTLSSession.Create(AContext: TRALMQTTTLSContext; AServer: boolean;
+constructor TRALDTLSSession.Create(AContext: TRALTLSContext; AServer: boolean;
   const AServerName: StringRAL);
 var
   vHost: AnsiString;
@@ -1326,14 +1327,14 @@ begin
   end;
 end;
 
-destructor TRALMQTTDTLSSession.Destroy;
+destructor TRALDTLSSession.Destroy;
 begin
   if FSSL <> nil then
     SSL_free(FSSL); // frees both BIOs
   inherited Destroy;
 end;
 
-procedure TRALMQTTDTLSSession.Step;
+procedure TRALDTLSSession.Step;
 var
   vRes, vError: Integer;
 begin
@@ -1350,11 +1351,11 @@ begin
     RaiseTLS('DTLS');
 end;
 
-procedure TRALMQTTDTLSSession.Feed(const ADatagram: TBytes; APlain: TList);
+procedure TRALDTLSSession.Feed(const ADatagram: TBytes; APlain: TList);
 var
   vBuf: array[0..65535] of Byte;
   vRes: Integer;
-  vData: TRALMQTTDTLSPlain;
+  vData: TRALDTLSPlain;
 begin
   if ADatagram <> nil then
     BIO_write(FRead, @ADatagram[0], Length(ADatagram));
@@ -1368,7 +1369,7 @@ begin
     vRes := SSL_read(FSSL, @vBuf[0], SizeOf(vBuf));
     if vRes > 0 then
     begin
-      vData := TRALMQTTDTLSPlain.Create;
+      vData := TRALDTLSPlain.Create;
       SetLength(vData.Data, vRes);
       Move(vBuf[0], vData.Data[0], vRes);
       APlain.Add(vData);
@@ -1376,12 +1377,12 @@ begin
   until vRes <= 0;
 end;
 
-function TRALMQTTDTLSSession.PeerCertificate: TRALCertInfo;
+function TRALDTLSSession.PeerCertificate: TRALCertInfo;
 begin
   Result := CertificateOf(FSSL);
 end;
 
-function TRALMQTTDTLSSession.Seal(const APlain: TBytes): TBytes;
+function TRALDTLSSession.Seal(const APlain: TBytes): TBytes;
 begin
   if (not FDone) or (APlain = nil) then
   begin
@@ -1393,7 +1394,7 @@ begin
   Result := TakeOutput;
 end;
 
-function TRALMQTTDTLSSession.TakeOutput: TBytes;
+function TRALDTLSSession.TakeOutput: TBytes;
 var
   vPending: NativeInt;
 begin
@@ -1405,7 +1406,7 @@ begin
   BIO_read(FWrite, @Result[0], vPending);
 end;
 
-procedure TRALMQTTDTLSSession.Tick;
+procedure TRALDTLSSession.Tick;
 begin
   if not FDone then
     SSL_ctrl(FSSL, DTLS_CTRL_HANDLE_TIMEOUT, 0, nil);

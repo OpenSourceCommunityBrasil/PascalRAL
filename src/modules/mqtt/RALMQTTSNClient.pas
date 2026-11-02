@@ -18,7 +18,7 @@ interface
 uses
   Classes, SysUtils, SyncObjs,
   RALTypes, RALConsts, RALClient,
-  RALMQTTTypes, RALMQTTTopic, RALMQTTSocket, RALMQTTTLS, RALMQTTAuth, RALMQTTSession,
+  RALMQTTTypes, RALMQTTTopic, RALSocket, RALTLS, RALMQTTAuth, RALMQTTSession,
   RALMQTTClient, RALMQTTSNTypes, RALMQTTSNPacket12, RALMQTTSNPacket20;
 
 type
@@ -48,9 +48,9 @@ type
     FCorrelation: Byte;
     FCurrent: TObject;
     FDTLS: boolean;
-    FDTLSContext: TRALMQTTTLSContext;
-    FDTLSSession: TRALMQTTDTLSSession;
-    FGateway: TRALMQTTAddress;
+    FDTLSContext: TRALTLSContext;
+    FDTLSSession: TRALDTLSSession;
+    FGateway: TRALSocketAddress;
     FGatewayDiscovery: boolean;
     FGatewayId: Byte;
     FHost: StringRAL;
@@ -74,7 +74,7 @@ type
     FSessionExpiry: Cardinal;
     FSleepDuration: Word;
     FSleeping: boolean;
-    FSocket: TRALMQTTSocket;
+    FSocket: TRALSocket;
     FSSL: TRALMQTTSSL;
     FThread: TRALMQTTSNClientThread;
     FVersion: TRALMQTTSNVersion;
@@ -429,7 +429,7 @@ end;
 function TRALMQTTSNClient.ReceiveDatagram(ATimeout: IntegerRAL; out AData: TBytes): boolean;
 var
   vBuf: array[0..65535] of Byte;
-  vFrom: TRALMQTTAddress;
+  vFrom: TRALSocketAddress;
   vRes: IntegerRAL;
   vPlain: TList;
   vOut: TBytes;
@@ -439,12 +439,12 @@ begin
   AData := nil;
   if FSocket = nil then
     Exit;
-  if FSocket.WaitFor(RALMQTTPollIn, ATimeout) = 0 then
+  if FSocket.WaitFor(RALPollIn, ATimeout) = 0 then
     Exit;
   vRes := FSocket.ReceiveFrom(vBuf, SizeOf(vBuf), vFrom);
   if vRes <= 0 then
     Exit;
-  if (FGateway.Size > 0) and not RALMQTTSameAddress(vFrom, FGateway) then
+  if (FGateway.Size > 0) and not RALSameAddress(vFrom, FGateway) then
     Exit;
   SetLength(AData, vRes);
   Move(vBuf[0], AData[0], vRes);
@@ -459,7 +459,7 @@ begin
         FSocket.SendTo(vOut[0], Length(vOut), FGateway);
       AData := nil;
       if vPlain.Count > 0 then
-        AData := TRALMQTTDTLSPlain(vPlain[0]).Data;
+        AData := TRALDTLSPlain(vPlain[0]).Data;
       for vInt := 0 to vPlain.Count - 1 do
         TObject(vPlain[vInt]).Free;
     finally
@@ -492,17 +492,17 @@ end;
 procedure TRALMQTTSNClient.Discover;
 var
   vSearch: TRALMQTTSNPacket;
-  vBroadcast: TRALMQTTAddress;
+  vBroadcast: TRALSocketAddress;
   vData: TBytes;
   vReply: TRALMQTTSNPacket;
   vDeadline: Int64RAL;
   vBuf: array[0..1023] of Byte;
-  vFrom: TRALMQTTAddress;
+  vFrom: TRALSocketAddress;
   vRes: IntegerRAL;
 begin
   // SEARCHGW to everyone; the first GWINFO or ADVERTISE names the gateway
   FSocket.EnableBroadcast;
-  RALMQTTResolve('255.255.255.255', FPort, mifIPv4, vBroadcast);
+  RALResolve('255.255.255.255', FPort, mifIPv4, vBroadcast);
   vSearch := TRALMQTTSNPacket.Create(snkSEARCHGW);
   try
     vSearch.Radius := FSearchRadius;
@@ -514,7 +514,7 @@ begin
   FSocket.SendTo(vData[0], Length(vData), vBroadcast);
   while RALMQTTNow < vDeadline do
   begin
-    if FSocket.WaitFor(RALMQTTPollIn, 200) = 0 then
+    if FSocket.WaitFor(RALPollIn, 200) = 0 then
       Continue;
     vRes := FSocket.ReceiveFrom(vBuf, SizeOf(vBuf), vFrom);
     if vRes <= 0 then
@@ -532,7 +532,7 @@ begin
         FGateway := vFrom;
         FGatewayId := vReply.GwId;
         if Assigned(FOnGateway) then
-          FOnGateway(Self, vReply.GwId, RALMQTTAddressText(vFrom), RALMQTTAddressPort(vFrom));
+          FOnGateway(Self, vReply.GwId, RALAddressText(vFrom), RALAddressPort(vFrom));
         Exit;
       end;
     finally
@@ -550,20 +550,20 @@ var
   vOut: TBytes;
   vPlain: TList;
   vBuf: array[0..65535] of Byte;
-  vFrom: TRALMQTTAddress;
+  vFrom: TRALSocketAddress;
   vRes: IntegerRAL;
 begin
   CloseTransport;
   FreeAndNil(FCodec);
   FCodec := RALMQTTSNNewCodec(FVersion);
-  FSocket := TRALMQTTSocket.Create;
+  FSocket := TRALSocket.Create;
   FillChar(FGateway, SizeOf(FGateway), 0);
   if FHost <> '' then
   begin
-    if not RALMQTTResolve(FHost, FPort, mifAny, FGateway) then
-      raise ERALMQTTSocketError.CreateCode(0, Format(emMQTTResolveFailed, [string(FHost)]));
+    if not RALResolve(FHost, FPort, mifAny, FGateway) then
+      raise ERALSocketError.CreateCode(0, Format(emMQTTResolveFailed, [string(FHost)]));
     // the socket of the gateway's family
-    if Pos(StringRAL(':'), RALMQTTAddressText(FGateway)) > 0 then
+    if Pos(StringRAL(':'), RALAddressText(FGateway)) > 0 then
       FSocket.OpenUDP('', 0, mifIPv6)
     else
       FSocket.OpenUDP('', 0, mifIPv4);
@@ -579,11 +579,11 @@ begin
     Exit;
   // DTLS: the handshake before any MQTT-SN packet
   FreeAndNil(FDTLSContext);
-  FDTLSContext := TRALMQTTTLSContext.Create(mtrClient, True);
+  FDTLSContext := TRALTLSContext.Create(mtrClient, True);
   FDTLSContext.LoadSystemCAs;
   FDTLSContext.LoadCAFile(FSSL.CAFile);
   FDTLSContext.UseCertificateFiles(FSSL.CertFile, FSSL.KeyFile, FSSL.KeyPassword);
-  FDTLSSession := TRALMQTTDTLSSession.Create(FDTLSContext, False, FHost);
+  FDTLSSession := TRALDTLSSession.Create(FDTLSContext, False, FHost);
   vOut := FDTLSSession.TakeOutput;
   if vOut <> nil then
     FSocket.SendTo(vOut[0], Length(vOut), FGateway);
@@ -595,7 +595,7 @@ begin
       if RALMQTTNow >= vDeadline then
         raise ERALMQTTError.CreateReason(MQTTRC_ServerUnavailable,
           Format(emMQTTTLSTimeout, [FConnectTimeout]));
-      if FSocket.WaitFor(RALMQTTPollIn, 250) = 0 then
+      if FSocket.WaitFor(RALPollIn, 250) = 0 then
       begin
         FDTLSSession.Tick;
         vOut := FDTLSSession.TakeOutput;
@@ -604,7 +604,7 @@ begin
         Continue;
       end;
       vRes := FSocket.ReceiveFrom(vBuf, SizeOf(vBuf), vFrom);
-      if (vRes <= 0) or not RALMQTTSameAddress(vFrom, FGateway) then
+      if (vRes <= 0) or not RALSameAddress(vFrom, FGateway) then
         Continue;
       SetLength(vData, vRes);
       Move(vBuf[0], vData[0], vRes);
@@ -619,7 +619,7 @@ begin
     vPlain.Free;
   end;
   vCert := FDTLSSession.PeerCertificate;
-  if not RALMQTTAcceptCertificate(Self, FSSL, FOnValidateServerCert, vCert, FHost, FPort) then
+  if not RALTLSAcceptCertificate(Self, FSSL, FOnValidateServerCert, vCert, FHost, FPort) then
     raise ERALMQTTError.CreateReason(MQTTRC_NotAuthorized,
       Format(emMQTTCertRefused, [string(vCert.Error)]));
 end;
@@ -1619,10 +1619,10 @@ begin
     begin
       // not running: a socket for this one datagram
       FCodec := RALMQTTSNNewCodec(FVersion);
-      FSocket := TRALMQTTSocket.Create;
+      FSocket := TRALSocket.Create;
       FSocket.OpenUDP('', 0, mifIPv4);
-      if not RALMQTTResolve(FHost, FPort, mifAny, FGateway) then
-        raise ERALMQTTSocketError.CreateCode(0, Format(emMQTTResolveFailed, [string(FHost)]));
+      if not RALResolve(FHost, FPort, mifAny, FGateway) then
+        raise ERALSocketError.CreateCode(0, Format(emMQTTResolveFailed, [string(FHost)]));
     end;
     FLock.Acquire;
     try

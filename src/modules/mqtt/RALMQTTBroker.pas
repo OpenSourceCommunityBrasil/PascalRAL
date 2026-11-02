@@ -21,8 +21,8 @@ interface
 uses
   Classes, SysUtils, SyncObjs,
   RALTypes, RALConsts, RALTools, RALServer, RALRequest, RALResponse, RALRoutes,
-  RALBase64, RALMQTTTypes, RALMQTTPacket, RALMQTTTopic, RALMQTTSocket, RALMQTTTLS,
-  RALMQTTWebSocket, RALMQTTAuth, RALMQTTSession, RALMQTTStore, RALMQTTBrokerStore;
+  RALBase64, RALMQTTTypes, RALMQTTPacket, RALMQTTTopic, RALSocket, RALTLS,
+  RALWebSocket, RALMQTTAuth, RALMQTTSession, RALMQTTStore, RALMQTTBrokerStore;
 
 type
   TRALMQTTBroker = class;
@@ -90,7 +90,7 @@ type
     FKeyFile: StringRAL;
     FKeyPassword: StringRAL;
     FKeyPEM: StringRAL;
-    FMinVersion: TRALMQTTTLSVersion;
+    FMinVersion: TRALTLSVersion;
     FRequireClientCert: boolean;
   protected
     procedure AssignTo(Dest: TPersistent); override;
@@ -112,7 +112,7 @@ type
     /// Password of KeyFile.
     property KeyPassword: StringRAL read FKeyPassword write FKeyPassword;
     /// Lowest TLS version.
-    property MinVersion: TRALMQTTTLSVersion read FMinVersion write FMinVersion default mtv12;
+    property MinVersion: TRALTLSVersion read FMinVersion write FMinVersion default mtv12;
     /// Clients must show a certificate from CAFile.
     property RequireClientCert: boolean read FRequireClientCert write FRequireClientCert default False;
   end;
@@ -286,7 +286,7 @@ type
     FAuthMethod: StringRAL;
     FAuthStep: IntegerRAL;
     FBroker: TRALMQTTBroker;
-    FChannel: TRALMQTTChannel;
+    FChannel: TRALChannel;
     FClient: TRALMQTTBrokerClient;
     FCloseAfterFlush: boolean;
     FConnectedAt: Int64RAL;
@@ -304,15 +304,15 @@ type
     FProblemInfo: boolean;
     FReceiveMax: IntegerRAL;
     FSession: TRALMQTTBrokerSession;
-    FSocket: TRALMQTTSocket;
+    FSocket: TRALSocket;
     FThread: TRALMQTTBrokerThread;
-    FTLS: TRALMQTTTLSChannel;
+    FTLS: TRALTLSChannel;
     FVersion: TRALMQTTVersion;
-    FWebSocket: TRALMQTTWebSocketChannel;
+    FWebSocket: TRALWebSocketChannel;
     FWillDiscard: boolean;
     FDisconnectReason: Byte;
   public
-    constructor Create(ABroker: TRALMQTTBroker; ASocket: TRALMQTTSocket; AListener: IntegerRAL);
+    constructor Create(ABroker: TRALMQTTBroker; ASocket: TRALSocket; AListener: IntegerRAL);
     destructor Destroy; override;
     { Queues an encoded packet to go out (any thread); False when the
       connection is gone or the packet exceeds the client's limit }
@@ -329,8 +329,8 @@ type
     FConnections: TList;
     FIncoming: TList;
     FLock: TCriticalSection;
-    FWaker: TRALMQTTSocket;
-    FWakerAddress: TRALMQTTAddress;
+    FWaker: TRALSocket;
+    FWakerAddress: TRALSocketAddress;
     FWakePending: IntegerRAL;
   protected
     procedure Execute; override;
@@ -422,7 +422,7 @@ type
     FThreadCount: IntegerRAL;
     FThreads: TList;
     FTimer: TRALMQTTBrokerTimer;
-    FTLSContext: TRALMQTTTLSContext;
+    FTLSContext: TRALTLSContext;
     FRetiredContexts: TList;
     FTLSPort: IntegerRAL;
     FTopicAliasMaximum: Word;
@@ -445,8 +445,8 @@ type
     { inside, under FLock unless said }
     procedure StartListeners;
     procedure StopAll;
-    function NewTLSContext: TRALMQTTTLSContext;
-    procedure Accepted(ASocket: TRALMQTTSocket; AListener: IntegerRAL);
+    function NewTLSContext: TRALTLSContext;
+    procedure Accepted(ASocket: TRALSocket; AListener: IntegerRAL);
     procedure HandleConnect(AConnection: TRALMQTTBrokerConnection; APacket: TRALMQTTConnectPacket);
     function CheckCredentials(AConnection: TRALMQTTBrokerConnection;
       APacket: TRALMQTTConnectPacket; AEnhanced: boolean): Byte;
@@ -571,7 +571,7 @@ type
     /// For an extension: a SCRAM server exchange of AMethod with the broker's users, or nil.
     function NewSCRAMServer(const AMethod: StringRAL): TRALMQTTSCRAMServer;
     /// For an extension: a TLS context of the broker's certificate (ADatagram: DTLS).
-    function NewServerContext(ADatagram: boolean): TRALMQTTTLSContext;
+    function NewServerContext(ADatagram: boolean): TRALTLSContext;
     { Whether the ports this broker would open are free now, and whether its
       certificate loads, without starting it: one line per port in AReport.
       True when all are (the IDE's "Test ports") }
@@ -689,7 +689,7 @@ type
   { a listening socket and its kind }
   TRALMQTTListener = class
   public
-    Socket: TRALMQTTSocket;
+    Socket: TRALSocket;
     Kind: IntegerRAL;
     destructor Destroy; override;
   end;
@@ -986,13 +986,13 @@ end;
 { TRALMQTTBrokerConnection }
 
 constructor TRALMQTTBrokerConnection.Create(ABroker: TRALMQTTBroker;
-  ASocket: TRALMQTTSocket; AListener: IntegerRAL);
+  ASocket: TRALSocket; AListener: IntegerRAL);
 begin
   inherited Create;
   FBroker := ABroker;
   FSocket := ASocket;
   FListener := AListener;
-  FChannel := TRALMQTTSocketChannel.Create(ASocket);
+  FChannel := TRALSocketChannel.Create(ASocket);
   FFrames := TRALMQTTFrameReader.Create;
   FFrames.MaxPacketSize := ABroker.MaxPacketSize;
   FOutbox := TRALMQTTWriter.Create;
@@ -1008,7 +1008,7 @@ begin
   FReceiveMax := 65535;
   if AListener in [cListenerTLS, cListenerWSS] then
   begin
-    FTLS := TRALMQTTTLSChannel.Create(FChannel, ABroker.FTLSContext);
+    FTLS := TRALTLSChannel.Create(FChannel, ABroker.FTLSContext);
     FChannel := FTLS;
     FPhase := mbpTLS;
   end
@@ -1018,7 +1018,8 @@ begin
     FPhase := mbpConnect;
   if AListener in [cListenerWS, cListenerWSS] then
   begin
-    FWebSocket := TRALMQTTWebSocketChannel.Create(FChannel, mwrServer);
+    FWebSocket := TRALWebSocketChannel.Create(FChannel, mwrServer);
+    FWebSocket.Protocol := RALMQTTWSProtocol;
     FWebSocket.MaxFrame := ABroker.MaxPacketSize;
     FChannel := FWebSocket;
   end;
@@ -1094,9 +1095,9 @@ begin
   FIncoming := TList.Create;
   FLock := TCriticalSection.Create;
   // the waker: a datagram to itself ends the poll of this thread
-  FWaker := TRALMQTTSocket.Create;
+  FWaker := TRALSocket.Create;
   FWaker.OpenUDP('127.0.0.1', 0, mifIPv4);
-  RALMQTTResolve('127.0.0.1', FWaker.LocalPort, mifIPv4, FWakerAddress);
+  RALResolve('127.0.0.1', FWaker.LocalPort, mifIPv4, FWakerAddress);
   inherited Create(False);
 end;
 
@@ -1154,11 +1155,11 @@ end;
 
 procedure TRALMQTTBrokerThread.Execute;
 var
-  vPoll: TRALMQTTPollItems;
+  vPoll: TRALPollItems;
   vInt, vCount, vRes, vLen: IntegerRAL;
   vConn: TRALMQTTBrokerConnection;
   vBuffer: array[0..16383] of Byte;
-  vFrom: TRALMQTTAddress;
+  vFrom: TRALSocketAddress;
   vData: Pointer;
   vPacket: TRALMQTTPacket;
   vNow: Int64RAL;
@@ -1230,14 +1231,14 @@ begin
     vCount := FConnections.Count;
     SetLength(vPoll, vCount + 1);
     vPoll[0].Handle := FWaker.Handle;
-    vPoll[0].Events := RALMQTTPollIn;
+    vPoll[0].Events := RALPollIn;
     for vInt := 0 to vCount - 1 do
     begin
       vConn := TRALMQTTBrokerConnection(FConnections[vInt]);
       vPoll[vInt + 1].Handle := vConn.FSocket.Handle;
       vPoll[vInt + 1].Events := vConn.FChannel.WantedEvents;
       if HasOutput(vConn) then
-        vPoll[vInt + 1].Events := vPoll[vInt + 1].Events or RALMQTTPollOut;
+        vPoll[vInt + 1].Events := vPoll[vInt + 1].Events or RALPollOut;
     end;
     // a TLS layer with bytes already decrypted does not wait for the socket
     vRes := 100;
@@ -1245,11 +1246,11 @@ begin
       if TRALMQTTBrokerConnection(FConnections[vInt]).FChannel.HasBuffered then
         vRes := 0;
     try
-      RALMQTTPoll(vPoll, vCount + 1, vRes);
+      RALPoll(vPoll, vCount + 1, vRes);
     except
       Sleep(10);
     end;
-    if (vPoll[0].Returned and RALMQTTPollIn) <> 0 then
+    if (vPoll[0].Returned and RALPollIn) <> 0 then
     begin
       FWakePending := 0;
       repeat
@@ -1347,6 +1348,20 @@ begin
         if (vConn.FPhase in [mbpConnect, mbpAuth]) and (vNow - vConn.FConnectedAt > 30000) then
           CloseConn(vConn);
       except
+        on e: ERALWebSocketError do
+        begin
+          // a broken frame is a broken packet: Malformed Packet, or Packet Too Large
+          if (vConn.FPhase = mbpConnected) and (e.CloseCode <> 0) then
+          begin
+            if e.CloseCode = RALWSCloseTooBig then
+              FBroker.SendDisconnect(vConn, MQTTRC_PacketTooLarge, StringRAL(e.Message))
+            else
+              FBroker.SendDisconnect(vConn, MQTTRC_MalformedPacket, StringRAL(e.Message));
+          end;
+          vConn.FCloseAfterFlush := True;
+        end;
+        on e: ERALSocketError do
+          vConn.FCloseAfterFlush := True;
         on e: ERALMQTTError do
         begin
           // a broken packet: the reason in a DISCONNECT (5.0), then the end [MQTT-4.13.1-1]
@@ -1400,27 +1415,27 @@ end;
 
 procedure TRALMQTTBrokerAcceptor.Execute;
 var
-  vPoll: TRALMQTTPollItems;
+  vPoll: TRALPollItems;
   vInt: IntegerRAL;
   vListener: TRALMQTTListener;
-  vSocket: TRALMQTTSocket;
+  vSocket: TRALSocket;
 begin
   SetLength(vPoll, FBroker.FListeners.Count);
   for vInt := 0 to FBroker.FListeners.Count - 1 do
   begin
     vPoll[vInt].Handle := TRALMQTTListener(FBroker.FListeners[vInt]).Socket.Handle;
-    vPoll[vInt].Events := RALMQTTPollIn;
+    vPoll[vInt].Events := RALPollIn;
   end;
   while not Terminated do
   begin
     try
-      RALMQTTPoll(vPoll, Length(vPoll), 200);
+      RALPoll(vPoll, Length(vPoll), 200);
     except
       Sleep(50);
       Continue;
     end;
     for vInt := 0 to High(vPoll) do
-      if (vPoll[vInt].Returned and RALMQTTPollIn) <> 0 then
+      if (vPoll[vInt].Returned and RALPollIn) <> 0 then
       begin
         vListener := TRALMQTTListener(FBroker.FListeners[vInt]);
         repeat
@@ -1619,7 +1634,7 @@ end;
 function TRALMQTTBroker.SetTLSCertificate(
   const ACertificate: TRALTLSCertificate): TRALTLSApplyResult;
 var
-  vNew: TRALMQTTTLSContext;
+  vNew: TRALTLSContext;
 begin
   SSL.CertFile := ACertificate.CertificateFile;
   SSL.KeyFile := ACertificate.PrivateKeyFile;
@@ -1653,9 +1668,9 @@ begin
   end;
 end;
 
-function TRALMQTTBroker.NewTLSContext: TRALMQTTTLSContext;
+function TRALMQTTBroker.NewTLSContext: TRALTLSContext;
 begin
-  Result := TRALMQTTTLSContext.Create(mtrServer);
+  Result := TRALTLSContext.Create(mtrServer);
   try
     Result.SetMinVersion(SSL.MinVersion);
     Result.ALPN := SSL.ALPN;
@@ -1708,7 +1723,7 @@ var
   procedure Open(APort, AKind: IntegerRAL);
   var
     vListener: TRALMQTTListener;
-    vFamily: TRALMQTTIPFamily;
+    vFamily: TRALIPFamily;
     vAddress: StringRAL;
   begin
     if APort <= 0 then
@@ -1716,7 +1731,7 @@ var
     vListener := TRALMQTTListener.Create;
     try
       vListener.Kind := AKind;
-      vListener.Socket := TRALMQTTSocket.Create;
+      vListener.Socket := TRALSocket.Create;
       if IPConfig.IPv6Enabled then
       begin
         vFamily := mifAny;
@@ -1848,7 +1863,7 @@ begin
   FreeAndNil(FTLSContext);
 end;
 
-procedure TRALMQTTBroker.Accepted(ASocket: TRALMQTTSocket; AListener: IntegerRAL);
+procedure TRALMQTTBroker.Accepted(ASocket: TRALSocket; AListener: IntegerRAL);
 var
   vConn: TRALMQTTBrokerConnection;
   vThread, vBest: TRALMQTTBrokerThread;
@@ -3886,8 +3901,8 @@ var
 
   procedure Try_(APort: IntegerRAL; const AKind: string);
   var
-    vSocket: TRALMQTTSocket;
-    vFamily: TRALMQTTIPFamily;
+    vSocket: TRALSocket;
+    vFamily: TRALIPFamily;
     vAddress: StringRAL;
   begin
     if APort <= 0 then
@@ -3906,7 +3921,7 @@ var
       if vAddress = '0.0.0.0' then
         vAddress := '';
     end;
-    vSocket := TRALMQTTSocket.Create;
+    vSocket := TRALSocket.Create;
     try
       try
         vSocket.Listen(vAddress, APort, vFamily, 1);
@@ -3924,7 +3939,7 @@ var
   end;
 
 var
-  vContext: TRALMQTTTLSContext;
+  vContext: TRALTLSContext;
 begin
   Result := True;
   vLines := TStringList.Create;
@@ -3959,14 +3974,14 @@ begin
   end;
 end;
 
-function TRALMQTTBroker.NewServerContext(ADatagram: boolean): TRALMQTTTLSContext;
+function TRALMQTTBroker.NewServerContext(ADatagram: boolean): TRALTLSContext;
 begin
   if not ADatagram then
   begin
     Result := NewTLSContext;
     Exit;
   end;
-  Result := TRALMQTTTLSContext.Create(mtrServer, True);
+  Result := TRALTLSContext.Create(mtrServer, True);
   try
     if SSL.CertPEM <> '' then
       Result.UseCertificatePEM(SSL.CertPEM, SSL.KeyPEM)

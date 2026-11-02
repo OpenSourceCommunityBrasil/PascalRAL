@@ -15,12 +15,6 @@ unit RALMQTTTypes;
 interface
 
 uses
-  {$IFDEF RALWindows}
-  Windows,
-  {$ENDIF}
-  {$IF Defined(POSIX) and not Defined(FPC)}
-  Posix.Time,
-  {$IFEND}
   Classes, SysUtils,
   RALTypes, RALConsts;
 
@@ -37,6 +31,8 @@ const
   RALMQTTSNPort = 1884;
   /// Default path of MQTT over WebSocket.
   RALMQTTWSPath = '/mqtt';
+  /// The WebSocket subprotocol both MQTT standards name [MQTT-6.0.0-3].
+  RALMQTTWSProtocol = 'mqtt';
   /// Largest Remaining Length the protocol can carry (268 435 455 bytes).
   RALMQTTMaxRemaining = 268435455;
   /// Default limit of a received packet: 16 MB.
@@ -514,11 +510,7 @@ function RALMQTTText(const ABytes: TBytes): StringRAL;
 implementation
 
 uses
-  RALTools;
-
-{$IF Defined(RALWindows) and not Defined(FPC)}
-function GetTickCount64: UInt64; stdcall; external kernel32 name 'GetTickCount64';
-{$IFEND}
+  RALTools, RALSocket;
 
 procedure RALMQTTMalformed(const AMessage: string; AReasonCode: Byte);
 begin
@@ -777,21 +769,9 @@ begin
 end;
 
 function RALMQTTNow: Int64RAL;
-{$IF Defined(POSIX) and not Defined(FPC)}
-var
-  vTime: timespec;
-{$IFEND}
 begin
-  {$IFDEF FPC}
-  Result := Int64RAL(GetTickCount64);
-  {$ELSE}
-    {$IFDEF RALWindows}
-    Result := Int64RAL(GetTickCount64);
-    {$ELSE}
-    clock_gettime(CLOCK_MONOTONIC, @vTime);
-    Result := Int64RAL(vTime.tv_sec) * 1000 + vTime.tv_nsec div 1000000;
-    {$ENDIF}
-  {$ENDIF}
+  // one clock for the package and the sockets under it
+  Result := RALSocketNow;
 end;
 
 function RALMQTTRandomId(ALength: IntegerRAL): StringRAL;

@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | MQTT and MQTT-SN: client, broker, gateway"/>
     <Version Major="2"/>
-    <Files Count="20">
+    <Files Count="16">
       <Item1>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTTypes.pas"/>
         <UnitName Value="RALMQTTTypes"/>
@@ -40,87 +40,75 @@
         <UnitName Value="RALMQTTTopic"/>
       </Item3>
       <Item4>
-        <Filename Value="..\..\..\src\modules\mqtt\RALMQTTSocket.pas"/>
-        <UnitName Value="RALMQTTSocket"/>
-      </Item4>
-      <Item5>
-        <Filename Value="..\..\..\src\modules\mqtt\RALMQTTTLS.pas"/>
-        <UnitName Value="RALMQTTTLS"/>
-      </Item5>
-      <Item6>
-        <Filename Value="..\..\..\src\modules\mqtt\RALMQTTWebSocket.pas"/>
-        <UnitName Value="RALMQTTWebSocket"/>
-      </Item6>
-      <Item7>
-        <Filename Value="..\..\..\src\modules\mqtt\RALMQTTProxy.pas"/>
-        <UnitName Value="RALMQTTProxy"/>
-      </Item7>
-      <Item8>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTAuth.pas"/>
         <UnitName Value="RALMQTTAuth"/>
-      </Item8>
-      <Item9>
+      </Item4>
+      <Item5>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTStore.pas"/>
         <UnitName Value="RALMQTTStore"/>
-      </Item9>
-      <Item10>
+      </Item5>
+      <Item6>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTSession.pas"/>
         <UnitName Value="RALMQTTSession"/>
-      </Item10>
-      <Item11>
+      </Item6>
+      <Item7>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTClient.pas"/>
         <UnitName Value="RALMQTTClient"/>
-      </Item11>
-      <Item12>
+      </Item7>
+      <Item8>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTActions.pas"/>
         <UnitName Value="RALMQTTActions"/>
-      </Item12>
-      <Item13>
+      </Item8>
+      <Item9>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTSNTypes.pas"/>
         <UnitName Value="RALMQTTSNTypes"/>
-      </Item13>
-      <Item14>
+      </Item9>
+      <Item10>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTSNPacket12.pas"/>
         <UnitName Value="RALMQTTSNPacket12"/>
-      </Item14>
-      <Item15>
+      </Item10>
+      <Item11>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTSNPacket20.pas"/>
         <UnitName Value="RALMQTTSNPacket20"/>
-      </Item15>
-      <Item16>
+      </Item11>
+      <Item12>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTSNClient.pas"/>
         <UnitName Value="RALMQTTSNClient"/>
-      </Item16>
-      <Item17>
+      </Item12>
+      <Item13>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTBrokerStore.pas"/>
         <UnitName Value="RALMQTTBrokerStore"/>
-      </Item17>
-      <Item18>
+      </Item13>
+      <Item14>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTBroker.pas"/>
         <UnitName Value="RALMQTTBroker"/>
-      </Item18>
-      <Item19>
+      </Item14>
+      <Item15>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTSNGateway.pas"/>
         <UnitName Value="RALMQTTSNGateway"/>
-      </Item19>
-      <Item20>
+      </Item15>
+      <Item16>
         <Filename Value="..\..\..\src\modules\mqtt\RALMQTTRestModule.pas"/>
         <UnitName Value="RALMQTTRestModule"/>
-      </Item20>
+      </Item16>
     </Files>
     <CompatibilityMode Value="True"/>
-    <RequiredPkgs Count="3">
+    <RequiredPkgs Count="4">
       <Item1>
         <PackageName Value="PascalRAL"/>
         <MinVersion Major="2" Valid="True"/>
       </Item1>
       <Item2>
-        <PackageName Value="ralpluginauthpackage"/>
+        <PackageName Value="ralnetpackage"/>
         <MinVersion Major="2" Valid="True"/>
       </Item2>
       <Item3>
-        <PackageName Value="FCL"/>
+        <PackageName Value="ralpluginauthpackage"/>
+        <MinVersion Major="2" Valid="True"/>
       </Item3>
+      <Item4>
+        <PackageName Value="FCL"/>
+      </Item4>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>
