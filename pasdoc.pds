@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=48
+Count=50
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -116,8 +116,10 @@ Item_44=src\plugins\observability
 Item_45=src\plugins\traffic
 Item_46=src\plugins\cache
 Item_47=src\net
+Item_48=src\plugins\forwarded
+Item_49=src\modules\proxy
 [Files]
-Count=169
+Count=174
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -287,6 +289,11 @@ Item_165=src\plugins\traffic\RALPluginTrafficReg.pas
 Item_166=src\plugins\cache\RALResponseCache.pas
 Item_167=src\plugins\cache\RALPluginCacheReg.pas
 Item_168=src\net\RALSocketLoop.pas
+Item_169=src\plugins\forwarded\RALForwarded.pas
+Item_170=src\plugins\forwarded\RALPluginForwardedReg.pas
+Item_171=src\modules\proxy\RALProxyCore.pas
+Item_172=src\modules\proxy\RALProxyModule.pas
+Item_173=src\modules\proxy\RALModuleProxyReg.pas
 [AdditionalFiles]
 Count=0
 

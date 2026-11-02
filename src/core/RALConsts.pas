@@ -170,6 +170,8 @@ const
   HTTP_BadGateway          = 502;
   /// HTTP status 503 Service Unavailable.
   HTTP_ServiceUnavailable  = 503;
+  /// HTTP status 504 Gateway Timeout.
+  HTTP_GatewayTimeout      = 504;
   /// HTTP status 505 HTTP Version Not Supported.
   HTTP_VersionNotSupported = 505;
 

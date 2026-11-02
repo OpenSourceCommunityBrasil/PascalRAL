@@ -373,6 +373,8 @@ begin
   AResponse.ContentType := Trim(FHttp.ResponseHeaders.Values['Content-Type']);
   AResponse.ContentEncoding := Trim(FHttp.ResponseHeaders.Values['Content-Encoding']);
   AResponse.ContentEncription := Trim(FHttp.ResponseHeaders.Values['Content-Encription']);
+  // the headers and cookies too: who reads the pieces may need them now
+  AResponse.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
 end;
 
 procedure TRALfpHttpClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
@@ -454,7 +456,8 @@ begin
 
   FHttp.ResponseHeaders.Clear;
   FHttp.RequestHeaders.Clear;
-  FHttp.AllowRedirect := true;
+  // 0: the 3xx is the answer, never followed
+  FHttp.AllowRedirect := Parent.MaxRedirects > 0;
   FHttp.MaxRedirects := Parent.MaxRedirects;
 
   { a socket kept for another address is no use here - see FAuthority.
@@ -597,7 +600,8 @@ begin
         (AddSetCookie). FHttp.Cookies is not read: fphttpclient splits each
         Set-Cookie at every ';', so Path, Expires and Max-Age came back as
         cookies of their own }
-      AResponse.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
+      if not HeadRead then
+        AResponse.Params.AppendParams(FHttp.ResponseHeaders, rpkHEADER);
 
       { trimmed: fphttpclient splits its header list at the colon alone, so
         every value read by name comes with the blank after it - a typed

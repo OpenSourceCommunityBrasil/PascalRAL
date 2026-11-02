@@ -17,6 +17,10 @@ echo RALPluginTraffic
 %path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginTrafficPackage.dcr" "RALPluginTraffic.rc"
 echo RALPluginCache
 %path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginCachePackage.dcr" "RALPluginCache.rc"
+echo RALPluginForwarded
+%path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginForwardedPackage.dcr" "RALPluginForwarded.rc"
+echo RALModuleProxy
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleProxyPackage.dcr" "RALModuleProxy.rc"
 echo RALStorage
 %path_brcc32% -fo "..\..\pkg\Delphi\Storage\RALStoragePackage.dcr" "RALStorage.rc"
 echo RALStorageBSON

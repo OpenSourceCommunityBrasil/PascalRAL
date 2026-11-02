@@ -130,6 +130,8 @@ form, `Server` property set; or `Plugin.Server := FServer` in code):
 | access log, trace context, Prometheus `/metrics`, `/health/live` and `/health/ready` | `TRALLogPlugin`, `TRALTracePlugin`, `TRALMetricsPlugin`, `TRALHealthPlugin` (`RALObservability`, package `RALPluginObservabilityPackage`) |
 | rate limit (429), HTTPS redirect, maintenance (503), `X-HTTP-Method-Override` | `TRALRateLimitPlugin`, `TRALHttpsRedirectPlugin`, `TRALMaintenancePlugin`, `TRALMethodOverridePlugin` (`RALTraffic`, package `RALPluginTrafficPackage`) |
 | response cache, `ETag` and 304 | `TRALResponseCachePlugin` (`RALResponseCache`, package `RALPluginCachePackage`) |
+| the real client behind a proxy (NGINX, a cloud balancer) | `TRALForwardedPlugin` (`RALForwarded`, package `RALPluginForwardedPackage`): `TrustedProxies` |
+| a reverse proxy / load balancer in front of other servers | `TRALUpstream` + `TRALProxyModule` (`RALProxyCore`, `RALProxyModule`, package `RALModuleProxyPackage`) |
 | errors as `application/problem+json` | `Server.ErrorFormat := efProblemJSON`, `Server.ExceptionMap` (no plugin) |
 | login | `ral-auth` |
 | HTTPS | `ral-https` |

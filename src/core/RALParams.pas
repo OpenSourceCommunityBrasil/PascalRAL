@@ -263,6 +263,8 @@ type
     FNextParam: IntegerRAL;
     /// Header block kept as text until something needs the list.
     FPending: StringRAL;
+    /// The Set-Cookie lines received, whole; nil until one arrives.
+    FSetCookieLines: TStringList;
     /// Number of lines of the pending block.
     FPendingCount: IntegerRAL;
     /// Kind of the params of the pending block.
@@ -474,6 +476,10 @@ type
       how a server imposes a value over one the client sent. }
     function ReplaceParam(const AName: StringRAL; const AValue: StringRAL;
                           AKind: TRALParamKind = rpkNONE): TRALParam;
+    { Every Set-Cookie line of an answer as it arrived, attributes included
+      (each cookie is also a param named after it, with its value alone):
+      what a proxy passes on. Empty when none came }
+    function SetCookieLines: TStrings;
     /// The body param when it is the only one and there are no fields; nil otherwise.
     function SingleBody: TRALParam;
     { The body for the wire, as a stream the caller owns. AConsume moves the
@@ -1639,6 +1645,8 @@ begin
     vParam := vNext;
   end;
 
+  if FSetCookieLines <> nil then
+    FSetCookieLines.Clear;
   FBuckets := nil; // every param goes, and the index with them
   while FList.Count > 0 do
   begin
@@ -1684,6 +1692,8 @@ var
   vInt: IntegerRAL;
   vParam: TRALParam;
 begin
+  if (AKind = rpkCOOKIE) and (FSetCookieLines <> nil) then
+    FSetCookieLines.Clear;
   vInt := FParams.Count - 1;
   while vInt >= 0 do
   begin
@@ -2807,6 +2817,16 @@ begin
   end;
 end;
 
+function TRALParams.SetCookieLines: TStrings;
+begin
+  // a header block kept as text holds its Set-Cookie lines until parsed
+  if FPending <> '' then
+    FlushPending;
+  if FSetCookieLines = nil then
+    FSetCookieLines := TStringList.Create;
+  Result := FSetCookieLines;
+end;
+
 function TRALParams.SingleBody: TRALParam;
 var
   vInt: IntegerRAL;
@@ -2940,6 +2960,7 @@ end;
 destructor TRALParams.Destroy;
 begin
   ClearParams;
+  FreeAndNil(FSetCookieLines);
   FreeAndNil(FList);
   FreeAndNil(FBuffers);
   FreeAndNil(FCriptoOptions);
@@ -3613,6 +3634,10 @@ var
   vPos: IntegerRAL;
   vPair, vName: StringRAL;
 begin
+  // the line itself, for who passes it on (SetCookieLines)
+  if FSetCookieLines = nil then
+    FSetCookieLines := TStringList.Create;
+  FSetCookieLines.Add(string(AValue));
   vPos := Pos(StringRAL(';'), AValue);
   if vPos > 0 then
     vPair := Copy(AValue, POSINISTR, vPos - 1)

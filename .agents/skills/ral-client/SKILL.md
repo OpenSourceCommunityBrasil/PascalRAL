@@ -124,7 +124,10 @@ FClient.Get('events', {$IFDEF FPC}@{$ENDIF}OnEvent, vResponse); // frees vRespon
 `ConnectTimeout` (30000 ms), `RequestTimeout` (10000 ms), `Authentication` (`ral-auth`),
 `CompressType` (needs `RALCompressZLib` linked), `AcceptEncoding`, `SSL` and
 `OnValidateServerCert` (`ral-https`), `HTTPVersion` (`rhv2` on netHTTP/OkHttp),
-`MaxRedirects`, `UserAgent`, `SpoolAbove` (large answers to a temp file).
+`MaxRedirects` (0 follows none: the 3xx is the answer), `UserAgent`, `SpoolAbove`
+(large answers to a temp file), `KeepCookies` (off for a client that calls on behalf of
+many users). `Execute(route, method, response, OnData)` sends any method;
+`Response.Params.SetCookieLines` has each `Set-Cookie` whole.
 
 ## Common errors
 

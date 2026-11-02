@@ -164,6 +164,8 @@ type
     FStreamCancelled: boolean;
     /// The attempt in progress handed a piece over: it is not sent again.
     FStreamDelivered: boolean;
+    /// ReadStreamHead filed the headers of this attempt's answer.
+    FHeadRead: boolean;
 
     { Hands an answer read whole to the stream handlers: what an engine that
       cannot read in pieces does at the end, so the application code is the
@@ -190,6 +192,10 @@ type
                           AError: TRALTransportError): boolean; virtual;
     /// True when a pin or OnValidateServerCert asks the engine to check certificates.
     function CertCheckWanted: boolean;
+    { True when ReadStreamHead already filed the headers of this attempt's
+      answer (at the first piece of a body read in pieces): the end of the
+      call must not file them again }
+    function HeadRead: boolean;
     { Signature of the certificate policy (Verify, Pins, OnValidateServerCert);
       a connection is shared only between clients with the same one. }
     function CertPolicyKey: StringRAL; virtual;
@@ -539,6 +545,7 @@ type
     FIndexUrl: IntegerRAL;
     FKeepAlive: boolean;
     FKeepAliveInterval: IntegerRAL;
+    FKeepCookies: boolean;
     FKeepStreamBody: boolean;
     FMaxRedirects: IntegerRAL;
     /// Cookie jars of an EngineType left behind, freed with the client.
@@ -644,6 +651,11 @@ type
                      AExecBehavior : TRALExecBehavior = ebSingleThread); overload;
     /// Forgets the pending callbacks that are methods of AObject, from its destructor.
     procedure DropCallbacks(AObject: TObject);
+    { Sends a request of any method on the calling thread and returns the
+      response, which the caller frees; with AOnData a 2xx answer goes to it in
+      pieces (see OnReceiveData). For code that passes requests on, as a proxy }
+    procedure Execute(ARoute: StringRAL; AMethod: TRALMethod; var AResponse: TRALResponse;
+                      AOnData: TRALOnReceiveData = nil);
     /// Sends a GET and returns the response, which the caller frees.
     procedure Get(ARoute: StringRAL; var AResponse : TRALResponse); overload;
     /// Sends a GET and hands the answer to AOnResponse.
@@ -718,12 +730,16 @@ type
       engines with SupportsKeepAliveInterval, raised to their minimum. }
     property KeepAliveInterval: IntegerRAL read FKeepAliveInterval
                                            write SetKeepAliveInterval default 0;
+    { Keeps the cookies the servers set (Indy, netHTTP: the client's jar) and
+      sends them back. Off for a client that calls on behalf of many users,
+      such as a proxy: a cookie of one would go out with the others' calls }
+    property KeepCookies: boolean read FKeepCookies write FKeepCookies default True;
     { Keeps a body handed to OnReceiveData or OnServerEvent in ResponseStream
       too, decoded; off, it stays empty and the memory flat however long the
       stream lasts. }
     property KeepStreamBody: boolean read FKeepStreamBody write FKeepStreamBody
                                      default False;
-    /// Most redirects followed in a row.
+    /// Most redirects followed in a row; 0 follows none (the 3xx is the answer).
     property MaxRedirects: IntegerRAL read FMaxRedirects write FMaxRedirects default DEFAULTMAXREDIRECTS;
     /// Fired when each attempt ends - see TRALOnAfterExecute.
     property OnAfterExecute: TRALOnAfterExecute read FOnAfterExecute
@@ -1703,6 +1719,7 @@ begin
   ADest.OnAfterExecute := Self.OnAfterExecute;
   ADest.OnReceiveData := Self.OnReceiveData;
   ADest.OnServerEvent := Self.OnServerEvent;
+  ADest.KeepCookies := Self.KeepCookies;
   ADest.KeepStreamBody := Self.KeepStreamBody;
 
   { the clone runs on the same transport arrangement as the original: the DAO
@@ -1825,6 +1842,7 @@ begin
 
   FUserAgent := 'RALClient ' + RALVERSION;
   FKeepAlive := True;
+  FKeepCookies := True;
   // the same values as the published defaults, or the form would not store them
   FShareConnection := True;
   FConnectTimeout := DEFAULTCONNECTTIMEOUT;
@@ -2001,6 +2019,13 @@ procedure TRALClient.Delete(ARoute: StringRAL; AOnResponse: TRALThreadClientResp
                             AExecBehavior: TRALExecBehavior);
 begin
   ExecuteThread(ARoute, amDELETE, AOnResponse, AExecBehavior);
+end;
+
+procedure TRALClient.Execute(ARoute: StringRAL; AMethod: TRALMethod;
+  var AResponse: TRALResponse; AOnData: TRALOnReceiveData);
+begin
+  AResponse := nil; // see Get
+  AResponse := ExecuteStream(ARoute, AMethod, AOnData, nil);
 end;
 
 procedure TRALClient.Get(ARoute: StringRAL; AOnData: TRALOnReceiveData;
@@ -2363,7 +2388,14 @@ var
   vType: TRALCompressType;
 begin
   FMode := 1;
+  // a followed redirect's head was read before: its headers are not the answer's
+  if FEngine.FHeadRead then
+  begin
+    FResponse.Params.ClearParams(rpkHEADER);
+    FResponse.Params.ClearParams(rpkCOOKIE);
+  end;
   FEngine.ReadStreamHead(FResponse);
+  FEngine.FHeadRead := True;
   { a redirect being followed: its body is not the answer, and the head of
     the next one is read again at its first piece }
   if (FResponse.StatusCode >= 300) and (FResponse.StatusCode < 400) then
@@ -2694,9 +2726,15 @@ begin
   Result := nil;
 end;
 
+function TRALClientHTTP.HeadRead: boolean;
+begin
+  Result := FHeadRead;
+end;
+
 function TRALClientHTTP.CookieJar: TObject;
 begin
-  if FParent <> nil then
+  // KeepCookies off: no jar, as for an engine that keeps none
+  if (FParent <> nil) and FParent.KeepCookies then
     Result := FParent.GetCookieJar(TRALClientHTTPClass(ClassType))
   else
     Result := nil;
@@ -2893,6 +2931,7 @@ begin
         AResponse.Params.SpoolAbove := FParent.SpoolAbove;
 
         FStreamDelivered := False;
+        FHeadRead := False;
         FStreamCancelled := False;
         SendUrl(vURL, ARequest, AResponse, AMethod);
         { an engine that could not read in pieces read the body whole: it is

@@ -48,6 +48,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/engine/<engine>/` | `<Engine>RAL` | one transport engine per folder |
 | `src/languages/` | (included by `RALConsts`) | user-facing texts per language, UTF-8 with BOM |
 | `src/net/` | `RALNetPackage` | RAL's own sockets: TCP/UDP for every OS with poll, TLS and DTLS over OpenSSL loaded at run time, WebSocket channel, HTTP CONNECT/SOCKS5 proxy, the server event loop |
+| `src/modules/proxy/` | `RALModuleProxyPackage` | reverse proxy and load balancing: `TRALUpstream` (policies, health, stats), `TRALProxyModule` |
 | `src/modules/mqtt/` | `RALModuleMQTTPackage` | MQTT 3.1.1/5.0 and MQTT-SN client, broker, SN gateway, REST bridge |
 | `src/modules/mqtt/design/` | `RALModuleMQTTDsgn` | MQTT IDE registration and verbs |
 | `src/modules/mqtt/db/` | `RALModuleMQTTDBPackage` | `TRALMQTTDataSetLink` (messages into a dataset) |
@@ -60,6 +61,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/plugins/` | `PascalRAL` | core plugins: security, CORS, content (limits, compression, cipher, JSON body), concurrency |
 | `src/plugins/auth/` | `RALPluginAuthPackage` | Basic and JWT (`RALAuthentication`), Digest, OAuth2 |
 | `src/plugins/cache/` | `RALPluginCachePackage` | response cache and dynamic ETag (`RALResponseCache`) |
+| `src/plugins/forwarded/` | `RALPluginForwardedPackage` | the client behind a proxy: `TRALForwardedPlugin` (Forwarded, X-Forwarded-*, trusted proxies), `TRALIPRanges` |
 | `src/plugins/observability/` | `RALPluginObservabilityPackage` | access log, trace context and OTLP export, Prometheus metrics, health checks (`RALObservability`) |
 | `src/plugins/tls/` | `RALPluginTLSPackage` | self-signed certificate plugin (`RALSelfSigned`) |
 | `src/plugins/traffic/` | `RALPluginTrafficPackage` | rate limit, HTTPS redirect, maintenance, method override (`RALTraffic`) |

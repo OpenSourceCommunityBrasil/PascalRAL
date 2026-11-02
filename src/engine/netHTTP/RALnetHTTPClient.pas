@@ -690,6 +690,9 @@ begin
       vHolder.Http.ConnectionTimeout := ASetup.ConnectTimeout;
       vHolder.Http.ResponseTimeout := ASetup.RequestTimeout;
       vHolder.Http.MaxRedirects := ASetup.MaxRedirects;
+      // 0: the 3xx is the answer, never followed
+      if ASetup.MaxRedirects <= 0 then
+        vHolder.Http.HandleRedirects := False;
       {$ENDIF}
       vHolder.Http.UserAgent := ASetup.UserAgent;
       { no certificate handler, ever: a client that needs one never shares -
@@ -708,7 +711,7 @@ begin
       vHolder.Http.SynchronizeEvents := False;
       {$ELSEIF Defined(DELPHI10_1UP)}
       { an RTL with no say over a redirect: TLS required means none followed }
-      vHolder.Http.HandleRedirects := not ASetup.NoDowngrade;
+      vHolder.Http.HandleRedirects := (not ASetup.NoDowngrade) and (ASetup.MaxRedirects > 0);
       {$IFEND}
       {$IFDEF RALNETHTTP_VERSIONED}
       case ASetup.Version of
@@ -1257,6 +1260,8 @@ begin
     vHttp.ConnectionTimeout := Parent.ConnectTimeout;
     vHttp.ResponseTimeout := Parent.RequestTimeout;
     vHttp.MaxRedirects := Parent.MaxRedirects;
+    // 0: the 3xx is the answer, never followed
+    vHttp.HandleRedirects := Parent.MaxRedirects > 0;
     {$ENDIF}
     vHttp.UserAgent := Parent.UserAgent;
 
@@ -1274,7 +1279,7 @@ begin
       vHttp.OnRedirect := nil;
     vHttp.SynchronizeEvents := WantsCertHandler;
     {$ELSEIF Defined(DELPHI10_1UP)}
-    vHttp.HandleRedirects := not TLSRequired;
+    vHttp.HandleRedirects := (not TLSRequired) and (Parent.MaxRedirects > 0);
     {$IFEND}
 
     {$IFDEF RALNETHTTP_VERSIONED}

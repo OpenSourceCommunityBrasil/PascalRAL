@@ -204,6 +204,8 @@ begin
   AResponse.ContentType := StringRAL(FHttp.Http.ContentType);
   AResponse.ContentEncoding := StringRAL(FHttp.Http.HeaderGetValue('CONTENT-ENCODING'));
   AResponse.ContentEncription := StringRAL(FHttp.Http.HeaderGetValue('CONTENT-ENCRIPTION'));
+  // the headers and cookies too: who reads the pieces may need them now
+  AResponse.Params.AppendParamsListText(StringRAL(FHttp.Headers), rpkHEADER);
 end;
 
 procedure TRALSynopseClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
@@ -482,7 +484,8 @@ begin
         end
         else
         begin
-          AResponse.Params.AppendParamsListText(vHttp.Headers, rpkHEADER);
+          if not HeadRead then
+            AResponse.Params.AppendParamsListText(vHttp.Headers, rpkHEADER);
 
           AResponse.ContentEncoding := AResponse.ParamByName('Content-Encoding').AsString;
           AResponse.Params.CompressType := AResponse.ContentCompress;

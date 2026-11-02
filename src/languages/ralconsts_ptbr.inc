@@ -375,6 +375,8 @@
   emProxySocksReply = 'resposta SOCKS5 %d';
   // end of Network
 
+  // Behind a proxy (RALPluginForwardedPackage)
+  emForwardedBadRange = 'TrustedProxies: "%s" não é um endereço, uma rede (endereço/bits) nem uma palavra conhecida (loopback, private).';
   // MQTT (RALModuleMQTTPackage)
   emMQTTUnknownProperty = 'Identificador de propriedade MQTT desconhecido: 0x%x.';
   emMQTTPropertyNotAllowed = 'A propriedade MQTT 0x%x não pode vir num pacote %s.';

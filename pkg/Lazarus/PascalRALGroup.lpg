@@ -23,6 +23,8 @@
       <Target FileName="Database\raldbzeosdsgn.lpk"/>
       <Target FileName="Database\raldbsqldbpackage.lpk"/>
       <Target FileName="Database\raldbsqldbdsgn.lpk"/>
+      <Target FileName="Plugins\ralpluginforwardedpackage.lpk"/>
+      <Target FileName="Modules\ralmoduleproxypackage.lpk"/>
       <Target FileName="Modules\ralmodulewebpackage.lpk"/>
       <Target FileName="Modules\ralmoduleswaggerpackage.lpk"/>
       <Target FileName="Modules\ralmodulexmlpackage.lpk"/>

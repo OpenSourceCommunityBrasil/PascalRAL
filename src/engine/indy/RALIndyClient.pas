@@ -276,6 +276,9 @@ begin
   AResponse.ContentType := FHttp.Response.ContentType;
   AResponse.ContentEncoding := FHttp.Response.ContentEncoding;
   AResponse.ContentEncription := FHttp.Response.RawHeaders.Values['Content-Encription'];
+  // the headers and cookies too: who reads the pieces may need them now
+  AResponse.Params.AppendParams(FHttp.Response.RawHeaders, rpkHEADER);
+  AResponse.Params.AppendParams(FHttp.Response.CustomHeaders, rpkHEADER);
 end;
 
 procedure TRALIndyClientHTTP.SendUrl(AURL: StringRAL; ARequest: TRALRequest;
@@ -314,7 +317,8 @@ begin
   FHttp.ReadTimeout := Parent.RequestTimeout;
   FHttp.Request.UserAgent := Parent.UserAgent;
   FHttp.RedirectMaximum := Parent.MaxRedirects;
-  FHttp.HandleRedirects := true;
+  // 0: the 3xx is the answer, never followed
+  FHttp.HandleRedirects := Parent.MaxRedirects > 0;
 
   { the IOHandler is what holds the socket: resetting it to nil on every call
     made TIdHTTP build a new one, and open a new connection, per request.
@@ -475,8 +479,11 @@ begin
           // TIdHTTP has no QUERY of its own: the method it uses for all of them
           TIdHTTPAccess(FHttp).DoRequest('QUERY', AURL, vSource, vDest, []);
       end;
-      AResponse.Params.AppendParams(FHttp.Response.RawHeaders, rpkHEADER);
-      AResponse.Params.AppendParams(FHttp.Response.CustomHeaders, rpkHEADER);
+      if not HeadRead then
+      begin
+        AResponse.Params.AppendParams(FHttp.Response.RawHeaders, rpkHEADER);
+        AResponse.Params.AppendParams(FHttp.Response.CustomHeaders, rpkHEADER);
+      end;
 
       AResponse.ContentEncoding := FHttp.Response.ContentEncoding;
       AResponse.Params.CompressType := AResponse.ContentCompress;

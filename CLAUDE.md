@@ -136,7 +136,9 @@ Routing details (`RALRoutes`):
   (react to the verdict; brute force counts there). No post-module phase.
 - **The route is resolved once** (`TRALPluginHost.FindRoute`) and kept in the request
   (`ResolvedRoute`/`RouteOwner`, typed `TObject`; `ARequest.Route` is the same route).
-- **Priority**, highest first, ties in linking order (`RALPriority*`): log 990, trace
+- **Priority**, highest first, ties in linking order (`RALPriority*`): forwarded 1000
+  (`TRALForwardedPlugin`: the client's address, scheme and host from a trusted proxy,
+  before anything judges the address), log 990, trace
   985, method override 975, HTTPS redirect 960, maintenance 955, security headers
   950, limits 900, compression 890, crypto 880, white list 870, black list 860, brute
   force 850, rate limit 845, flood 840, path traversal 830, CORS 700, authentication
@@ -309,6 +311,24 @@ OkHttp, floor applied on assignment (`MinKeepAliveInterval`).
   `RetryNonIdempotent`, never after a streamed piece, honouring `Retry-After`), and
   `CircuitBreaker` fails at once with `rteCircuitOpen` per `scheme://host:port`.
   `RALTraceParentProvider` adds `traceparent` to every call.
+- **A client that speaks for many users** (a proxy) sets `KeepCookies := False` (no jar:
+  nobody's cookie goes out with another's call) and `MaxRedirects := 0` (every engine then
+  hands the 3xx back instead of following it); `Execute` takes any method with an
+  `OnReceiveData`. The head of an answer read in pieces carries its headers and cookies at
+  the first piece (`ReadStreamHead` files them; `HeadRead` keeps the end of the call from
+  filing them again), and `Params.SetCookieLines` keeps each `Set-Cookie` whole (the cookie
+  params have only name and value).
+- **`RALModuleProxyPackage`** (`src/modules/proxy`): `TRALUpstream` picks a server
+  (smooth weighted round robin, least connections, hash ring with FNV-1a + Murmur3
+  finalizer for IP and consistent hash, two random choices; backup, sticky cookie,
+  passive `MaxFails`/`FailTimeout`, active `HealthCheck` thread) and holds one shared
+  `TRALClient` per server; `TRALProxyModule` claims requests in `CanAnswerRoute` through
+  an internal route, drops hop-by-hop headers (and those `Connection` names), replaces a
+  client's `X-Forwarded-For` (`KeepForwardedChain` appends), relays a 2xx in pieces, makes
+  a backend `Location` relative, retries the next server only for idempotent methods with
+  nothing sent yet (503 none available, 502 none answered, 504 timeout). On Windows the
+  fpHTTP client waits all of `ConnectTimeout` on a refused connection, hence the short
+  `TRALUpstream.ConnectTimeout`.
 - **`OnBeforeExecute`/`OnAfterExecute`** run per attempt on the calling thread, always
   paired; `ACancel` fails with `rteCancelled`. `CopyProperties` carries them.
 - An object that passes a method as a callback calls `DropCallbacks(Self)` in its
