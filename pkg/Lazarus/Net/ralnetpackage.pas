@@ -8,7 +8,7 @@ unit RALNetPackage;
 interface
 
 uses
-  RALSocket, RALTLS, RALWebSocket, RALSocketProxy;
+  RALSocket, RALTLS, RALWebSocket, RALSocketProxy, RALSocketLoop;
 
 implementation
 

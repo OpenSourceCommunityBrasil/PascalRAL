@@ -117,7 +117,7 @@ Item_45=src\plugins\traffic
 Item_46=src\plugins\cache
 Item_47=src\net
 [Files]
-Count=168
+Count=169
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -286,6 +286,7 @@ Item_164=src\plugins\traffic\RALTraffic.pas
 Item_165=src\plugins\traffic\RALPluginTrafficReg.pas
 Item_166=src\plugins\cache\RALResponseCache.pas
 Item_167=src\plugins\cache\RALPluginCacheReg.pas
+Item_168=src\net\RALSocketLoop.pas
 [AdditionalFiles]
 Count=0
 

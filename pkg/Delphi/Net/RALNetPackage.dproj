@@ -194,6 +194,7 @@
         <DCCReference Include="..\..\..\src\net\RALTLS.pas"/>
         <DCCReference Include="..\..\..\src\net\RALWebSocket.pas"/>
         <DCCReference Include="..\..\..\src\net\RALSocketProxy.pas"/>
+        <DCCReference Include="..\..\..\src\net\RALSocketLoop.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -21,8 +21,8 @@ interface
 uses
   Classes, SysUtils, SyncObjs,
   RALTypes, RALConsts, RALTools, RALServer, RALRequest, RALResponse, RALRoutes,
-  RALBase64, RALMQTTTypes, RALMQTTPacket, RALMQTTTopic, RALSocket, RALTLS,
-  RALWebSocket, RALMQTTAuth, RALMQTTSession, RALMQTTStore, RALMQTTBrokerStore;
+  RALBase64, RALMQTTTypes, RALMQTTPacket, RALMQTTTopic, RALSocket, RALSocketLoop,
+  RALTLS, RALWebSocket, RALMQTTAuth, RALMQTTSession, RALMQTTStore, RALMQTTBrokerStore;
 
 type
   TRALMQTTBroker = class;
@@ -272,23 +272,20 @@ type
     property Connection: TRALMQTTBrokerConnection read FConnection;
   end;
 
-  TRALMQTTBrokerThread = class;
-
   /// What a connection is waiting for.
   TRALMQTTBrokerPhase = (mbpTLS, mbpWebSocket, mbpConnect, mbpAuth, mbpConnected, mbpClosed);
 
-  { One client connection, owned by one I/O thread: only that thread reads
-    and writes the channel. Others queue bytes in Outbox and wake the thread }
-  TRALMQTTBrokerConnection = class
+  { One client connection, owned by one poll thread of the broker's
+    TRALSocketLoop: only that thread reads and writes the channel. Others
+    queue bytes in Outbox and wake the thread }
+  TRALMQTTBrokerConnection = class(TRALSocketLoopConnection)
   private
     FAliasIn: TRALMQTTAliasIn;
     FAuthExchange: TObject;
     FAuthMethod: StringRAL;
     FAuthStep: IntegerRAL;
     FBroker: TRALMQTTBroker;
-    FChannel: TRALChannel;
     FClient: TRALMQTTBrokerClient;
-    FCloseAfterFlush: boolean;
     FConnectedAt: Int64RAL;
     FFrames: TRALMQTTFrameReader;
     FIncomingQuota: IntegerRAL;
@@ -304,65 +301,35 @@ type
     FProblemInfo: boolean;
     FReceiveMax: IntegerRAL;
     FSession: TRALMQTTBrokerSession;
-    FSocket: TRALSocket;
-    FThread: TRALMQTTBrokerThread;
     FTLS: TRALTLSChannel;
     FVersion: TRALMQTTVersion;
     FWebSocket: TRALWebSocketChannel;
     FWillDiscard: boolean;
     FDisconnectReason: Byte;
+  protected
+    /// Phase closed, and the broker told (the session goes or waits).
+    procedure Closed; override;
   public
     constructor Create(ABroker: TRALMQTTBroker; ASocket: TRALSocket; AListener: IntegerRAL);
     destructor Destroy; override;
+
+    /// Writes the outbox; False when the link broke.
+    function FlushOutput: boolean; override;
+    { A broken packet or frame: its reason in a DISCONNECT (5.0) when
+      connected, then the end after the flush [MQTT-4.13.1-1] }
+    procedure HandleError(AError: Exception); override;
+    /// The outbox, or the WebSocket layer, holds bytes to write.
+    function HasOutput: boolean; override;
+    { One pass: the TLS and WebSocket handshakes, the packets that arrived,
+      keep alive and the CONNECT deadline }
+    procedure Serve(ANow: Int64RAL); override;
+    /// The broker stops: Server Shutting Down to a connected client.
+    procedure Stopping; override;
     { Queues an encoded packet to go out (any thread); False when the
       connection is gone or the packet exceeds the client's limit }
     function Queue(APacket: TRALMQTTPacket): boolean;
     /// Address of the client.
     function Address: StringRAL;
-  end;
-
-  { One I/O thread: polls its connections and a waker, serves what is ready,
-    flushes what is queued }
-  TRALMQTTBrokerThread = class(TThread)
-  private
-    FBroker: TRALMQTTBroker;
-    FConnections: TList;
-    FIncoming: TList;
-    FLock: TCriticalSection;
-    FWaker: TRALSocket;
-    FWakerAddress: TRALSocketAddress;
-    FWakePending: IntegerRAL;
-  protected
-    procedure Execute; override;
-  public
-    constructor Create(ABroker: TRALMQTTBroker);
-    destructor Destroy; override;
-    /// Hands a new connection to this thread.
-    procedure Adopt(AConnection: TRALMQTTBrokerConnection);
-    /// Wakes the poll (from any thread).
-    procedure Wake;
-    /// Number of connections.
-    function Count: IntegerRAL;
-  end;
-
-  /// The listening sockets and their accepting thread.
-  TRALMQTTBrokerAcceptor = class(TThread)
-  private
-    FBroker: TRALMQTTBroker;
-  protected
-    procedure Execute; override;
-  public
-    constructor Create(ABroker: TRALMQTTBroker);
-  end;
-
-  /// Housekeeping: session expiry, will delay, $SYS.
-  TRALMQTTBrokerTimer = class(TThread)
-  private
-    FBroker: TRALMQTTBroker;
-  protected
-    procedure Execute; override;
-  public
-    constructor Create(ABroker: TRALMQTTBroker);
   end;
 
   /// A hook the MQTT-SN gateway uses to plug into the broker.
@@ -379,7 +346,6 @@ type
     to it as to any server; Port is the plain MQTT port }
   TRALMQTTBroker = class(TRALServer)
   private
-    FAcceptor: TRALMQTTBrokerAcceptor;
     FAllowAnonymous: boolean;
     FAllowedVersions: TRALMQTTVersions;
     FAuthMethods: TStrings;
@@ -388,6 +354,7 @@ type
     FExtensions: TList;
     FListeners: TList;
     FLock: TCriticalSection;
+    FLoop: TRALSocketLoop;
     FMaxConnections: IntegerRAL;
     FMaxPacketSize: Cardinal;
     FMaxQueuedMessages: IntegerRAL;
@@ -420,8 +387,6 @@ type
     FSysInterval: IntegerRAL;
     FSysTopics: boolean;
     FThreadCount: IntegerRAL;
-    FThreads: TList;
-    FTimer: TRALMQTTBrokerTimer;
     FTLSContext: TRALTLSContext;
     FRetiredContexts: TList;
     FTLSPort: IntegerRAL;
@@ -478,6 +443,8 @@ type
     procedure DropSubscriptions(ASession: TRALMQTTBrokerSession);
     procedure PublishWill(ASession: TRALMQTTBrokerSession);
     procedure Housekeeping;
+    /// The loop's timer: Housekeeping every second.
+    procedure LoopTimer(Sender: TObject);
     procedure PublishSys;
     procedure LoadStore;
     function FindSession(const AClientID: StringRAL): TRALMQTTBrokerSession;
@@ -1082,398 +1049,182 @@ begin
   finally
     vWriter.Free;
   end;
-  if FThread <> nil then
-    FThread.Wake;
-end;
-
-{ TRALMQTTBrokerThread }
-
-constructor TRALMQTTBrokerThread.Create(ABroker: TRALMQTTBroker);
-begin
-  FBroker := ABroker;
-  FConnections := TList.Create;
-  FIncoming := TList.Create;
-  FLock := TCriticalSection.Create;
-  // the waker: a datagram to itself ends the poll of this thread
-  FWaker := TRALSocket.Create;
-  FWaker.OpenUDP('127.0.0.1', 0, mifIPv4);
-  RALResolve('127.0.0.1', FWaker.LocalPort, mifIPv4, FWakerAddress);
-  inherited Create(False);
-end;
-
-destructor TRALMQTTBrokerThread.Destroy;
-var
-  vInt: IntegerRAL;
-begin
-  for vInt := 0 to FConnections.Count - 1 do
-    TObject(FConnections[vInt]).Free;
-  for vInt := 0 to FIncoming.Count - 1 do
-    TObject(FIncoming[vInt]).Free;
-  FreeAndNil(FConnections);
-  FreeAndNil(FIncoming);
-  FreeAndNil(FWaker);
-  FreeAndNil(FLock);
-  inherited Destroy;
-end;
-
-procedure TRALMQTTBrokerThread.Adopt(AConnection: TRALMQTTBrokerConnection);
-begin
-  AConnection.FThread := Self;
-  FLock.Acquire;
-  try
-    FIncoming.Add(AConnection);
-  finally
-    FLock.Release;
-  end;
   Wake;
 end;
 
-function TRALMQTTBrokerThread.Count: IntegerRAL;
+{ TRALMQTTBrokerConnection: the loop's side }
+
+procedure TRALMQTTBrokerConnection.Closed;
 begin
-  FLock.Acquire;
-  try
-    Result := FConnections.Count + FIncoming.Count;
-  finally
-    FLock.Release;
-  end;
+  FPhase := mbpClosed;
+  FBroker.ConnectionClosed(Self);
 end;
 
-procedure TRALMQTTBrokerThread.Wake;
+function TRALMQTTBrokerConnection.FlushOutput: boolean;
 var
-  vByte: Byte;
+  vSent: IntegerRAL;
 begin
-  // one datagram is enough until the thread reads it
-  if RALAtomicInc(FWakePending) > 1 then
-    Exit;
-  vByte := 1;
+  Result := True;
+  FOutLock.Acquire;
   try
-    FWaker.SendTo(vByte, 1, FWakerAddress);
+    while FOutHead < FOutbox.Size do
+    begin
+      vSent := FChannel.Write(FOutbox.Buffer[FOutHead], FOutbox.Size - FOutHead);
+      if vSent <= 0 then
+        Break;
+      Inc(FOutHead, vSent);
+    end;
+    if FOutHead >= FOutbox.Size then
+    begin
+      FOutbox.Clear;
+      FOutHead := 0;
+    end;
+    FChannel.Flush;
   except
-    // a waker that fails leaves the thread on its 100 ms slice
+    Result := False;
   end;
+  FOutLock.Release;
 end;
 
-procedure TRALMQTTBrokerThread.Execute;
+procedure TRALMQTTBrokerConnection.HandleError(AError: Exception);
+begin
+  if AError is ERALWebSocketError then
+  begin
+    // a broken frame is a broken packet: Malformed Packet, or Packet Too Large
+    if (FPhase = mbpConnected) and (ERALWebSocketError(AError).CloseCode <> 0) then
+    begin
+      if ERALWebSocketError(AError).CloseCode = RALWSCloseTooBig then
+        FBroker.SendDisconnect(Self, MQTTRC_PacketTooLarge, StringRAL(AError.Message))
+      else
+        FBroker.SendDisconnect(Self, MQTTRC_MalformedPacket, StringRAL(AError.Message));
+    end;
+    CloseAfterFlush := True;
+  end
+  else if AError is ERALSocketError then
+    CloseAfterFlush := True
+  else if AError is ERALMQTTError then
+  begin
+    // a broken packet: the reason in a DISCONNECT (5.0), then the end [MQTT-4.13.1-1]
+    if (FPhase = mbpConnected) and (AError is ERALMQTTProtocolError) then
+      FBroker.SendDisconnect(Self, ERALMQTTError(AError).ReasonCode, StringRAL(AError.Message));
+    CloseAfterFlush := True;
+  end
+  else
+    Close;
+end;
+
+function TRALMQTTBrokerConnection.HasOutput: boolean;
+begin
+  FOutLock.Acquire;
+  try
+    Result := (FOutHead < FOutbox.Size);
+  finally
+    FOutLock.Release;
+  end;
+  if (not Result) and (FWebSocket <> nil) then
+    Result := FWebSocket.HasPendingWrite;
+end;
+
+procedure TRALMQTTBrokerConnection.Serve(ANow: Int64RAL);
 var
-  vPoll: TRALPollItems;
-  vInt, vCount, vRes, vLen: IntegerRAL;
-  vConn: TRALMQTTBrokerConnection;
   vBuffer: array[0..16383] of Byte;
-  vFrom: TRALSocketAddress;
+  vRes, vLen: IntegerRAL;
   vData: Pointer;
   vPacket: TRALMQTTPacket;
-  vNow: Int64RAL;
   vDone: boolean;
   vLevel: Byte;
-
-  procedure CloseConn(AConn: TRALMQTTBrokerConnection);
+begin
+  // handshakes that advance a step at a time
+  if FPhase = mbpTLS then
   begin
-    if AConn.FPhase <> mbpClosed then
+    if FTLS.HandshakeStep then
     begin
-      AConn.FPhase := mbpClosed;
-      FBroker.ConnectionClosed(AConn);
-    end;
+      if FWebSocket <> nil then
+        FPhase := mbpWebSocket
+      else
+        FPhase := mbpConnect;
+    end
+    else if ANow - FConnectedAt > 10000 then
+      Close;
   end;
-
-  { writes what is queued; False when the link broke }
-  function Flush(AConn: TRALMQTTBrokerConnection): boolean;
-  var
-    vSent: IntegerRAL;
+  if FPhase = mbpWebSocket then
   begin
-    Result := True;
-    AConn.FOutLock.Acquire;
-    try
-      while AConn.FOutHead < AConn.FOutbox.Size do
+    if FWebSocket.ServerHandshakeStep(FBroker.WebSocketPath) then
+      FPhase := mbpConnect
+    else if ANow - FConnectedAt > 10000 then
+      Close;
+  end;
+  if FPhase in [mbpConnect, mbpAuth, mbpConnected] then
+  begin
+    // read what is there, then serve every whole packet
+    vDone := False;
+    repeat
+      vRes := FChannel.Read(vBuffer, SizeOf(vBuffer));
+      if vRes > 0 then
       begin
-        vSent := AConn.FChannel.Write(AConn.FOutbox.Buffer[AConn.FOutHead],
-          AConn.FOutbox.Size - AConn.FOutHead);
-        if vSent <= 0 then
+        FFrames.Feed(vBuffer, vRes);
+        FBroker.Stat(RALMQTTStatBytesIn, vRes);
+      end
+      else if vRes = 0 then
+        vDone := True;
+    until vRes <= 0;
+    while (FPhase <> mbpClosed) and FFrames.Next(vData, vLen) do
+    begin
+      FLastReceived := ANow;
+      if FPhase = mbpConnect then
+      begin
+        // the first packet must be a CONNECT [MQTT-3.1.0-1]
+        if (PByte(vData)^ shr 4) <> Ord(mptCONNECT) then
+        begin
+          Close;
           Break;
-        Inc(AConn.FOutHead, vSent);
-      end;
-      if AConn.FOutHead >= AConn.FOutbox.Size then
-      begin
-        AConn.FOutbox.Clear;
-        AConn.FOutHead := 0;
-      end;
-      AConn.FChannel.Flush;
-    except
-      Result := False;
-    end;
-    AConn.FOutLock.Release;
-  end;
-
-  function HasOutput(AConn: TRALMQTTBrokerConnection): boolean;
-  begin
-    AConn.FOutLock.Acquire;
-    try
-      Result := (AConn.FOutHead < AConn.FOutbox.Size);
-    finally
-      AConn.FOutLock.Release;
-    end;
-    if (not Result) and (AConn.FWebSocket <> nil) then
-      Result := AConn.FWebSocket.HasPendingWrite;
-  end;
-
-begin
-  while not Terminated do
-  begin
-    // new connections
-    FLock.Acquire;
-    try
-      for vInt := 0 to FIncoming.Count - 1 do
-        FConnections.Add(FIncoming[vInt]);
-      FIncoming.Clear;
-    finally
-      FLock.Release;
-    end;
-
-    vCount := FConnections.Count;
-    SetLength(vPoll, vCount + 1);
-    vPoll[0].Handle := FWaker.Handle;
-    vPoll[0].Events := RALPollIn;
-    for vInt := 0 to vCount - 1 do
-    begin
-      vConn := TRALMQTTBrokerConnection(FConnections[vInt]);
-      vPoll[vInt + 1].Handle := vConn.FSocket.Handle;
-      vPoll[vInt + 1].Events := vConn.FChannel.WantedEvents;
-      if HasOutput(vConn) then
-        vPoll[vInt + 1].Events := vPoll[vInt + 1].Events or RALPollOut;
-    end;
-    // a TLS layer with bytes already decrypted does not wait for the socket
-    vRes := 100;
-    for vInt := 0 to vCount - 1 do
-      if TRALMQTTBrokerConnection(FConnections[vInt]).FChannel.HasBuffered then
-        vRes := 0;
-    try
-      RALPoll(vPoll, vCount + 1, vRes);
-    except
-      Sleep(10);
-    end;
-    if (vPoll[0].Returned and RALPollIn) <> 0 then
-    begin
-      FWakePending := 0;
-      repeat
-        vRes := FWaker.ReceiveFrom(vBuffer, SizeOf(vBuffer), vFrom);
-      until vRes <= 0;
-    end;
-
-    vNow := RALMQTTNow;
-    for vInt := 0 to vCount - 1 do
-    begin
-      vConn := TRALMQTTBrokerConnection(FConnections[vInt]);
-      if vConn.FPhase = mbpClosed then
-        Continue;
+        end;
+        try
+          vPacket := TRALMQTTPacket.Decode(vData, vLen, mv50);
+        except
+          on e: ERALMQTTError do
+          begin
+            vLevel := RALMQTTPeekConnectLevel(vData, vLen);
+            if vLevel = 5 then
+              FBroker.RefuseConnect(Self, mv50, e.ReasonCode, StringRAL(e.Message))
+            else if e.ReasonCode = MQTTRC_UnsupportedVersion then
+              FBroker.RefuseConnect(Self, mv311, e.ReasonCode)
+            else
+              CloseAfterFlush := True;
+            Break;
+          end;
+        end;
+      end
+      else
+        vPacket := TRALMQTTPacket.Decode(vData, vLen, FVersion);
       try
-        // handshakes that advance a step at a time
-        if vConn.FPhase = mbpTLS then
-        begin
-          if vConn.FTLS.HandshakeStep then
-          begin
-            if vConn.FWebSocket <> nil then
-              vConn.FPhase := mbpWebSocket
-            else
-              vConn.FPhase := mbpConnect;
-          end
-          else if vNow - vConn.FConnectedAt > 10000 then
-            CloseConn(vConn);
-        end;
-        if vConn.FPhase = mbpWebSocket then
-        begin
-          if vConn.FWebSocket.ServerHandshakeStep(FBroker.WebSocketPath) then
-            vConn.FPhase := mbpConnect
-          else if vNow - vConn.FConnectedAt > 10000 then
-            CloseConn(vConn);
-        end;
-        if vConn.FPhase in [mbpConnect, mbpAuth, mbpConnected] then
-        begin
-          // read what is there, then serve every whole packet
-          vDone := False;
-          repeat
-            vRes := vConn.FChannel.Read(vBuffer, SizeOf(vBuffer));
-            if vRes > 0 then
-            begin
-              vConn.FFrames.Feed(vBuffer, vRes);
-              FBroker.Stat(RALMQTTStatBytesIn, vRes);
-            end
-            else if vRes = 0 then
-              vDone := True;
-          until vRes <= 0;
-          while (vConn.FPhase <> mbpClosed) and vConn.FFrames.Next(vData, vLen) do
-          begin
-            vConn.FLastReceived := vNow;
-            if vConn.FPhase = mbpConnect then
-            begin
-              // the first packet must be a CONNECT [MQTT-3.1.0-1]
-              if (PByte(vData)^ shr 4) <> Ord(mptCONNECT) then
-              begin
-                CloseConn(vConn);
-                Break;
-              end;
-              try
-                vPacket := TRALMQTTPacket.Decode(vData, vLen, mv50);
-              except
-                on e: ERALMQTTError do
-                begin
-                  vLevel := RALMQTTPeekConnectLevel(vData, vLen);
-                  if vLevel = 5 then
-                    FBroker.RefuseConnect(vConn, mv50, e.ReasonCode, StringRAL(e.Message))
-                  else if e.ReasonCode = MQTTRC_UnsupportedVersion then
-                    FBroker.RefuseConnect(vConn, mv311, e.ReasonCode)
-                  else
-                    vConn.FCloseAfterFlush := True;
-                  Break;
-                end;
-              end;
-            end
-            else
-              vPacket := TRALMQTTPacket.Decode(vData, vLen, vConn.FVersion);
-            try
-              FBroker.HandlePacket(vConn, vPacket);
-            finally
-              vPacket.Free;
-            end;
-          end;
-          if vDone then
-            CloseConn(vConn);
-        end;
-        // keep alive: 1.5 times without a packet [MQTT-3.1.2-22]
-        if (vConn.FPhase = mbpConnected) and (vConn.FKeepAliveMS > 0) and
-           (vNow - vConn.FLastReceived > (vConn.FKeepAliveMS * 3) div 2) then
-        begin
-          FBroker.SendDisconnect(vConn, MQTTRC_KeepAliveTimeout);
-          vConn.FCloseAfterFlush := True;
-        end;
-        // a connection that never sends its CONNECT does not hold a slot forever
-        if (vConn.FPhase in [mbpConnect, mbpAuth]) and (vNow - vConn.FConnectedAt > 30000) then
-          CloseConn(vConn);
-      except
-        on e: ERALWebSocketError do
-        begin
-          // a broken frame is a broken packet: Malformed Packet, or Packet Too Large
-          if (vConn.FPhase = mbpConnected) and (e.CloseCode <> 0) then
-          begin
-            if e.CloseCode = RALWSCloseTooBig then
-              FBroker.SendDisconnect(vConn, MQTTRC_PacketTooLarge, StringRAL(e.Message))
-            else
-              FBroker.SendDisconnect(vConn, MQTTRC_MalformedPacket, StringRAL(e.Message));
-          end;
-          vConn.FCloseAfterFlush := True;
-        end;
-        on e: ERALSocketError do
-          vConn.FCloseAfterFlush := True;
-        on e: ERALMQTTError do
-        begin
-          // a broken packet: the reason in a DISCONNECT (5.0), then the end [MQTT-4.13.1-1]
-          if (vConn.FPhase = mbpConnected) and (e is ERALMQTTProtocolError) then
-            FBroker.SendDisconnect(vConn, e.ReasonCode, StringRAL(e.Message));
-          vConn.FCloseAfterFlush := True;
-        end;
-        on e: Exception do
-          CloseConn(vConn);
-      end;
-      if vConn.FPhase <> mbpClosed then
-      begin
-        if not Flush(vConn) then
-          CloseConn(vConn)
-        else if vConn.FCloseAfterFlush and not HasOutput(vConn) then
-          CloseConn(vConn);
+        FBroker.HandlePacket(Self, vPacket);
+      finally
+        vPacket.Free;
       end;
     end;
-
-    // the closed ones go
-    for vInt := FConnections.Count - 1 downto 0 do
-    begin
-      vConn := TRALMQTTBrokerConnection(FConnections[vInt]);
-      if vConn.FPhase = mbpClosed then
-      begin
-        FConnections.Delete(vInt);
-        vConn.Free;
-      end;
-    end;
+    if vDone then
+      Close;
   end;
+  // keep alive: 1.5 times without a packet [MQTT-3.1.2-22]
+  if (FPhase = mbpConnected) and (FKeepAliveMS > 0) and
+     (ANow - FLastReceived > (FKeepAliveMS * 3) div 2) then
+  begin
+    FBroker.SendDisconnect(Self, MQTTRC_KeepAliveTimeout);
+    CloseAfterFlush := True;
+  end;
+  // a connection that never sends its CONNECT does not hold a slot forever
+  if (FPhase in [mbpConnect, mbpAuth]) and (ANow - FConnectedAt > 30000) then
+    Close;
+end;
+
+procedure TRALMQTTBrokerConnection.Stopping;
+begin
   // stopping: every connection closes, as a network failure would
-  for vInt := 0 to FConnections.Count - 1 do
+  if FPhase = mbpConnected then
   begin
-    vConn := TRALMQTTBrokerConnection(FConnections[vInt]);
-    if vConn.FPhase = mbpConnected then
-    begin
-      FBroker.SendDisconnect(vConn, MQTTRC_ServerShuttingDown);
-      Flush(vConn);
-    end;
-    CloseConn(vConn);
-  end;
-end;
-
-{ TRALMQTTBrokerAcceptor }
-
-constructor TRALMQTTBrokerAcceptor.Create(ABroker: TRALMQTTBroker);
-begin
-  FBroker := ABroker;
-  inherited Create(False);
-end;
-
-procedure TRALMQTTBrokerAcceptor.Execute;
-var
-  vPoll: TRALPollItems;
-  vInt: IntegerRAL;
-  vListener: TRALMQTTListener;
-  vSocket: TRALSocket;
-begin
-  SetLength(vPoll, FBroker.FListeners.Count);
-  for vInt := 0 to FBroker.FListeners.Count - 1 do
-  begin
-    vPoll[vInt].Handle := TRALMQTTListener(FBroker.FListeners[vInt]).Socket.Handle;
-    vPoll[vInt].Events := RALPollIn;
-  end;
-  while not Terminated do
-  begin
-    try
-      RALPoll(vPoll, Length(vPoll), 200);
-    except
-      Sleep(50);
-      Continue;
-    end;
-    for vInt := 0 to High(vPoll) do
-      if (vPoll[vInt].Returned and RALPollIn) <> 0 then
-      begin
-        vListener := TRALMQTTListener(FBroker.FListeners[vInt]);
-        repeat
-          try
-            vSocket := vListener.Socket.Accept;
-          except
-            vSocket := nil;
-          end;
-          if vSocket <> nil then
-            FBroker.Accepted(vSocket, vListener.Kind);
-        until vSocket = nil;
-      end;
-  end;
-end;
-
-{ TRALMQTTBrokerTimer }
-
-constructor TRALMQTTBrokerTimer.Create(ABroker: TRALMQTTBroker);
-begin
-  FBroker := ABroker;
-  inherited Create(False);
-end;
-
-procedure TRALMQTTBrokerTimer.Execute;
-var
-  vTick: IntegerRAL;
-begin
-  vTick := 0;
-  while not Terminated do
-  begin
-    Sleep(100);
-    Inc(vTick);
-    if vTick mod 10 = 0 then
-    try
-      FBroker.Housekeeping;
-    except
-      // housekeeping never stops the broker
-    end;
+    FBroker.SendDisconnect(Self, MQTTRC_ServerShuttingDown);
+    FlushOutput;
   end;
 end;
 
@@ -1505,7 +1256,6 @@ begin
   FWildcardSubscriptions := True;
   FLock := TCriticalSection.Create;
   FListeners := TList.Create;
-  FThreads := TList.Create;
   FExtensions := TList.Create;
   FRetiredContexts := TList.Create;
   FSessions := TStringList.Create;
@@ -1549,7 +1299,6 @@ begin
   FreeAndNil(FRetiredContexts);
   FreeAndNil(FTLSContext);
   FreeAndNil(FExtensions);
-  FreeAndNil(FThreads);
   FreeAndNil(FListeners);
   FreeAndNil(FLock);
   FreeAndNil(FUsers);
@@ -1786,51 +1535,43 @@ begin
   vThreads := FThreadCount;
   if vThreads <= 0 then
     vThreads := RALCPUCount;
-  if vThreads < 1 then
-    vThreads := 1;
-  for vInt := 1 to vThreads do
-    FThreads.Add(TRALMQTTBrokerThread.Create(Self));
+  FLoop := TRALSocketLoop.Create;
+  FLoop.OnAccept := {$IFDEF FPC}@{$ENDIF}Accepted;
+  FLoop.OnTimer := {$IFDEF FPC}@{$ENDIF}LoopTimer;
+  for vInt := 0 to FListeners.Count - 1 do
+    FLoop.AddListener(TRALMQTTListener(FListeners[vInt]).Socket,
+      TRALMQTTListener(FListeners[vInt]).Kind);
+  FLoop.StartThreads(vThreads);
   FRunning := True;
   for vInt := 0 to FExtensions.Count - 1 do
     TRALMQTTBrokerExtension(FExtensions[vInt]).BrokerStarting(Self);
-  if FListeners.Count > 0 then
-    FAcceptor := TRALMQTTBrokerAcceptor.Create(Self);
-  FTimer := TRALMQTTBrokerTimer.Create(Self);
+  FLoop.StartAccepting;
+  FLoop.StartTimer;
+end;
+
+procedure TRALMQTTBroker.LoopTimer(Sender: TObject);
+begin
+  Housekeeping;
 end;
 
 procedure TRALMQTTBroker.StopAll;
 var
   vInt: IntegerRAL;
 begin
-  if FAcceptor <> nil then
-  begin
-    FAcceptor.Terminate;
-    FAcceptor.WaitFor;
-    FreeAndNil(FAcceptor);
-  end;
+  if FLoop <> nil then
+    FLoop.StopAccepting;
   for vInt := 0 to FExtensions.Count - 1 do
     try
       TRALMQTTBrokerExtension(FExtensions[vInt]).BrokerStopped(Self);
     except
       // the others still stop
     end;
-  if FTimer <> nil then
+  if FLoop <> nil then
   begin
-    FTimer.Terminate;
-    FTimer.WaitFor;
-    FreeAndNil(FTimer);
+    FLoop.StopTimer;
+    FLoop.StopThreads;
+    FreeAndNil(FLoop);
   end;
-  for vInt := 0 to FThreads.Count - 1 do
-  begin
-    TRALMQTTBrokerThread(FThreads[vInt]).Terminate;
-    TRALMQTTBrokerThread(FThreads[vInt]).Wake;
-  end;
-  for vInt := 0 to FThreads.Count - 1 do
-  begin
-    TRALMQTTBrokerThread(FThreads[vInt]).WaitFor;
-    TRALMQTTBrokerThread(FThreads[vInt]).Free;
-  end;
-  FThreads.Clear;
   for vInt := 0 to FListeners.Count - 1 do
     TObject(FListeners[vInt]).Free;
   FListeners.Clear;
@@ -1866,8 +1607,6 @@ end;
 procedure TRALMQTTBroker.Accepted(ASocket: TRALSocket; AListener: IntegerRAL);
 var
   vConn: TRALMQTTBrokerConnection;
-  vThread, vBest: TRALMQTTBrokerThread;
-  vInt: IntegerRAL;
 begin
   if ConnectionCount >= FMaxConnections + 16 then
   begin
@@ -1888,14 +1627,7 @@ begin
     Exit;
   end;
   // the thread with the fewest connections takes it
-  vBest := nil;
-  for vInt := 0 to FThreads.Count - 1 do
-  begin
-    vThread := TRALMQTTBrokerThread(FThreads[vInt]);
-    if (vBest = nil) or (vThread.Count < vBest.Count) then
-      vBest := vThread;
-  end;
-  vBest.Adopt(vConn);
+  FLoop.Adopt(vConn);
 end;
 
 function TRALMQTTBroker.ConnectionCount: IntegerRAL;
@@ -1903,8 +1635,8 @@ var
   vInt: IntegerRAL;
 begin
   Result := 0;
-  for vInt := 0 to FThreads.Count - 1 do
-    Inc(Result, TRALMQTTBrokerThread(FThreads[vInt]).Count);
+  if FLoop <> nil then
+    Result := FLoop.ConnectionCount;
 end;
 
 function TRALMQTTBroker.SessionCount: IntegerRAL;
@@ -2054,7 +1786,7 @@ begin
     vAck.Free;
   end;
   // [MQTT-3.2.2-7]: closed after a refusal; nothing more is read [MQTT-3.1.4-6]
-  AConnection.FCloseAfterFlush := True;
+  AConnection.CloseAfterFlush := True;
   AConnection.FPhase := mbpAuth;
   AConnection.FFrames.Reset;
 end;
@@ -2235,15 +1967,14 @@ begin
     begin
       vOld := vSession.FConnection;
       SendDisconnect(vOld, MQTTRC_SessionTakenOver);
-      vOld.FCloseAfterFlush := True;
+      vOld.CloseAfterFlush := True;
       vOld.FSession := nil;
       vOld.FWillDiscard := False;
       // the will of the one taken over is published, as for any connection lost
       if vSession.FWill <> nil then
         PublishWill(vSession);
       vSession.FConnection := nil;
-      if vOld.FThread <> nil then
-        vOld.FThread.Wake;
+      vOld.Wake;
     end;
     // [MQTT-3.1.2-4]: Clean Start drops what there was
     if (vSession <> nil) and APacket.CleanStart then
@@ -2352,9 +2083,9 @@ begin
       if APacket is TRALMQTTAuthPacket then
         HandleAuth(AConnection, TRALMQTTAuthPacket(APacket))
       else if not (APacket is TRALMQTTDisconnectPacket) then
-        AConnection.FCloseAfterFlush := True
+        AConnection.CloseAfterFlush := True
       else
-        AConnection.FCloseAfterFlush := True;
+        AConnection.CloseAfterFlush := True;
       Exit;
     end;
     mbpConnected: ;
@@ -2479,7 +2210,7 @@ begin
     { 3.1.1 has no refusal for a PUBLISH: the connection ends [MQTT-3.3.5-2 of 3.1.1] }
     if AConnection.FVersion = mv311 then
     begin
-      AConnection.FCloseAfterFlush := True;
+      AConnection.CloseAfterFlush := True;
       Exit;
     end;
   end;
@@ -2830,7 +2561,7 @@ begin
     begin
       // [MQTT-4.12.1-2]: a failed re-authentication ends the connection
       SendDisconnect(AConnection, MQTTRC_NotAuthorized);
-      AConnection.FCloseAfterFlush := True;
+      AConnection.CloseAfterFlush := True;
     end;
   end;
 end;
@@ -2858,7 +2589,7 @@ begin
       FLock.Release;
     end;
   end;
-  AConnection.FCloseAfterFlush := True;
+  AConnection.CloseAfterFlush := True;
 end;
 
 procedure TRALMQTTBroker.SendDisconnect(AConnection: TRALMQTTBrokerConnection;
@@ -3568,9 +3299,8 @@ begin
     vConn := vSession.FConnection;
     SendDisconnect(vConn, AReasonCode);
     vConn.FDisconnectReason := AReasonCode;
-    vConn.FCloseAfterFlush := True;
-    if vConn.FThread <> nil then
-      vConn.FThread.Wake;
+    vConn.CloseAfterFlush := True;
+    vConn.Wake;
     Result := True;
   finally
     FLock.Release;

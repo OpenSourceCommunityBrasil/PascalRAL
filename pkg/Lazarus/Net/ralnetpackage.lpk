@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Network: sockets, TLS and DTLS, WebSocket, proxies"/>
     <Version Major="2"/>
-    <Files Count="4">
+    <Files Count="5">
       <Item1>
         <Filename Value="..\..\..\src\net\RALSocket.pas"/>
         <UnitName Value="RALSocket"/>
@@ -43,6 +43,10 @@
         <Filename Value="..\..\..\src\net\RALSocketProxy.pas"/>
         <UnitName Value="RALSocketProxy"/>
       </Item4>
+      <Item5>
+        <Filename Value="..\..\..\src\net\RALSocketLoop.pas"/>
+        <UnitName Value="RALSocketLoop"/>
+      </Item5>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

@@ -552,7 +552,11 @@ bridge (`TRALMQTTRestModule`); design in `RALModuleMQTTDsgn`, `TRALMQTTDataSetLi
 optional `RALModuleMQTTDBPackage` (requires `RALDBPackage`). RAL's own sockets
 (`RALNetPackage` in `src/net`: `RALSocket`, one code for every OS; `RALTLS`, TLS and DTLS
 over OpenSSL loaded at run time; `RALWebSocket`; `RALSocketProxy`): no engine involved.
-The net units know nothing of MQTT: they raise `ERALSocketError`/`ERALTLSError`/
+The broker runs on `TRALSocketLoop` (`RALSocketLoop`: an accepting thread, N poll
+threads each owning a slice of the connections and woken by a datagram to itself, a
+timer); its connection descends from `TRALSocketLoopConnection` and gives the protocol in
+`Serve`, `HandleError`, `FlushOutput`, `Stopping`. The net units know nothing of MQTT:
+they raise `ERALSocketError`/`ERALTLSError`/
 `ERALWebSocketError` (a `CloseCode`), and the broker turns a WebSocket error into the
 DISCONNECT reason. `TRALMQTTSSL`/`TRALMQTTProxy` are empty subclasses of the net ones;
 published enum values keep their old names (`mtv12`, `mpkHTTP`), which forms stream. `TRALMQTTBroker` is a `TRALServer`:

@@ -37,6 +37,7 @@ contains
   RALSocket in '..\..\..\src\net\RALSocket.pas',
   RALTLS in '..\..\..\src\net\RALTLS.pas',
   RALWebSocket in '..\..\..\src\net\RALWebSocket.pas',
-  RALSocketProxy in '..\..\..\src\net\RALSocketProxy.pas';
+  RALSocketProxy in '..\..\..\src\net\RALSocketProxy.pas',
+  RALSocketLoop in '..\..\..\src\net\RALSocketLoop.pas';
 
 end.

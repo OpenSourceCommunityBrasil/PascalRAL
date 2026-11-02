@@ -47,7 +47,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/design/` | `PascalRALDsgn` | core design time (`RALRegister`, property editors) |
 | `src/engine/<engine>/` | `<Engine>RAL` | one transport engine per folder |
 | `src/languages/` | (included by `RALConsts`) | user-facing texts per language, UTF-8 with BOM |
-| `src/net/` | `RALNetPackage` | RAL's own sockets: TCP/UDP for every OS with poll, TLS and DTLS over OpenSSL loaded at run time, WebSocket channel, HTTP CONNECT/SOCKS5 proxy |
+| `src/net/` | `RALNetPackage` | RAL's own sockets: TCP/UDP for every OS with poll, TLS and DTLS over OpenSSL loaded at run time, WebSocket channel, HTTP CONNECT/SOCKS5 proxy, the server event loop |
 | `src/modules/mqtt/` | `RALModuleMQTTPackage` | MQTT 3.1.1/5.0 and MQTT-SN client, broker, SN gateway, REST bridge |
 | `src/modules/mqtt/design/` | `RALModuleMQTTDsgn` | MQTT IDE registration and verbs |
 | `src/modules/mqtt/db/` | `RALModuleMQTTDBPackage` | `TRALMQTTDataSetLink` (messages into a dataset) |
@@ -167,8 +167,10 @@ raised; an impossible explicit choice raises.
 `TRALLayerChannel`, `RALPoll`, `RALResolve`, `RALSocketNow`, `ERALSocketError`),
 `RALTLS` (`TRALSocketSSL`, `TRALTLSContext`, `TRALTLSChannel`, `TRALDTLSSession`,
 `ERALTLSError`), `RALWebSocket` (`TRALWebSocketChannel` with an optional `Protocol`,
-`ERALWebSocketError`), `RALSocketProxy` (`TRALSocketProxy`). Used by MQTT; meant for the
-other protocols RAL speaks on its own sockets.
+`ERALWebSocketError`), `RALSocketProxy` (`TRALSocketProxy`), `RALSocketLoop`
+(`TRALSocketLoop`: accepting thread, N poll threads owning slices of the connections, a
+timer; the protocol descends from `TRALSocketLoopConnection`). Used by MQTT (the broker
+runs on `TRALSocketLoop`); meant for the other protocols RAL speaks on its own sockets.
 
 ### `src/modules/`
 
