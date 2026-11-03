@@ -260,7 +260,13 @@ close` only in the request, and resent a body from its end); a socket the answer
 is dropped and a kept one is probed (`SocketIdle`) before reuse; a dead socket is
 reconnected once inside `SendUrl`, a failed read is resent only for idempotent methods;
 the kept socket is dropped when the address changes. `EHTTPClient` with a status above 0
-is an HTTP answer, not a transport error.
+is an HTTP answer, not a transport error. On Windows the handlers' `SetSocket`
+(`RALSocketBeforeConnect`, before fcl-net connects) turns fphttpclient's `TInetSocket`
+into `TRALfpInetSocket` (no field added), whose connect wait also reads the except set,
+where Windows reports a refused connect (fcl-net waited all of `ConnectTimeout`), and
+keeps the milliseconds fcl-net 3.2 dropped; to a loopback host it also turns off SYN
+retransmission (`SIO_TCP_INITIAL_RTO`), so a closed local port fails at once instead of
+after Windows' ~2 s of retries. Linux is untouched.
 
 ### `TRALSynopseServer.Mode`
 
@@ -326,9 +332,9 @@ OkHttp, floor applied on assignment (`MinKeepAliveInterval`).
   an internal route, drops hop-by-hop headers (and those `Connection` names), replaces a
   client's `X-Forwarded-For` (`KeepForwardedChain` appends), relays a 2xx in pieces, makes
   a backend `Location` relative, retries the next server only for idempotent methods with
-  nothing sent yet (503 none available, 502 none answered, 504 timeout). On Windows the
-  fpHTTP client waits all of `ConnectTimeout` on a refused connection, hence the short
-  `TRALUpstream.ConnectTimeout`.
+  nothing sent yet (503 none available, 502 none answered, 504 timeout).
+  `TRALUpstream.ConnectTimeout` (5 s) bounds a server that does not answer; a refused
+  one fails before it (on Windows ~2 s to another host, at once on loopback).
 - **`OnBeforeExecute`/`OnAfterExecute`** run per attempt on the calling thread, always
   paired; `ACancel` fails with `rteCancelled`. `CopyProperties` carries them.
 - An object that passes a method as a callback calls `DropCallbacks(Self)` in its

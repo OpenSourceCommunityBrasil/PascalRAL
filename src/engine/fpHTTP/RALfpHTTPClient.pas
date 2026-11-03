@@ -84,6 +84,8 @@ uses
   {$IFDEF RALWindows}WinSock2,{$ELSE}BaseUnix,{$ENDIF}
   // fpsetsockopt, IPPROTO_TCP and TCP_NODELAY
   sockets,
+  // cint, in the signature of CheckSocketConnectTimeout
+  {$IFDEF RALWindows}ctypes,{$ENDIF}
   // ParseURI, the parse fphttpclient itself connects by
   URIParser;
 
@@ -99,14 +101,18 @@ end;
 
 type
   { fphttpclient keeps its socket private and exposes no way to set an option
-    on it. The socket handler's Connect - called right after the connect call
-    succeeded - is the only hook over it, and fphttpclient asks for the handler
-    through OnGetSocketHandler, which RAL already answers. Two classes because
-    the plain and the TLS handlers share no ancestor below TSocketHandler. }
+    on it. The socket handler is the only hook over it - SetSocket, called
+    when the socket is created and before it connects, and Connect, called
+    right after the connect call succeeded - and fphttpclient asks for the
+    handler through OnGetSocketHandler, which RAL already answers. Two classes
+    because the plain and the TLS handlers share no ancestor below
+    TSocketHandler. }
 
   { TRALfpNoDelayHandler }
 
   TRALfpNoDelayHandler = class(TSocketHandler)
+  protected
+    procedure SetSocket(const AStream: TSocketStream); override;
   public
     { the engine that asked for it: told which socket was connected }
     Engine: TRALfpHttpClientHTTP;
@@ -116,10 +122,26 @@ type
   { TRALfpNoDelaySSLHandler }
 
   TRALfpNoDelaySSLHandler = class(TOpenSSLSocketHandler)
+  protected
+    procedure SetSocket(const AStream: TSocketStream); override;
   public
     Engine: TRALfpHttpClientHTTP;
     function Connect: boolean; override;
   end;
+
+  {$IFDEF RALWindows}
+  { TRALfpInetSocket }
+
+  { The socket fphttpclient builds, with a connect wait that hears a refusal.
+    fphttpclient creates a plain TInetSocket itself and keeps it private, so
+    the handler turns the one it is given into this class before Connect runs
+    (RALSocketBeforeConnect); it adds no field, only a method. }
+  TRALfpInetSocket = class(TInetSocket)
+  public
+    function CheckSocketConnectTimeout(ASocket: cint; AFDSPtr: Pointer;
+      ATimeVPtr: Pointer): TCheckTimeoutResult; override;
+  end;
+  {$ENDIF}
 
 { TCP_NODELAY on the connected socket. Without it a request carrying a body
   stalls: SendRequest writes the headers and then the body as two sends, Nagle
@@ -167,7 +189,117 @@ begin
   {$ENDIF}
 end;
 
+{$IFDEF RALWindows}
+const
+  // from mstcpip.h, which WinSock2 does not translate
+  SIO_TCP_INITIAL_RTO = $98000011;
+  TCP_INITIAL_RTO_UNSPECIFIED_RTT = $FFFF;
+  TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS = $FE;
+
+type
+  { TCP_INITIAL_RTO_PARAMETERS: natural alignment, 4 bytes - packed, Windows
+    refuses it with WSAEFAULT }
+  TRALTcpInitialRto = record
+    Rtt: Word;
+    MaxSynRetransmissions: Byte;
+  end;
+
+{ Whether fphttpclient will connect to this machine: the host as written, which
+  is all there is before the connect (fphttpclient resolves it later) }
+function RALIsLoopbackHost(const AHost: String): boolean;
+begin
+  Result := SameText(AHost, 'localhost') or (Copy(AHost, 1, 4) = '127.') or
+            (AHost = '::1') or (AHost = '[::1]');
+end;
+{$ENDIF}
+
+{ Called by both handlers with the socket fphttpclient has just created, before
+  it connects. On Windows a refused connect is slow twice over:
+  - fcl-net waits for it with a select on the write set alone, and Windows
+    reports a failed connect in the except set, so the wait ran all of
+    ConnectTimeout (TRALfpInetSocket hears both);
+  - Windows answers a refusal (RST) by sending the SYN again, twice, so even
+    heard it takes ~2 s. On loopback no SYN is ever lost, so retransmitting
+    is turned off there and a closed port fails at once; elsewhere it stays
+    on, since a SYN lost on a real network has to be sent again.
+  Elsewhere a refused connect wakes the write set and nothing is changed. }
+procedure RALSocketBeforeConnect(AStream: TSocketStream);
+{$IFDEF RALWindows}
+var
+  vHost: String;
+  vRto: TRALTcpInitialRto;
+  vReturned: DWORD;
+{$ENDIF}
+begin
+  {$IFDEF RALWindows}
+  // only the exact class: anything else is not the instance this was written for
+  if (AStream = nil) or (AStream.ClassType <> TInetSocket) then
+    Exit;
+
+  PPointer(AStream)^ := Pointer(TRALfpInetSocket);
+
+  {$IF DECLARED(TNonBlockingSocketStream)}
+  // fcl-net 3.3 - its Host is deprecated
+  vHost := TInetSocket(AStream).NetworkAddress.Address;
+  {$ELSE}
+  vHost := TInetSocket(AStream).Host;
+  {$IFEND}
+  if RALIsLoopbackHost(vHost) then
+  begin
+    vRto.Rtt := TCP_INITIAL_RTO_UNSPECIFIED_RTT;
+    vRto.MaxSynRetransmissions := TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
+    // Windows 8 and later; an older one refuses it and keeps its retries
+    WinSock2.WSAIoctl(WinSock2.TSocket(AStream.Handle), SIO_TCP_INITIAL_RTO,
+      @vRto, SizeOf(vRto), nil, 0, @vReturned, nil, nil);
+  end;
+  {$ENDIF}
+end;
+
+{$IFDEF RALWindows}
+{ TRALfpInetSocket }
+
+{ fcl-net's own wait, asked of the write and the except set together: a
+  connect that failed is in the except set, and SO_ERROR says why. Also takes
+  the milliseconds of ConnectTimeout, which fcl-net 3.2 dropped (a timeout
+  below 1000 waited nothing) }
+function TRALfpInetSocket.CheckSocketConnectTimeout(ASocket: cint;
+  AFDSPtr: Pointer; ATimeVPtr: Pointer): TCheckTimeoutResult;
+var
+  vWrite, vExcept: WinSock2.TFDSet;
+  vTime: WinSock2.TTimeVal;
+  vError, vLength: LongInt;
+begin
+  WinSock2.FD_ZERO(vWrite);
+  WinSock2.FD_SET(WinSock2.TSocket(ASocket), vWrite);
+  vExcept := vWrite;
+  vTime.tv_sec := ConnectTimeout div 1000;
+  vTime.tv_usec := (ConnectTimeout mod 1000) * 1000;
+
+  case WinSock2.select(0, nil, @vWrite, @vExcept, @vTime) of
+    0: Result := ctrTimeout;
+    SOCKET_ERROR: Result := ctrError;
+  else
+    Result := ctrError;
+    if WinSock2.FD_ISSET(WinSock2.TSocket(ASocket), vWrite) then
+    begin
+      vError := 0;
+      vLength := SizeOf(vError);
+      WinSock2.getsockopt(WinSock2.TSocket(ASocket), SOL_SOCKET, SO_ERROR,
+        @vError, vLength);
+      if vError = 0 then
+        Result := ctrOK;
+    end;
+  end;
+end;
+{$ENDIF}
+
 { TRALfpNoDelayHandler }
+
+procedure TRALfpNoDelayHandler.SetSocket(const AStream: TSocketStream);
+begin
+  inherited SetSocket(AStream);
+  RALSocketBeforeConnect(AStream);
+end;
 
 function TRALfpNoDelayHandler.Connect: boolean;
 begin
@@ -178,6 +310,12 @@ begin
 end;
 
 { TRALfpNoDelaySSLHandler }
+
+procedure TRALfpNoDelaySSLHandler.SetSocket(const AStream: TSocketStream);
+begin
+  inherited SetSocket(AStream);
+  RALSocketBeforeConnect(AStream);
+end;
 
 function TRALfpNoDelaySSLHandler.Connect: boolean;
 begin

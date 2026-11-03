@@ -229,8 +229,10 @@ type
     function StickyValue(AServer: TRALUpstreamServer): StringRAL;
   published
     { Milliseconds to connect to a server before trying the next; short, since
-      a server down should cost little (and the fpHTTP client on Windows waits
-      all of it when a connection is refused) }
+      a server that does not answer should cost little. A refused connection
+      fails before this; on Windows the fpHTTP client fails at once on
+      loopback and after ~2 s to another host, where Windows sends the SYN
+      again twice }
     property ConnectTimeout: IntegerRAL read FConnectTimeout write FConnectTimeout default 5000;
     /// Engine of the clients that call the servers (empty: the first registered).
     property EngineType: string read FEngineType write FEngineType;
