@@ -13,6 +13,13 @@ const
   /// Start of the friendly name of the certificates RALSelfSigned makes in the store.
   RALSelfSignedFriendlyName = 'PascalRAL self-signed';
 
+var
+  /// Free Pascal only: the least MaxKeptOSChunks FPC's own heap gets when a
+  /// server becomes active; 0 leaves it alone. With the RTL's 4, a thread whose
+  /// requests empty more size classes than that maps and unmaps memory on
+  /// every request (5 to 15 times slower). Never lowered; Delphi ignores it.
+  RALHeapKeptChunks: Cardinal = 16;
+
 type
   TRALServer = class;
   TRALModuleRoutes = class;
@@ -1530,6 +1537,19 @@ begin
   FActive := AValue;
   if AValue then
   begin
+    {$IFDEF FPC}
+    {$IF DECLARED(MaxKeptOSChunks)}
+    { FPC 3.2's heap is per thread and frees an OS chunk once the chunk is
+      empty, keeping only MaxKeptOSChunks (4) of them for reuse. A request
+      empties every size class it alone used - a ping on mORMot2 empties 7 -
+      so from the fifth on each class was unmapped and mapped again (up to
+      256 KB, formatted block by block) on every request: 12k instead of 200k
+      requests a second, and one more header byte could cross that line.
+      Harmless under cmem or mORMot2's fpcx64mm, which do not read it. }
+    if MaxKeptOSChunks < RALHeapKeptChunks then
+      MaxKeptOSChunks := RALHeapKeptChunks;
+    {$IFEND}
+    {$ENDIF}
     { plugins first: they set up what the engine opens with - the certificate,
       for one. A refusal keeps the server stopped }
     try
