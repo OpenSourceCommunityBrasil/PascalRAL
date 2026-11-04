@@ -21,7 +21,7 @@ interface
 uses
   Classes, SysUtils, SyncObjs, DateUtils,
   RALTypes, RALConsts, RALCustomObjects, RALAuthBase, RALClient, RALResponse, RALToken,
-  RALJWS, RALAuthentication, RALOAuth2, RALMQTTTypes;
+  RALJWS, RALAuthentication, RALOAuth2, RALSCRAM, RALMQTTTypes;
 
 type
   /// Hash of HMAC, PBKDF2 and SCRAM.
@@ -275,52 +275,34 @@ type
   end;
 
   /// What a SCRAM server knows of a user: the salted keys, or the password.
-  TRALMQTTSCRAMCredential = record
-    /// Salt.
-    Salt: TBytes;
-    /// Iterations of PBKDF2.
-    Iterations: IntegerRAL;
-    /// StoredKey (H(ClientKey)); empty to derive it from Password.
-    StoredKey: TBytes;
-    /// ServerKey; empty to derive it from Password.
-    ServerKey: TBytes;
-    /// Password, when the keys are not given.
-    Password: StringRAL;
-  end;
+  TRALMQTTSCRAMCredential = TRALSCRAMCredential;
   /// Asks the server application for a user's credential; False: no such user.
-  TRALMQTTSCRAMLookup = function(const AUserName: StringRAL;
-    out ACredential: TRALMQTTSCRAMCredential): boolean of object;
+  TRALMQTTSCRAMLookup = TRALSCRAMLookup;
 
   { The server side of SCRAM, for the broker. Step takes the client's message
     and answers the next one; Done says it is over, Accepted whether the
     client proved the password }
   TRALMQTTSCRAMServer = class
   private
-    FAlg: TRALMQTTHashAlg;
-    FAuthMessage: StringRAL;
-    FClientFirstBare: StringRAL;
-    FCredential: TRALMQTTSCRAMCredential;
-    FDone: boolean;
-    FAccepted: boolean;
-    FLookup: TRALMQTTSCRAMLookup;
-    FNonce: StringRAL;
-    FServerFirst: StringRAL;
-    FStage: IntegerRAL;
-    FUserName: StringRAL;
+    FServer: TRALSCRAMServer;
+    function GetAccepted: boolean;
+    function GetDone: boolean;
+    function GetUserName: StringRAL;
   public
     /// A server exchange of AMechanism, asking ALookup for users.
     constructor Create(AAlg: TRALMQTTHashAlg; ALookup: TRALMQTTSCRAMLookup);
+    destructor Destroy; override;
     { Answers the client's AData: the server-first message after the
       client-first, the server-final after the client-final. Raises on a
       malformed message; a wrong password sets Done and leaves Accepted False }
     function Step(const AData: TBytes): TBytes;
 
     /// The client proved the password.
-    property Accepted: boolean read FAccepted;
+    property Accepted: boolean read GetAccepted;
     /// The exchange is over.
-    property Done: boolean read FDone;
+    property Done: boolean read GetDone;
     /// User name the client gave.
-    property UserName: StringRAL read FUserName;
+    property UserName: StringRAL read GetUserName;
   end;
 
 /// Digest of AData.
@@ -348,15 +330,11 @@ type
   { the client side of SCRAM }
   TRALMQTTSCRAMClient = class(TRALMQTTAuthExchange)
   private
-    FAlg: TRALMQTTHashAlg;
-    FClientFirstBare: StringRAL;
-    FNonce: StringRAL;
-    FPassword: StringRAL;
-    FServerSignature: TBytes;
-    FUserName: StringRAL;
+    FClient: TRALSCRAMClient;
   public
     constructor Create(AAlg: TRALMQTTHashAlg; const AUserName, APassword,
       AClientNonce: StringRAL);
+    destructor Destroy; override;
     function Start: TBytes; override;
     function Step(const AServerData: TBytes): TBytes; override;
     procedure Finish(const AServerData: TBytes); override;
@@ -374,116 +352,43 @@ type
     procedure Finish(const AServerData: TBytes); override;
   end;
 
-function NewHash(AAlg: TRALMQTTHashAlg): TRALHashBase;
+function SCRAMAlg(AAlg: TRALMQTTHashAlg): TRALSCRAMAlg;
 begin
-  case AAlg of
-    mhaSHA1: Result := TRALSHA1.Create;
-    mhaSHA256: Result := TRALSHA2_32.Create;
-  else
-    Result := TRALSHA2_64.Create;
-    TRALSHA2_64(Result).Version := rsv512;
-  end;
+  Result := TRALSCRAMAlg(Ord(AAlg));
 end;
 
 function RALMQTTHash(AAlg: TRALMQTTHashAlg; const AData: TBytes): TBytes;
-var
-  vHash: TRALHashBase;
 begin
-  vHash := NewHash(AAlg);
-  try
-    vHash.HashBegin;
-    if AData <> nil then
-      vHash.HashUpdate(@AData[0], Length(AData));
-    Result := vHash.HashEnd;
-  finally
-    vHash.Free;
-  end;
+  Result := RALSCRAMHash(SCRAMAlg(AAlg), AData);
 end;
 
 function RALMQTTHMAC(AAlg: TRALMQTTHashAlg; const AKey, AData: TBytes): TBytes;
-var
-  vHash: TRALHashBase;
 begin
-  vHash := NewHash(AAlg);
-  try
-    vHash.HMACBegin(AKey);
-    if AData <> nil then
-      vHash.HMACUpdate(@AData[0], Length(AData));
-    Result := vHash.HMACEnd;
-  finally
-    vHash.Free;
-  end;
+  Result := RALSCRAMHMAC(SCRAMAlg(AAlg), AKey, AData);
 end;
 
 function RALMQTTPBKDF2(AAlg: TRALMQTTHashAlg; const APassword, ASalt: TBytes;
   AIterations, ALength: IntegerRAL): TBytes;
-var
-  vHash: TRALHashBase;
-  vBlock, vIter, vInt, vDone, vTake: IntegerRAL;
-  vU, vT, vSalt: TBytes;
 begin
-  SetLength(Result, ALength);
-  vHash := NewHash(AAlg);
-  try
-    vDone := 0;
-    vBlock := 1;
-    while vDone < ALength do
-    begin
-      // U1 = PRF(P, S || INT(i))
-      vSalt := Copy(ASalt, 0, Length(ASalt));
-      SetLength(vSalt, Length(ASalt) + 4);
-      vSalt[Length(ASalt)] := Byte(vBlock shr 24);
-      vSalt[Length(ASalt) + 1] := Byte(vBlock shr 16);
-      vSalt[Length(ASalt) + 2] := Byte(vBlock shr 8);
-      vSalt[Length(ASalt) + 3] := Byte(vBlock);
-      vHash.HMACBegin(APassword);
-      vHash.HMACUpdate(@vSalt[0], Length(vSalt));
-      vU := vHash.HMACEnd;
-      vT := Copy(vU, 0, Length(vU));
-      for vIter := 2 to AIterations do
-      begin
-        vHash.HMACBegin(APassword);
-        vHash.HMACUpdate(@vU[0], Length(vU));
-        vU := vHash.HMACEnd;
-        for vInt := 0 to High(vT) do
-          vT[vInt] := vT[vInt] xor vU[vInt];
-      end;
-      vTake := Length(vT);
-      if vTake > ALength - vDone then
-        vTake := ALength - vDone;
-      Move(vT[0], Result[vDone], vTake);
-      Inc(vDone, vTake);
-      Inc(vBlock);
-    end;
-  finally
-    vHash.Free;
-  end;
+  Result := RALSCRAMPBKDF2(SCRAMAlg(AAlg), APassword, ASalt, AIterations, ALength);
 end;
 
 function RALMQTTSCRAMName(AAlg: TRALMQTTHashAlg): StringRAL;
 begin
-  case AAlg of
-    mhaSHA1: Result := 'SCRAM-SHA-1';
-    mhaSHA256: Result := 'SCRAM-SHA-256';
-  else
-    Result := 'SCRAM-SHA-512';
-  end;
+  Result := RALSCRAMName(SCRAMAlg(AAlg));
 end;
 
 function RALMQTTSCRAMAlg(const AMethod: StringRAL; out AAlg: TRALMQTTHashAlg): boolean;
+var
+  vAlg: TRALSCRAMAlg;
 begin
-  Result := True;
-  if AMethod = 'SCRAM-SHA-1' then
-    AAlg := mhaSHA1
-  else if AMethod = 'SCRAM-SHA-256' then
-    AAlg := mhaSHA256
-  else if AMethod = 'SCRAM-SHA-512' then
-    AAlg := mhaSHA512
+  // the Authentication Method is case-sensitive in MQTT: an exact name only
+  Result := ((AMethod = 'SCRAM-SHA-1') or (AMethod = 'SCRAM-SHA-256') or
+    (AMethod = 'SCRAM-SHA-512')) and RALSCRAMAlgOf(AMethod, vAlg);
+  if Result then
+    AAlg := TRALMQTTHashAlg(Ord(vAlg))
   else
-  begin
     AAlg := mhaSHA256;
-    Result := False;
-  end;
 end;
 
 function RALMQTTNewSCRAMClient(AAlg: TRALMQTTHashAlg; const AUserName,
@@ -495,65 +400,6 @@ end;
 procedure AuthFail(const AReason: string);
 begin
   raise ERALMQTTError.CreateReason(MQTTRC_NotAuthorized, Format(emMQTTAuthFailed, [AReason]));
-end;
-
-{ a SCRAM saslname: ',' and '=' escaped (RFC 5802 5.1) }
-function SaslName(const AName: StringRAL): StringRAL;
-begin
-  Result := StringRAL(StringReplace(StringReplace(string(AName), '=', '=3D', [rfReplaceAll]),
-    ',', '=2C', [rfReplaceAll]));
-end;
-
-function UnSaslName(const AName: StringRAL): StringRAL;
-begin
-  Result := StringRAL(StringReplace(StringReplace(string(AName), '=2C', ',', [rfReplaceAll]),
-    '=3D', '=', [rfReplaceAll]));
-end;
-
-{ the value of attribute AName ('r', 's') in a SCRAM message }
-function Attribute(const AMessage: StringRAL; AName: AnsiChar): StringRAL;
-var
-  vParts: TStringList;
-  vInt: IntegerRAL;
-  vPart: string;
-begin
-  Result := '';
-  vParts := TStringList.Create;
-  try
-    vParts.Delimiter := ',';
-    vParts.StrictDelimiter := True;
-    vParts.DelimitedText := string(AMessage);
-    for vInt := 0 to vParts.Count - 1 do
-    begin
-      vPart := vParts[vInt];
-      if (Length(vPart) >= 2) and (vPart[1] = Char(AName)) and (vPart[2] = '=') then
-      begin
-        Result := StringRAL(Copy(vPart, 3, MaxInt));
-        Exit;
-      end;
-    end;
-  finally
-    vParts.Free;
-  end;
-end;
-
-function XorBytes(const A, B: TBytes): TBytes;
-var
-  vInt: IntegerRAL;
-begin
-  SetLength(Result, Length(A));
-  for vInt := 0 to High(A) do
-    Result[vInt] := A[vInt] xor B[vInt];
-end;
-
-function HashLen(AAlg: TRALMQTTHashAlg): IntegerRAL;
-begin
-  case AAlg of
-    mhaSHA1: Result := 20;
-    mhaSHA256: Result := 32;
-  else
-    Result := 64;
-  end;
 end;
 
 { TRALMQTTAuthExchange }
@@ -569,59 +415,45 @@ constructor TRALMQTTSCRAMClient.Create(AAlg: TRALMQTTHashAlg; const AUserName,
   APassword, AClientNonce: StringRAL);
 begin
   inherited Create;
-  FAlg := AAlg;
-  FUserName := AUserName;
-  FPassword := APassword;
-  FNonce := AClientNonce;
-  if FNonce = '' then
-    FNonce := TRALBase64.Encode(RandomBytes(18));
+  FClient := TRALSCRAMClient.Create(SCRAMAlg(AAlg), AUserName, APassword, AClientNonce);
+end;
+
+destructor TRALMQTTSCRAMClient.Destroy;
+begin
+  FClient.Free;
+  inherited Destroy;
 end;
 
 function TRALMQTTSCRAMClient.Start: TBytes;
 begin
-  FClientFirstBare := 'n=' + SaslName(FUserName) + ',r=' + FNonce;
-  Result := RALMQTTBytes('n,,' + FClientFirstBare);
+  Result := RALMQTTBytes(FClient.ClientFirst);
 end;
 
 function TRALMQTTSCRAMClient.Step(const AServerData: TBytes): TBytes;
-var
-  vServerFirst, vNonce, vSalt, vFinalBare, vAuth: StringRAL;
-  vIter: IntegerRAL;
-  vSalted, vClientKey, vStored, vSig, vProof, vServerKey: TBytes;
 begin
-  vServerFirst := RALMQTTText(AServerData);
-  if Attribute(vServerFirst, 'e') <> '' then
-    AuthFail(string(Attribute(vServerFirst, 'e')));
-  vNonce := Attribute(vServerFirst, 'r');
-  vSalt := Attribute(vServerFirst, 's');
-  vIter := StrToIntDef(string(Attribute(vServerFirst, 'i')), 0);
-  // the server's nonce extends ours; anything else is someone else's exchange
-  if (Copy(vNonce, 1, Length(FNonce)) <> FNonce) or (Length(vNonce) <= Length(FNonce)) or
-     (vSalt = '') or (vIter < 1) then
-    AuthFail('server-first-message');
-  vSalted := RALMQTTPBKDF2(FAlg, RALMQTTBytes(FPassword), TRALBase64.DecodeAsBytes(vSalt),
-    vIter, HashLen(FAlg));
-  vClientKey := RALMQTTHMAC(FAlg, vSalted, RALMQTTBytes('Client Key'));
-  vStored := RALMQTTHash(FAlg, vClientKey);
-  vFinalBare := 'c=biws,r=' + vNonce; // biws = base64('n,,')
-  vAuth := FClientFirstBare + ',' + vServerFirst + ',' + vFinalBare;
-  vSig := RALMQTTHMAC(FAlg, vStored, RALMQTTBytes(vAuth));
-  vProof := XorBytes(vClientKey, vSig);
-  vServerKey := RALMQTTHMAC(FAlg, vSalted, RALMQTTBytes('Server Key'));
-  FServerSignature := RALMQTTHMAC(FAlg, vServerKey, RALMQTTBytes(vAuth));
-  Result := RALMQTTBytes(vFinalBare + ',p=' + TRALBase64.Encode(vProof));
+  try
+    Result := RALMQTTBytes(FClient.ClientFinal(RALMQTTText(AServerData)));
+  except
+    on E: ERALSCRAMError do
+      AuthFail(E.Message);
+  end;
 end;
 
 procedure TRALMQTTSCRAMClient.Finish(const AServerData: TBytes);
 var
-  vFinal: StringRAL;
+  vProved: boolean;
 begin
-  vFinal := RALMQTTText(AServerData);
-  if Attribute(vFinal, 'e') <> '' then
-    AuthFail(string(Attribute(vFinal, 'e')));
+  try
+    vProved := FClient.CheckServerFinal(RALMQTTText(AServerData));
+  except
+    on E: ERALSCRAMError do
+    begin
+      vProved := False;
+      AuthFail(E.Message);
+    end;
+  end;
   // the server proves it knows the password too, or it is not the server
-  if (FServerSignature = nil) or
-     not RALSameBytes(TRALBase64.DecodeAsBytes(Attribute(vFinal, 'v')), FServerSignature) then
+  if not vProved then
     AuthFail(emMQTTSCRAMServerProof);
 end;
 
@@ -630,90 +462,40 @@ end;
 constructor TRALMQTTSCRAMServer.Create(AAlg: TRALMQTTHashAlg; ALookup: TRALMQTTSCRAMLookup);
 begin
   inherited Create;
-  FAlg := AAlg;
-  FLookup := ALookup;
+  FServer := TRALSCRAMServer.Create(SCRAMAlg(AAlg), ALookup);
+end;
+
+destructor TRALMQTTSCRAMServer.Destroy;
+begin
+  FServer.Free;
+  inherited Destroy;
+end;
+
+function TRALMQTTSCRAMServer.GetAccepted: boolean;
+begin
+  Result := FServer.Accepted;
+end;
+
+function TRALMQTTSCRAMServer.GetDone: boolean;
+begin
+  Result := FServer.Done;
+end;
+
+function TRALMQTTSCRAMServer.GetUserName: StringRAL;
+begin
+  Result := FServer.UserName;
 end;
 
 function TRALMQTTSCRAMServer.Step(const AData: TBytes): TBytes;
-var
-  vMessage, vNonce, vFinalBare, vProofText: StringRAL;
-  vSalted, vClientKey, vClientSig, vProof, vServerSig: TBytes;
-  vPos: IntegerRAL;
-  vKnown: boolean;
 begin
-  Result := nil;
-  vMessage := RALMQTTText(AData);
-  case FStage of
-    0:
+  try
+    Result := RALMQTTBytes(FServer.Step(RALMQTTText(AData)));
+  except
+    on E: ERALSCRAMError do
     begin
-      // gs2 header 'n,,' (no channel binding), then the bare message
-      if Copy(vMessage, 1, 3) <> 'n,,' then
-        AuthFail('client-first-message');
-      FClientFirstBare := Copy(vMessage, 4, MaxInt);
-      FUserName := UnSaslName(Attribute(FClientFirstBare, 'n'));
-      vNonce := Attribute(FClientFirstBare, 'r');
-      if (FUserName = '') or (vNonce = '') then
-        AuthFail('client-first-message');
-      vKnown := Assigned(FLookup) and FLookup(FUserName, FCredential);
-      if not vKnown then
-      begin
-        { an unknown user goes through the same steps with made-up values:
-          the answer does not tell which users exist }
-        FCredential.Salt := RandomBytes(16);
-        FCredential.Iterations := 4096;
-        FCredential.StoredKey := RandomBytes(HashLen(FAlg));
-        FCredential.ServerKey := RandomBytes(HashLen(FAlg));
-        FCredential.Password := '';
-      end
-      else if (FCredential.StoredKey = nil) or (FCredential.ServerKey = nil) then
-      begin
-        if FCredential.Salt = nil then
-          FCredential.Salt := RandomBytes(16);
-        if FCredential.Iterations < 1 then
-          FCredential.Iterations := 4096;
-        vSalted := RALMQTTPBKDF2(FAlg, RALMQTTBytes(FCredential.Password),
-          FCredential.Salt, FCredential.Iterations, HashLen(FAlg));
-        FCredential.StoredKey := RALMQTTHash(FAlg, RALMQTTHMAC(FAlg, vSalted,
-          RALMQTTBytes('Client Key')));
-        FCredential.ServerKey := RALMQTTHMAC(FAlg, vSalted, RALMQTTBytes('Server Key'));
-      end;
-      FNonce := vNonce + TRALBase64.Encode(RandomBytes(18));
-      FServerFirst := 'r=' + FNonce + ',s=' + TRALBase64.Encode(FCredential.Salt) +
-        ',i=' + StringRAL(IntToStr(FCredential.Iterations));
-      FStage := 1;
-      Result := RALMQTTBytes(FServerFirst);
+      Result := nil;
+      AuthFail(E.Message);
     end;
-    1:
-    begin
-      vPos := Pos(StringRAL(',p='), vMessage);
-      if vPos <= 0 then
-        AuthFail('client-final-message');
-      vFinalBare := Copy(vMessage, 1, vPos - 1);
-      vProofText := Copy(vMessage, vPos + 3, MaxInt);
-      if Attribute(vFinalBare, 'r') <> FNonce then
-        AuthFail('client-final-message');
-      FAuthMessage := FClientFirstBare + ',' + FServerFirst + ',' + vFinalBare;
-      vClientSig := RALMQTTHMAC(FAlg, FCredential.StoredKey, RALMQTTBytes(FAuthMessage));
-      vProof := TRALBase64.DecodeAsBytes(vProofText);
-      FDone := True;
-      FStage := 2;
-      if Length(vProof) <> Length(vClientSig) then
-      begin
-        Result := RALMQTTBytes('e=invalid-proof');
-        Exit;
-      end;
-      vClientKey := XorBytes(vProof, vClientSig);
-      FAccepted := RALSameBytes(RALMQTTHash(FAlg, vClientKey), FCredential.StoredKey);
-      if FAccepted then
-      begin
-        vServerSig := RALMQTTHMAC(FAlg, FCredential.ServerKey, RALMQTTBytes(FAuthMessage));
-        Result := RALMQTTBytes('v=' + TRALBase64.Encode(vServerSig));
-      end
-      else
-        Result := RALMQTTBytes('e=invalid-proof');
-    end;
-  else
-    AuthFail('SCRAM');
   end;
 end;
 

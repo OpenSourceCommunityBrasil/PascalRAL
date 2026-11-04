@@ -120,6 +120,14 @@ type
       (RFC 8305, the simple form) }
     procedure Connect(const AHost: StringRAL; APort: IntegerRAL;
       ATimeout: IntegerRAL; AFamily: TRALIPFamily = mifAny);
+    { Starts a connection to AAddress (already resolved: RALResolve) and
+      returns at once, for an event loop: the socket turns writable when it
+      is done, and PendingError then says whether it worked. Raises when the
+      system refuses it on the spot }
+    procedure ConnectStart(const AAddress: TRALSocketAddress);
+    { The error a connect left on the socket (SO_ERROR, cleared by reading
+      it): 0 when none. While ConnectStart is in progress, 0 too }
+    function PendingError: IntegerRAL;
     /// Opens a UDP socket bound to APort (0: any) on AAddress (empty: every address).
     procedure OpenUDP(const AAddress: StringRAL; APort: IntegerRAL;
       AFamily: TRALIPFamily = mifIPv4);
@@ -127,6 +135,9 @@ type
       when the other side closed, RALSocketWouldBlock when there is nothing yet.
       Raises on an error }
     function Receive(var ABuffer; ACount: IntegerRAL): IntegerRAL;
+    { As Receive, but what is read stays waiting for the next Receive (a look
+      at the first bytes of a connection, as a ClientHello) }
+    function Peek(var ABuffer; ACount: IntegerRAL): IntegerRAL;
     { Reads one datagram into ABuffer (up to ACount bytes) and who sent it;
       RALSocketWouldBlock when none is waiting }
     function ReceiveFrom(var ABuffer; ACount: IntegerRAL; out AFrom: TRALSocketAddress): IntegerRAL;
@@ -263,6 +274,7 @@ const
   cIPPROTO_UDP = 17;
   cTCP_NODELAY = 1;
   cAI_PASSIVE = 1;
+  cMSG_PEEK = 2; // the same on Windows, Linux, Android, the BSDs and Apple
 
 {$IFDEF RALWindows}
 const
@@ -318,6 +330,9 @@ function sys_closesocket(s: TRALSocketHandle): Integer; stdcall; external cLib n
 function sys_shutdown(s: TRALSocketHandle; how: Integer): Integer; stdcall; external cLib name 'shutdown';
 function sys_setsockopt(s: TRALSocketHandle; level, optname: Integer; optval: Pointer; optlen: TSockLen): Integer; stdcall; external cLib name 'setsockopt';
 function sys_getsockopt(s: TRALSocketHandle; level, optname: Integer; optval: Pointer; var optlen: TSockLen): Integer; stdcall; external cLib name 'getsockopt';
+function sys_WSAIoctl(s: TRALSocketHandle; code: Cardinal; inbuf: Pointer; inlen: Cardinal;
+  outbuf: Pointer; outlen: Cardinal; var returned: Cardinal; overlapped, completion: Pointer): Integer;
+  stdcall; external cLib name 'WSAIoctl';
 function sys_getsockname(s: TRALSocketHandle; name: Pointer; var namelen: TSockLen): Integer; stdcall; external cLib name 'getsockname';
 function sys_getpeername(s: TRALSocketHandle; name: Pointer; var namelen: TSockLen): Integer; stdcall; external cLib name 'getpeername';
 function sys_ioctlsocket(s: TRALSocketHandle; cmd: Integer; var arg: Cardinal): Integer; stdcall; external cLib name 'ioctlsocket';
@@ -795,6 +810,78 @@ begin
   FHandle := cInvalid;
 end;
 
+procedure TRALSocket.ConnectStart(const AAddress: TRALSocketAddress);
+{$IFDEF RALWindows}
+type
+  // TCP_INITIAL_RTO_PARAMETERS of mstcpip.h
+  TInitialRto = record
+    Rtt: Word;
+    MaxSynRetransmissions: Byte;
+  end;
+const
+  cSIO_TCP_INITIAL_RTO = $98000011;
+var
+  vRto: TInitialRto;
+  vReturned: Cardinal;
+  vText: StringRAL;
+{$ENDIF}
+var
+  vRes, vError: IntegerRAL;
+begin
+  Close;
+  FFamily := AddressFamily(AAddress);
+  FHandle := sys_socket(FFamily, cSOCK_STREAM, cIPPROTO_TCP);
+  if FHandle = cInvalid then
+    RaiseSocket('socket', LastError);
+  SetNonBlocking(FHandle);
+  SetOptions(True);
+  {$IFDEF RALWindows}
+  { Windows sends the SYN again twice before it reports a refused connection,
+    even on loopback, where nobody else answers: ~2 s for a port that is
+    simply closed. To a loopback address it does not (Windows 8 and later;
+    an older one refuses the call and keeps its retries) }
+  vText := RALAddressText(AAddress);
+  if (Copy(vText, 1, 4) = '127.') or (vText = '::1') then
+  begin
+    vRto.Rtt := $FFFF;                 // TCP_INITIAL_RTO_UNSPECIFIED_RTT
+    vRto.MaxSynRetransmissions := $FE; // TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS
+    vReturned := 0;
+    sys_WSAIoctl(FHandle, cSIO_TCP_INITIAL_RTO, @vRto, SizeOf(vRto), nil, 0, vReturned, nil, nil);
+  end;
+  {$ENDIF}
+  vRes := sys_connect(FHandle, @AAddress.Data[0], AAddress.Size);
+  if vRes <> 0 then
+  begin
+    vError := LastError;
+    if (vError <> cEINPROGRESS) and (vError <> cEAGAIN) then
+    begin
+      Close;
+      RaiseSocket(Format(emSocketConnectTo, [string(RALAddressText(AAddress)),
+        RALAddressPort(AAddress)]), vError);
+    end;
+  end;
+  FPeerAddress := RALAddressText(AAddress);
+  FPeerPort := RALAddressPort(AAddress);
+end;
+
+function TRALSocket.PendingError: IntegerRAL;
+var
+  vValue: Integer;
+  vSize: TSockLen;
+begin
+  if FHandle = cInvalid then
+  begin
+    Result := 0;
+    Exit;
+  end;
+  vValue := 0;
+  vSize := SizeOf(vValue);
+  if sys_getsockopt(FHandle, cSOL_SOCKET, cSO_ERROR, @vValue, vSize) <> 0 then
+    Result := LastError
+  else
+    Result := vValue;
+end;
+
 procedure TRALSocket.Connect(const AHost: StringRAL; APort: IntegerRAL;
   ATimeout: IntegerRAL; AFamily: TRALIPFamily);
 const
@@ -824,7 +911,7 @@ var
     SetLength(vAttempts, Length(vAttempts) - 1);
   end;
 
-  function PendingError(AHandle: TRALSocketHandle): IntegerRAL;
+  function AttemptError(AHandle: TRALSocketHandle): IntegerRAL;
   var
     vValue: Integer;
     vSize: TSockLen;
@@ -959,7 +1046,7 @@ begin
       vDone := False;
       while vInt <= High(vAttempts) do
       begin
-        vError := PendingError(vAttempts[vInt].Handle);
+        vError := AttemptError(vAttempts[vInt].Handle);
         if vError <> 0 then
         begin
           vLastError := vError;
@@ -1096,6 +1183,26 @@ begin
   end;
   SetNonBlocking(FHandle);
   SetOptions(False);
+end;
+
+function TRALSocket.Peek(var ABuffer; ACount: IntegerRAL): IntegerRAL;
+var
+  vError: IntegerRAL;
+begin
+  if FHandle = cInvalid then
+  begin
+    Result := 0;
+    Exit;
+  end;
+  Result := sys_recv(FHandle, ABuffer, ACount, cMSG_PEEK);
+  if Result < 0 then
+  begin
+    vError := LastError;
+    if (vError = cEAGAIN) or (vError = cEINTR) then
+      Result := RALSocketWouldBlock
+    else
+      RaiseSocket('recv', vError);
+  end;
 end;
 
 function TRALSocket.Receive(var ABuffer; ACount: IntegerRAL): IntegerRAL;

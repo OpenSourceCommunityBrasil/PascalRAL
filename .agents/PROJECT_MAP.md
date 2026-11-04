@@ -35,7 +35,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/compress/` | `PascalRAL` | zlib/gzip/deflate and the compressor registry |
 | `src/compress/brotli/` | `RALCompressBrotliPackage` | Brotli (submodule in `src/others/pascal_brotli`) |
 | `src/compress/zstd/` | `RALCompressZStdPackage` | ZStd (submodule in `src/others/ZSTD`) |
-| `src/crypto/` | `PascalRAL` | hashes, AES, OpenSSL, BigInt/ASN.1/RSA/X.509, JWS, JWT (`RALToken`) |
+| `src/crypto/` | `PascalRAL` | hashes, AES, OpenSSL, BigInt/ASN.1/RSA/X.509, JWS, JWT (`RALToken`), SCRAM (`RALSCRAM`) |
 | `src/database/` | `RALDBPackage` | DBWare: module, connection, pool, SQL cache, driver base |
 | `src/database/FireDAC/` | `RALDBFireDACPackage`, `RALDBFireDACDAOPackage` | FireDAC driver and memtable; the DAO |
 | `src/database/FireDAC/design/` | `RALDBFireDACDsgn` | FireDAC design time |
@@ -47,8 +47,8 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/design/` | `PascalRALDsgn` | core design time (`RALRegister`, property editors) |
 | `src/engine/<engine>/` | `<Engine>RAL` | one transport engine per folder |
 | `src/languages/` | (included by `RALConsts`) | user-facing texts per language, UTF-8 with BOM |
-| `src/net/` | `RALNetPackage` | RAL's own sockets: TCP/UDP for every OS with poll, TLS and DTLS over OpenSSL loaded at run time, WebSocket channel, HTTP CONNECT/SOCKS5 proxy, the server event loop |
-| `src/modules/proxy/` | `RALModuleProxyPackage` | reverse proxy and load balancing: `TRALUpstream` (policies, health, stats), `TRALProxyModule` |
+| `src/net/` | `RALNetPackage` | RAL's own sockets: TCP/UDP for every OS with poll, TLS and DTLS over OpenSSL loaded at run time (session resumption, a certificate per SNI name, ClientHello peek), WebSocket channel, HTTP CONNECT/SOCKS5 proxy, the server event loop |
+| `src/modules/proxy/` | `RALModuleProxyPackage` (requires `RALNetPackage`); `design/` `RALModuleProxyDsgn` | reverse proxy and load balancing: `TRALUpstream` (policies, health, stats), `TRALProxyModule`, `TRALBalancer` (own listener, HTTP and TCP modes), `RALProxyConfig` (NGINX-style configuration, `TRALProxyHost` with reload) |
 | `src/modules/mqtt/` | `RALModuleMQTTPackage` | MQTT 3.1.1/5.0 and MQTT-SN client, broker, SN gateway, REST bridge |
 | `src/modules/mqtt/design/` | `RALModuleMQTTDsgn` | MQTT IDE registration and verbs |
 | `src/modules/mqtt/db/` | `RALModuleMQTTDBPackage` | `TRALMQTTDataSetLink` (messages into a dataset) |
@@ -115,7 +115,8 @@ is in no package.
 
 `RALASN1`, `RALBigInt`, `RALCRC32`, `RALCripto`, `RALCriptoAES`, `RALCriptoOpenSSL`,
 `RALHashBase`, `RALHashes`, `RALJWS`, `RALMD5`, `RALOpenSSL`, `RALRSA`, `RALSHA1`,
-`RALSHA2_32`, `RALSHA2_64`, `RALToken` (JWT), `RALX509`.
+`RALSCRAM` (SCRAM client and server, HMAC, PBKDF2), `RALSHA2_32`, `RALSHA2_64`, `RALToken` (JWT),
+`RALX509`.
 
 ### `src/database/`
 
@@ -168,11 +169,12 @@ raised; an impossible explicit choice raises.
 `RALSocket` (`TRALSocket`, the channels `TRALChannel`/`TRALSocketChannel`/
 `TRALLayerChannel`, `RALPoll`, `RALResolve`, `RALSocketNow`, `ERALSocketError`),
 `RALTLS` (`TRALSocketSSL`, `TRALTLSContext`, `TRALTLSChannel`, `TRALDTLSSession`,
-`ERALTLSError`), `RALWebSocket` (`TRALWebSocketChannel` with an optional `Protocol`,
+`ERALTLSError`, `RALTLSSessions`, `RALTLSPeekClientHello`, `RALTLSPeekServerName`), `RALWebSocket` (`TRALWebSocketChannel` with an optional `Protocol`,
 `ERALWebSocketError`), `RALSocketProxy` (`TRALSocketProxy`), `RALSocketLoop`
 (`TRALSocketLoop`: accepting thread, N poll threads owning slices of the connections, a
 timer; the protocol descends from `TRALSocketLoopConnection`). Used by MQTT (the broker
-runs on `TRALSocketLoop`); meant for the other protocols RAL speaks on its own sockets.
+runs on `TRALSocketLoop`) and by `TRALBalancer`; meant for the other protocols RAL speaks
+on its own sockets.
 
 ### `src/modules/`
 
@@ -189,6 +191,10 @@ runs on `TRALSocketLoop`); meant for the other protocols RAL speaks on its own s
   `design/RALModuleMQTTReg` (RALModuleMQTTDsgn: "Test connection", "Test ports");
   `db/RALMQTTDataSetLink` + `db/RALModuleMQTTDBReg` (RALModuleMQTTDBPackage, requires
   RALDBPackage)
+- `proxy/` (RALModuleProxyPackage, requires PascalRAL and RALNetPackage): `RALProxyCore`
+  (`TRALUpstream`), `RALProxyModule` (`TRALProxyModule`), `RALBalancer` (`TRALBalancer`,
+  `RALBalancerAccessLine`), `RALProxyConfig` (`TRALProxyConfig`, `TRALProxyHost`);
+  `design/RALModuleProxyReg` (RALModuleProxyDsgn: "Test servers", "Test port")
 - `soap/` (RALModuleSOAPPackage, requires XML): `RALSOAPTypes` (versions, faults),
   `RALSOAPModule` (`TRALSOAPModule`, operations), `RALWSDLExporter`, `RALSOAPClient`
   (`TRALSOAPClient`, a `TRALClient`), `RALSOAPActions` (`TRALSOAPExecute`);

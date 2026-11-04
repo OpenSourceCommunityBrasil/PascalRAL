@@ -1,7 +1,6 @@
 package RALModuleProxyPackage;
 
 {$R *.res}
-{$R 'RALModuleProxyPackage.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -30,11 +29,13 @@ package RALModuleProxyPackage;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL;
+  PascalRAL,
+  RALNetPackage;
 
 contains
   RALProxyCore in '..\..\..\src\modules\proxy\RALProxyCore.pas',
   RALProxyModule in '..\..\..\src\modules\proxy\RALProxyModule.pas',
-  RALModuleProxyReg in '..\..\..\src\modules\proxy\RALModuleProxyReg.pas';
+  RALBalancer in '..\..\..\src\modules\proxy\RALBalancer.pas',
+  RALProxyConfig in '..\..\..\src\modules\proxy\RALProxyConfig.pas';
 
 end.

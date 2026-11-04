@@ -8,15 +8,8 @@ unit RALModuleProxyPackage;
 interface
 
 uses
-  RALProxyCore, RALProxyModule, RALModuleProxyReg, LazarusPackageIntf;
+  RALProxyCore, RALProxyModule, RALBalancer, RALProxyConfig;
 
 implementation
 
-procedure Register;
-begin
-  RegisterUnit('RALModuleProxyReg', @RALModuleProxyReg.Register);
-end;
-
-initialization
-  RegisterPackage('RALModuleProxyPackage', @Register);
 end.

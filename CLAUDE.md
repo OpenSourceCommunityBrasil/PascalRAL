@@ -335,6 +335,26 @@ OkHttp, floor applied on assignment (`MinKeepAliveInterval`).
   nothing sent yet (503 none available, 502 none answered, 504 timeout).
   `TRALUpstream.ConnectTimeout` (5 s) bounds a server that does not answer; a refused
   one fails before it (on Windows ~2 s to another host, at once on loopback).
+- **`TRALBalancer`** (`RALBalancer`, same package, which therefore requires
+  `RALNetPackage`) is a `TRALServer` with its own listener on `TRALSocketLoop`, no
+  engine: `bmHTTP` reads only request line and headers (`ParseHead`, RFC 9112 strict:
+  CL+TE, two lengths, obs-fold, a missing Host are 400; 431, 505), streams the body both
+  ways reading straight into the other side's buffer (chunked passed through, only
+  followed to find the end), pools backend connections per poll thread
+  (`Thread.Context`), tunnels a 101, ends TLS with a context per SNI name, runs the
+  server's `ppValidate` plugins on a synthetic `TRALRequest` (kept until the exchange
+  ends, so `Finish` frees concurrency slots), and closes after an error answer with a
+  lingering close (otherwise the RST drops the answer, always on Windows). `bmTCP`
+  passes bytes with half-close and routes TLS by the ClientHello's SNI. Client and
+  backend sides are two loop connections on the same thread (`Attach`): never a lock;
+  a backend that fails before answering detaches first (`FailNow`) so the client can try
+  the next server. Threads route by a `TRALBalancerRouting` copy that `Reload` replaces
+  whole and keeps until stop; upstreams that leave use are not freed by it. A test of a
+  busy port listens on every address: Windows lets a wildcard bind succeed next to a
+  listener on 127.0.0.1. `RALProxyConfig` reads an NGINX subset (unknown directive =
+  error with file:line:col) into balancers; `TRALProxyHost.Reload` opens new ports first
+  so a failing one changes nothing. The design package `RALModuleProxyDsgn` holds the
+  registration and the "Test servers"/"Test port" verbs.
 - **`OnBeforeExecute`/`OnAfterExecute`** run per attempt on the calling thread, always
   paired; `ACancel` fails with `rteCancelled`. `CopyProperties` carries them.
 - An object that passes a method as a callback calls `DropCallbacks(Self)` in its
@@ -577,7 +597,16 @@ broker for MQTT 3.1.1 and 5.0, MQTT-SN 1.2 and 2.0 (draft) client and gateway, a
 bridge (`TRALMQTTRestModule`); design in `RALModuleMQTTDsgn`, `TRALMQTTDataSetLink` in the
 optional `RALModuleMQTTDBPackage` (requires `RALDBPackage`). RAL's own sockets
 (`RALNetPackage` in `src/net`: `RALSocket`, one code for every OS; `RALTLS`, TLS and DTLS
-over OpenSSL loaded at run time; `RALWebSocket`; `RALSocketProxy`): no engine involved.
+over OpenSSL loaded at run time; `RALWebSocket`; `RALSocketProxy`): no engine involved. The
+loop asks each connection what to poll (`PollEvents`, for back pressure) and tells it what
+came (`Returned`); `ConnectStart`/`PendingError` connect without waiting (on Windows, no
+SYN retry to loopback). `RALTLS` keeps client sessions process-wide (`RALTLSSessions`,
+keyed by name, host:port and client certificate; TLS 1.3 tickets arrive with the first
+read), gives a certificate per SNI name (`AddCertificate`, child contexts switched in the
+servername callback), reads a ClientHello without OpenSSL (`RALTLSPeekClientHello`) and
+sets `SSL_OP_IGNORE_UNEXPECTED_EOF` on OpenSSL 3 only (0x80 meant something else in
+1.1.1) so a missing close_notify is a close on both. SCRAM is pure crypto in
+`src/crypto/RALSCRAM` (pacote-base); `RALMQTTAuth` wraps it.
 The broker runs on `TRALSocketLoop` (`RALSocketLoop`: an accepting thread, N poll
 threads each owning a slice of the connections and woken by a datagram to itself, a
 timer); its connection descends from `TRALSocketLoopConnection` and gives the protocol in

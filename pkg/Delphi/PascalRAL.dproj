@@ -220,6 +220,7 @@
         <DCCReference Include="..\..\src\crypto\RALRSA.pas"/>
         <DCCReference Include="..\..\src\crypto\RALX509.pas"/>
         <DCCReference Include="..\..\src\crypto\RALJWS.pas"/>
+        <DCCReference Include="..\..\src\crypto\RALSCRAM.pas"/>
         <DCCReference Include="..\..\src\crypto\RALToken.pas"/>
         <DCCReference Include="..\..\src\plugins\RALSecurity.pas"/>
         <DCCReference Include="..\..\src\plugins\RALCORS.pas"/>

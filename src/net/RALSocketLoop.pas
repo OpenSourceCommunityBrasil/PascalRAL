@@ -30,6 +30,7 @@ type
   private
     FCloseAfterFlush: boolean;
     FClosed: boolean;
+    FReturned: Word;
     FThread: TRALSocketLoopThread;
   protected
     /// The top of the channel stack (socket, TLS, WebSocket...).
@@ -40,6 +41,10 @@ type
     /// The connection just closed (once): tell the protocol.
     procedure Closed; virtual;
   public
+    { Hands AConnection to the thread that owns this one (from that thread):
+      two connections that talk to each other (a proxy's two sides) then never
+      need a lock. It joins at the next pass }
+    procedure Attach(AConnection: TRALSocketLoopConnection);
     /// Closes the connection, once; its thread frees it afterwards.
     procedure Close;
     { Writes what is queued; False when the link broke. The default flushes
@@ -51,6 +56,10 @@ type
     function HasOutput: boolean; virtual;
     /// The connection closed.
     function IsClosed: boolean;
+    { What the poll should wait for on Socket; the default is what the channel
+      wants plus RALPollOut while HasOutput. A descendant returns less to stop
+      reading (back pressure), or RALPollOut alone while a connect completes }
+    function PollEvents: Word; virtual;
     { One pass of the thread, whether or not the socket woke it: read what
       is there, answer, check the protocol's deadlines. ANow is RALSocketNow }
     procedure Serve(ANow: Int64RAL); virtual; abstract;
@@ -63,8 +72,14 @@ type
     property Channel: TRALChannel read FChannel;
     /// Close as soon as what is queued went out.
     property CloseAfterFlush: boolean read FCloseAfterFlush write FCloseAfterFlush;
+    { The events the last poll returned for Socket (RALPollIn, RALPollOut,
+      RALPollErr, RALPollHup), valid inside Serve; 0 when the poll returned
+      nothing for it }
+    property Returned: Word read FReturned;
     /// The socket under the channel.
     property Socket: TRALSocket read FSocket;
+    /// The thread that owns the connection (nil until it is adopted).
+    property Thread: TRALSocketLoopThread read FThread;
   end;
 
   { One poll thread: polls its connections and a waker (a datagram to
@@ -72,6 +87,7 @@ type
   TRALSocketLoopThread = class(TThread)
   private
     FConnections: TList;
+    FContext: TObject;
     FIncoming: TList;
     FLock: TCriticalSection;
     FLoop: TRALSocketLoop;
@@ -90,6 +106,10 @@ type
     function Count: IntegerRAL;
     /// Wakes the poll (from any thread).
     procedure Wake;
+
+    { An object of the loop's owner for this thread (a pool of connections),
+      used only on this thread; freed with the thread, after its connections }
+    property Context: TObject read FContext write FContext;
   end;
 
   /// A listener accepted ASocket; ATag is the one given to AddListener.
@@ -175,6 +195,14 @@ type
 
 { TRALSocketLoopConnection }
 
+procedure TRALSocketLoopConnection.Attach(AConnection: TRALSocketLoopConnection);
+begin
+  if FThread <> nil then
+    FThread.Adopt(AConnection)
+  else
+    AConnection.Free;
+end;
+
 procedure TRALSocketLoopConnection.Close;
 begin
   if FClosed then
@@ -214,6 +242,13 @@ begin
   Result := FClosed;
 end;
 
+function TRALSocketLoopConnection.PollEvents: Word;
+begin
+  Result := FChannel.WantedEvents;
+  if HasOutput then
+    Result := Result or RALPollOut;
+end;
+
 procedure TRALSocketLoopConnection.Stopping;
 begin
   // nothing to say by default
@@ -250,6 +285,7 @@ begin
     TObject(FIncoming[vInt]).Free;
   FreeAndNil(FConnections);
   FreeAndNil(FIncoming);
+  FreeAndNil(FContext);
   FreeAndNil(FWaker);
   FreeAndNil(FLock);
   inherited Destroy;
@@ -321,9 +357,8 @@ begin
     begin
       vConn := TRALSocketLoopConnection(FConnections[vInt]);
       vPoll[vInt + 1].Handle := vConn.FSocket.Handle;
-      vPoll[vInt + 1].Events := vConn.FChannel.WantedEvents;
-      if vConn.HasOutput then
-        vPoll[vInt + 1].Events := vPoll[vInt + 1].Events or RALPollOut;
+      vPoll[vInt + 1].Events := vConn.PollEvents;
+      vPoll[vInt + 1].Returned := 0;
     end;
     // a TLS layer with bytes already decrypted does not wait for the socket
     vRes := FLoop.FPollSlice;
@@ -349,6 +384,7 @@ begin
       vConn := TRALSocketLoopConnection(FConnections[vInt]);
       if vConn.IsClosed then
         Continue;
+      vConn.FReturned := vPoll[vInt + 1].Returned;
       try
         vConn.Serve(vNow);
       except

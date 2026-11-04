@@ -119,7 +119,7 @@ Item_47=src\net
 Item_48=src\plugins\forwarded
 Item_49=src\modules\proxy
 [Files]
-Count=174
+Count=177
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -293,7 +293,10 @@ Item_169=src\plugins\forwarded\RALForwarded.pas
 Item_170=src\plugins\forwarded\RALPluginForwardedReg.pas
 Item_171=src\modules\proxy\RALProxyCore.pas
 Item_172=src\modules\proxy\RALProxyModule.pas
-Item_173=src\modules\proxy\RALModuleProxyReg.pas
+Item_173=src\modules\proxy\design\RALModuleProxyReg.pas
+Item_174=src\crypto\RALSCRAM.pas
+Item_175=src\modules\proxy\RALBalancer.pas
+Item_176=src\modules\proxy\RALProxyConfig.pas
 [AdditionalFiles]
 Count=0
 

@@ -80,6 +80,7 @@ contains
   RALRSA in '..\..\src\crypto\RALRSA.pas',
   RALX509 in '..\..\src\crypto\RALX509.pas',
   RALJWS in '..\..\src\crypto\RALJWS.pas',
+  RALSCRAM in '..\..\src\crypto\RALSCRAM.pas',
   RALToken in '..\..\src\crypto\RALToken.pas',
   RALSecurity in '..\..\src\plugins\RALSecurity.pas',
   RALCORS in '..\..\src\plugins\RALCORS.pas',

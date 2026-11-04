@@ -2306,6 +2306,8 @@ begin
       vName := FSSL.ServerName;
       if vName = '' then
         vName := AURI.Host;
+      if FSSL.ResumeSession then
+        vTLS.SessionKey := RALTLSSessionKey(vName, AURI.Host, AURI.Port, FSSL.CertFile);
       vTLS.Handshake(vName, vDeadline - RALMQTTNow);
       vCert := vTLS.PeerCertificate;
       if not RALTLSAcceptCertificate(Self, FSSL, FOnValidateServerCert, vCert,

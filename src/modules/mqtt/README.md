@@ -23,9 +23,9 @@ a `TRALClientJWTAuth` or `TRALClientOAuth2`.
 | layer | units |
 |---|---|
 | codec | `RALMQTTTypes` (reason codes, properties, reader/writer, UTF-8 rules, monotonic clock), `RALMQTTPacket` (the 15 packets and AUTH, `TRALMQTTFrameReader`), `RALMQTTTopic` (names, filters, matching, `$share`, the broker's topic tree) |
-| transport | `RALNetPackage` (`src/net`): `RALSocket` (one socket code for every OS: ws2_32 or libc declarations, `poll`/`WSAPoll`, Happy Eyeballs), `RALTLS` (OpenSSL TLS and DTLS, client and server), `RALWebSocket` (RFC 6455, both sides; MQTT sets `Protocol := 'mqtt'`), `RALSocketProxy` (HTTP CONNECT, SOCKS5) |
+| transport | `RALNetPackage` (`src/net`): `RALSocket` (one socket code for every OS: ws2_32 or libc declarations, `poll`/`WSAPoll`, Happy Eyeballs), `RALTLS` (OpenSSL TLS and DTLS, client and server; the client resumes its session through `RALTLSSessions` when `SSL.ResumeSession`, the default), `RALWebSocket` (RFC 6455, both sides; MQTT sets `Protocol := 'mqtt'`), `RALSocketProxy` (HTTP CONNECT, SOCKS5) |
 | session | `RALMQTTSession` (packet ids, topic aliases, broker URIs), `RALMQTTStore` (client session file with a CRC per record), `RALMQTTBrokerStore` (broker journal) |
-| authentication | `RALMQTTAuth`: SCRAM-SHA-1/256/512 both sides, PBKDF2, and the client authenticators |
+| authentication | `RALMQTTAuth`: SCRAM-SHA-1/256/512 both sides (over `RALSCRAM` of `src/crypto`, whose `ERALSCRAMError` becomes the MQTT reason code), PBKDF2, and the client authenticators |
 | client | `RALMQTTClient` (`TRALMQTTCustomClient`, `TRALMQTTClient`), `RALMQTTActions` |
 | MQTT-SN | `RALMQTTSNTypes` (one packet object, the codec interface), `RALMQTTSNPacket12`, `RALMQTTSNPacket20`, `RALMQTTSNClient`, `RALMQTTSNGateway` |
 | broker | `RALMQTTBroker` (`TRALMQTTBroker`, a `TRALServer`), `RALMQTTRestModule` |

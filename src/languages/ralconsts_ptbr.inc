@@ -377,6 +377,32 @@
 
   // Behind a proxy (RALPluginForwardedPackage)
   emForwardedBadRange = 'TrustedProxies: "%s" não é um endereço, uma rede (endereço/bits) nem uma palavra conhecida (loopback, private).';
+  // Balancer (RALModuleProxyPackage)
+  emProxyCfgAt = '%s:%d:%d: %s';
+  emProxyCfgUnexpectedEnd = 'a configuração termina dentro de um bloco, um texto ou uma diretiva';
+  emProxyCfgExpected = 'esperava "%s", veio "%s"';
+  emProxyCfgUnknownDirective = 'diretiva desconhecida "%s" em %s';
+  emProxyCfgArgs = 'diretiva "%s": número de valores errado';
+  emProxyCfgValue = 'diretiva "%s": "%s" não é um valor válido';
+  emProxyCfgUnsupported = 'diretiva "%s": só %s é suportado';
+  emProxyCfgUnknownUpstream = 'proxy_pass: "%s" não é um upstream nem um host:porta';
+  emProxyCfgDuplicateUpstream = 'upstream "%s" declarado duas vezes';
+  emProxyCfgEmptyUpstream = 'o upstream "%s" não tem servidores';
+  emProxyCfgNoListen = 'um bloco server sem listen';
+  emProxyCfgNoCertificate = 'a porta %d escuta com ssl mas este server não tem ssl_certificate';
+  emProxyCfgFile = 'o arquivo "%s" não pode ser lido';
+  emProxyCfgPortConflict = 'a porta %d está tomada duas vezes (http e stream, ou dois servers sem nome)';
+  cmProxyTestServers = 'Testar servidores';
+  cmProxyNoServers = 'O upstream não tem servidores.';
+  cmProxyServerAnswered = '%s: %d em %d ms';
+  cmProxyServerFailed = '%s: sem resposta: %s';
+  cmProxyTestPort = 'Testar porta';
+  cmProxyPortFree = 'Porta %d: livre.';
+  cmProxyPortBusy = 'Porta %d: não abre: %s';
+  cmProxyBalancerRunning = 'O balanceador está rodando: a porta dele está aberta.';
+  cmProxyCertificatesOk = 'Os certificados carregam.';
+  cmProxyCertificatesFailed = 'Os certificados não carregam: %s';
+  // end of Balancer
   // MQTT (RALModuleMQTTPackage)
   emMQTTUnknownProperty = 'Identificador de propriedade MQTT desconhecido: 0x%x.';
   emMQTTPropertyNotAllowed = 'A propriedade MQTT 0x%x não pode vir num pacote %s.';

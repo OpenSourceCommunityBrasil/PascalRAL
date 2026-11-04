@@ -377,6 +377,32 @@
 
   // Behind a proxy (RALPluginForwardedPackage)
   emForwardedBadRange = 'TrustedProxies: "%s" is not an address, a network (address/bits) nor a known word (loopback, private).';
+  // Balancer (RALModuleProxyPackage)
+  emProxyCfgAt = '%s:%d:%d: %s';
+  emProxyCfgUnexpectedEnd = 'the configuration ends inside a block, a string or a directive';
+  emProxyCfgExpected = '"%s" expected, "%s" found';
+  emProxyCfgUnknownDirective = 'unknown directive "%s" in %s';
+  emProxyCfgArgs = 'directive "%s": wrong number of values';
+  emProxyCfgValue = 'directive "%s": "%s" is not a valid value';
+  emProxyCfgUnsupported = 'directive "%s": only %s is supported';
+  emProxyCfgUnknownUpstream = 'proxy_pass: "%s" is no upstream and no host:port';
+  emProxyCfgDuplicateUpstream = 'upstream "%s" declared twice';
+  emProxyCfgEmptyUpstream = 'upstream "%s" has no server';
+  emProxyCfgNoListen = 'a server block without listen';
+  emProxyCfgNoCertificate = 'port %d listens with ssl but this server has no ssl_certificate';
+  emProxyCfgFile = 'the file "%s" cannot be read';
+  emProxyCfgPortConflict = 'port %d is taken twice (http and stream, or two servers without a name)';
+  cmProxyTestServers = 'Test servers';
+  cmProxyNoServers = 'The upstream has no servers.';
+  cmProxyServerAnswered = '%s: %d in %d ms';
+  cmProxyServerFailed = '%s: no answer: %s';
+  cmProxyTestPort = 'Test port';
+  cmProxyPortFree = 'Port %d: free.';
+  cmProxyPortBusy = 'Port %d: cannot be opened: %s';
+  cmProxyBalancerRunning = 'The balancer is running: its port is open.';
+  cmProxyCertificatesOk = 'The certificates load.';
+  cmProxyCertificatesFailed = 'The certificates do not load: %s';
+  // end of Balancer
   // MQTT (RALModuleMQTTPackage)
   emMQTTUnknownProperty = 'Unknown MQTT property identifier 0x%x.';
   emMQTTPropertyNotAllowed = 'The MQTT property 0x%x cannot be carried by a %s packet.';

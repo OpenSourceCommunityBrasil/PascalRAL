@@ -211,12 +211,21 @@ type
     { Picks a server for the key AKey (the client address for lpIPHash, the
       hashed value for lpConsistentHash), as Choose does }
     function ChooseKey(const AKey: StringRAL; AExclude: TList = nil): TRALUpstreamServer;
+    { As Choose, for a caller that read the request itself (TRALBalancer):
+      AStickyValue is the value of the Sticky cookie ('' none), AKey what the
+      policy hashes }
+    function ChooseFor(const AKey, AStickyValue: StringRAL;
+      AExclude: TList = nil): TRALUpstreamServer;
     { Gives AServer back: AFailed when it gave no answer (counted by the passive
       check), AError when it answered 5xx (only counted), with the time it took }
     procedure Done(AServer: TRALUpstreamServer; AFailed, AError: boolean;
       AMilliseconds: IntegerRAL);
     /// Runs one round of the active check now (the thread calls it).
     procedure CheckHealth;
+    { Asks every server for HealthCheck.Path now, as the active check does,
+      and says in AReport (one line per server) what each answered and in how
+      long; True when all answered below 400. The IDE's "Test servers" }
+    function TestServers(out AReport: StringRAL): boolean;
     /// Starts the active check (when HealthCheck.Enabled).
     procedure StartHealthCheck;
     /// Stops the active check.
@@ -783,16 +792,32 @@ function TRALUpstream.Choose(ARequest: TRALRequest; AExclude: TList): TRALUpstre
 var
   vParam: TRALParam;
   vValue: StringRAL;
-  vInt: IntegerRAL;
-  vServer: TRALUpstreamServer;
-  vNow: Int64RAL;
 begin
+  vValue := '';
   if FSticky.Enabled and (ARequest <> nil) then
   begin
     vParam := ARequest.Params.GetKind[FSticky.CookieName, rpkCOOKIE];
     if vParam <> nil then
-    begin
       vValue := vParam.AsString;
+  end;
+  if ARequest <> nil then
+    Result := ChooseFor(KeyOf(ARequest), vValue, AExclude)
+  else
+    Result := ChooseFor('', vValue, AExclude);
+end;
+
+function TRALUpstream.ChooseFor(const AKey, AStickyValue: StringRAL;
+  AExclude: TList): TRALUpstreamServer;
+var
+  vValue: StringRAL;
+  vInt: IntegerRAL;
+  vServer: TRALUpstreamServer;
+  vNow: Int64RAL;
+begin
+  if FSticky.Enabled and (AStickyValue <> '') then
+  begin
+    begin
+      vValue := AStickyValue;
       vNow := RALTickMicro div 1000;
       FLock.Acquire;
       try
@@ -813,10 +838,7 @@ begin
       end;
     end;
   end;
-  if ARequest <> nil then
-    Result := ChooseKey(KeyOf(ARequest), AExclude)
-  else
-    Result := ChooseKey('', AExclude);
+  Result := ChooseKey(AKey, AExclude);
 end;
 
 procedure TRALUpstream.Done(AServer: TRALUpstreamServer; AFailed, AError: boolean;
@@ -927,6 +949,60 @@ begin
     end;
     if vChanged then
       ServerChanged(vServer, vOk);
+  end;
+end;
+
+function TRALUpstream.TestServers(out AReport: StringRAL): boolean;
+var
+  vInt: IntegerRAL;
+  vServer: TRALUpstreamServer;
+  vClient: TRALClient;
+  vResp: TRALResponse;
+  vLines: TStringList;
+  vT0: Int64RAL;
+begin
+  Result := FServers.Count > 0;
+  vLines := TStringList.Create;
+  try
+    if FServers.Count = 0 then
+      vLines.Add(cmProxyNoServers);
+    for vInt := 0 to FServers.Count - 1 do
+    begin
+      vServer := TRALUpstreamServer(FServers.Items[vInt]);
+      vClient := TRALClient.Create(nil);
+      try
+        if FEngineType <> '' then
+          vClient.EngineType := FEngineType;
+        vClient.BaseURL.Text := string(vServer.URL);
+        vClient.KeepCookies := False;
+        vClient.ConnectTimeout := FHealthCheck.Timeout;
+        vClient.RequestTimeout := FHealthCheck.Timeout;
+        vResp := nil;
+        vT0 := RALTickMicro;
+        try
+          try
+            vClient.Get(FHealthCheck.Path, vResp);
+            vLines.Add(Format(cmProxyServerAnswered, [string(vServer.URL), vResp.StatusCode,
+              (RALTickMicro - vT0) div 1000]));
+            if (vResp.StatusCode <= 0) or (vResp.StatusCode >= 400) then
+              Result := False;
+          except
+            on E: Exception do
+            begin
+              vLines.Add(Format(cmProxyServerFailed, [string(vServer.URL), E.Message]));
+              Result := False;
+            end;
+          end;
+        finally
+          vResp.Free;
+        end;
+      finally
+        vClient.Free;
+      end;
+    end;
+    AReport := StringRAL(TrimRight(vLines.Text));
+  finally
+    vLines.Free;
   end;
 end;
 

@@ -1,2 +1,3 @@
 TRALUpstream BITMAP "..\components\base\modules\TRALUpstream.bmp"
 TRALProxyModule BITMAP "..\components\base\modules\TRALProxyModule.bmp"
+TRALBalancer BITMAP "..\components\base\modules\TRALBalancer.bmp"

@@ -48,6 +48,7 @@ type
     FKeyFile: StringRAL;
     FKeyPassword: StringRAL;
     FMinVersion: TRALTLSVersion;
+    FResumeSession: boolean;
     FServerName: StringRAL;
   public
     constructor Create;
@@ -68,6 +69,10 @@ type
     property KeyPassword: StringRAL read FKeyPassword write FKeyPassword;
     /// Lowest TLS version accepted.
     property MinVersion: TRALTLSVersion read FMinVersion write FMinVersion default mtv12;
+    { Resume the TLS session of an earlier connection to the same server (by
+      name, address and client certificate), so a reconnection skips the full
+      handshake. The certificate rule runs again on every connection }
+    property ResumeSession: boolean read FResumeSession write FResumeSession default True;
     { Name sent in SNI and checked against the certificate; empty is the host
       connected to }
     property ServerName: StringRAL read FServerName write FServerName;
@@ -81,10 +86,20 @@ type
   TRALTLSContext = class
   private
     FALPN: StringRAL;
+    FClientCAFile: StringRAL;
     FContext: Pointer;
     FDatagram: boolean;
     FKeyPassword: AnsiString;
+    FMinVersion: TRALTLSVersion;
+    FNamed: TStringList;
+    FNamedLock: TCriticalSection;
+    FParent: TRALTLSContext;
     FRole: TRALTLSRole;
+    FStrictServerName: boolean;
+    FVerifyMode: Integer;
+
+    function GetALPN: StringRAL;
+    function NewNamed(const AServerName: StringRAL): TRALTLSContext;
   public
     { A context for ARole; ADatagram makes it DTLS (over UDP, as MQTT-SN).
       Raises when OpenSSL cannot be loaded }
@@ -106,14 +121,31 @@ type
       the handshake without one. ACAFile is the CA the client certificates
       must come from }
     procedure RequestClientCertificate(ARequire: boolean; const ACAFile: StringRAL);
+    { Server: another identity on the same listener, handed to clients that ask
+      for AServerName in SNI ('*.example.com' covers one level below it). The
+      certificate of UseCertificateFiles/UseCertificatePEM stays the one for
+      every other name. May be called while the listener runs }
+    procedure AddCertificate(const AServerName, ACertFile, AKeyFile: StringRAL;
+      const APassword: StringRAL = '');
+    /// Server: as AddCertificate, from PEM text.
+    procedure AddCertificatePEM(const AServerName, ACertPEM, AKeyPEM: StringRAL);
+    /// Server: the context that answers AServerName in SNI; nil for the default.
+    function ContextFor(const AServerName: StringRAL): TRALTLSContext;
+    /// Server: names given to AddCertificate, one per line.
+    function ServerNames: StringRAL;
 
     { ALPN: the client offers these protocols (comma separated); the server
-      picks the first of its own it is offered, or none }
-    property ALPN: StringRAL read FALPN write FALPN;
+      picks the first of its own it is offered, or none. A context made by
+      AddCertificate answers with the ALPN of the one it was added to }
+    property ALPN: StringRAL read GetALPN write FALPN;
     /// The SSL_CTX.
     property Handle: Pointer read FContext;
     /// Client or server.
     property Role: TRALTLSRole read FRole;
+    { Server: refuse the handshake (alert unrecognized_name) when the client
+      asks in SNI for a name no AddCertificate covers; False hands out the
+      default certificate }
+    property StrictServerName: boolean read FStrictServerName write FStrictServerName;
   end;
 
   { TLS over a socket channel. The client handshake waits with a deadline
@@ -123,6 +155,7 @@ type
   private
     FContext: TRALTLSContext;
     FDone: boolean;
+    FSessionKey: StringRAL;
     FSSL: Pointer;
     FWant: Word;
 
@@ -140,14 +173,22 @@ type
       certificate must carry (an address literal is checked as such, without
       SNI), within ATimeout milliseconds }
     procedure Handshake(const AServerName: StringRAL; ATimeout: IntegerRAL);
-    { One step of the server handshake: True when it finished; False when it
-      needs the socket again (WantedEvents says for what). Raises when it failed }
+    { Client, for an event loop: sets AServerName (SNI and the name checked, as
+      Handshake does) and the session to resume; HandshakeStep then advances }
+    procedure BeginHandshake(const AServerName: StringRAL);
+    { One step of the handshake (the server's, or the client's after
+      BeginHandshake): True when it finished; False when it needs the socket
+      again (WantedEvents says for what). Raises when it failed }
     function HandshakeStep: boolean;
     { The server certificate as TRALClient describes it, with Trusted = the
       chain verified and the name matched, and Error saying why not }
     function PeerCertificate: TRALCertInfo;
     /// The protocol ALPN settled on, or empty.
     function SelectedALPN: StringRAL;
+    /// Server: the name the client asked for in SNI, or empty.
+    function ServerName: StringRAL;
+    /// The handshake resumed an earlier session instead of a full one.
+    function SessionReused: boolean;
     /// The TLS version in use ('TLSv1.3').
     function VersionName: StringRAL;
 
@@ -159,6 +200,59 @@ type
 
     /// The handshake is over.
     property Done: boolean read FDone;
+    { Client: key of RALTLSSessions under which the session of this connection
+      is kept and an earlier one resumed (RALTLSSessionKey); empty resumes
+      nothing. Set before Handshake }
+    property SessionKey: StringRAL read FSessionKey write FSessionKey;
+  end;
+
+  { The client TLS sessions kept for resumption, by key: one process-wide
+    instance, RALTLSSessions. A session arrives after the handshake (TLS 1.2)
+    or with the first read after it (TLS 1.3 tickets); the oldest go first
+    when MaxEntries is reached }
+  TRALTLSSessionCache = class
+  private
+    FItems: TStringList;
+    FLock: TCriticalSection;
+    FMaxEntries: IntegerRAL;
+  protected
+    { Keeps ASession (an SSL_SESSION, owned from now on) under AKey, replacing
+      the one there }
+    procedure Put(const AKey: StringRAL; ASession: Pointer);
+    /// Sets on ASSL the session kept under AKey; False when there is none.
+    function Apply(const AKey: StringRAL; ASSL: Pointer): boolean;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    /// Forgets every session.
+    procedure Clear;
+    /// Sessions kept.
+    function Count: IntegerRAL;
+    /// Forgets the session of AKey.
+    procedure Remove(const AKey: StringRAL);
+
+    /// Most sessions kept (256).
+    property MaxEntries: IntegerRAL read FMaxEntries write FMaxEntries;
+  end;
+
+  /// What RALTLSPeekClientHello found in the bytes it was given.
+  TRALTLSPeekResult = (
+    /// A TLS ClientHello so far, not whole yet: read more and ask again.
+    tprNeedMore,
+    /// A whole ClientHello.
+    tprFound,
+    /// Not the start of a TLS handshake.
+    tprNotTLS);
+
+  /// What a ClientHello asks for.
+  TRALTLSClientHello = record
+    /// The host name of SNI; empty when the client sent none.
+    ServerName: StringRAL;
+    /// ALPN protocols offered, separated by commas.
+    ALPN: StringRAL;
+    /// legacy_version of the ClientHello ($0303 for TLS 1.2 and 1.3).
+    Version: Word;
   end;
 
   /// One application datagram that came out of a DTLS session.
@@ -217,6 +311,24 @@ function RALTLSAcceptCertificate(ASender: TObject; ASSL: TRALClientSSL;
   APort: IntegerRAL): boolean;
 /// True when OpenSSL's libssl and libcrypto can be loaded here.
 function RALTLSAvailable: boolean;
+{ Reads the ClientHello at the start of ACount bytes of AData (what arrived on
+  a connection, or a peek at it) without OpenSSL: the server name asked in
+  SNI and the ALPN offered, so a proxy can route TLS it never opens }
+function RALTLSPeekClientHello(const AData; ACount: IntegerRAL;
+  out AHello: TRALTLSClientHello): TRALTLSPeekResult;
+{ Peeks at what waits on ASocket (nothing is consumed: the TLS handshake
+  goes on intact) until a whole ClientHello is there or ATimeout milliseconds
+  pass; AServerName is the SNI name, empty when there is none. tprNeedMore
+  means the time ran out }
+function RALTLSPeekServerName(ASocket: TRALSocket; ATimeout: IntegerRAL;
+  out AServerName: StringRAL): TRALTLSPeekResult;
+/// The client TLS sessions kept for resumption, for the whole process.
+function RALTLSSessions: TRALTLSSessionCache;
+{ The key of a session in RALTLSSessions: the name checked (SNI), the host
+  and port connected to and the client certificate presented, so a session
+  is resumed only for the same server and the same identity }
+function RALTLSSessionKey(const AServerName, AHost: StringRAL; APort: IntegerRAL;
+  const AIdentity: StringRAL = ''): StringRAL;
 /// Name and version of the OpenSSL loaded, or why it could not be.
 function RALTLSLibraryInfo: StringRAL;
 
@@ -245,7 +357,15 @@ const
   SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER = $2;
   TLSEXT_NAMETYPE_host_name = 0;
   SSL_TLSEXT_ERR_OK = 0;
+  SSL_TLSEXT_ERR_ALERT_FATAL = 2;
   SSL_TLSEXT_ERR_NOACK = 3;
+  SSL_AD_UNRECOGNIZED_NAME = 112;
+  SSL_CTRL_SET_TLSEXT_SERVERNAME_CB = 53;
+  SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG = 54;
+  SSL_CTRL_SET_SESS_CACHE_MODE = 44;
+  SSL_SESS_CACHE_CLIENT = $0001;
+  SSL_SESS_CACHE_NO_INTERNAL_STORE = $0200;
+  SSL_OP_IGNORE_UNEXPECTED_EOF = $80;
   TLS1_2_VERSION = $0303;
   TLS1_3_VERSION = $0304;
   DTLS1_2_VERSION = $FEFD;
@@ -274,6 +394,7 @@ var
   GSSL: TRALTLSSSLLib;
   GLoaded: boolean;
   GLoadError: string;
+  GSessions: TRALTLSSessionCache;
 
   { libssl }
   OPENSSL_init_ssl: function(opts: UInt64; settings: Pointer): Integer; cdecl;
@@ -322,9 +443,21 @@ var
   SSL_set_connect_state: procedure(ssl: Pointer); cdecl;
   SSL_set_accept_state: procedure(ssl: Pointer); cdecl;
   SSL_do_handshake: function(ssl: Pointer): Integer; cdecl;
+  SSL_CTX_callback_ctrl: function(ctx: Pointer; cmd: Integer; fp: Pointer): NativeInt; cdecl;
+  SSL_CTX_sess_set_new_cb: procedure(ctx: Pointer; cb: Pointer); cdecl;
+  SSL_get_servername: function(ssl: Pointer; typ: Integer): PAnsiChar; cdecl;
+  SSL_set_SSL_CTX: function(ssl, ctx: Pointer): Pointer; cdecl;
+  SSL_set_session: function(ssl, session: Pointer): Integer; cdecl;
+  SSL_SESSION_free: procedure(session: Pointer); cdecl;
+  SSL_SESSION_is_resumable: function(session: Pointer): Integer; cdecl;
+  SSL_session_reused: function(ssl: Pointer): Integer; cdecl;
+  SSL_set_ex_data: function(ssl: Pointer; idx: Integer; data: Pointer): Integer; cdecl;
+  SSL_get_ex_data: function(ssl: Pointer; idx: Integer): Pointer; cdecl;
+  SSL_CTX_set_options: function(ctx: Pointer; op: UInt64): UInt64; cdecl;
 
   { libcrypto }
   OpenSSL_version: function(t: Integer): PAnsiChar; cdecl;
+  OPENSSL_version_major: function: Cardinal; cdecl;
   X509_free: procedure(x: Pointer); cdecl;
   i2d_X509: function(x: Pointer; out_: PPointer): Integer; cdecl;
   d2i_X509: function(px: PPointer; in_: PPointer; len: Integer): Pointer; cdecl;
@@ -409,6 +542,7 @@ end;
 procedure TRALTLSCryptoLib.LoadProcs;
 begin
   LoadProc(@OpenSSL_version, 'OpenSSL_version');
+  LoadProc(@OPENSSL_version_major, 'OPENSSL_version_major');
   LoadProc(@X509_free, 'X509_free');
   LoadProc(@i2d_X509, 'i2d_X509');
   LoadProc(@d2i_X509, 'd2i_X509');
@@ -517,6 +651,17 @@ begin
   LoadProc(@SSL_set_connect_state, 'SSL_set_connect_state');
   LoadProc(@SSL_set_accept_state, 'SSL_set_accept_state');
   LoadProc(@SSL_do_handshake, 'SSL_do_handshake');
+  LoadProc(@SSL_CTX_callback_ctrl, 'SSL_CTX_callback_ctrl');
+  LoadProc(@SSL_CTX_sess_set_new_cb, 'SSL_CTX_sess_set_new_cb');
+  LoadProc(@SSL_get_servername, 'SSL_get_servername');
+  LoadProc(@SSL_set_SSL_CTX, 'SSL_set_SSL_CTX');
+  LoadProc(@SSL_set_session, 'SSL_set_session');
+  LoadProc(@SSL_SESSION_free, 'SSL_SESSION_free');
+  LoadProc(@SSL_SESSION_is_resumable, 'SSL_SESSION_is_resumable');
+  LoadProc(@SSL_session_reused, 'SSL_session_reused');
+  LoadProc(@SSL_set_ex_data, 'SSL_set_ex_data');
+  LoadProc(@SSL_get_ex_data, 'SSL_get_ex_data');
+  LoadProc(@SSL_CTX_set_options, 'SSL_CTX_set_options');
 end;
 
 {$IFNDEF RALWindows}
@@ -687,7 +832,7 @@ var
   vMineLen, vOfferLen: Byte;
 begin
   Result := SSL_TLSEXT_ERR_NOACK;
-  vMine := ALPNWire(TRALTLSContext(arg).ALPN);
+  vMine := ALPNWire(TRALTLSContext(arg).ALPN); // a named context answers its parent's
   vPos := 0;
   while vPos < Cardinal(Length(vMine)) do
   begin
@@ -708,6 +853,368 @@ begin
     end;
     Inc(vPos, 1 + vMineLen);
   end;
+end;
+
+{ server side of SNI: switches the connection to the context added for the
+  name asked; arg is the listener's context }
+function ServerNameCallback(ssl: Pointer; ad: PInteger; arg: Pointer): Integer; cdecl;
+var
+  vName: PAnsiChar;
+  vChild: TRALTLSContext;
+begin
+  Result := SSL_TLSEXT_ERR_OK;
+  vName := SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+  vChild := nil;
+  if vName <> nil then
+    vChild := TRALTLSContext(arg).ContextFor(StringRAL(AnsiString(vName)));
+  if vChild <> nil then
+    SSL_set_SSL_CTX(ssl, vChild.Handle)
+  else if TRALTLSContext(arg).StrictServerName then
+  begin
+    if ad <> nil then
+      ad^ := SSL_AD_UNRECOGNIZED_NAME;
+    Result := SSL_TLSEXT_ERR_ALERT_FATAL;
+  end;
+end;
+
+{ client side of resumption: a new session (after the handshake, or a TLS 1.3
+  ticket read later) goes to RALTLSSessions under the channel's key. 1 tells
+  OpenSSL the session is ours now }
+function NewSessionCallback(ssl, session: Pointer): Integer; cdecl;
+var
+  vChannel: TRALTLSChannel;
+begin
+  Result := 0;
+  vChannel := TRALTLSChannel(SSL_get_ex_data(ssl, 0));
+  if (vChannel = nil) or (vChannel.SessionKey = '') then
+    Exit;
+  RALTLSSessions.Put(vChannel.SessionKey, session);
+  Result := 1;
+end;
+
+function RALTLSSessions: TRALTLSSessionCache;
+begin
+  Result := GSessions;
+end;
+
+function RALTLSSessionKey(const AServerName, AHost: StringRAL; APort: IntegerRAL;
+  const AIdentity: StringRAL): StringRAL;
+begin
+  Result := StringRAL(LowerCase(string(AServerName))) + '|' +
+    StringRAL(LowerCase(string(AHost))) + ':' + StringRAL(IntToStr(APort)) + '|' + AIdentity;
+end;
+
+{ TRALTLSSessionCache }
+
+constructor TRALTLSSessionCache.Create;
+begin
+  inherited Create;
+  FItems := TStringList.Create;
+  FLock := TCriticalSection.Create;
+  FMaxEntries := 256;
+end;
+
+destructor TRALTLSSessionCache.Destroy;
+begin
+  Clear;
+  FreeAndNil(FItems);
+  FreeAndNil(FLock);
+  inherited Destroy;
+end;
+
+function TRALTLSSessionCache.Apply(const AKey: StringRAL; ASSL: Pointer): boolean;
+var
+  vIndex: IntegerRAL;
+  vSession: Pointer;
+begin
+  Result := False;
+  FLock.Acquire;
+  try
+    vIndex := FItems.IndexOf(string(AKey));
+    if vIndex < 0 then
+      Exit;
+    vSession := Pointer(FItems.Objects[vIndex]);
+    if Assigned(SSL_SESSION_is_resumable) and (SSL_SESSION_is_resumable(vSession) <> 1) then
+    begin
+      SSL_SESSION_free(vSession);
+      FItems.Delete(vIndex);
+      Exit;
+    end;
+    // SSL_set_session takes its own reference
+    Result := SSL_set_session(ASSL, vSession) = 1;
+  finally
+    FLock.Release;
+  end;
+end;
+
+procedure TRALTLSSessionCache.Clear;
+var
+  vInt: IntegerRAL;
+begin
+  FLock.Acquire;
+  try
+    for vInt := 0 to FItems.Count - 1 do
+      SSL_SESSION_free(Pointer(FItems.Objects[vInt]));
+    FItems.Clear;
+  finally
+    FLock.Release;
+  end;
+end;
+
+function TRALTLSSessionCache.Count: IntegerRAL;
+begin
+  FLock.Acquire;
+  try
+    Result := FItems.Count;
+  finally
+    FLock.Release;
+  end;
+end;
+
+procedure TRALTLSSessionCache.Put(const AKey: StringRAL; ASession: Pointer);
+var
+  vIndex: IntegerRAL;
+begin
+  FLock.Acquire;
+  try
+    vIndex := FItems.IndexOf(string(AKey));
+    if vIndex >= 0 then
+    begin
+      SSL_SESSION_free(Pointer(FItems.Objects[vIndex]));
+      FItems.Delete(vIndex);
+    end;
+    while (FMaxEntries > 0) and (FItems.Count >= FMaxEntries) do
+    begin
+      SSL_SESSION_free(Pointer(FItems.Objects[0]));
+      FItems.Delete(0);
+    end;
+    FItems.AddObject(string(AKey), TObject(ASession));
+  finally
+    FLock.Release;
+  end;
+end;
+
+procedure TRALTLSSessionCache.Remove(const AKey: StringRAL);
+var
+  vIndex: IntegerRAL;
+begin
+  FLock.Acquire;
+  try
+    vIndex := FItems.IndexOf(string(AKey));
+    if vIndex >= 0 then
+    begin
+      SSL_SESSION_free(Pointer(FItems.Objects[vIndex]));
+      FItems.Delete(vIndex);
+    end;
+  finally
+    FLock.Release;
+  end;
+end;
+
+function RALTLSPeekClientHello(const AData; ACount: IntegerRAL;
+  out AHello: TRALTLSClientHello): TRALTLSPeekResult;
+var
+  vIn: PByte;
+  vHS: TBytes;
+  vPos, vRecLen, vTake, vHSLen, vEnd, vExtEnd, vType, vLen, vList, vItem: IntegerRAL;
+  vComplete: boolean;
+
+  function B(AIndex: IntegerRAL): Byte;
+  begin
+    Result := PByte(PAnsiChar(vIn) + AIndex)^;
+  end;
+
+  function W(const ABytes: TBytes; AIndex: IntegerRAL): IntegerRAL;
+  begin
+    Result := (ABytes[AIndex] shl 8) or ABytes[AIndex + 1];
+  end;
+
+  function Text(const ABytes: TBytes; AIndex, ALen: IntegerRAL): StringRAL;
+  begin
+    SetLength(Result, ALen);
+    if ALen > 0 then
+      Move(ABytes[AIndex], Pointer(Result)^, ALen);
+  end;
+
+begin
+  AHello.ServerName := '';
+  AHello.ALPN := '';
+  AHello.Version := 0;
+  Result := tprNeedMore;
+  vIn := @AData;
+  if ACount < 1 then
+    Exit;
+  // a handshake record of TLS (major version 3)
+  if (B(0) <> $16) or ((ACount >= 2) and (B(1) <> 3)) then
+  begin
+    Result := tprNotTLS;
+    Exit;
+  end;
+  // the handshake bytes, joined from as many records as carry them
+  vHS := nil;
+  vPos := 0;
+  vComplete := True;
+  while vPos + 5 <= ACount do
+  begin
+    if (B(vPos) <> $16) or (B(vPos + 1) <> 3) then
+      Break;
+    vRecLen := (B(vPos + 3) shl 8) or B(vPos + 4);
+    if (vRecLen = 0) or (vRecLen > 16384) then
+    begin
+      Result := tprNotTLS;
+      Exit;
+    end;
+    vTake := vRecLen;
+    if vPos + 5 + vTake > ACount then
+    begin
+      vTake := ACount - vPos - 5;
+      vComplete := False;
+    end;
+    SetLength(vHS, Length(vHS) + vTake);
+    if vTake > 0 then
+      Move(PByte(PAnsiChar(vIn) + vPos + 5)^, vHS[Length(vHS) - vTake], vTake);
+    Inc(vPos, 5 + vTake);
+    if not vComplete then
+      Break;
+    if (Length(vHS) >= 4) and (Length(vHS) >= 4 + ((vHS[1] shl 16) or (vHS[2] shl 8) or vHS[3])) then
+      Break;
+  end;
+  if Length(vHS) < 4 then
+    Exit;
+  if vHS[0] <> 1 then // client_hello
+  begin
+    Result := tprNotTLS;
+    Exit;
+  end;
+  vHSLen := (vHS[1] shl 16) or (vHS[2] shl 8) or vHS[3];
+  if Length(vHS) < 4 + vHSLen then
+    Exit;
+  Result := tprNotTLS;
+  vEnd := 4 + vHSLen;
+  vPos := 4;
+  // legacy_version, random
+  if vPos + 2 + 32 > vEnd then
+    Exit;
+  AHello.Version := W(vHS, vPos);
+  Inc(vPos, 34);
+  // session id
+  if vPos + 1 > vEnd then
+    Exit;
+  Inc(vPos, 1 + vHS[vPos]);
+  // cipher suites
+  if vPos + 2 > vEnd then
+    Exit;
+  Inc(vPos, 2 + W(vHS, vPos));
+  // compression methods
+  if vPos + 1 > vEnd then
+    Exit;
+  Inc(vPos, 1 + vHS[vPos]);
+  if vPos > vEnd then
+    Exit;
+  Result := tprFound;
+  if vPos + 2 > vEnd then
+    Exit; // no extensions
+  vExtEnd := vPos + 2 + W(vHS, vPos);
+  Inc(vPos, 2);
+  if vExtEnd > vEnd then
+  begin
+    Result := tprNotTLS;
+    Exit;
+  end;
+  while vPos + 4 <= vExtEnd do
+  begin
+    vType := W(vHS, vPos);
+    vLen := W(vHS, vPos + 2);
+    Inc(vPos, 4);
+    if vPos + vLen > vExtEnd then
+    begin
+      Result := tprNotTLS;
+      Exit;
+    end;
+    if (vType = 0) and (vLen >= 2) then // server_name
+    begin
+      vList := vPos + 2;
+      while vList + 3 <= vPos + vLen do
+      begin
+        vItem := W(vHS, vList + 1);
+        if vList + 3 + vItem > vPos + vLen then
+          Break;
+        if vHS[vList] = 0 then // host_name
+        begin
+          AHello.ServerName := Text(vHS, vList + 3, vItem);
+          Break;
+        end;
+        Inc(vList, 3 + vItem);
+      end;
+    end
+    else if (vType = 16) and (vLen >= 2) then // application_layer_protocol_negotiation
+    begin
+      vList := vPos + 2;
+      while vList + 1 <= vPos + vLen do
+      begin
+        vItem := vHS[vList];
+        if vList + 1 + vItem > vPos + vLen then
+          Break;
+        if AHello.ALPN <> '' then
+          AHello.ALPN := AHello.ALPN + ',';
+        AHello.ALPN := AHello.ALPN + Text(vHS, vList + 1, vItem);
+        Inc(vList, 1 + vItem);
+      end;
+    end;
+    Inc(vPos, vLen);
+  end;
+end;
+
+function RALTLSPeekServerName(ASocket: TRALSocket; ATimeout: IntegerRAL;
+  out AServerName: StringRAL): TRALTLSPeekResult;
+var
+  vBuffer: array of Byte;
+  vRead, vLast: IntegerRAL;
+  vDeadline, vNow: Int64RAL;
+  vHello: TRALTLSClientHello;
+begin
+  AServerName := '';
+  SetLength(vBuffer, 16384 + 5);
+  vDeadline := RALSocketNow + ATimeout;
+  vLast := 0;
+  repeat
+    vRead := ASocket.Peek(vBuffer[0], Length(vBuffer));
+    if vRead = 0 then
+    begin
+      // closed before a whole ClientHello
+      Result := tprNotTLS;
+      Exit;
+    end;
+    if vRead > 0 then
+    begin
+      Result := RALTLSPeekClientHello(vBuffer[0], vRead, vHello);
+      if Result <> tprNeedMore then
+      begin
+        AServerName := vHello.ServerName;
+        Exit;
+      end;
+      if vRead >= Length(vBuffer) then
+      begin
+        Result := tprNotTLS; // a ClientHello longer than one record can carry here
+        Exit;
+      end;
+    end;
+    Result := tprNeedMore;
+    vNow := RALSocketNow;
+    if vNow >= vDeadline then
+      Exit;
+    { the bytes peeked stay readable, so poll says "readable" at once: wait
+      for more only when nothing arrived yet, otherwise give the rest a moment }
+    if vRead <= vLast then
+    begin
+      if vRead <= 0 then
+        ASocket.WaitFor(RALPollIn, vDeadline - vNow)
+      else
+        Sleep(1);
+    end;
+    if vRead > vLast then
+      vLast := vRead;
+  until False;
 end;
 
 function RALTLSAcceptCertificate(ASender: TObject; ASSL: TRALClientSSL;
@@ -763,6 +1270,7 @@ constructor TRALSocketSSL.Create;
 begin
   inherited Create;
   FMinVersion := mtv12;
+  FResumeSession := True;
 end;
 
 procedure TRALSocketSSL.Assign(ASource: TPersistent);
@@ -780,6 +1288,7 @@ begin
     FKeyFile := vSource.KeyFile;
     FKeyPassword := vSource.KeyPassword;
     FMinVersion := vSource.MinVersion;
+    FResumeSession := vSource.ResumeSession;
     FServerName := vSource.ServerName;
   end;
 end;
@@ -814,17 +1323,164 @@ begin
   { a write that has to wait is retried from wherever the caller keeps the
     bytes now, not from the address of the first try }
   SSL_CTX_ctrl(FContext, SSL_CTRL_MODE, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER, nil);
+  { OpenSSL 3 reports a peer that closes without close_notify as an error;
+    1.1.1 reported a plain end (SSL_ERROR_SYSCALL), which CheckIO reads as a
+    close. The same on both: the protocols on top frame their own messages.
+    the option exists only from 3.0 on (0x80 meant something else before) }
+  if Assigned(SSL_CTX_set_options) and Assigned(OPENSSL_version_major) and
+     (OPENSSL_version_major() >= 3) then
+    SSL_CTX_set_options(FContext, SSL_OP_IGNORE_UNEXPECTED_EOF);
   SetMinVersion(mtv12);
   SSL_CTX_set_default_passwd_cb(FContext, @PasswordCallback);
   if ARole = mtrServer then
+  begin
     SSL_CTX_set_alpn_select_cb(FContext, @ALPNSelect, Self);
+    FNamedLock := TCriticalSection.Create;
+  end
+  else if (not ADatagram) and Assigned(SSL_CTX_sess_set_new_cb) then
+  begin
+    { the sessions are kept by RALTLSSessions, keyed per server, not inside
+      this context (one per connection) }
+    SSL_CTX_ctrl(FContext, SSL_CTRL_SET_SESS_CACHE_MODE,
+      SSL_SESS_CACHE_CLIENT or SSL_SESS_CACHE_NO_INTERNAL_STORE, nil);
+    SSL_CTX_sess_set_new_cb(FContext, @NewSessionCallback);
+  end;
 end;
 
 destructor TRALTLSContext.Destroy;
+var
+  vInt: IntegerRAL;
 begin
+  if FNamed <> nil then
+  begin
+    for vInt := 0 to FNamed.Count - 1 do
+      FNamed.Objects[vInt].Free;
+    FreeAndNil(FNamed);
+  end;
+  FreeAndNil(FNamedLock);
   if FContext <> nil then
     SSL_CTX_free(FContext);
   inherited Destroy;
+end;
+
+function TRALTLSContext.GetALPN: StringRAL;
+begin
+  if FParent <> nil then
+    Result := FParent.ALPN
+  else
+    Result := FALPN;
+end;
+
+function TRALTLSContext.NewNamed(const AServerName: StringRAL): TRALTLSContext;
+var
+  vName: string;
+  vIndex: IntegerRAL;
+begin
+  if FRole <> mtrServer then
+    raise ERALTLSError.Create(Format(emTLSError, ['AddCertificate', 'server only']));
+  vName := LowerCase(Trim(string(AServerName)));
+  Result := TRALTLSContext.Create(mtrServer, FDatagram);
+  try
+    Result.FParent := Self;
+    Result.SetMinVersion(FMinVersion);
+    if FVerifyMode <> 0 then
+    begin
+      // the trust of client certificates is the context's own: copied
+      Result.LoadCAFile(FClientCAFile);
+      SSL_CTX_set_verify(Result.Handle, FVerifyMode, nil);
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
+  FNamedLock.Acquire;
+  try
+    if FNamed = nil then
+    begin
+      FNamed := TStringList.Create;
+      FNamed.Sorted := True;
+      FNamed.CaseSensitive := True;
+      // the first name added turns SNI on for this listener
+      SSL_CTX_callback_ctrl(FContext, SSL_CTRL_SET_TLSEXT_SERVERNAME_CB, @ServerNameCallback);
+      SSL_CTX_ctrl(FContext, SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG, 0, Self);
+    end;
+    { a name added again replaces its identity; the old context stays alive
+      with the listener, a handshake may be using it }
+    vIndex := FNamed.IndexOf(vName);
+    if vIndex >= 0 then
+    begin
+      FNamed.Objects[vIndex].Free;
+      FNamed.Objects[vIndex] := Result;
+    end
+    else
+      FNamed.AddObject(vName, Result);
+  finally
+    FNamedLock.Release;
+  end;
+end;
+
+procedure TRALTLSContext.AddCertificate(const AServerName, ACertFile,
+  AKeyFile: StringRAL; const APassword: StringRAL);
+var
+  vNamed: TRALTLSContext;
+begin
+  vNamed := NewNamed(AServerName);
+  vNamed.UseCertificateFiles(ACertFile, AKeyFile, APassword);
+end;
+
+procedure TRALTLSContext.AddCertificatePEM(const AServerName, ACertPEM,
+  AKeyPEM: StringRAL);
+var
+  vNamed: TRALTLSContext;
+begin
+  vNamed := NewNamed(AServerName);
+  vNamed.UseCertificatePEM(ACertPEM, AKeyPEM);
+end;
+
+function TRALTLSContext.ContextFor(const AServerName: StringRAL): TRALTLSContext;
+var
+  vName: string;
+  vIndex, vDot: IntegerRAL;
+begin
+  Result := nil;
+  if (FNamed = nil) or (AServerName = '') then
+    Exit;
+  vName := LowerCase(string(AServerName));
+  FNamedLock.Acquire;
+  try
+    vIndex := FNamed.IndexOf(vName);
+    if vIndex < 0 then
+    begin
+      // '*.example.com' covers 'a.example.com', not 'a.b.example.com'
+      vDot := Pos('.', vName);
+      if (vDot > 1) and (vDot < Length(vName)) then
+        vIndex := FNamed.IndexOf('*' + Copy(vName, vDot, MaxInt));
+    end;
+    if vIndex >= 0 then
+      Result := TRALTLSContext(FNamed.Objects[vIndex]);
+  finally
+    FNamedLock.Release;
+  end;
+end;
+
+function TRALTLSContext.ServerNames: StringRAL;
+var
+  vInt: IntegerRAL;
+begin
+  Result := '';
+  if FNamed = nil then
+    Exit;
+  FNamedLock.Acquire;
+  try
+    for vInt := 0 to FNamed.Count - 1 do
+    begin
+      if Result <> '' then
+        Result := Result + #10;
+      Result := Result + StringRAL(FNamed[vInt]);
+    end;
+  finally
+    FNamedLock.Release;
+  end;
 end;
 
 procedure TRALTLSContext.LoadCAFile(const AFile: StringRAL);
@@ -892,12 +1548,15 @@ begin
     SSL_CTX_set_client_CA_list(FContext, SSL_load_client_CA_file(PAnsiChar(AnsiString(ACAFile))));
   end;
   SSL_CTX_set_verify(FContext, vMode, nil);
+  FVerifyMode := vMode;
+  FClientCAFile := ACAFile;
 end;
 
 procedure TRALTLSContext.SetMinVersion(AVersion: TRALTLSVersion);
 var
   vVersion: NativeInt;
 begin
+  FMinVersion := AVersion;
   if FDatagram then
     vVersion := DTLS1_2_VERSION
   else if AVersion = mtv13 then
@@ -990,6 +1649,9 @@ begin
   end
   else if SSL_set_fd(FSSL, Integer(AInner.Socket.Handle)) <> 1 then
     RaiseTLS('SSL_set_fd');
+  // the channel behind the connection, for the session callback
+  if Assigned(SSL_set_ex_data) then
+    SSL_set_ex_data(FSSL, 0, Self);
   if (AContext.Role = mtrClient) and (AContext.ALPN <> '') then
   begin
     vWire := ALPNWire(AContext.ALPN);
@@ -1044,11 +1706,9 @@ begin
   inherited Close;
 end;
 
-procedure TRALTLSChannel.Handshake(const AServerName: StringRAL; ATimeout: IntegerRAL);
+procedure TRALTLSChannel.BeginHandshake(const AServerName: StringRAL);
 var
   vHost: AnsiString;
-  vRes: Integer;
-  vDeadline, vNow: Int64RAL;
 begin
   vHost := AnsiString(AServerName);
   if (Length(vHost) > 1) and (vHost[1] = '[') then
@@ -1064,6 +1724,17 @@ begin
       SSL_set1_host(FSSL, PAnsiChar(vHost));
     end;
   end;
+  if FSessionKey <> '' then
+    RALTLSSessions.Apply(FSessionKey, FSSL);
+  FWant := RALPollOut;
+end;
+
+procedure TRALTLSChannel.Handshake(const AServerName: StringRAL; ATimeout: IntegerRAL);
+var
+  vRes: Integer;
+  vDeadline, vNow: Int64RAL;
+begin
+  BeginHandshake(AServerName);
   vDeadline := RALSocketNow + ATimeout;
   repeat
     vRes := SSL_connect(FSSL);
@@ -1087,7 +1758,10 @@ begin
   Result := FDone;
   if Result then
     Exit;
-  vRes := SSL_accept(FSSL);
+  if FContext.Role = mtrClient then
+    vRes := SSL_connect(FSSL)
+  else
+    vRes := SSL_accept(FSSL);
   if vRes = 1 then
   begin
     FDone := True;
@@ -1095,7 +1769,7 @@ begin
     Result := True;
     Exit;
   end;
-  if CheckIO(vRes, 'SSL_accept') <> RALSocketWouldBlock then
+  if CheckIO(vRes, 'handshake') <> RALSocketWouldBlock then
     raise ERALTLSError.Create(emTLSClosed);
 end;
 
@@ -1247,6 +1921,23 @@ begin
     SetLength(Result, vLen);
     Move(vData^, Pointer(Result)^, vLen);
   end;
+end;
+
+function TRALTLSChannel.ServerName: StringRAL;
+var
+  vName: PAnsiChar;
+begin
+  Result := '';
+  if not Assigned(SSL_get_servername) then
+    Exit;
+  vName := SSL_get_servername(FSSL, TLSEXT_NAMETYPE_host_name);
+  if vName <> nil then
+    Result := StringRAL(AnsiString(vName));
+end;
+
+function TRALTLSChannel.SessionReused: boolean;
+begin
+  Result := FDone and Assigned(SSL_session_reused) and (SSL_session_reused(FSSL) = 1);
 end;
 
 function TRALTLSChannel.VersionName: StringRAL;
@@ -1414,8 +2105,10 @@ end;
 
 initialization
   GLock := TCriticalSection.Create;
+  GSessions := TRALTLSSessionCache.Create;
 
 finalization
+  FreeAndNil(GSessions);
   FreeAndNil(GSSL);
   FreeAndNil(GCrypto);
   FreeAndNil(GLock);
