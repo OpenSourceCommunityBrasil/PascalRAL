@@ -383,6 +383,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added
+- **- implementacao de uma classe propria para JSON e BSON - novas funcoes implentadas para RALOpenSSL (nova funcionalidade em breve)** (2026-11-05 – Fernando Castelano Banhos)
+
 - **feat: adição de métodos funcionais para facilitar AllowedMethods e SkipAuthMethods** (2026-10-04 – mobius1qwe)
 
 - **Add an index page, HEAD and the file route's documentation to the WebModule** (2026-10-04 – tempraturbo)
