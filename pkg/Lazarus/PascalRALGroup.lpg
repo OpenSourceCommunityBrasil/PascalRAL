@@ -30,6 +30,8 @@
       <Target FileName="Modules\ralmoduleproxydsgn.lpk"/>
       <Target FileName="Modules\ralmodulewebpackage.lpk"/>
       <Target FileName="Modules\ralmoduleswaggerpackage.lpk"/>
+      <Target FileName="Modules\ralmoduleobjectspackage.lpk"/>
+      <Target FileName="Modules\ralmodulecontrollerspackage.lpk"/>
       <Target FileName="Modules\ralmodulexmlpackage.lpk"/>
       <Target FileName="Modules\ralmodulesoappackage.lpk"/>
       <Target FileName="Modules\ralmodulesoapdsgn.lpk"/>

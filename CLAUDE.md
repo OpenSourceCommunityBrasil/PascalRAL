@@ -527,6 +527,8 @@ without copies and transforms happen at the edge, writing into the stream that g
   outbound request (picks a linked client engine). Password hashes
   (`RALCryptoPasswordPackage`) and TOTP (`RALOTP`) are pure Pascal; the unit is
   `RALPassword`, never `RALPasswordHash` (a unit named like a function breaks calls).
+- Unit names in `uses` keep the file's case (`RALMIMETypes`): FPC on Linux looks for the
+  file by the name as written, or in lowercase.
 - A Linux-only block tests `RALLinux` **or** `RALLinuxFPC`: FPC on Linux defines only the
   second (`RALOpenSSL` found no libcrypto there while it tested the first).
 
@@ -593,6 +595,27 @@ the source address of the default route (IPv6: the stable address). CGI, Synopse
   are a one-row dataset (`OutputsDataset`, each driver's memtable; JSON when there is
   none); several datasets are `multipart/mixed` (`TRALMultipartEncoder.MediaType`).
   Zeos binds through `ParamByName` (Zeos 8 has `TZParams`, not `TParams`).
+
+### Objects (`src/modules/objects`, `src/modules/controllers`)
+
+`RALModuleObjectsPackage`: the core only gained extension points - `TRALBaseRoute`
+`BodyClass`/`ResponseClass`/`OnReplyObject`/`ValidationRules` (`HasCoreHandler` counts
+`OnReplyObject`), `CreateObjectRoute`, and the hooks `RALObjectRouteRunner` and
+`RALObjectSchemaProvider` (Swagger asks the second; nil = the package is not linked,
+and an object route answers 500). Traps:
+- `TPersistent.Create` is not virtual: classes created by name go through
+  `RALCreateObject` (`TRALObject` and `TComponent` virtually, others through
+  `RALObjectFactoryHook`, which `RALObjectRTTI` fills with the RTTI constructor).
+- Property order is `GetPropList(..., False)` on both compilers; names go through the
+  registry (`RALRegisterPropertyName`), then `RALPropertyNameHook` (attributes), then
+  `Naming`. Strings are read with `GetUnicodeStrProp` (FPC) / `GetStrProp` (Delphi).
+- Numbers are written by `TRALJSONTextWriter` (15 digits when they read back the same,
+  else 17), not by the JSON backend (fpjson prints `1.25E+001`); `RALJSONNumberText`
+  does the same for values already parsed (CSV, YAML in `src/common/RALYAML`).
+- q values and other decimals parse with a '.' format, never the machine's locale.
+- Controllers: among routes of equal weight the first wins, so literal paths are
+  registered before `{param}` ones; a generic method may not use an implementation-only
+  type (E2506), hence `TRALProxyInvoker` in the interface section.
 
 ### XML and SOAP (`src/modules/xml`, `src/modules/soap`)
 

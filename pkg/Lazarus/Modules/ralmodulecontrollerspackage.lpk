@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALModuleControllersPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\modules\controllers"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralmodulecontrollerspackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | Controllers by attributes and the interface client (Delphi 2010 and later)"/>
+    <Version Major="2"/>
+    <Files Count="4">
+      <Item1>
+        <Filename Value="..\..\..\src\modules\controllers\RALControllers.pas"/>
+        <UnitName Value="RALControllers"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\modules\controllers\RALRestProxy.pas"/>
+        <UnitName Value="RALRestProxy"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\modules\controllers\RALModuleControllersReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALModuleControllersReg"/>
+      </Item3>
+      <Item4>
+        <Filename Value="ralmodulecontrollerspackage.lrs"/>
+        <Type Value="LRS"/>
+      </Item4>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="3">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="RALModuleObjectsPackage"/>
+      </Item3>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

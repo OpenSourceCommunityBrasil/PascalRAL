@@ -330,6 +330,10 @@ type
     /// Adds a route with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReplyGen;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
+    { Adds a route whose body is read into ABodyClass and handed to AReplyProc
+      (RALModuleObjectsPackage); returns it. }
+    function CreateObjectRoute(const ARoute, ABodyClass: StringRAL;
+      AReplyProc: TRALOnReplyObject; const ADescription: StringRAL = ''): TRALRoute;
     { Fills Request.Authorization from the Authorization header, or from where a
       scheme keeps it otherwise (the raltoken cookie); engines call it. }
     procedure DecodeAuth(AResult: TRALRequest);
@@ -637,6 +641,10 @@ type
     /// Adds a route of RouteClass with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReplyGen;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
+    { Adds a route of RouteClass whose body is read into ABodyClass and handed to
+      AReplyProc (RALModuleObjectsPackage); returns it. }
+    function CreateObjectRoute(const ARoute, ABodyClass: StringRAL;
+      AReplyProc: TRALOnReplyObject; const ADescription: StringRAL = ''): TRALRoute;
     { Content type the module answers in, set on the response before the preflight,
       the 405 or the route runs; empty keeps the response's own (JSON). }
     function DefaultContentType: StringRAL; virtual;
@@ -1034,6 +1042,16 @@ begin
   Result := TRALRoute(FRoutes.Add);
   Result.Route := ARoute;
   Result.OnReplyGen := AReplyProc;
+  Result.Description.Text := ADescription;
+end;
+
+function TRALServer.CreateObjectRoute(const ARoute, ABodyClass: StringRAL;
+  AReplyProc: TRALOnReplyObject; const ADescription: StringRAL): TRALRoute;
+begin
+  Result := TRALRoute(FRoutes.Add);
+  Result.Route := ARoute;
+  Result.BodyClass := ABodyClass;
+  Result.OnReplyObject := AReplyProc;
   Result.Description.Text := ADescription;
 end;
 
@@ -2275,6 +2293,14 @@ function TRALModuleRoutes.CreateRoute(const ARoute: StringRAL;
 begin
   Result := NewRoute(ARoute, ADescription);
   Result.OnReplyGen := AReplyProc;
+end;
+
+function TRALModuleRoutes.CreateObjectRoute(const ARoute, ABodyClass: StringRAL;
+  AReplyProc: TRALOnReplyObject; const ADescription: StringRAL): TRALRoute;
+begin
+  Result := NewRoute(ARoute, ADescription);
+  Result.BodyClass := ABodyClass;
+  Result.OnReplyObject := AReplyProc;
 end;
 
 function TRALModuleRoutes.GetListRoutes: TList;

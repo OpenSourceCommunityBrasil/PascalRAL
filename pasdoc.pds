@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=51
+Count=53
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -119,8 +119,10 @@ Item_47=src\net
 Item_48=src\plugins\forwarded
 Item_49=src\modules\proxy
 Item_50=src\crypto\password
+Item_51=src\modules\objects
+Item_52=src\modules\controllers
 [Files]
-Count=187
+Count=198
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -308,6 +310,17 @@ Item_183=src\crypto\password\RALPassword.pas
 Item_184=src\crypto\password\RALCryptoPasswordReg.pas
 Item_185=src\plugins\auth\RALAuthorization.pas
 Item_186=src\plugins\auth\RALOIDC.pas
+Item_187=src\common\RALYAML.pas
+Item_188=src\modules\objects\RALObjectJSON.pas
+Item_189=src\modules\objects\RALObjectFormat.pas
+Item_190=src\modules\objects\RALObjectBinding.pas
+Item_191=src\modules\objects\RALObjectClient.pas
+Item_192=src\modules\objects\RALObjectRTTI.pas
+Item_193=src\modules\objects\RALOpenAPIImport.pas
+Item_194=src\modules\objects\RALModuleObjectsReg.pas
+Item_195=src\modules\controllers\RALControllers.pas
+Item_196=src\modules\controllers\RALRestProxy.pas
+Item_197=src\modules\controllers\RALModuleControllersReg.pas
 [AdditionalFiles]
 Count=0
 

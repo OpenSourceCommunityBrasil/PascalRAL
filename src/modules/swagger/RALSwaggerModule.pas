@@ -59,6 +59,8 @@ type
     procedure SwaggerIndex(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SwaggerInitializer(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SwaggerJSON(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// The same document as swagger.json, in YAML.
+    procedure SwaggerYAML(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SwaggerPostman(ARequest: TRALRequest; AResponse: TRALResponse);
   public
     constructor Create(AOwner: TComponent); override;
@@ -88,7 +90,7 @@ type
 implementation
 
 uses
-  RALSwaggerExporter, RALPostmanExporter;
+  RALJson, RALYAML, RALConsts, RALSwaggerExporter, RALPostmanExporter;
 
 const
   { The page loads Swagger UI from the CDN. The version is pinned, so the
@@ -164,6 +166,9 @@ begin
   PublishRoute(vRoute);
 
   vRoute := CreateRoute('/swagger.json',{$IFDEF FPC}@{$ENDIF}SwaggerJSON);
+  PublishRoute(vRoute);
+
+  vRoute := CreateRoute('/swagger.yaml',{$IFDEF FPC}@{$ENDIF}SwaggerYAML);
   PublishRoute(vRoute);
 
   if FPostmanTag then
@@ -380,6 +385,31 @@ begin
     finally
       FreeAndNil(vSwagger);
     end;
+  end;
+end;
+
+procedure TRALSwaggerModule.SwaggerYAML(ARequest: TRALRequest; AResponse: TRALResponse);
+var
+  vSwagger: TRALSwaggerExporter;
+  vStream: TStream;
+  vJSON: TRALJSONValue;
+begin
+  vSwagger := TRALSwaggerExporter.Create;
+  vStream := nil;
+  vJSON := nil;
+  try
+    vSwagger.SwaggerModule := Self;
+    if FileExists(FSwaggerFile) then
+      vStream := TFileStream.Create(FSwaggerFile, fmOpenRead or fmShareDenyWrite)
+    else
+      vStream := vSwagger.ExportToStream(Server);
+    vStream.Position := 0;
+    vJSON := TRALJSON.ParseJSON(vStream);
+    AResponse.Answer(HTTP_OK, RALJSONToYAML(vJSON), 'application/yaml');
+  finally
+    FreeAndNil(vJSON);
+    FreeAndNil(vStream);
+    FreeAndNil(vSwagger);
   end;
 end;
 

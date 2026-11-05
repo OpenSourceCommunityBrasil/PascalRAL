@@ -138,6 +138,15 @@ form, `Server` property set; or `Plugin.Server := FServer` in code):
 
 The order they run in is their `Priority`, not the order you link them.
 
+## Objects and controllers
+
+A route can take its body as an object: `CreateObjectRoute` with `BodyClass` and
+`OnReplyObject`, `ValidationRules` on the route, `ResponseClass` for Swagger (see
+`ral-body`). On Delphi 2010+, `TRALControllerModule.RegisterController(TClass)` turns
+a class with `[Path]`, `[GET('/{id}')]`, `[POST]`... into routes (literal paths first,
+one controller per request, `ExceptionMap` for errors); `TRALRestProxy.Make<I>` is the
+matching client. `tools/ralopenapi` writes classes and a client from an OpenAPI JSON.
+
 ## Modules
 
 - Static files and a site: `TRALWebModule` (package `RALModuleWebPackage`):

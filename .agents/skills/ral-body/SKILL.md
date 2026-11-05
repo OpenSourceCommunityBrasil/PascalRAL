@@ -77,6 +77,18 @@ Bodies above 8 MB live in chunks, and with `SpoolAbove` (on `TRALLimitsPlugin` a
 `TRALClient`) in a temporary file. Code doing `TMemoryStream(Param.Content).Memory`
 breaks there: read the stream.
 
+## Objects instead of params (RALModuleObjectsPackage)
+
+`Server.CreateObjectRoute('pedidos', 'TPedido', Handler)`: the body is read (by
+`Content-Type`: JSON, form, CSV) into a registered class (`RALRegisterObjectClass`;
+descend from `TRALObject` so its constructor runs), checked against the route's
+`ValidationRules` (422 `problem+json` with `errors`; 400 broken, 415 unknown type) and
+handed to `OnReplyObject`, which frees nothing. `RALAnswerObject(Req, Resp, Status,
+Obj, AOwns)` answers by `Accept` (JSON, YAML, CSV, form; 406). Standalone:
+`RALReadBody`, `RALReadParams`, `TRALObjectJSON.ToText/FromText`. Client:
+`TRALObjectClient`. Delphi 2010+: `RALObjectRTTI` attributes (`[JSONName]`,
+`[Required]`...), records, `TObjectList<T>`; controllers in `RALControllers`.
+
 ## Compression and cipher
 
 - Compression needs its unit linked: `RALCompressZLib` (gzip, deflate, zlib), the zstd

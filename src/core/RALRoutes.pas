@@ -4,7 +4,7 @@ unit RALRoutes;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, SyncObjs,
+  Classes, SysUtils, StrUtils, SyncObjs, TypInfo,
   RALTypes, RALConsts, RALTools, RALMIMETypes, RALBase64, RALRequest,
   RALParams, RALResponse, RALRegex;
 
@@ -23,6 +23,51 @@ type
   TRALOnReply = procedure(ARequest: TRALRequest; AResponse: TRALResponse) of object;
   /// Handler of a route, as a plain procedure.
   TRALOnReplyGen = procedure(ARequest: TRALRequest; AResponse: TRALResponse);
+  { Handler of a route with a BodyClass: ABody is the request body already read
+    into an object of that class and validated; the route frees it. }
+  TRALOnReplyObject = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
+    ABody: TObject) of object;
+
+  /// What a validation rule checks.
+  TRALValidationKind = (vrRequired, vrMinLength, vrMaxLength, vrMin, vrMax, vrPattern,
+    vrEmail, vrUrl, vrUUID, vrIn, vrDate, vrCustom);
+
+  { One rule on a field of the body (a property of BodyClass, by its JSON name or
+    its declared name), judged by RALModuleObjectsPackage before the handler. }
+  TRALValidationRule = class(TCollectionItem)
+  private
+    FField: StringRAL;
+    FMessage: StringRAL;
+    FRule: TRALValidationKind;
+    FValue: StringRAL;
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+    function GetDisplayName: string; override;
+  published
+    /// Property the rule checks.
+    property Field: StringRAL read FField write FField;
+    /// Text of the error; empty = the default message of the rule.
+    property Message: StringRAL read FMessage write FMessage;
+    /// What is checked.
+    property Rule: TRALValidationKind read FRule write FRule default vrRequired;
+    { The rule's argument: a length, a minimum or maximum, a pattern (RALRegex),
+      values separated by commas (vrIn), a name for OnValidate (vrCustom). }
+    property Value: StringRAL read FValue write FValue;
+  end;
+
+  /// The validation rules of a route.
+  TRALValidationRules = class(TOwnedCollection)
+  private
+    function GetRule(AIndex: IntegerRAL): TRALValidationRule;
+  public
+    constructor Create(AOwner: TPersistent);
+    /// Adds a rule; returns it.
+    function AddRule(const AField: StringRAL; ARule: TRALValidationKind;
+      const AValue: StringRAL = ''; const AMessage: StringRAL = ''): TRALValidationRule;
+
+    /// Rules by index.
+    property Rules[AIndex: IntegerRAL]: TRALValidationRule read GetRule; default;
+  end;
 
   { Type of a declared route param, as Swagger and WSDL document it: decimal is an
     exact number, XML a free fragment. }
@@ -185,6 +230,7 @@ type
     /// Text of the Allow header for AllowedMethods, built when they change.
     FAllowText: StringRAL;
     FAllowURIParams: boolean;
+    FBodyClass: StringRAL;
     FCallback: boolean;
     FDescription: TStrings;
     /// Full route (module domain and route), built by UpdateSegments.
@@ -196,7 +242,9 @@ type
     FOnBeforeExecute: TRALOnReply;
     FOnReply: TRALOnReply;
     FOnReplyGen: TRALOnReplyGen;
+    FOnReplyObject: TRALOnReplyObject;
     FOutputParams: TRALRouteParams;
+    FResponseClass: StringRAL;
     FPolicy: StringRAL;
     FRequireAllRoles: boolean;
     FRoles: StringRAL;
@@ -212,11 +260,14 @@ type
     FSkipAuthMethods: TRALMethods;
     FStreaming: boolean;
     FURIParams: TRALRouteParams;
+    FValidationRules: TRALValidationRules;
     FVersions: StringRAL;
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetDisplayName: string; override;
     function IsOutputParamsStored: Boolean;
+    function IsValidationRulesStored: Boolean;
+    procedure SetValidationRules(const AValue: TRALValidationRules);
     procedure SetAllowedMethods(const AValue: TRALMethods);
     procedure SetAllowURIParams(const AValue: boolean);
     procedure SetCollection(Value: TCollection); override;
@@ -288,6 +339,17 @@ type
     property OnReply: TRALOnReply read FOnReply write FOnReply;
     /// Handler of the route, as a plain procedure.
     property OnReplyGen: TRALOnReplyGen read FOnReplyGen write FOnReplyGen;
+    { Handler that receives the body as an object of BodyClass, read by the
+      Content-Type and validated (ValidationRules); needs RALModuleObjectsPackage. }
+    property OnReplyObject: TRALOnReplyObject read FOnReplyObject write FOnReplyObject;
+    { Name of the class (RALRegisterObjectClass or RegisterClass) the body is read
+      into for OnReplyObject, and the request schema in the API documentation. }
+    property BodyClass: StringRAL read FBodyClass write FBodyClass;
+    /// Name of the class the route answers with, for the API documentation.
+    property ResponseClass: StringRAL read FResponseClass write FResponseClass;
+    /// Rules the body must pass (RALModuleObjectsPackage); a failure is 422.
+    property ValidationRules: TRALValidationRules read FValidationRules
+      write SetValidationRules stored IsValidationRulesStored;
     { Name of the authorization policy (TRALAuthorizationPlugin) the identity must
       pass; empty = the group's, or none. A route that names one is refused (403)
       when no plugin judges it. }
@@ -333,6 +395,7 @@ type
   published
     property AllowedMethods;
     property AllowURIParams;
+    property BodyClass;
     property Callback;
     property Description;
     property Group;
@@ -341,6 +404,7 @@ type
     property OnAfterExecute;
     property OnBeforeExecute;
     property OnReply;
+    property OnReplyObject;
     property OutputParams;
     property Policy;
     property RequireAllRoles;
@@ -349,6 +413,8 @@ type
     property SkipAuthMethods;
     property Streaming;
     property URIParams;
+    property ResponseClass;
+    property ValidationRules;
     property Versions;
   end;
 
@@ -434,6 +500,23 @@ var
     instead of trying every route; the answer is the same either way. }
   RALRouteTreeAbove: IntegerRAL = 16;
 
+type
+  { Runs a route that has OnReplyObject: reads the body into BodyClass,
+    validates it and calls the handler. RALModuleObjectsPackage sets it. }
+  TRALObjectRouteRunner = procedure(ARoute: TRALBaseRoute; ARequest: TRALRequest;
+    AResponse: TRALResponse);
+
+  { The JSON schema of the class named AClassName (with ARules as constraints),
+    for the API documentation; '' when unknown. RALModuleObjectsPackage sets it. }
+  TRALObjectSchemaProvider = function(const AClassName: StringRAL;
+    ARules: TRALValidationRules): StringRAL;
+
+var
+  /// The runner of object routes; nil until RALModuleObjectsPackage is linked.
+  RALObjectRouteRunner: TRALObjectRouteRunner = nil;
+  /// The schema of a class for Swagger; nil until RALModuleObjectsPackage is linked.
+  RALObjectSchemaProvider: TRALObjectSchemaProvider = nil;
+
 implementation
 
 uses
@@ -455,12 +538,14 @@ begin
   FInputParams := TRALRouteParams.Create(Self);
   FOutputParams := TRALRouteParams.Create(Self);
   FURIParams := TRALRouteParams.Create(Self);
+  FValidationRules := TRALValidationRules.Create(Self);
 
   Changed(False);
 end;
 
 destructor TRALBaseRoute.Destroy;
 begin
+  FreeAndNil(FValidationRules);
   FreeAndNil(FDescription);
   FreeAndNil(FInputParams);
   FreeAndNil(FOutputParams);
@@ -475,6 +560,14 @@ begin
 
   if Assigned(OnReply) then
     OnReply(ARequest, AResponse)
+  else if Assigned(FOnReplyObject) then
+  begin
+    { the object package reads, validates and frees the body }
+    if Assigned(RALObjectRouteRunner) then
+      RALObjectRouteRunner(Self, ARequest, AResponse)
+    else
+      AResponse.Answer(HTTP_InternalError, emObjectsNotLinked);
+  end
   else if Assigned(OnReplyGen) then
     OnReplyGen(ARequest, AResponse)
   // a module's route with no handler is the module's to answer (the WebModule's files)
@@ -486,7 +579,8 @@ end;
 
 function TRALBaseRoute.HasCoreHandler: boolean;
 begin
-  Result := (Self <> nil) and (Assigned(FOnReply) or Assigned(FOnReplyGen));
+  Result := (Self <> nil) and (Assigned(FOnReply) or Assigned(FOnReplyGen) or
+    Assigned(FOnReplyObject));
 end;
 
 function RALAllowedMethodsText(AMethods: TRALMethods): StringRAL;
@@ -832,6 +926,61 @@ begin
     Result := GetRouteGroup.IsMethodSkipped(AMethod);
 end;
 
+function TRALBaseRoute.IsValidationRulesStored: Boolean;
+begin
+  Result := FValidationRules.Count > 0;
+end;
+
+procedure TRALBaseRoute.SetValidationRules(const AValue: TRALValidationRules);
+begin
+  FValidationRules.Assign(AValue);
+end;
+
+{ TRALValidationRule }
+
+procedure TRALValidationRule.AssignTo(Dest: TPersistent);
+var
+  vDest: TRALValidationRule;
+begin
+  if not (Dest is TRALValidationRule) then
+  begin
+    inherited AssignTo(Dest);
+    Exit;
+  end;
+  vDest := TRALValidationRule(Dest);
+  vDest.Field := FField;
+  vDest.Message := FMessage;
+  vDest.Rule := FRule;
+  vDest.Value := FValue;
+end;
+
+function TRALValidationRule.GetDisplayName: string;
+begin
+  Result := string(FField) + ' ' + Copy(GetEnumName(TypeInfo(TRALValidationKind), Ord(FRule)), 3, 40);
+end;
+
+{ TRALValidationRules }
+
+constructor TRALValidationRules.Create(AOwner: TPersistent);
+begin
+  inherited Create(AOwner, TRALValidationRule);
+end;
+
+function TRALValidationRules.GetRule(AIndex: IntegerRAL): TRALValidationRule;
+begin
+  Result := TRALValidationRule(Items[AIndex]);
+end;
+
+function TRALValidationRules.AddRule(const AField: StringRAL; ARule: TRALValidationKind;
+  const AValue, AMessage: StringRAL): TRALValidationRule;
+begin
+  Result := TRALValidationRule(Add);
+  Result.Field := AField;
+  Result.Rule := ARule;
+  Result.Value := AValue;
+  Result.Message := AMessage;
+end;
+
 function TRALBaseRoute.RequiredPolicy: StringRAL;
 begin
   Result := '';
@@ -1047,6 +1196,10 @@ begin
   // the handlers too: a copied route must still answer
   vDest.OnReply := FOnReply;
   vDest.OnReplyGen := FOnReplyGen;
+  vDest.OnReplyObject := FOnReplyObject;
+  vDest.BodyClass := FBodyClass;
+  vDest.ResponseClass := FResponseClass;
+  vDest.ValidationRules.Assign(FValidationRules);
 end;
 
 function TRALBaseRoute.GetDisplayName: string;

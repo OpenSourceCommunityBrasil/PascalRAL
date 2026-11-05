@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALModuleObjectsPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\modules\objects"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralmoduleobjectspackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | Objects: serializer, formatters, binding, validation, typed client, OpenAPI import"/>
+    <Version Major="2"/>
+    <Files Count="8">
+      <Item1>
+        <Filename Value="..\..\..\src\modules\objects\RALObjectJSON.pas"/>
+        <UnitName Value="RALObjectJSON"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\modules\objects\RALObjectFormat.pas"/>
+        <UnitName Value="RALObjectFormat"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\modules\objects\RALObjectBinding.pas"/>
+        <UnitName Value="RALObjectBinding"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\modules\objects\RALObjectClient.pas"/>
+        <UnitName Value="RALObjectClient"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\..\src\modules\objects\RALObjectRTTI.pas"/>
+        <UnitName Value="RALObjectRTTI"/>
+      </Item5>
+      <Item6>
+        <Filename Value="..\..\..\src\modules\objects\RALOpenAPIImport.pas"/>
+        <UnitName Value="RALOpenAPIImport"/>
+      </Item6>
+      <Item7>
+        <Filename Value="..\..\..\src\modules\objects\RALModuleObjectsReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALModuleObjectsReg"/>
+      </Item7>
+      <Item8>
+        <Filename Value="ralmoduleobjectspackage.lrs"/>
+        <Type Value="LRS"/>
+      </Item8>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

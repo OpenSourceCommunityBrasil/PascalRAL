@@ -1,0 +1,46 @@
+package RALModuleObjectsPackage;
+
+{$R *.res}
+{$R 'RALModuleObjectsPackage.dcr'}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | Objects: serializer, formatters, binding, validation, typed client, OpenAPI import'}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  dbrtl,
+  PascalRAL;
+
+contains
+  RALObjectJSON in '..\..\..\src\modules\objects\RALObjectJSON.pas',
+  RALObjectFormat in '..\..\..\src\modules\objects\RALObjectFormat.pas',
+  RALObjectBinding in '..\..\..\src\modules\objects\RALObjectBinding.pas',
+  RALObjectClient in '..\..\..\src\modules\objects\RALObjectClient.pas',
+  RALObjectRTTI in '..\..\..\src\modules\objects\RALObjectRTTI.pas',
+  RALOpenAPIImport in '..\..\..\src\modules\objects\RALOpenAPIImport.pas',
+  RALModuleObjectsReg in '..\..\..\src\modules\objects\RALModuleObjectsReg.pas';
+
+end.

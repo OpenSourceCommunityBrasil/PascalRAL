@@ -89,6 +89,7 @@ contains
   RALBLAKE2 in '..\..\src\crypto\RALBLAKE2.pas',
   RALBlowfish in '..\..\src\crypto\RALBlowfish.pas',
   RALSalsa20 in '..\..\src\crypto\RALSalsa20.pas',
-  RALOTP in '..\..\src\crypto\RALOTP.pas';
+  RALOTP in '..\..\src\crypto\RALOTP.pas',
+  RALYAML in '..\..\src\common\RALYAML.pas';
 
 end.

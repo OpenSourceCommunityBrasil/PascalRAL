@@ -59,3 +59,7 @@ echo MsQuic
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\MsQuicRAL.dcr" "MsQuic.rc"
 echo RALCryptoPassword
 %path_brcc32% -fo "..\..\pkg\Delphi\Crypto\RALCryptoPasswordPackage.dcr" "RALCryptoPassword.rc"
+echo RALModuleObjects
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleObjectsPackage.dcr" "RALModuleObjects.rc"
+echo RALModuleControllers
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleControllersPackage.dcr" "RALModuleControllers.rc"

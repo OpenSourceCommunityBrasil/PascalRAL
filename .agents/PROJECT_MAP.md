@@ -55,7 +55,9 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/mqtt/db/` | `RALModuleMQTTDBPackage` | `TRALMQTTDataSetLink` (messages into a dataset) |
 | `src/modules/soap/` | `RALModuleSOAPPackage` | SOAP module, client, WSDL |
 | `src/modules/soap/design/` | `RALModuleSOAPDsgn` | SOAP IDE verbs |
-| `src/modules/swagger/` | `RALModuleSwaggerPackage` | Swagger module, Swagger and Postman exporters |
+| `src/modules/swagger/` | `RALModuleSwaggerPackage` | Swagger module, Swagger and Postman exporters, swagger.yaml |
+| `src/modules/objects/` | `RALModuleObjectsPackage` | objects in the body: serializer, formatters, binding, validation, typed client, OpenAPI import |
+| `src/modules/controllers/` | `RALModuleControllersPackage` | controllers by attributes and the interface client (Delphi 2010+) |
 | `src/modules/web/` | `RALModuleWebPackage` | Web module (static files, sessions) |
 | `src/modules/xml/` | `RALModuleXMLPackage` | XML reader, writer, DOM, and the XML storage |
 | `src/others/` | (the package that uses each) | submodules only: ZSTD, pascal_brotli, kxBSON |
@@ -183,6 +185,18 @@ runs on `TRALSocketLoop`) and by `TRALBalancer`; meant for the other protocols R
 on its own sockets.
 
 ### `src/modules/`
+
+- `objects/` (RALModuleObjectsPackage, requires dbrtl on Delphi): `RALObjectJSON`
+  (published properties <-> JSON, `TRALObject`, converters, list classes, name
+  registry, nullables), `RALObjectFormat` (formatters by Content-Type/Accept: JSON,
+  form, CSV, YAML), `RALObjectBinding` (`RALReadBody`, `RALReadParams`,
+  `RALAnswerObject`, validation, the runner of `OnReplyObject` routes, the class
+  schema; `TRALObjectSettings`), `RALObjectClient` (`TRALObjectClient`),
+  `RALObjectRTTI` (extended RTTI sugar: attributes, records, generic lists),
+  `RALOpenAPIImport`, `RALModuleObjectsReg`. Tool: `tools/ralopenapi`.
+- `controllers/` (RALModuleControllersPackage): `RALControllers`
+  (`TRALControllerModule`, the attributes), `RALRestProxy` (`TRALRestProxy`),
+  `RALModuleControllersReg`; empty without attributes and extended RTTI.
 
 - `mqtt/` (RALModuleMQTTPackage, requires PascalRAL, RALNetPackage and RALPluginAuthPackage; guide in
   `src/modules/mqtt/README.md`): `RALMQTTTypes` (reason codes, properties, reader and

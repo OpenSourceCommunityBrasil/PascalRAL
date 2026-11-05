@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Core"/>
     <Version Major="2"/>
-    <Files Count="58">
+    <Files Count="59">
       <Item1>
         <Filename Value="..\..\src\core\RALTypes.pas"/>
         <UnitName Value="RALTypes"/>
@@ -259,6 +259,10 @@
         <Filename Value="..\..\src\crypto\RALOTP.pas"/>
         <UnitName Value="RALOTP"/>
       </Item58>
+      <Item59>
+        <Filename Value="..\..\src\common\RALYAML.pas"/>
+        <UnitName Value="RALYAML"/>
+      </Item59>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

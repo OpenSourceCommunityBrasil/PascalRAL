@@ -365,6 +365,27 @@ var
     Result.Add('schema', rbAux1);
   end;
 
+  { the schema of AClassName in components/schemas, once; False when the
+    objects package is not linked or does not know the class }
+  function AddClassSchema(const AClassName: StringRAL; ARules: TRALValidationRules): boolean;
+  var
+    csText: StringRAL;
+    csJSON: TRALJSONValue;
+  begin
+    Result := FSchemas.IndexOf(AClassName) >= 0;
+    if Result or not Assigned(RALObjectSchemaProvider) then
+      Exit;
+    csText := RALObjectSchemaProvider(AClassName, ARules);
+    if csText = '' then
+      Exit;
+    csJSON := TRALJSON.ParseJSON(csText);
+    Result := csJSON is TRALJSONObject;
+    if Result then
+      FSchemas.AddObject(AClassName, csJSON)
+    else
+      csJSON.Free;
+  end;
+
   procedure getSchemaParameters;
   var
     spAux1, spAux2, spAux3: TRALJSONObject;
@@ -422,7 +443,22 @@ var
     case vMethod of
       amDELETE, amPOST, amPATCH, amPUT:
         begin
-          if ARoute.InputParams.Count > 0 then
+          { a route that reads its body into a class documents the class }
+          if (ARoute.BodyClass <> '') and AddClassSchema(ARoute.BodyClass,
+             ARoute.ValidationRules) then
+          begin
+            rbAux1 := TRALJSONObject.Create;
+            rbAux1.Add('$ref', '#/components/schemas/' + ARoute.BodyClass);
+            rbAux2 := TRALJSONObject.Create;
+            rbAux2.Add('schema', rbAux1);
+            rbAux3 := TRALJSONObject.Create;
+            rbAux3.Add(rctAPPLICATIONJSON, rbAux2);
+            rbAux4 := TRALJSONObject.Create;
+            rbAux4.Add('required', True);
+            rbAux4.Add('content', rbAux3);
+            vjMethod.Add('requestBody', rbAux4);
+          end
+          else if ARoute.InputParams.Count > 0 then
           begin
             rbAux1 := TRALJSONObject.Create;
             rbAux1.Add('$ref', '#/components/schemas/' + LowerCase(ARoute.Name));
@@ -586,7 +622,32 @@ begin
           vAux2.Add('content', vContent);
         end;
 
+        if (ARoute.ResponseClass <> '') and not ARoute.Streaming and
+           AddClassSchema(ARoute.ResponseClass, nil) then
+        begin
+          vSchema := TRALJSONObject.Create;
+          vSchema.Add('$ref', '#/components/schemas/' + ARoute.ResponseClass);
+          vStream := TRALJSONObject.Create;
+          vStream.Add('schema', vSchema);
+          vContent := TRALJSONObject.Create;
+          vContent.Add(rctAPPLICATIONJSON, vStream);
+          vAux2.Add('content', vContent);
+        end;
+
         vAux1.Add('200', vAux2);
+        if (ARoute.BodyClass <> '') and Assigned(RALObjectSchemaProvider) and
+           (vMethod in [amPOST, amPUT, amPATCH, amDELETE]) then
+        begin
+          vAux2 := TRALJSONObject.Create;
+          vAux2.Add('description', 'the body could not be read');
+          vAux1.Add('400', vAux2);
+          if ARoute.ValidationRules.Count > 0 then
+          begin
+            vAux2 := TRALJSONObject.Create;
+            vAux2.Add('description', 'the body breaks a validation rule (problem+json with errors)');
+            vAux1.Add('422', vAux2);
+          end;
+        end;
         vjMethod.Add('responses', vAux1);
 
         vRoute.Add(vStrMethod, vjMethod);
