@@ -19,6 +19,8 @@ uses
   Classes, SysUtils;
 
 type
+  ERALException = class(Exception);
+
   IntegerRAL = Integer;
   Int64RAL = Int64;
   DoubleRAL = Double;
