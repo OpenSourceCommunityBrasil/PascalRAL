@@ -113,6 +113,15 @@
   // jwt messages (sent as error_description in WWW-Authenticate)
   wmJWTExpired = 'El token expiró';
   wmJWTInvalid = 'La firma o el formato del token no es válido';
+  wmJWTRevoked = 'El token fue revocado';
+  wmJWTUnknownKey = 'El token fue firmado con una clave desconocida o retirada';
+  emJWTNoSigningKey = 'TRALServerJWTAuth no tiene una clave activa en Keys para firmar tokens';
+  emOIDCDiscovery = 'No se pudo contactar al proveedor OpenID Connect o su documento de descubrimiento no es válido';
+  emOIDCState = 'Respuesta de login con un state desconocido, vencido o reutilizado';
+  emOIDCToken = 'El proveedor OpenID Connect no emitió un id_token';
+  emOIDCRefused = 'Login rechazado por la aplicación';
+  emOIDCNoDevice = 'El proveedor OpenID Connect no ofrece el flujo de dispositivo';
+  wmOIDCClaims = 'El id_token no es de esta aplicación (iss, aud, azp, exp o nonce)';
   wmJWTNotYetValid = 'El token aún no es válido';
   wmJWTRefused = 'El token fue rechazado por el servidor';
   emJWTNoSecretKey = 'JWT: la SignSecretKey está vacía, así que el servidor no firma ni acepta tokens';

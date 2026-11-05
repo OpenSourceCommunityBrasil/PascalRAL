@@ -50,6 +50,7 @@ type
     FUserHash: boolean;
     FUserName: StringRAL;
     FOnGetCredential: TRALOnDigestCredential;
+    FOnGetRoles: TRALOnGetRoles;
     { True when the nonce is one of ours; AStale when it is, but too old }
     function CheckNonce(const ANonce: StringRAL; out AStale: boolean): boolean;
     { True when ANC is above the last one seen for ANonce; records it }
@@ -93,6 +94,9 @@ type
     property UserName: StringRAL read FUserName write FUserName;
     property OnGetCredential: TRALOnDigestCredential read FOnGetCredential
       write FOnGetCredential;
+    { Fired after the user was accepted, to fill the roles of ARequest.Identity
+      (route Roles, policies); the name and scheme are already there. }
+    property OnGetRoles: TRALOnGetRoles read FOnGetRoles write FOnGetRoles;
   end;
 
   { TRALClientDigest }
@@ -442,7 +446,17 @@ begin
 
     if FReplayProtection and
        not CheckReplay(vNonce, StrToInt64Def('$' + vNC, 0)) then
+    begin
       Refuse(AResponse, False);
+      Exit;
+    end;
+
+    { who logged in, for route Roles and policies }
+    ARequest.Identity.Clear;
+    ARequest.Identity.AuthScheme := ratDigest;
+    ARequest.Identity.Name := vUser;
+    if Assigned(FOnGetRoles) then
+      FOnGetRoles(ARequest, vUser, ARequest.Identity);
   finally
     vList.Free;
   end;

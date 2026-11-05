@@ -6,10 +6,15 @@ interface
 uses
   Classes, SysUtils, SyncObjs,
   RALConsts, RALTypes, RALRoutes, RALTools, RALRequest, RALParams, RALResponse,
-  RALCustomObjects, RALPlugin;
+  RALCustomObjects, RALPlugin, RALToken;
 
 type
   TRALOnBeforeGetToken = procedure(ARequest: TRALRequest) of object;
+
+  { Fills the roles (and anything else) of AIdentity for the user AUserName that
+    a Basic or Digest authenticator just accepted. }
+  TRALOnGetRoles = procedure(ARequest: TRALRequest; const AUserName: StringRAL;
+    AIdentity: TRALIdentity) of object;
 
   /// Base class of authenticators
   TRALAuthentication = class(TRALComponent)
@@ -147,6 +152,18 @@ type
     property AuthType: TRALAuthTypes read FAuthType;
   end;
 
+{ Whether the identity of ARequest has what ARoute asks: its Roles (any, or all
+  with RequireAllRoles) and, when it names a Policy, the PolicyPassed mark the
+  authorization plugin leaves. A route that asks nothing is always authorized }
+function RALRouteAuthorized(ARequest: TRALRequest; ARoute: TRALBaseRoute): boolean;
+{ The roles a claim holds as a list separated by commas: a JSON array of
+  strings ('["a","b"]'), a scope ('a b') or a list ('a,b') }
+function RALRolesOfClaim(const AValue: StringRAL): StringRAL;
+{ Fills AIdentity from the claims of a token AParams accepted: the name is sub,
+  every claim is kept, and the roles come from the claims named in
+  ARolesClaims (separated by commas: 'roles,groups,scope') }
+procedure RALIdentityFromClaims(AIdentity: TRALIdentity; AParams: TRALJWTParams;
+  const ARolesClaims: StringRAL; AScheme: TRALAuthTypes);
 /// Adds AChallenge to the WWW-Authenticate of AResponse: several authenticators
 /// refusing the same request each offer theirs (RFC 9110 11.6.1), in one field
 /// - the params of a response keep one value per name
@@ -194,6 +211,99 @@ begin
       vChar := CharRAL(vCode);
     Result := Result + vChar;
   end;
+end;
+
+function RALRolesOfClaim(const AValue: StringRAL): StringRAL;
+var
+  vInt: IntegerRAL;
+  vChar: AnsiChar;
+  vInQuote, vEscape: boolean;
+begin
+  { one pass: quotes and brackets go, blanks and commas become one comma; a
+    comma inside a quoted role is kept out of the separators }
+  Result := '';
+  vInQuote := False;
+  vEscape := False;
+  for vInt := POSINISTR to RALHighStr(AValue) do
+  begin
+    vChar := AValue[vInt];
+    if vInQuote then
+    begin
+      if vEscape then
+      begin
+        Result := Result + vChar;
+        vEscape := False;
+      end
+      else if vChar = '\' then
+        vEscape := True
+      else if vChar = '"' then
+        vInQuote := False
+      else if vChar = ',' then
+        Result := Result + ';'
+      else
+        Result := Result + vChar;
+    end
+    else if vChar = '"' then
+      vInQuote := True
+    else if vChar in ['[', ']'] then
+      Continue
+    else if vChar in [',', ' ', #9, #10, #13] then
+    begin
+      if (Result <> '') and (Result[RALHighStr(Result)] <> ',') then
+        Result := Result + ',';
+    end
+    else
+      Result := Result + vChar;
+  end;
+  if (Result <> '') and (Result[RALHighStr(Result)] = ',') then
+    Delete(Result, RALHighStr(Result), 1);
+end;
+
+procedure RALIdentityFromClaims(AIdentity: TRALIdentity; AParams: TRALJWTParams;
+  const ARolesClaims: StringRAL; AScheme: TRALAuthTypes);
+var
+  vList: TStringList;
+  vInt: IntegerRAL;
+  vName: StringRAL;
+begin
+  AIdentity.Clear;
+  AIdentity.AuthScheme := AScheme;
+  AIdentity.Name := AParams.Subject;
+  if AParams.Subject <> '' then
+    AIdentity.SetClaim('sub', AParams.Subject);
+  if AParams.Issuer <> '' then
+    AIdentity.SetClaim('iss', AParams.Issuer);
+  if AParams.Audience <> '' then
+    AIdentity.SetClaim('aud', AParams.Audience);
+  if AParams.Id <> '' then
+    AIdentity.SetClaim('jti', AParams.Id);
+  vList := TStringList.Create;
+  try
+    vList.Text := StringReplace(string(ARolesClaims), ',', sLineBreak, [rfReplaceAll]);
+    for vInt := 0 to vList.Count - 1 do
+    begin
+      vName := StringRAL(Trim(vList[vInt]));
+      if vName <> '' then
+        AIdentity.AddRoles(RALRolesOfClaim(AParams.GetClaim(vName)));
+    end;
+  finally
+    vList.Free;
+  end;
+  AParams.CopyClaimsTo(AIdentity.Claims);
+end;
+
+function RALRouteAuthorized(ARequest: TRALRequest; ARoute: TRALBaseRoute): boolean;
+var
+  vRoles: StringRAL;
+  vAll: boolean;
+begin
+  Result := True;
+  if ARoute = nil then
+    Exit;
+  if ARoute.RequiredRoles(vRoles, vAll) then
+    Result := ARequest.HasIdentity and ARequest.Identity.HasRoles(vRoles, vAll);
+  if Result and (ARoute.RequiredPolicy <> '') then
+    Result := ARequest.HasIdentity and ARequest.Identity.PolicyPassed;
 end;
 
 procedure RALAddChallenge(AResponse: TRALResponse; const AChallenge: StringRAL);
@@ -363,6 +473,13 @@ begin
       if AResponse.StatusCode >= HTTP_BadRequest then
         AResponse.StatusCode := HTTP_OK;
       AResponse.Params.DelParam('WWW-Authenticate', rpkHEADER);
+      { who the user is was settled; what the route asks of them is another
+        matter: a missing role or a failed policy is 403, never 401 }
+      if not RALRouteAuthorized(ARequest, vRoute) then
+      begin
+        AResponse.Answer(HTTP_Forbidden);
+        AHandled := True;
+      end;
     end;
     arUnauthorized:
     begin

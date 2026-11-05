@@ -7,12 +7,16 @@ uses
   Classes, SysUtils, DateUtils, SyncObjs,
   RALToken, RALConsts, RALTypes, RALRoutes, RALBase64, RALTools, RALJson,
   RALRequest, RALParams, RALResponse, RALCustomObjects, RALMIMETypes, RALPlugin,
-  RALAuthBase,
+  RALAuthBase, RALKeyValueStore, RALJWS, RALPassword,
   RALStream;
 
 const
   RALTOKENName = 'raltoken';
   RALPAYLOADName = 'ral_payload';
+  /// Route of the public keys of TRALServerJWTAuth.Keys (PublishJWKS).
+  RALJWKSRoute = '/.well-known/jwks.json';
+  /// Claims TRALServerJWTAuth.RolesClaim reads the roles from by default.
+  RALDefaultRolesClaim = 'roles,role,groups';
 
 
 type
@@ -47,6 +51,89 @@ type
   /// Same as RALAuthBase.TRALAuthServer.
   TRALAuthServer = RALAuthBase.TRALAuthServer;
 
+  /// Same as RALAuthBase.TRALOnGetRoles.
+  TRALOnGetRoles = RALAuthBase.TRALOnGetRoles;
+
+  { One key of TRALServerJWTAuth.Keys: an HMAC secret (HS*) or an RSA/EC key pair
+    in PEM (RS*/ES*), with the kid that names it in the token header. Tokens are
+    signed with the newest active key and checked with any key not retired, so a
+    key is replaced without logging anybody out: add the new one, wait for the
+    tokens of the old one to expire, then set Retired. }
+  TRALJWTKeyItem = class(TCollectionItem)
+  private
+    FAlgorithm: TRALJWTAlgorithm;
+    /// The PEM keys loaded, made on first use.
+    FJWSKey: TRALJWSKey;
+    FKeyID: StringRAL;
+    FNotBefore: TDateTime;
+    FPrivateKey: TStrings;
+    FPublicKey: TStrings;
+    FRetired: boolean;
+    FSecret: StringRAL;
+
+    procedure KeyChanged(Sender: TObject);
+    procedure SetPrivateKey(const AValue: TStrings);
+    procedure SetPublicKey(const AValue: TStrings);
+  protected
+    procedure AssignTo(Dest: TPersistent); override;
+    function GetDisplayName: string; override;
+  public
+    constructor Create(ACollection: TCollection); override;
+    destructor Destroy; override;
+
+    /// Whether the key signs and verifies at ANow: not retired and NotBefore reached.
+    function ActiveAt(ANow: TDateTime): boolean;
+    /// Sets algorithm, kid and key of AJWT to this key's.
+    procedure Configure(AJWT: TRALJWT);
+    /// Whether the algorithm is RS* or ES* (a PEM key, not a secret).
+    function IsAsymmetric: boolean;
+    { The RSA/EC key of the PEM texts, loaded once (the private one when given,
+      else the public); nil for an HMAC key. }
+    function JWSKey: TRALJWSKey;
+  published
+    /// Algorithm of the key.
+    property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm default tjaHSHA256;
+    /// The kid of the tokens this key signs; empty = tokens without kid.
+    property KeyID: StringRAL read FKeyID write FKeyID;
+    { The key signs only from this time on (0 = always); verifying is not
+      affected. Lets a new key be published (JWKS) before it signs. }
+    property NotBefore: TDateTime read FNotBefore write FNotBefore;
+    /// Private key in PEM (RS*/ES*): signs, and verifies.
+    property PrivateKey: TStrings read FPrivateKey write SetPrivateKey;
+    /// Public key in PEM (RS*/ES*), when the private one is not here: verifies only.
+    property PublicKey: TStrings read FPublicKey write SetPublicKey;
+    /// A retired key neither signs nor verifies: its tokens stop counting.
+    property Retired: boolean read FRetired write FRetired default False;
+    /// HMAC secret (HS*).
+    property Secret: StringRAL read FSecret write FSecret;
+  end;
+
+  /// The keys of TRALServerJWTAuth.
+  TRALJWTKeys = class(TOwnedCollection)
+  private
+    FLock: TCriticalSection;
+    function GetKey(AIndex: IntegerRAL): TRALJWTKeyItem;
+  public
+    constructor Create(AOwner: TPersistent);
+    destructor Destroy; override;
+
+    /// Adds an HMAC key.
+    function AddSecret(const AKeyID, ASecret: StringRAL;
+      AAlgorithm: TRALJWTAlgorithm = tjaHSHA256): TRALJWTKeyItem;
+    /// Adds an RS*/ES* key from its private key in PEM.
+    function AddPrivateKey(const AKeyID, APEM: StringRAL;
+      AAlgorithm: TRALJWTAlgorithm = tjaRS256): TRALJWTKeyItem;
+    /// The key named AKeyID (exact), not retired; nil when there is none.
+    function Find(const AKeyID: StringRAL): TRALJWTKeyItem;
+    /// The public keys of the RS*/ES* keys not retired, as a JWK set (RFC 7517).
+    function JWKS: StringRAL;
+    /// The key that signs at ANow: the active one with the latest NotBefore (the last added on a tie).
+    function Signer(ANow: TDateTime): TRALJWTKeyItem;
+
+    /// Keys by index.
+    property Keys[AIndex: IntegerRAL]: TRALJWTKeyItem read GetKey; default;
+  end;
+
   /// BasicAuth for client components
   TRALClientBasicAuth = class(TRALAuthClient)
   private
@@ -69,7 +156,12 @@ type
     FAuthDialog: boolean;
     FPassword: StringRAL;
     FUserName: StringRAL;
+    FPasswords: TRALPasswordList;
+    FOnGetRoles: TRALOnGetRoles;
     FOnValidate: TRALOnValidate;
+    procedure SetPasswords(const AValue: TRALPasswordList);
+  protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); overload; override;
     constructor Create(AOwner: TComponent; const AUser: StringRAL;
@@ -79,7 +171,13 @@ type
   published
     property AuthDialog: boolean read FAuthDialog write FAuthDialog;
     property Password: StringRAL read FPassword write FPassword;
+    { Users and password hashes (Argon2id, bcrypt...) checked when OnValidate is
+      not assigned; UserName and Password still accept their one user. }
+    property Passwords: TRALPasswordList read FPasswords write SetPasswords;
     property UserName: StringRAL read FUserName write FUserName;
+    { Fired after the user was accepted, to fill the roles of ARequest.Identity
+      (route Roles, policies); the name and scheme are already there. }
+    property OnGetRoles: TRALOnGetRoles read FOnGetRoles write FOnGetRoles;
     property OnValidate: TRALOnValidate read FOnValidate write FOnValidate;
   end;
 
@@ -133,6 +231,11 @@ type
     FCookieSameSite: TRALCookieSiteScope;
     FExpSecs: IntegerRAL;
     FJSONKey: StringRAL;
+    FJWKSRoute: TRALBaseRoute;
+    FKeys: TRALJWTKeys;
+    FPublishJWKS: boolean;
+    FRevocationStore: TRALKeyValueStore;
+    FRolesClaim: StringRAL;
     FSignSecretKey: StringRAL;
     FOnGetToken: TRALOnTokenJWT;
     FOnGetTokenGen: TRALOnTokenJWTGen;
@@ -154,18 +257,42 @@ type
     function IssueToken(ARequest: TRALRequest; AResponse: TRALResponse;
       var AJSONParams: StringRAL): StringRAL;
     procedure SetUseCookie(AValue: Boolean);
+    procedure SetKeys(const AValue: TRALJWTKeys);
+    procedure SetRevocationStore(const AValue: TRALKeyValueStore);
+    { Sets algorithm and key of AJWT for signing: the Signer of Keys, else
+      Algorithm and SignSecretKey. False when Keys has no active key }
+    function PrepareSigner(AJWT: TRALJWT): boolean;
+    { Reads AToken into AJWT and checks it: signature (with the key its kid
+      names, when there are Keys), dates and revocation. AReason says why not }
+    function CheckToken(AJWT: TRALJWT; const AToken: StringRAL;
+      out AReason: StringRAL): boolean;
     { RFC 6750 3: tells a client WHY it got the 401 - no credentials at all
       (AError empty) or a token that was refused, and what was wrong with it }
     procedure AnswerChallenge(AResponse: TRALResponse; const AError,
       ADescription: StringRAL);
   protected
     function GetAuthRoute: TRALBaseRoute; override;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetAuthRoute(ARoute: TRALBaseRoute); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); override;
+    /// The token route, or the JWKS route when PublishJWKS is on.
+    function ResolveRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; override;
+    { Whether the claims AParams (of a valid token) were revoked: their jti, or
+      every token of their sub issued up to RevokeAllFor. False without a
+      RevocationStore. }
+    function IsRevoked(AParams: TRALJWTParams): boolean;
+    { Revokes AToken (a valid token of this server, with a jti) until it would
+      expire; False when it is not valid or has no jti. Needs RevocationStore. }
+    function Revoke(const AToken: StringRAL): boolean;
+    { Revokes every token of the user ASubject issued up to ABefore (0 = now),
+      to the second: logs a user out everywhere. Needs RevocationStore. }
+    procedure RevokeAllFor(const ASubject: StringRAL; ABefore: TDateTime = 0);
+    /// Revokes the token whose jti is AId until AExpires (0 = forever). Needs RevocationStore.
+    procedure RevokeId(const AId: StringRAL; AExpires: TDateTime = 0);
     /// The raltoken cookie, when no Authorization header came
     procedure DecodeWithoutHeader(ARequest: TRALRequest); override;
     function GetToken(var AJSONParams: StringRAL): StringRAL;
@@ -193,6 +320,19 @@ type
       write FCookieSameSite default cssDefault;
     property ExpirationSecs: IntegerRAL read FExpSecs write FExpSecs;
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
+    { Signing keys with kid, for key rotation and RS*/ES*; empty = Algorithm
+      and SignSecretKey, as always. }
+    property Keys: TRALJWTKeys read FKeys write SetKeys;
+    { Answers GET /.well-known/jwks.json with the public keys of Keys (RS*/ES*),
+      for clients and other servers that verify the tokens. }
+    property PublishJWKS: boolean read FPublishJWKS write FPublishJWKS default False;
+    { Where revoked tokens are kept (Revoke, RevokeAllFor); share one store
+      (TRALFileStore, Redis) between servers so a token revoked on one is
+      refused by all. Linked, every token gets a jti and an iat. }
+    property RevocationStore: TRALKeyValueStore read FRevocationStore write SetRevocationStore;
+    { Claims (separated by commas) the roles of ARequest.Identity are read from:
+      a JSON array, a scope (blanks) or a list (commas). }
+    property RolesClaim: StringRAL read FRolesClaim write FRolesClaim;
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
     property UseCookie: Boolean read FUseCookie write SetUseCookie;
 
@@ -224,6 +364,201 @@ begin
   Result := RALAuthBase.RALChallengeText(AValue);
 end;
 
+{ TRALJWTKeyItem }
+
+constructor TRALJWTKeyItem.Create(ACollection: TCollection);
+begin
+  inherited Create(ACollection);
+  FAlgorithm := tjaHSHA256;
+  FPrivateKey := TStringList.Create;
+  TStringList(FPrivateKey).OnChange := {$IFDEF FPC}@{$ENDIF}KeyChanged;
+  FPublicKey := TStringList.Create;
+  TStringList(FPublicKey).OnChange := {$IFDEF FPC}@{$ENDIF}KeyChanged;
+end;
+
+destructor TRALJWTKeyItem.Destroy;
+begin
+  FreeAndNil(FJWSKey);
+  FreeAndNil(FPrivateKey);
+  FreeAndNil(FPublicKey);
+  inherited;
+end;
+
+procedure TRALJWTKeyItem.KeyChanged(Sender: TObject);
+begin
+  { the loaded key no longer matches the text; made again on the next use }
+  FreeAndNil(FJWSKey);
+end;
+
+procedure TRALJWTKeyItem.SetPrivateKey(const AValue: TStrings);
+begin
+  FPrivateKey.Assign(AValue);
+end;
+
+procedure TRALJWTKeyItem.SetPublicKey(const AValue: TStrings);
+begin
+  FPublicKey.Assign(AValue);
+end;
+
+procedure TRALJWTKeyItem.AssignTo(Dest: TPersistent);
+var
+  vDest: TRALJWTKeyItem;
+begin
+  if not (Dest is TRALJWTKeyItem) then
+  begin
+    inherited AssignTo(Dest);
+    Exit;
+  end;
+  vDest := TRALJWTKeyItem(Dest);
+  vDest.Algorithm := FAlgorithm;
+  vDest.KeyID := FKeyID;
+  vDest.NotBefore := FNotBefore;
+  vDest.PrivateKey := FPrivateKey;
+  vDest.PublicKey := FPublicKey;
+  vDest.Retired := FRetired;
+  vDest.Secret := FSecret;
+end;
+
+function TRALJWTKeyItem.GetDisplayName: string;
+begin
+  Result := string(FKeyID);
+  if Result = '' then
+    Result := inherited GetDisplayName;
+end;
+
+function TRALJWTKeyItem.ActiveAt(ANow: TDateTime): boolean;
+begin
+  Result := (not FRetired) and ((FNotBefore <= 0) or (FNotBefore <= ANow));
+end;
+
+function TRALJWTKeyItem.IsAsymmetric: boolean;
+begin
+  Result := FAlgorithm in [tjaRS256, tjaRS384, tjaRS512, tjaES256, tjaES384];
+end;
+
+function TRALJWTKeyItem.JWSKey: TRALJWSKey;
+var
+  vLock: TCriticalSection;
+begin
+  Result := nil;
+  if not IsAsymmetric then
+    Exit;
+  vLock := TRALJWTKeys(Collection).FLock;
+  vLock.Acquire;
+  try
+    if FJWSKey = nil then
+    begin
+      FJWSKey := TRALJWSKey.Create;
+      try
+        if Trim(FPrivateKey.Text) <> '' then
+          FJWSKey.LoadPrivateKeyPEM(StringRAL(FPrivateKey.Text))
+        else
+          FJWSKey.LoadPublicKeyPEM(StringRAL(FPublicKey.Text));
+        FJWSKey.KeyID := FKeyID;
+      except
+        FreeAndNil(FJWSKey);
+        raise;
+      end;
+    end;
+    Result := FJWSKey;
+  finally
+    vLock.Release;
+  end;
+end;
+
+procedure TRALJWTKeyItem.Configure(AJWT: TRALJWT);
+begin
+  AJWT.Header.Algorithm := FAlgorithm;
+  AJWT.Header.KeyID := FKeyID;
+  if IsAsymmetric then
+    AJWT.SignKey := JWSKey
+  else
+    AJWT.SignSecretKey := FSecret;
+end;
+
+{ TRALJWTKeys }
+
+constructor TRALJWTKeys.Create(AOwner: TPersistent);
+begin
+  inherited Create(AOwner, TRALJWTKeyItem);
+  FLock := TCriticalSection.Create;
+end;
+
+destructor TRALJWTKeys.Destroy;
+begin
+  inherited;
+  FreeAndNil(FLock);
+end;
+
+function TRALJWTKeys.GetKey(AIndex: IntegerRAL): TRALJWTKeyItem;
+begin
+  Result := TRALJWTKeyItem(Items[AIndex]);
+end;
+
+function TRALJWTKeys.AddSecret(const AKeyID, ASecret: StringRAL;
+  AAlgorithm: TRALJWTAlgorithm): TRALJWTKeyItem;
+begin
+  Result := TRALJWTKeyItem(Add);
+  Result.KeyID := AKeyID;
+  Result.Secret := ASecret;
+  Result.Algorithm := AAlgorithm;
+end;
+
+function TRALJWTKeys.AddPrivateKey(const AKeyID, APEM: StringRAL;
+  AAlgorithm: TRALJWTAlgorithm): TRALJWTKeyItem;
+begin
+  Result := TRALJWTKeyItem(Add);
+  Result.KeyID := AKeyID;
+  Result.Algorithm := AAlgorithm;
+  Result.PrivateKey.Text := string(APEM);
+end;
+
+function TRALJWTKeys.Find(const AKeyID: StringRAL): TRALJWTKeyItem;
+var
+  vInt: IntegerRAL;
+begin
+  for vInt := 0 to Count - 1 do
+  begin
+    Result := Keys[vInt];
+    if (not Result.Retired) and (Result.KeyID = AKeyID) then
+      Exit;
+  end;
+  Result := nil;
+end;
+
+function TRALJWTKeys.Signer(ANow: TDateTime): TRALJWTKeyItem;
+var
+  vInt: IntegerRAL;
+  vKey: TRALJWTKeyItem;
+begin
+  Result := nil;
+  for vInt := 0 to Count - 1 do
+  begin
+    vKey := Keys[vInt];
+    if vKey.ActiveAt(ANow) and
+       ((Result = nil) or (vKey.NotBefore >= Result.NotBefore)) then
+      Result := vKey;
+  end;
+end;
+
+function TRALJWTKeys.JWKS: StringRAL;
+var
+  vInt: IntegerRAL;
+  vKey: TRALJWTKeyItem;
+begin
+  Result := '';
+  for vInt := 0 to Count - 1 do
+  begin
+    vKey := Keys[vInt];
+    if vKey.Retired or not vKey.IsAsymmetric then
+      Continue;
+    if Result <> '' then
+      Result := Result + ',';
+    Result := Result + vKey.JWSKey.AsJWK(TRALJWT.AlgorithmName(vKey.Algorithm));
+  end;
+  Result := '{"keys":[' + Result + ']}';
+end;
+
 { TRALServerJWTAuth }
 
 { A JWT component dropped on a form with SignSecretKey left empty cannot sign
@@ -233,7 +568,7 @@ end;
   password. A key of blanks counts as none, as for TRALServerBasicAuth }
 function TRALServerJWTAuth.HasSecretKey(AResponse: TRALResponse): boolean;
 begin
-  Result := RALTrim(FSignSecretKey) <> '';
+  Result := (FKeys.Count > 0) or (RALTrim(FSignSecretKey) <> '');
   if not Result then
     AResponse.AnswerError(HTTP_InternalError, emJWTNoSecretKey);
 end;
@@ -322,6 +657,13 @@ var
   vParamJWT: TRALJWTParams;
   vCookie: TRALCookie;
 begin
+  if FPublishJWKS and RALSameName(ARequest.Query, RALJWKSRoute) then
+  begin
+    AResponse.Answer(HTTP_OK, FKeys.JWKS, rctAPPLICATIONJSON);
+    AResponse.AddHeader('Cache-Control', 'max-age=300');
+    Exit;
+  end;
+
   if not RALSameName(ARequest.Query, AuthRoute.Route) then
   begin
     AResponse.Answer(HTTP_NotFound);
@@ -401,6 +743,15 @@ begin
   FAuthToken.AllowedMethods := [amPOST, amOPTIONS];
   FAuthToken.Description.Text := 'Get a JWT Token';
 
+  FJWKSRoute := TRALBaseRoute(FCollectionAuth.Add);
+  FJWKSRoute.Route := RALJWKSRoute;
+  FJWKSRoute.Name := 'jwks';
+  FJWKSRoute.SkipAuthMethods := [amALL];
+  FJWKSRoute.AllowedMethods := [amGET, amOPTIONS];
+  FJWKSRoute.Description.Text := 'Public keys of the JWT signatures (JWK set)';
+
+  FKeys := TRALJWTKeys.Create(Self);
+  FRolesClaim := RALDefaultRolesClaim;
   FExpSecs := 1800;
   FJSONKey := 'token';
 end;
@@ -408,7 +759,173 @@ end;
 destructor TRALServerJWTAuth.Destroy;
 begin
   FreeAndNil(FCollectionAuth);
+  FreeAndNil(FKeys);
   inherited;
+end;
+
+procedure TRALServerJWTAuth.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited;
+  if (Operation = opRemove) and (AComponent = FRevocationStore) then
+    FRevocationStore := nil;
+end;
+
+procedure TRALServerJWTAuth.SetKeys(const AValue: TRALJWTKeys);
+begin
+  FKeys.Assign(AValue);
+end;
+
+procedure TRALServerJWTAuth.SetRevocationStore(const AValue: TRALKeyValueStore);
+begin
+  if FRevocationStore = AValue then
+    Exit;
+  if FRevocationStore <> nil then
+    FRevocationStore.RemoveFreeNotification(Self);
+  FRevocationStore := AValue;
+  if FRevocationStore <> nil then
+    FRevocationStore.FreeNotification(Self);
+end;
+
+function TRALServerJWTAuth.PrepareSigner(AJWT: TRALJWT): boolean;
+var
+  vKey: TRALJWTKeyItem;
+begin
+  Result := True;
+  if FKeys.Count = 0 then
+  begin
+    AJWT.Header.Algorithm := FAlgorithm;
+    AJWT.SignSecretKey := FSignSecretKey;
+    Exit;
+  end;
+  vKey := FKeys.Signer(Now);
+  Result := vKey <> nil;
+  if Result then
+    vKey.Configure(AJWT);
+end;
+
+function TRALServerJWTAuth.CheckToken(AJWT: TRALJWT; const AToken: StringRAL;
+  out AReason: StringRAL): boolean;
+var
+  vKey: TRALJWTKeyItem;
+begin
+  AReason := '';
+  if FKeys.Count = 0 then
+  begin
+    AJWT.Header.Algorithm := FAlgorithm;
+    AJWT.SignSecretKey := FSignSecretKey;
+    Result := AJWT.IsValidToken(AToken);
+  end
+  else
+  begin
+    { the kid picks the key, and the key the algorithm: the token names the
+      key, never how to check it. A first read only to find the kid }
+    AJWT.Token := AToken;
+    vKey := FKeys.Find(AJWT.Header.KeyID);
+    if vKey = nil then
+    begin
+      AReason := wmJWTUnknownKey;
+      Result := False;
+      Exit;
+    end;
+    vKey.Configure(AJWT);
+    Result := AJWT.IsValidToken(AToken);
+  end;
+
+  if not Result then
+  begin
+    { IsValidToken read the payload before deciding, so it still tells the
+      two cases a client can do something about }
+    if (AJWT.Payload.Expiration > 0) and (AJWT.Payload.Expiration < Now) then
+      AReason := wmJWTExpired
+    else if (AJWT.Payload.NotBefore > 0) and (AJWT.Payload.NotBefore > Now) then
+      AReason := wmJWTNotYetValid
+    else
+      AReason := wmJWTInvalid;
+  end
+  else if IsRevoked(AJWT.Payload) then
+  begin
+    AReason := wmJWTRevoked;
+    Result := False;
+  end;
+end;
+
+function TRALServerJWTAuth.IsRevoked(AParams: TRALJWTParams): boolean;
+var
+  vValue: RawByteString;
+begin
+  Result := False;
+  if FRevocationStore = nil then
+    Exit;
+  if (AParams.Id <> '') and FRevocationStore.Get('jwt.jti:' + AParams.Id, vValue) then
+  begin
+    Result := True;
+    Exit;
+  end;
+  { a user logged out everywhere: every token issued up to that second. A
+    token without iat cannot prove it is newer }
+  if (AParams.Subject <> '') and FRevocationStore.Get('jwt.sub:' + AParams.Subject, vValue) then
+    Result := (AParams.IssuedAt <= 0) or
+      (DateTimeToUnix(RALDateTimeToGMT(AParams.IssuedAt)) <= StrToInt64Def(string(vValue), 0));
+end;
+
+function TRALServerJWTAuth.Revoke(const AToken: StringRAL): boolean;
+var
+  vJWT: TRALJWT;
+  vReason: StringRAL;
+begin
+  Result := False;
+  if FRevocationStore = nil then
+    Exit;
+  vJWT := TRALJWT.Create;
+  try
+    if CheckToken(vJWT, AToken, vReason) and (vJWT.Payload.Id <> '') then
+    begin
+      RevokeId(vJWT.Payload.Id, vJWT.Payload.Expiration);
+      Result := True;
+    end;
+  finally
+    vJWT.Free;
+  end;
+end;
+
+procedure TRALServerJWTAuth.RevokeAllFor(const ASubject: StringRAL; ABefore: TDateTime);
+var
+  vTTL: Int64RAL;
+begin
+  if (FRevocationStore = nil) or (ASubject = '') then
+    Exit;
+  if ABefore <= 0 then
+    ABefore := Now;
+  { kept while a token issued before it can still be alive }
+  vTTL := 0;
+  if FExpSecs > 0 then
+    vTTL := (Int64RAL(FExpSecs) + 60) * 1000;
+  FRevocationStore.Put('jwt.sub:' + ASubject,
+    RawByteString(IntToStr(DateTimeToUnix(RALDateTimeToGMT(ABefore)))), vTTL);
+end;
+
+procedure TRALServerJWTAuth.RevokeId(const AId: StringRAL; AExpires: TDateTime);
+var
+  vTTL: Int64RAL;
+begin
+  if (FRevocationStore = nil) or (AId = '') then
+    Exit;
+  vTTL := 0;
+  if AExpires > 0 then
+  begin
+    vTTL := MilliSecondsBetween(Now, AExpires) + 60000;
+    if AExpires < Now then
+      Exit; // already dead
+  end;
+  FRevocationStore.Put('jwt.jti:' + AId, '1', vTTL);
+end;
+
+function TRALServerJWTAuth.ResolveRoute(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALRoute;
+begin
+  Result := inherited ResolveRoute(ARequest, AResponse);
+  if (Result = nil) and FPublishJWKS and RALSameName(ARequest.Query, RALJWKSRoute) then
+    Result := TRALRoute(FJWKSRoute);
 end;
 
 function TRALServerJWTAuth.RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL)
@@ -423,14 +940,21 @@ function TRALServerJWTAuth.RenewTokenFor(ARequest: TRALRequest;
 var
   vJWT: TRALJWT;
   vResult: boolean;
+  vReason: StringRAL;
 begin
   Result := '';
   vJWT := TRALJWT.Create;
   try
-    vJWT.Header.Algorithm := FAlgorithm;
-    vJWT.SignSecretKey := FSignSecretKey;
-    if vJWT.isValidToken(AToken) then
+    if CheckToken(vJWT, AToken, vReason) then
     begin
+      { signed again with the key that signs now, which may be newer }
+      if not PrepareSigner(vJWT) then
+        Exit;
+      if FRevocationStore <> nil then
+      begin
+        vJWT.Payload.IssuedAt := Now;
+        vJWT.Payload.createNewId;
+      end;
       { the claims are the ones already signed in the old token, never the
         ones the client sends along: a renew must not be a rewrite }
 
@@ -503,26 +1027,21 @@ begin
 
   vJWT := TRALJWT.Create;
   try
-    vJWT.Header.Algorithm := FAlgorithm;
-    vJWT.SignSecretKey := FSignSecretKey;
-    vResult := vJWT.isValidToken(ARequest.Authorization.AuthString);
+    vResult := CheckToken(vJWT, ARequest.Authorization.AuthString, vReason);
     if vResult then
     begin
+      { who the token says: OnValidate may read and change the identity }
+      RALIdentityFromClaims(ARequest.Identity, vJWT.Payload, FRolesClaim, ratBearer);
       if Assigned(FOnValidate) then
         FOnValidate(ARequest, AResponse, vJWT.Payload, vResult)
       else if Assigned(FOnValidateGen) then
         FOnValidateGen(ARequest, AResponse, vJWT.Payload, vResult);
       if not vResult then
+      begin
         vReason := wmJWTRefused;
-    end
-    { IsValidToken read the payload before deciding, so it still tells the
-      two cases a client can do something about }
-    else if (vJWT.Payload.Expiration > 0) and (vJWT.Payload.Expiration < Now) then
-      vReason := wmJWTExpired
-    else if (vJWT.Payload.NotBefore > 0) and (vJWT.Payload.NotBefore > Now) then
-      vReason := wmJWTNotYetValid
-    else
-      vReason := wmJWTInvalid;
+        ARequest.Identity.Clear;
+      end;
+    end;
   finally
     FreeAndNil(vJWT);
   end;
@@ -624,12 +1143,20 @@ var
 begin
   vJWT := TRALJWT.Create;
   try
-    vJWT.Header.Algorithm := FAlgorithm;
-    vJWT.SignSecretKey := FSignSecretKey;
+    if not PrepareSigner(vJWT) then
+      raise Exception.Create(emJWTNoSigningKey);
 
     vJWT.Payload.AsJSON := AJSONParams;
     if FExpSecs > 0 then
       vJWT.Payload.Expiration := IncSecond(Now, FExpSecs);
+    { revocation needs to name the token (jti) and to know its age (iat) }
+    if FRevocationStore <> nil then
+    begin
+      if vJWT.Payload.Id = '' then
+        vJWT.Payload.createNewId;
+      if vJWT.Payload.IssuedAt <= 0 then
+        vJWT.Payload.IssuedAt := Now;
+    end;
 
     AJSONParams := vJWT.Payload.AsJSON;
 
@@ -656,6 +1183,24 @@ begin
   Password := APassword;
 end;
 
+procedure TRALServerBasicAuth.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited;
+  if (Operation = opRemove) and (AComponent = FPasswords) then
+    FPasswords := nil;
+end;
+
+procedure TRALServerBasicAuth.SetPasswords(const AValue: TRALPasswordList);
+begin
+  if FPasswords = AValue then
+    Exit;
+  if FPasswords <> nil then
+    FPasswords.RemoveFreeNotification(Self);
+  FPasswords := AValue;
+  if FPasswords <> nil then
+    FPasswords.FreeNotification(Self);
+end;
+
 procedure TRALServerBasicAuth.Validate(ARequest: TRALRequest; AResponse: TRALResponse);
 var
   vResult: boolean;
@@ -677,24 +1222,37 @@ begin
     Exit;
   end;
 
+  vAuthBasic := ARequest.Authorization.AsAuthBasic;
   if Assigned(FOnValidate) then
   begin
     vResult := False;
     FOnValidate(ARequest, AResponse, vResult);
-    if not vResult then
-      Error401;
   end
   else
   begin
-    vAuthBasic := ARequest.Authorization.AsAuthBasic;
     { both compared in constant time: "<>" stops at the first wrong character,
       and the time it takes to refuse leaks how much of the secret is right }
-    if (ARequest.Authorization.AuthType <> ratBasic) or (vAuthBasic = nil) or
-       (Trim(FUserName) = '') or (Trim(FPassword) = '') or
-       (not RALSameSecret(vAuthBasic.UserName, FUserName)) or
-       (not RALSameSecret(vAuthBasic.Password, FPassword)) then
-      Error401;
+    vResult := (vAuthBasic <> nil) and
+       (Trim(FUserName) <> '') and (Trim(FPassword) <> '') and
+       RALSameSecret(vAuthBasic.UserName, FUserName) and
+       RALSameSecret(vAuthBasic.Password, FPassword);
+    if (not vResult) and (vAuthBasic <> nil) and (FPasswords <> nil) then
+      vResult := FPasswords.Verify(vAuthBasic.UserName, vAuthBasic.Password);
   end;
+
+  if not vResult then
+  begin
+    Error401;
+    Exit;
+  end;
+
+  { who logged in, for route Roles and policies }
+  ARequest.Identity.Clear;
+  ARequest.Identity.AuthScheme := ratBasic;
+  if vAuthBasic <> nil then
+    ARequest.Identity.Name := vAuthBasic.UserName;
+  if Assigned(FOnGetRoles) then
+    FOnGetRoles(ARequest, ARequest.Identity.Name, ARequest.Identity);
 end;
 
 { TRALClientBasicAuth }

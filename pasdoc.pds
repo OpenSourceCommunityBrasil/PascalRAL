@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=50
+Count=51
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -118,8 +118,9 @@ Item_46=src\plugins\cache
 Item_47=src\net
 Item_48=src\plugins\forwarded
 Item_49=src\modules\proxy
+Item_50=src\crypto\password
 [Files]
-Count=177
+Count=187
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -297,6 +298,16 @@ Item_173=src\modules\proxy\design\RALModuleProxyReg.pas
 Item_174=src\crypto\RALSCRAM.pas
 Item_175=src\modules\proxy\RALBalancer.pas
 Item_176=src\modules\proxy\RALProxyConfig.pas
+Item_177=src\crypto\RALBLAKE2.pas
+Item_178=src\crypto\RALBlowfish.pas
+Item_179=src\crypto\RALSalsa20.pas
+Item_180=src\crypto\RALOTP.pas
+Item_181=src\crypto\password\RALArgon2.pas
+Item_182=src\crypto\password\RALScrypt.pas
+Item_183=src\crypto\password\RALPassword.pas
+Item_184=src\crypto\password\RALCryptoPasswordReg.pas
+Item_185=src\plugins\auth\RALAuthorization.pas
+Item_186=src\plugins\auth\RALOIDC.pas
 [AdditionalFiles]
 Count=0
 

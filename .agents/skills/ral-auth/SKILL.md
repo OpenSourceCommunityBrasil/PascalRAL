@@ -98,6 +98,27 @@ H(A1)); `Algorithms` (SHA-256, SHA-512-256, MD5, each with `-sess`), `Realm`,
 Client `TRALClientOAuth2`: `TokenURL`, `ClientID`, `ClientSecret`, `Scope`; it renews
 ahead of expiry. Desktop login through a browser: `TRALOAuth2Loopback`.
 
+## Roles and policies
+
+Every authenticator fills `ARequest.Identity` (`Name`, `Roles`, `Claims`): Basic and
+Digest through `OnGetRoles`, JWT and OAuth2 from the claims in `RolesClaim`. A route or
+group asks `Roles` (any; `RequireAllRoles` for all) or names a `Policy`, judged by a
+`TRALAuthorizationPlugin` (`Policies`: roles, `claim=value` lines, scopes,
+`OnEvaluate`). A missing role or a failed policy is 403; a policy without the plugin, or
+unknown, refuses.
+
+## Passwords, revocation, keys, OIDC, TOTP
+
+- Hashes: `RALPasswordHash`/`RALPasswordVerify`/`RALPasswordNeedsRehash`
+  (`RALCryptoPasswordPackage`, Argon2id by default, bcrypt, scrypt, PBKDF2 in the PHC
+  format); `TRALServerBasicAuth.Passwords` takes a `TRALPasswordList` (`user:hash`).
+- JWT: `RevocationStore` (`Revoke`, `RevokeAllFor`; shared with OAuth2), `Keys` (kid,
+  HS or RS/ES PEM, `NotBefore`, `Retired`) and `PublishJWKS`.
+- OpenID Connect: `TRALOIDCLogin` (plugin, routes `/oidc/login|callback|logout`,
+  `Session` = a JWT authenticator with `UseCookie`), `TRALClientOIDCAuth` (discovery,
+  device flow, browser flow).
+- TOTP: `TRALTOTP` in `RALOTP` (pacote-base), `Store` refuses a reused code.
+
 ## Protect the login
 
 On a server reachable from outside, link with the authentication:
@@ -119,4 +140,7 @@ guesses count), `TRALFloodPlugin`, `TRALBlackListPlugin`/`TRALWhiteListPlugin`
 
 Guide (Portuguese): wiki
 [autenticacao](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/autenticacao),
+[autorizacao](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/autorizacao),
+[oidc](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/oidc),
+[senhas](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/senhas),
 [seguranca](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/seguranca).

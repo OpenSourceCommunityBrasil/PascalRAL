@@ -17,7 +17,7 @@ uses
   RALCripto, RALCriptoAES, RALCriptoOpenSSL, RALOpenSSL, RALBigInt, RALASN1, 
   RALRSA, RALX509, RALJWS, RALToken, RALSecurity, RALCORS, RALContent, 
   RALConcurrency, RALResponseStream, RALSSE, RALRegex, RALRoutesAnon, 
-  RALKeyValueStore, RALSCRAM;
+  RALKeyValueStore, RALSCRAM, RALBLAKE2, RALBlowfish, RALSalsa20, RALOTP;
 
 implementation
 

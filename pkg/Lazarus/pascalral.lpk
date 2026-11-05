@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Core"/>
     <Version Major="2"/>
-    <Files Count="54">
+    <Files Count="58">
       <Item1>
         <Filename Value="..\..\src\core\RALTypes.pas"/>
         <UnitName Value="RALTypes"/>
@@ -243,6 +243,22 @@
         <Filename Value="..\..\src\crypto\RALSCRAM.pas"/>
         <UnitName Value="RALSCRAM"/>
       </Item54>
+      <Item55>
+        <Filename Value="..\..\src\crypto\RALBLAKE2.pas"/>
+        <UnitName Value="RALBLAKE2"/>
+      </Item55>
+      <Item56>
+        <Filename Value="..\..\src\crypto\RALBlowfish.pas"/>
+        <UnitName Value="RALBlowfish"/>
+      </Item56>
+      <Item57>
+        <Filename Value="..\..\src\crypto\RALSalsa20.pas"/>
+        <UnitName Value="RALSalsa20"/>
+      </Item57>
+      <Item58>
+        <Filename Value="..\..\src\crypto\RALOTP.pas"/>
+        <UnitName Value="RALOTP"/>
+      </Item58>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

@@ -111,7 +111,10 @@ type
     FName: StringRAL;
     FOnAfterExecute: TRALOnReply;
     FOnBeforeExecute: TRALOnReply;
+    FPolicy: StringRAL;
     FPrefix: StringRAL;
+    FRequireAllRoles: boolean;
+    FRoles: StringRAL;
     FSkipAuthMethods: TRALMethods;
     FVersions: StringRAL;
 
@@ -139,8 +142,17 @@ type
     { Fired before each route of the group, after the module's BeforeExecute; a
       status of 400 or above answered here ends the request: the route does not run. }
     property OnBeforeExecute: TRALOnReply read FOnBeforeExecute write FOnBeforeExecute;
+    { Name of the authorization policy (TRALAuthorizationPlugin) the routes of the
+      group that name none of their own must pass; empty = none. }
+    property Policy: StringRAL read FPolicy write FPolicy;
     /// Path prefix of the routes of the group, after the module's Domain.
     property Prefix: StringRAL read FPrefix write SetPrefix;
+    /// With Roles, the identity must have every role listed, not just one.
+    property RequireAllRoles: boolean read FRequireAllRoles write FRequireAllRoles default False;
+    { Roles (separated by commas) the routes of the group that list none of their
+      own ask of the authenticated identity: one of them, or all with
+      RequireAllRoles. A missing role is 403. Empty = any authenticated user. }
+    property Roles: StringRAL read FRoles write FRoles;
     /// Methods that skip authentication on every route of the group; amALL skips all.
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write FSkipAuthMethods;
     /// API versions of the routes of the group that have none of their own ('1,2'); empty = any.
@@ -185,6 +197,9 @@ type
     FOnReply: TRALOnReply;
     FOnReplyGen: TRALOnReplyGen;
     FOutputParams: TRALRouteParams;
+    FPolicy: StringRAL;
+    FRequireAllRoles: boolean;
+    FRoles: StringRAL;
     FRoute: StringRAL;
     /// Segments of FFullRoute, matched against each request.
     FSegments: TRALRouteSegments;
@@ -237,6 +252,13 @@ type
     function IsMethodAllowed(const AMethod: TRALMethod): boolean;
     /// True when AMethod skips authentication on this route.
     function IsMethodSkipped(const AMethod: TRALMethod): boolean;
+    /// The policy the route asks: its own Policy, else its group's; '' = none.
+    function RequiredPolicy: StringRAL;
+    { The roles the route asks (its own Roles, else its group's) and whether all
+      of them are needed; False when it asks none. }
+    function RequiredRoles(out ARoles: StringRAL; out AAll: boolean): boolean;
+    /// Sets Roles (and RequireAllRoles with AAll); returns the route.
+    function RequireRoles(const ARoles: StringRAL; AAll: boolean = False): TRALBaseRoute;
     /// Sets Group; returns the route.
     function InGroup(const AGroup: StringRAL): TRALBaseRoute;
     /// Sets SkipAuthMethods; returns the route.
@@ -266,6 +288,16 @@ type
     property OnReply: TRALOnReply read FOnReply write FOnReply;
     /// Handler of the route, as a plain procedure.
     property OnReplyGen: TRALOnReplyGen read FOnReplyGen write FOnReplyGen;
+    { Name of the authorization policy (TRALAuthorizationPlugin) the identity must
+      pass; empty = the group's, or none. A route that names one is refused (403)
+      when no plugin judges it. }
+    property Policy: StringRAL read FPolicy write FPolicy;
+    /// With Roles, the identity must have every role listed, not just one.
+    property RequireAllRoles: boolean read FRequireAllRoles write FRequireAllRoles default False;
+    { Roles (separated by commas) the authenticated identity needs: one of them,
+      or all with RequireAllRoles; a missing role is 403, never 401. Empty = the
+      group's, or any authenticated user. Judged only where an authenticator runs. }
+    property Roles: StringRAL read FRoles write FRoles;
     /// Methods that skip authentication on this route; amALL skips all.
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
     { The handler answers with TRALResponse.Send. Not a permission - Send works on
@@ -310,6 +342,9 @@ type
     property OnBeforeExecute;
     property OnReply;
     property OutputParams;
+    property Policy;
+    property RequireAllRoles;
+    property Roles;
     property Route;
     property SkipAuthMethods;
     property Streaming;
@@ -797,6 +832,42 @@ begin
     Result := GetRouteGroup.IsMethodSkipped(AMethod);
 end;
 
+function TRALBaseRoute.RequiredPolicy: StringRAL;
+begin
+  Result := '';
+  if Self = nil then
+    Exit;
+  Result := FPolicy;
+  if (Result = '') and (FGroup <> '') and (GetRouteGroup <> nil) then
+    Result := GetRouteGroup.Policy;
+end;
+
+function TRALBaseRoute.RequiredRoles(out ARoles: StringRAL; out AAll: boolean): boolean;
+begin
+  ARoles := '';
+  AAll := False;
+  if Self = nil then
+  begin
+    Result := False;
+    Exit;
+  end;
+  ARoles := FRoles;
+  AAll := FRequireAllRoles;
+  if (ARoles = '') and (FGroup <> '') and (GetRouteGroup <> nil) then
+  begin
+    ARoles := GetRouteGroup.Roles;
+    AAll := GetRouteGroup.RequireAllRoles;
+  end;
+  Result := ARoles <> '';
+end;
+
+function TRALBaseRoute.RequireRoles(const ARoles: StringRAL; AAll: boolean): TRALBaseRoute;
+begin
+  Result := Self;
+  Roles := ARoles;
+  RequireAllRoles := AAll;
+end;
+
 function TRALBaseRoute.SkipAuth(AMethods: TRALMethods): TRALBaseRoute;
 begin
   Result := Self;
@@ -965,6 +1036,9 @@ begin
   vDest.Callback := FCallback;
   vDest.Description.Assign(FDescription);
   vDest.Name := FName;
+  vDest.Policy := FPolicy;
+  vDest.RequireAllRoles := FRequireAllRoles;
+  vDest.Roles := FRoles;
   vDest.Route := FRoute;
   vDest.SkipAuthMethods := FSkipAuthMethods;
   vDest.URIParams.Assign(FURIParams);
@@ -1791,7 +1865,10 @@ begin
   vDest.Name := FName;
   vDest.OnAfterExecute := FOnAfterExecute;
   vDest.OnBeforeExecute := FOnBeforeExecute;
+  vDest.Policy := FPolicy;
   vDest.Prefix := FPrefix;
+  vDest.RequireAllRoles := FRequireAllRoles;
+  vDest.Roles := FRoles;
   vDest.SkipAuthMethods := FSkipAuthMethods;
   vDest.Versions := FVersions;
 end;

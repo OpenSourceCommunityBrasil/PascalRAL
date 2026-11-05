@@ -86,6 +86,8 @@ type
     procedure AddClaim(const AKey: StringRAL; const AValue: StringRAL);
     procedure Clear;
     procedure createNewId;
+    /// Adds every custom claim to AList as name=value lines (the registered ones are fields).
+    procedure CopyClaimsTo(AList: TStrings);
     procedure DelClaim(const AKey: StringRAL);
     function GetClaim(const AKey: StringRAL): StringRAL;
     /// Whether the aud claim names AAudience - aud may be one string or a
@@ -869,6 +871,14 @@ begin
   finally
     FreeAndNil(vJson);
   end;
+end;
+
+procedure TRALJWTParams.CopyClaimsTo(AList: TStrings);
+var
+  vInt: IntegerRAL;
+begin
+  for vInt := 0 to FCustomClaims.Count - 1 do
+    AList.Values[FCustomClaims.Names[vInt]] := FCustomClaims.ValueFromIndex[vInt];
 end;
 
 function TRALJWTParams.GetClaim(const AKey: StringRAL): StringRAL;

@@ -29,7 +29,8 @@ uses
   Classes, SysUtils, DateUtils, SyncObjs,
   RALTypes, RALConsts, RALTools, RALBase64, RALJson, RALToken, RALJWS,
   RALHashBase, RALSHA2_32, RALMIMETypes, RALUrlCoder, RALRoutes, RALRequest,
-  RALResponse, RALParams, RALCustomObjects, RALPlugin, RALAuthBase, RALServer;
+  RALResponse, RALParams, RALCustomObjects, RALPlugin, RALAuthBase, RALServer,
+  RALKeyValueStore;
 
 type
   /// How a client proves itself to the token endpoint: HTTP Basic
@@ -148,6 +149,8 @@ type
     FRouteScopes: TStrings;
     FSignSecretKey: StringRAL;
     FStore: TRALOAuth2Store;
+    FRevocationStore: TRALKeyValueStore;
+    FRolesClaim: StringRAL;
     FTokenRoute: TRALRoute;
     FValidation: TRALOAuth2Validation;
     FOnAuthorize: TRALOnOAuth2Authorize;
@@ -187,11 +190,15 @@ type
     procedure SetRedirectURIs(AValue: TStrings);
     procedure SetRouteScopes(AValue: TStrings);
     procedure SetStore(AValue: TRALOAuth2Store);
+    procedure SetRevocationStore(const AValue: TRALKeyValueStore);
     function SigningKey: TRALJWSKey;
+    /// Whether the token id AJTI was revoked, in Store or in RevocationStore.
+    function TokenRevoked(const AJTI: StringRAL): boolean;
     function VerifyJWT(const AToken: StringRAL; AKey: TRALJWSKey;
       AClaims: TRALJWTParams; out AReason: StringRAL): boolean;
   protected
     function GetAuthRoute: TRALBaseRoute; override;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -278,6 +285,13 @@ type
     /// "route=scope1 scope2" lines: the scopes a token needs for a route (its
     /// full route, as declared: /users/:id)
     property RouteScopes: TStrings read FRouteScopes write SetRouteScopes;
+    { Revoked token ids are also kept here (keys 'jwt.jti:<jti>', the same as
+      TRALServerJWTAuth), so servers sharing one store refuse a token revoked
+      on any of them. Unlinked, Store alone keeps them. }
+    property RevocationStore: TRALKeyValueStore read FRevocationStore write SetRevocationStore;
+    { Claims (separated by commas) the roles of ARequest.Identity are read from;
+      the scope is one of them by default, so a policy can ask for a scope. }
+    property RolesClaim: StringRAL read FRolesClaim write FRolesClaim;
     /// The HMAC key of Algorithm HS*
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
     property TokenPath: StringRAL index 0 read GetPath write SetPath;
@@ -332,6 +346,15 @@ type
       result code) }
     function RequestToken(ATransport: TRALAuthTransport; AFields: TStrings;
       AResponse: TRALResponse; out AError: StringRAL): IntegerRAL;
+  protected
+    { A token answer was taken (AJson, the provider's object): a subclass reads
+      what else came with it - the id_token of OpenID Connect }
+    procedure TokenReceived(AJson: TRALJSONObject); virtual;
+    { Takes the tokens of a token answer obtained outside a request (the device
+      flow): AJson is the provider's object. False, with AError, when it holds
+      no access token }
+    function TakeTokenAnswer(AJson: TRALJSONObject; AStatus: IntegerRAL;
+      out AError: StringRAL): boolean;
   public
     constructor Create(AOwner: TComponent); override;
     /// The URL to send the user to (a browser), with a new state and PKCE
@@ -411,6 +434,13 @@ type
     /// Any engine; its Port is the one of RedirectURI
     property Server: TRALServer read FServer write SetServer;
   end;
+
+{ A request of the authenticators' own, outside any client the application
+  configured: GET AURL, or POST AFields as a form; AUser/APassword go as Basic.
+  AEngine empty picks Indy, Synopse, netHTTP or fpHTTP, the first linked.
+  AStatus is the HTTP status, 0 when no answer came. }
+function RALOAuth2Fetch(const AURL: StringRAL; AFields: TStrings;
+  const AUser, APassword, AEngine: StringRAL; out AStatus: IntegerRAL): StringRAL;
 
 implementation
 
@@ -699,6 +729,7 @@ begin
   FAuthorizeRoute.AllowedMethods := [amGET, amPOST];
   FJWKSRoute.AllowedMethods := [amGET, amOPTIONS];
   FMetadataRoute.AllowedMethods := [amGET, amOPTIONS];
+  FRolesClaim := 'roles,role,groups,scope';
 end;
 
 destructor TRALServerOAuth2.Destroy;
@@ -999,7 +1030,12 @@ begin
     try
       if (vToken <> '') and CheckAccessToken(vToken, vClaims, vReason) and
          (vClaims.GetClaim('client_id') = vClient) then
+      begin
         FStore.Revoke(vClaims.Id, IncSecond(vClaims.Expiration, FClockSkew));
+        if (FRevocationStore <> nil) and (vClaims.Id <> '') then
+          FRevocationStore.Put('jwt.jti:' + vClaims.Id, '1',
+            MilliSecondsBetween(Now, IncSecond(vClaims.Expiration, FClockSkew)) + 60000);
+      end;
     finally
       vClaims.Free;
     end;
@@ -1297,6 +1333,12 @@ end;
 
 function TRALServerOAuth2.Fetch(const AURL: StringRAL; AFields: TStrings;
   const AUser, APassword: StringRAL; out AStatus: IntegerRAL): StringRAL;
+begin
+  Result := RALOAuth2Fetch(AURL, AFields, AUser, APassword, FFetchEngine, AStatus);
+end;
+
+function RALOAuth2Fetch(const AURL: StringRAL; AFields: TStrings;
+  const AUser, APassword, AEngine: StringRAL; out AStatus: IntegerRAL): StringRAL;
 const
   cPreferred: array[0..3] of StringRAL = (ENGINEINDY, ENGINESYNOPSE, ENGINENETHTTP,
     ENGINEFPHTTP);
@@ -1309,7 +1351,7 @@ var
 begin
   Result := '';
   AStatus := 0;
-  vEngine := FFetchEngine;
+  vEngine := AEngine;
   if vEngine = '' then
   begin
     vEngines := TStringList.Create;
@@ -1643,6 +1685,33 @@ begin
   FRouteScopes.Assign(AValue);
 end;
 
+procedure TRALServerOAuth2.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited;
+  if (Operation = opRemove) and (AComponent = FRevocationStore) then
+    FRevocationStore := nil;
+end;
+
+procedure TRALServerOAuth2.SetRevocationStore(const AValue: TRALKeyValueStore);
+begin
+  if FRevocationStore = AValue then
+    Exit;
+  if FRevocationStore <> nil then
+    FRevocationStore.RemoveFreeNotification(Self);
+  FRevocationStore := AValue;
+  if FRevocationStore <> nil then
+    FRevocationStore.FreeNotification(Self);
+end;
+
+function TRALServerOAuth2.TokenRevoked(const AJTI: StringRAL): boolean;
+var
+  vValue: RawByteString;
+begin
+  Result := FStore.IsRevoked(AJTI);
+  if (not Result) and (FRevocationStore <> nil) and (AJTI <> '') then
+    Result := FRevocationStore.Get('jwt.jti:' + AJTI, vValue);
+end;
+
 procedure TRALServerOAuth2.SetStore(AValue: TRALOAuth2Store);
 begin
   if (AValue = nil) or (AValue = FStore) then
@@ -1699,6 +1768,8 @@ begin
   vClaims := TRALJWTParams.Create;
   try
     vValid := CheckAccessToken(ARequest.Authorization.AuthString, vClaims, vReason);
+    if vValid then
+      RALIdentityFromClaims(ARequest.Identity, vClaims, FRolesClaim, ratBearer);
     if vValid and Assigned(FOnValidateToken) then
     begin
       FOnValidateToken(ARequest, AResponse, vClaims, vValid);
@@ -1758,7 +1829,7 @@ begin
       Exit;
     if (FAudience <> '') and not vJWT.Payload.HasAudience(FAudience) then
       Exit;
-    if FStore.IsRevoked(vJWT.Payload.Id) then
+    if TokenRevoked(vJWT.Payload.Id) then
     begin
       AReason := wmOAuth2Revoked;
       Exit;
@@ -1937,6 +2008,55 @@ begin
   end;
 end;
 
+procedure TRALClientOAuth2.TokenReceived(AJson: TRALJSONObject);
+begin
+  // the plain OAuth2 client keeps nothing else
+end;
+
+function TRALClientOAuth2.TakeTokenAnswer(AJson: TRALJSONObject; AStatus: IntegerRAL;
+  out AError: StringRAL): boolean;
+
+  function Member(const AName: StringRAL): StringRAL;
+  var
+    vValue: TRALJSONValue;
+  begin
+    Result := '';
+    vValue := AJson.Get(AName);
+    if (vValue <> nil) and (not vValue.IsNull) then
+      Result := vValue.AsString;
+  end;
+
+var
+  vInt: IntegerRAL;
+begin
+  AError := '';
+  Result := (AStatus = HTTP_OK) and (Member('access_token') <> '');
+  if not Result then
+  begin
+    AError := Member('error');
+    if Member('error_description') <> '' then
+      AError := AError + ': ' + Member('error_description');
+    if AError = '' then
+      AError := emOAuth2NoToken;
+    Exit;
+  end;
+  Lock;
+  try
+    FAccessToken := Member('access_token');
+    vInt := StrToIntDef(Member('expires_in'), 0);
+    if vInt > 0 then
+      FExpiresAt := IncSecond(Now, vInt)
+    else
+      FExpiresAt := 0;
+    if Member('refresh_token') <> '' then
+      FRefreshToken := Member('refresh_token');
+    FTokenScope := Member('scope');
+    TokenReceived(AJson);
+  finally
+    Unlock;
+  end;
+end;
+
 function TRALClientOAuth2.RequestToken(ATransport: TRALAuthTransport; AFields: TStrings;
   AResponse: TRALResponse; out AError: StringRAL): IntegerRAL;
 var
@@ -2020,6 +2140,7 @@ begin
       if Member('refresh_token') <> '' then
         FRefreshToken := Member('refresh_token');
       FTokenScope := Member('scope');
+      TokenReceived(TRALJSONObject(vJson));
     finally
       vJson.Free;
     end;

@@ -35,7 +35,8 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/compress/` | `PascalRAL` | zlib/gzip/deflate and the compressor registry |
 | `src/compress/brotli/` | `RALCompressBrotliPackage` | Brotli (submodule in `src/others/pascal_brotli`) |
 | `src/compress/zstd/` | `RALCompressZStdPackage` | ZStd (submodule in `src/others/ZSTD`) |
-| `src/crypto/` | `PascalRAL` | hashes, AES, OpenSSL, BigInt/ASN.1/RSA/X.509, JWS, JWT (`RALToken`), SCRAM (`RALSCRAM`) |
+| `src/crypto/` | `PascalRAL` | hashes, AES, OpenSSL, BigInt/ASN.1/RSA/X.509, JWS, JWT (`RALToken`), SCRAM (`RALSCRAM`), BLAKE2b, Blowfish, Salsa20, HOTP/TOTP (`RALOTP`) |
+| `src/crypto/password/` | `RALCryptoPasswordPackage` | password hashing: Argon2, bcrypt, scrypt, PBKDF2 in the PHC format (`RALPassword`) |
 | `src/database/` | `RALDBPackage` | DBWare: module, connection, pool, SQL cache, driver base |
 | `src/database/FireDAC/` | `RALDBFireDACPackage`, `RALDBFireDACDAOPackage` | FireDAC driver and memtable; the DAO |
 | `src/database/FireDAC/design/` | `RALDBFireDACDsgn` | FireDAC design time |
@@ -59,7 +60,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/xml/` | `RALModuleXMLPackage` | XML reader, writer, DOM, and the XML storage |
 | `src/others/` | (the package that uses each) | submodules only: ZSTD, pascal_brotli, kxBSON |
 | `src/plugins/` | `PascalRAL` | core plugins: security, CORS, content (limits, compression, cipher, JSON body), concurrency |
-| `src/plugins/auth/` | `RALPluginAuthPackage` | Basic and JWT (`RALAuthentication`), Digest, OAuth2 |
+| `src/plugins/auth/` | `RALPluginAuthPackage` | Basic and JWT (`RALAuthentication`), Digest, OAuth2, policies (`RALAuthorization`), OpenID Connect (`RALOIDC`) |
 | `src/plugins/cache/` | `RALPluginCachePackage` | response cache and dynamic ETag (`RALResponseCache`) |
 | `src/plugins/forwarded/` | `RALPluginForwardedPackage` | the client behind a proxy: `TRALForwardedPlugin` (Forwarded, X-Forwarded-*, trusted proxies), `TRALIPRanges` |
 | `src/plugins/observability/` | `RALPluginObservabilityPackage` | access log, trace context and OTLP export, Prometheus metrics, health checks (`RALObservability`) |
@@ -116,7 +117,12 @@ is in no package.
 `RALASN1`, `RALBigInt`, `RALCRC32`, `RALCripto`, `RALCriptoAES`, `RALCriptoOpenSSL`,
 `RALHashBase`, `RALHashes`, `RALJWS`, `RALMD5`, `RALOpenSSL`, `RALRSA`, `RALSHA1`,
 `RALSCRAM` (SCRAM client and server, HMAC, PBKDF2), `RALSHA2_32`, `RALSHA2_64`, `RALToken` (JWT),
-`RALX509`.
+`RALX509`, `RALBLAKE2` (BLAKE2b, RFC 7693), `RALBlowfish` (Blowfish, EksBlowfish and the
+bcrypt core), `RALSalsa20` (the Salsa20 core), `RALOTP` (HOTP/TOTP, base32, otpauth URI).
+
+`password/` (RALCryptoPasswordPackage): `RALArgon2` (Argon2d/i/id, RFC 9106), `RALScrypt`
+(RFC 7914), `RALPassword` (`RALPasswordHash`/`Verify`/`NeedsRehash`, `TRALPasswordHasher`,
+`TRALPasswordList`), `RALCryptoPasswordReg`.
 
 ### `src/database/`
 
@@ -211,8 +217,10 @@ on its own sockets.
 - PascalRAL: `RALConcurrency`, `RALContent` (limits, compression, cipher, JSON body),
   `RALCORS`, `RALSecurity` (security headers, IP lists, brute force, flood, path
   traversal)
-- `auth/` (RALPluginAuthPackage): `RALAuthentication` (Basic, JWT), `RALDigest`,
-  `RALOAuth2`, `RALPluginAuthReg`
+- `auth/` (RALPluginAuthPackage, requires RALCryptoPasswordPackage): `RALAuthentication`
+  (Basic, JWT with key rotation and revocation), `RALDigest`, `RALOAuth2`,
+  `RALAuthorization` (`TRALAuthorizationPlugin`, named policies), `RALOIDC`
+  (`TRALOIDCLogin`, `TRALClientOIDCAuth`), `RALPluginAuthReg`
 - `cache/` (RALPluginCachePackage): `RALResponseCache` (`TRALResponseCachePlugin`),
   `RALPluginCacheReg`
 - `observability/` (RALPluginObservabilityPackage): `RALObservability` (`TRALLogPlugin`,

@@ -8,7 +8,8 @@ unit RALPluginAuthPackage;
 interface
 
 uses
-  RALAuthentication, RALDigest, RALOAuth2, RALPluginAuthReg, LazarusPackageIntf;
+  RALAuthentication, RALDigest, RALOAuth2, RALPluginAuthReg, RALAuthorization, 
+  RALOIDC, LazarusPackageIntf;
 
 implementation
 

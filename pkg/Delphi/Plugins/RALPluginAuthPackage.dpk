@@ -30,12 +30,15 @@ package RALPluginAuthPackage;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL;
+  PascalRAL,
+  RALCryptoPasswordPackage;
 
 contains
   RALAuthentication in '..\..\..\src\plugins\auth\RALAuthentication.pas',
   RALDigest in '..\..\..\src\plugins\auth\RALDigest.pas',
   RALOAuth2 in '..\..\..\src\plugins\auth\RALOAuth2.pas',
-  RALPluginAuthReg in '..\..\..\src\plugins\auth\RALPluginAuthReg.pas';
+  RALPluginAuthReg in '..\..\..\src\plugins\auth\RALPluginAuthReg.pas',
+  RALAuthorization in '..\..\..\src\plugins\auth\RALAuthorization.pas',
+  RALOIDC in '..\..\..\src\plugins\auth\RALOIDC.pas';
 
 end.

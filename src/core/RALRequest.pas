@@ -64,6 +64,47 @@ type
     property AuthType: TRALAuthTypes read FAuthType write FAuthType;
   end;
 
+  { Who the request is, once an authenticator accepted it: the name, the roles
+    and the claims, the same for every scheme (JWT, Basic, Digest, OAuth2).
+    Route and group Roles and Policy are judged against it. }
+  TRALIdentity = class
+  private
+    FAuthScheme: TRALAuthTypes;
+    FClaims: TStringList;
+    FName: StringRAL;
+    FPolicyPassed: boolean;
+    FRoles: TStringList;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    /// Adds every role of AText, separated by commas or blanks; repeated ones are kept once.
+    procedure AddRoles(const AText: StringRAL);
+    /// Forgets everything: no name, no role, no claim.
+    procedure Clear;
+    /// The value of the claim AName, or ''.
+    function Claim(const AName: StringRAL): StringRAL;
+    /// Whether the identity has the role ARole (case-insensitive).
+    function HasRole(const ARole: StringRAL): boolean;
+    { Whether the identity has any role of ARoles (a list separated by commas),
+      or all of them with AAll; an empty list is always True. }
+    function HasRoles(const ARoles: StringRAL; AAll: boolean): boolean;
+    /// Sets the claim AName to AValue.
+    procedure SetClaim(const AName, AValue: StringRAL);
+
+    /// Scheme of the authenticator that accepted the request.
+    property AuthScheme: TRALAuthTypes read FAuthScheme write FAuthScheme;
+    /// Claims of the identity, as name=value lines.
+    property Claims: TStringList read FClaims;
+    /// Name of the user (the JWT sub, the Basic user...).
+    property Name: StringRAL read FName write FName;
+    { Set by the authorization plugin when the route's Policy passed; a route
+      that names a policy is refused (403) without it. }
+    property PolicyPassed: boolean read FPolicyPassed write FPolicyPassed;
+    /// Roles of the identity, one per line.
+    property Roles: TStringList read FRoles;
+  end;
+
   TRALRequest = class;
 
   /// Runs once when the server is done with a request (TRALRequest.AddFinishHandler).
@@ -92,6 +133,7 @@ type
     /// Number of finish handlers.
     FFinishCount: IntegerRAL;
     FFinished: boolean;
+    FIdentity: TRALIdentity;
     /// Finish handlers past the first two.
     FFinishMore: array of TRALOnRequestFinish;
     FHost: StringRAL;
@@ -105,6 +147,7 @@ type
     FTrusted: boolean;
 
     function GetAuthorization: TRALAuthorization;
+    function GetIdentity: TRALIdentity;
     function GetRoute: TCollectionItem;
     /// Adds the params of a query string, URL-decoded.
     procedure ParseQueryParams(const AValue: StringRAL);
@@ -191,6 +234,11 @@ type
     property Trusted: boolean read FTrusted write FTrusted;
     /// Full URL of the request: scheme, host and path.
     property URL: StringRAL read GetURL;
+    { Who the request is, filled by the authenticator that accepted it; created
+      on first read, empty when nobody authenticated the request. }
+    property Identity: TRALIdentity read GetIdentity;
+    /// True when an Identity was created (an authenticator filled it).
+    function HasIdentity: boolean;
   published
     /// Credentials of the request; created on first read.
     property Authorization: TRALAuthorization read GetAuthorization write SetAuthorization;
@@ -245,6 +293,104 @@ type
   end;
 
 implementation
+
+{ TRALIdentity }
+
+constructor TRALIdentity.Create;
+begin
+  inherited Create;
+  FRoles := TStringList.Create;
+  FClaims := TStringList.Create;
+  FAuthScheme := ratNone;
+end;
+
+destructor TRALIdentity.Destroy;
+begin
+  FreeAndNil(FRoles);
+  FreeAndNil(FClaims);
+  inherited;
+end;
+
+procedure TRALIdentity.AddRoles(const AText: StringRAL);
+var
+  vInt, vStart: IntegerRAL;
+  vRole: StringRAL;
+begin
+  vStart := POSINISTR;
+  for vInt := POSINISTR to RALHighStr(AText) + 1 do
+  begin
+    if (vInt > RALHighStr(AText)) or (AText[vInt] in [',', ' ', ';', #9]) then
+    begin
+      vRole := Copy(AText, vStart, vInt - vStart);
+      if (vRole <> '') and not HasRole(vRole) then
+        FRoles.Add(string(vRole));
+      vStart := vInt + 1;
+    end;
+  end;
+end;
+
+function TRALIdentity.Claim(const AName: StringRAL): StringRAL;
+begin
+  Result := StringRAL(FClaims.Values[string(AName)]);
+end;
+
+procedure TRALIdentity.Clear;
+begin
+  FName := '';
+  FAuthScheme := ratNone;
+  FPolicyPassed := False;
+  FRoles.Clear;
+  FClaims.Clear;
+end;
+
+function TRALIdentity.HasRole(const ARole: StringRAL): boolean;
+var
+  vInt: IntegerRAL;
+begin
+  Result := False;
+  for vInt := 0 to FRoles.Count - 1 do
+    if RALSameName(StringRAL(FRoles[vInt]), ARole) then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+function TRALIdentity.HasRoles(const ARoles: StringRAL; AAll: boolean): boolean;
+var
+  vInt, vStart: IntegerRAL;
+  vRole: StringRAL;
+  vAny: boolean;
+begin
+  Result := True;
+  vAny := False;
+  vStart := POSINISTR;
+  for vInt := POSINISTR to RALHighStr(ARoles) + 1 do
+  begin
+    if (vInt > RALHighStr(ARoles)) or (ARoles[vInt] in [',', ' ', ';', #9]) then
+    begin
+      vRole := Copy(ARoles, vStart, vInt - vStart);
+      vStart := vInt + 1;
+      if vRole = '' then
+        Continue;
+      vAny := True;
+      if HasRole(vRole) <> AAll then
+      begin
+        { any: the first one found is enough; all: the first one missing is
+          enough to refuse }
+        Result := not AAll;
+        Exit;
+      end;
+    end;
+  end;
+  { all: none was missing; any: none was found, unless the list was empty }
+  Result := AAll or not vAny;
+end;
+
+procedure TRALIdentity.SetClaim(const AName, AValue: StringRAL);
+begin
+  FClaims.Values[string(AName)] := string(AValue);
+end;
 
 { TRALRequest }
 
@@ -395,7 +541,20 @@ begin
   FreeAndNil(FRouteData);
   FreeAndNil(FClientInfo);
   FreeAndNil(FAuthorization);
+  FreeAndNil(FIdentity);
   inherited;
+end;
+
+function TRALRequest.GetIdentity: TRALIdentity;
+begin
+  if FIdentity = nil then
+    FIdentity := TRALIdentity.Create;
+  Result := FIdentity;
+end;
+
+function TRALRequest.HasIdentity: boolean;
+begin
+  Result := FIdentity <> nil;
 end;
 
 procedure TRALRequest.AddFinishHandler(AHandler: TRALOnRequestFinish);

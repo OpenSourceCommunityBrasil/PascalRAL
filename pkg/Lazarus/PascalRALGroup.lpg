@@ -12,6 +12,7 @@
       <Target FileName="Engine\fphttpral.lpk"/>
       <Target FileName="Plugins\ralpluginauthpackage.lpk"/>
       <Target FileName="Plugins\ralplugintlspackage.lpk"/>
+      <Target FileName="Crypto\ralcryptopasswordpackage.lpk"/>
       <Target FileName="Plugins\ralpluginobservabilitypackage.lpk"/>
       <Target FileName="Plugins\ralplugintrafficpackage.lpk"/>
       <Target FileName="Plugins\ralplugincachepackage.lpk"/>

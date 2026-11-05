@@ -85,6 +85,10 @@ contains
   RALSecurity in '..\..\src\plugins\RALSecurity.pas',
   RALCORS in '..\..\src\plugins\RALCORS.pas',
   RALContent in '..\..\src\plugins\RALContent.pas',
-  RALConcurrency in '..\..\src\plugins\RALConcurrency.pas';
+  RALConcurrency in '..\..\src\plugins\RALConcurrency.pas',
+  RALBLAKE2 in '..\..\src\crypto\RALBLAKE2.pas',
+  RALBlowfish in '..\..\src\crypto\RALBlowfish.pas',
+  RALSalsa20 in '..\..\src\crypto\RALSalsa20.pas',
+  RALOTP in '..\..\src\crypto\RALOTP.pas';
 
 end.

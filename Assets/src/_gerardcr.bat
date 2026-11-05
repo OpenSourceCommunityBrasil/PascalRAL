@@ -57,3 +57,5 @@ echo Sagui
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\SaguiRAL.dcr" "Sagui.rc"
 echo MsQuic
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\MsQuicRAL.dcr" "MsQuic.rc"
+echo RALCryptoPassword
+%path_brcc32% -fo "..\..\pkg\Delphi\Crypto\RALCryptoPasswordPackage.dcr" "RALCryptoPassword.rc"

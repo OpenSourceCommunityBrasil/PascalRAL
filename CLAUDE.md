@@ -512,6 +512,23 @@ without copies and transforms happen at the edge, writing into the stream that g
   a Bearer alone renews; **no `OnGetToken`, no token**; an empty `SignSecretKey` answers
   500. Dates go through `RALDateTimeToGMT`. Callbacks are `of object`.
 - Secrets are compared in constant time (`RALSameSecret`, `RALSameBytes`).
+- **Identity and authorization**: an accepting authenticator fills `ARequest.Identity`
+  (Basic/Digest `OnGetRoles`; JWT/OAuth2 `RolesClaim`, read by `RALIdentityFromClaims`).
+  After `arAccepted`, `TRALAuthServer.ProcessRequest` asks `RALRouteAuthorized`: route
+  (else group) `Roles`, and for a `Policy` the `PolicyPassed` mark that
+  `TRALAuthorizationPlugin` sets in `ppAuthResult` - so a policy with no plugin, or an
+  unknown name, is 403 (fail closed). With no authenticator nothing is asked.
+- JWT `Keys`: the kid of the token picks the key and the key the algorithm (a first
+  `Token :=` read only finds the kid); the newest active key signs. `RevocationStore`
+  keys are `jwt.jti:<jti>` and `jwt.sub:<sub>` (unix second, `iat <=` revoked), shared
+  with `TRALServerOAuth2`; linked, every token gets `jti` and `iat`.
+- `TRALOIDCLogin` (priority 600, its own routes, `SkipAuthMethods = [amALL]`) keeps
+  state/nonce/PKCE single-use in a `TRALKeyValueStore`; `RALOAuth2Fetch` is the shared
+  outbound request (picks a linked client engine). Password hashes
+  (`RALCryptoPasswordPackage`) and TOTP (`RALOTP`) are pure Pascal; the unit is
+  `RALPassword`, never `RALPasswordHash` (a unit named like a function breaks calls).
+- A Linux-only block tests `RALLinux` **or** `RALLinuxFPC`: FPC on Linux defines only the
+  second (`RALOpenSSL` found no libcrypto there while it tested the first).
 
 ### Security
 

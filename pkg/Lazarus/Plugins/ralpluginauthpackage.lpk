@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Authentication plugins (Basic, JWT, Digest, OAuth2)"/>
     <Version Major="2"/>
-    <Files Count="5">
+    <Files Count="7">
       <Item1>
         <Filename Value="..\..\..\src\plugins\auth\RALAuthentication.pas"/>
         <UnitName Value="RALAuthentication"/>
@@ -48,9 +48,17 @@
         <Filename Value="ralpluginauthpackage.lrs"/>
         <Type Value="LRS"/>
       </Item5>
+      <Item6>
+        <Filename Value="..\..\..\src\plugins\auth\RALAuthorization.pas"/>
+        <UnitName Value="RALAuthorization"/>
+      </Item6>
+      <Item7>
+        <Filename Value="..\..\..\src\plugins\auth\RALOIDC.pas"/>
+        <UnitName Value="RALOIDC"/>
+      </Item7>
     </Files>
     <CompatibilityMode Value="True"/>
-    <RequiredPkgs Count="2">
+    <RequiredPkgs Count="3">
       <Item1>
         <PackageName Value="PascalRAL"/>
         <MinVersion Major="2" Valid="True"/>
@@ -58,6 +66,9 @@
       <Item2>
         <PackageName Value="FCL"/>
       </Item2>
+      <Item3>
+        <PackageName Value="RALCryptoPasswordPackage"/>
+      </Item3>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>
