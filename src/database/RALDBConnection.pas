@@ -5,7 +5,7 @@ interface
 uses
   Classes, SysUtils, DB, Variants,
   RALCustomObjects, RALTypes, RALTools, RALDBSQLCache, RALClient, RALResponse,
-  RALStorageTypes, RALRequest, RALMimeTypes, RALConsts, RALStorage;
+  RALStorageTypes, RALRequest, RALMIMETypes, RALConsts, RALStorage;
 
 type
   { Hands a queued caller its answers when TRALDBConnection.Commit returns: the

@@ -171,7 +171,7 @@ begin
     vUnitServer := 'RALCGIServer';
     vClassServer := 'TRALCGIServer';
 
-    vUnits := 'RALMimeTypes';
+    vUnits := 'RALMIMETypes';
     if Options and 1 > 0 then
       vUnits := vUnits + ', RALSwaggerModule';
 

@@ -19,7 +19,7 @@ uses
   uADDAptIntf, uADStanIntf, uADStanStorage, uADStanStorageXML,
   uADStanConst, uADStanUtil, uADStanParam,
   {$ENDIF}
-  RALDBBase, RALTypes, RALMimeTypes;
+  RALDBBase, RALTypes, RALMIMETypes;
 
 type
 

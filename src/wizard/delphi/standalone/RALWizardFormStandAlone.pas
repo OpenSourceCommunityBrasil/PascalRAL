@@ -290,7 +290,7 @@ begin
       end;
     end;
 
-    vUnits := 'RALMimeTypes';
+    vUnits := 'RALMIMETypes';
     if Options and 1 > 0 then
       vUnits := vUnits + ', RALSwaggerModule';
     if Options and 2 > 0 then

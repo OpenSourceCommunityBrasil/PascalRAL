@@ -210,7 +210,7 @@ begin
     end;
   end;
 
-  vUnits := 'RALMimeTypes, RALTypes';
+  vUnits := 'RALMIMETypes, RALTypes';
   if FSwagger then
     vUnits := vUnits + ', RALSwaggerModule';
   if FWebModule then
@@ -392,7 +392,7 @@ begin
   vServerClass := 'TRALCGIServer';
   vServerPkg := 'cgiral';
 
-  vUnits := 'RALMimeTypes, RALTypes';
+  vUnits := 'RALMIMETypes, RALTypes';
   if FSwagger then
     vUnits := vUnits + ', RALSwaggerModule';
 
@@ -582,7 +582,7 @@ begin
     end;
   end;
 
-  vUnits := 'RALMimeTypes';
+  vUnits := 'RALMIMETypes';
   if FSwagger then
     vUnits := vUnits + ', RALSwaggerModule';
   if FWebModule then

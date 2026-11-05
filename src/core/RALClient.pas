@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, SyncObjs, DateUtils,
   RALCustomObjects, RALTypes, RALAuthBase, RALRequest, RALResponse,
   RALCompress, RALCripto, RALConsts, RALTools, RALToken, RALJson, RALParams,
-  RALMimeTypes, RALStream, RALSSE;
+  RALMIMETypes, RALStream, RALSSE;
 
 type
   /// Event that receives the answer of a request, or the message of its failure.
