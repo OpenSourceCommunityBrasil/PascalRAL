@@ -112,11 +112,14 @@ begin
     {$ENDIF}
   {$ENDIF}
 
-  {$IFDEF RALLinux};
+  { RALLinux is Delphi's symbol; FPC on Linux defines RALLinuxFPC, and without
+    it no library was ever looked for there }
+  {$IF Defined(RALLinux) or Defined(RALLinuxFPC)}
     AddLibrary('libcrypto.so.3');
+    AddLibrary('libcrypto.so.1.1');
     AddLibrary('libcrypto.so.1');
     AddLibrary('libcrypto.so');
-  {$ENDIF}
+  {$IFEND}
 
   LoadLibrary;
 end;
