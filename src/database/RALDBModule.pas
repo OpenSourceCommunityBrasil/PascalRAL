@@ -5,9 +5,9 @@ interface
 
 uses
   Classes, SysUtils, DB, SyncObjs,
-  RALServer, RALRequest, RALResponse, RALDBBase, RALParams, RALMIMETypes,
-  RALConsts, RALTypes, RALStorage, RALBase64, RALRoutes, RALJson, RALStorageTypes,
-  RALDBSQLCache, RALStream, RALDBPool;
+  RALExceptions, RALErrorCodes, RALServer, RALRequest, RALResponse, RALDBBase, RALParams,
+  RALMIMETypes, RALConsts, RALTypes, RALStorage, RALBase64, RALRoutes, RALJson,
+  RALStorageTypes, RALDBSQLCache, RALStream, RALDBPool;
 
 type
   TRALDBModule = class;
@@ -22,7 +22,7 @@ type
   { ERALDBProcError }
 
   /// A refused or failed stored procedure call, with the HTTP status it answers
-  ERALDBProcError = class(Exception)
+  ERALDBProcError = class(ERALException)
   private
     FStatusCode: IntegerRAL;
   public
@@ -570,7 +570,7 @@ begin
   begin
     FDatabase := TRALDBModule(Module).AcquireDatabase(Core, FCoreResponse);
     if FDatabase = nil then
-      raise Exception.Create(emDBDriverMissing);
+      raise ERALException.Create(ecDBDriverMissing);
   end;
   Result := FDatabase;
 end;
@@ -585,7 +585,7 @@ begin
       and a batch of statements with their params can be large }
     vMem := Core.Body.Content;
     if (vMem = nil) or (vMem.Size = 0) then
-      raise Exception.Create(emDBEmptyBody);
+      raise ERALException.Create(ecDBEmptyBody);
     FSQLCache := TRALDBSQLCache.Create;
     try
       FSQLCache.LoadFromStream(vMem);
@@ -961,7 +961,7 @@ begin
         either (LoadFromRALStorage raises emStorageClassNotFound with no link),
         so inventing a format here would only move the failure. }
       if AStorage = nil then
-        raise Exception.Create(emStorageNotFound);
+        raise ERALException.Create(ecStorageNotFound);
 
       ANative := False;
       AContentType := AStorage.ContentType;
@@ -1109,7 +1109,7 @@ begin
 
   vClass := TRALStorageLink.GetStorageClass(rsfJSON);
   if vClass = nil then
-    raise Exception.Create(emStorageNotFound);
+    raise ERALException.Create(ecStorageNotFound);
   Result := vClass.Create(nil);
 end;
 
@@ -1329,7 +1329,7 @@ begin
   vAllow := True;
   FOnValidateSQL(Self, ARequest, ASQL, vAllow);
   if not vAllow then
-    raise Exception.Create(emDBSQLRejected);
+    raise ERALException.Create(ecDBSQLRejected);
 end;
 
 procedure TRALDBModule.OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
@@ -1469,7 +1469,7 @@ begin
   end
   else
   begin
-    raise Exception.Create(emDBLinkMissing);
+    raise ERALException.Create(ecDBLinkMissing);
   end;
 end;
 
@@ -1918,7 +1918,7 @@ begin
     identifier is accepted - anything else was a SQL injection }
   for vInt := POSINISTR to RALHighStr(vTable) do
     if not (vTable[vInt] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '$', '.']) then
-      raise Exception.Create(emDBInvalidTableName);
+      raise ERALException.Create(ecDBInvalidTableName);
 
   vSQL := TStringList.Create;
   try

@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts;
 
 type
 
@@ -1203,7 +1203,7 @@ function TRALBinaryWriter.ReadEnum(AHigh: Byte): Byte;
 begin
   Result := ReadByte;
   if Result > AHigh then
-    raise Exception.Create(emStorageInvalidBinary);
+    raise ERALException.Create(ecStorageInvalidBinary);
 end;
 
 function TRALBinaryWriter.ReadSmallint: Smallint;
@@ -1258,7 +1258,7 @@ end;
 procedure TRALBinaryWriter.ReadExact(var ABuffer; ACount: IntegerRAL);
 begin
   if FStream.Read(ABuffer, ACount) <> ACount then
-    raise Exception.Create(emStreamSizeBeyondEnd);
+    raise ERALException.Create(ecStreamSizeBeyondEnd);
 end;
 
 { the size prefix is a varint: nine bytes can announce 2^63 bytes. Allocating
@@ -1267,7 +1267,7 @@ end;
 procedure TRALBinaryWriter.CheckSize(ASize: UInt64RAL);
 begin
   if ASize > UInt64RAL(FStream.Size - FStream.Position) then
-    raise Exception.Create(emStreamSizeBeyondEnd);
+    raise ERALException.Create(ecStreamSizeBeyondEnd);
 end;
 
 procedure TRALBinaryWriter.ReadStream(AStream: TStream);

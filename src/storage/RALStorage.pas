@@ -8,8 +8,8 @@ uses
   bufstream,
   {$ENDIF}
   Classes, SysUtils, DB, DateUtils, TypInfo, FMTBcd,
-  RALTypes, RALCustomObjects, RALStorageTypes, RALBase64, RALConsts,
-  RALStream;
+  RALExceptions, RALErrorCodes, RALTypes, RALCustomObjects, RALStorageTypes, RALBase64,
+  RALConsts, RALStream;
 
 type
   TRALFieldCharCase = (fcNone, fcUpper, fcLower);
@@ -389,7 +389,7 @@ begin
   end
   else
   begin
-    raise Exception.Create(emStorageNotFound);
+    raise ERALException.Create(ecStorageNotFound);
   end;
 end;
 
@@ -423,7 +423,7 @@ begin
   end
   else
   begin
-    raise Exception.Create(emStorageNotFound);
+    raise ERALException.Create(ecStorageNotFound);
   end;
 end;
 

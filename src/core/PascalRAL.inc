@@ -22,14 +22,6 @@
 (* End of Language directives definition *)
 (******************************************************************************)
 
-(* 3rd Party directives definition *)
-
-{$DEFINE RALlkJSON}
-{.$DEFINE RALuJSON}
-
-(* End of 3rd Party directives definition *)
-(******************************************************************************)
-
 (*  Compiler Directives for IDE Version *)
 
 {$IFNDEF FPC}

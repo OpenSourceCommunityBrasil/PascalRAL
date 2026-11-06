@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALStream, RALConsts;
+  RALExceptions, RALErrorCodes, RALTypes, RALStream, RALConsts;
 
 type
   /// What DecodeBase64 carries from one block of the input to the next: the
@@ -99,7 +99,7 @@ var
   vStream: TStream;
 begin
   if AValue = '' then
-    raise Exception.Create(emHMACEmptyText);
+    raise ERALException.Create(ecHMACEmptyText);
 
   vStream := StringToStreamUTF8(AValue);
   try
@@ -226,7 +226,7 @@ var
   vByte: PByte;
 begin
   if ALength <= 0 then
-    raise Exception.Create(emHMACEmptyText);
+    raise ERALException.Create(ecHMACEmptyText);
   { the characters that carry data, counted the way DecodeBase64 reads them,
     give the size of the result }
   vChars := 0;
@@ -498,7 +498,7 @@ var
   vStream: TStream;
 begin
   if AValue = '' then
-    raise Exception.Create(emHMACEmptyText);
+    raise ERALException.Create(ecHMACEmptyText);
 
   if ABinary then
     vStream := StringToStream(AValue)

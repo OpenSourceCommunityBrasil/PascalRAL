@@ -40,8 +40,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALParams, RALRequest, RALResponse, RALCompress,
-  RALCripto, RALClient, RALTools;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALParams, RALRequest, RALResponse,
+  RALCompress, RALCripto, RALClient, RALTools;
 
 const
   /// The largest single block this reader will believe. A size prefix read
@@ -134,7 +134,7 @@ end;
 procedure RALQuicCheckBody(ASize: Int64RAL);
 begin
   if ASize > RALQUIC_MAX_FIELD then
-    raise Exception.CreateFmt(emQuicFrameTooLarge, [ASize, Int64RAL(RALQUIC_MAX_FIELD)]);
+    raise ERALException.CreateFmt(ecQuicFrameTooLarge, [ASize, Int64RAL(RALQUIC_MAX_FIELD)]);
 end;
 
 function RALQuicPutBlockStr(ADest: PByte; const AText: StringRAL): PByte;

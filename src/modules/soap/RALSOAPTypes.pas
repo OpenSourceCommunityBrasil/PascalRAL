@@ -14,7 +14,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALRoutes, RALMIMETypes, RALXMLReader, RALXML;
+  RALExceptions, RALTypes, RALConsts, RALRoutes, RALMIMETypes, RALXMLReader, RALXML;
 
 const
   /// Envelope namespace of SOAP 1.1.
@@ -47,7 +47,7 @@ type
     sfcSender, sfcReceiver);
 
   /// A SOAP fault: raised by a handler to answer it, and by the client when one arrives.
-  ERALSOAPFault = class(Exception)
+  ERALSOAPFault = class(ERALException)
   private
     FCode: TRALSOAPFaultCode;
     FCodeText: StringRAL;

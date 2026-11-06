@@ -13,8 +13,8 @@ uses
   {$IFDEF RALMSQUIC_PROFILE}{$IFDEF RALWindows}Windows,{$ENDIF}{$ENDIF}
   Classes, SysUtils, SyncObjs,
   MsQuic,
-  RALClient, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALCompress, RALHashBase, RALSHA2_32, RALQuicFrame;
+  RALExceptions, RALErrorCodes, RALClient, RALTypes, RALConsts, RALMIMETypes, RALRequest,
+  RALResponse, RALParams, RALTools, RALCompress, RALHashBase, RALSHA2_32, RALQuicFrame;
 
 type
   TRALMsQuicClientHTTP = class;
@@ -34,7 +34,7 @@ type
 
   /// Raised by TRALMsQuicConnection.Open when the certificate is what failed,
   /// so SendUrl reports rteCertificate and not a server being down.
-  ERALMsQuicCertError = class(Exception);
+  ERALMsQuicCertError = class(ERALException);
 
   { TRALMsQuicConnection }
 
@@ -365,7 +365,7 @@ begin
       if QUIC_FAILED(vStatus) then
       begin
         vRegistration := nil;
-        raise Exception.CreateFmt(emQuicApiFailed,
+        raise ERALException.CreateFmt(ecQuicApiFailed,
           ['RegistrationOpen', QuicStatusToStr(vStatus)]);
       end;
     end;
@@ -471,7 +471,7 @@ begin
     vStatus := MsQuicApi^.ConfigurationOpen(SharedRegistration, @vAlpnBuf, 1,
       @vSettings, SizeOf(vSettings), nil, vCfg);
     if QUIC_FAILED(vStatus) then
-      raise Exception.CreateFmt(emQuicApiFailed,
+      raise ERALException.CreateFmt(ecQuicApiFailed,
         ['ConfigurationOpen', QuicStatusToStr(vStatus)]);
 
     FillChar(vCred, SizeOf(vCred), 0);
@@ -519,7 +519,7 @@ begin
     if QUIC_FAILED(vStatus) then
     begin
       MsQuicApi^.ConfigurationClose(vCfg);
-      raise Exception.CreateFmt(emQuicApiFailed,
+      raise ERALException.CreateFmt(ecQuicApiFailed,
         ['ConfigurationLoadCredential', QuicStatusToStr(vStatus)]);
     end;
 
@@ -878,14 +878,14 @@ begin
     vStatus := MsQuicApi^.ConnectionOpen(vReg, RALMsQuicClientConnCallback,
       Self, FConnection);
     if QUIC_FAILED(vStatus) then
-      raise Exception.CreateFmt(emQuicApiFailed,
+      raise ERALException.CreateFmt(ecQuicApiFailed,
         ['ConnectionOpen', QuicStatusToStr(vStatus)]);
 
     vHost := AnsiString(AHost);
     vStatus := MsQuicApi^.ConnectionStart(FConnection, FConfiguration,
       QUIC_ADDRESS_FAMILY_UNSPEC, PAnsiChar(vHost), Word(APort));
     if QUIC_FAILED(vStatus) then
-      raise Exception.CreateFmt(emQuicApiFailed,
+      raise ERALException.CreateFmt(ecQuicApiFailed,
         ['ConnectionStart', QuicStatusToStr(vStatus)]);
 
     { the library itself gives up at HandshakeIdleTimeoutMs and says why; this
@@ -896,19 +896,19 @@ begin
     if FConnectedEvent.WaitFor(vWait + 1000) <> wrSignaled then
     begin
       Close;
-      raise Exception.CreateFmt(emQuicHandshakeTimeout, [AHost, APort]);
+      raise ERALException.CreateFmt(ecQuicHandshakeTimeout, [AHost, APort]);
     end;
     if not FConnected then
     begin
       vStatus := FConnectStatus;
       Close;
       if FCertRefused then
-        raise ERALMsQuicCertError.Create(emCertRejected)
+        raise ERALMsQuicCertError.Create(ecCertRejected)
       else if QuicStatusIsCertError(vStatus) then
-        raise ERALMsQuicCertError.CreateFmt(emQuicConnectFailed,
+        raise ERALMsQuicCertError.CreateFmt(ecQuicConnectFailed,
           [AHost, APort, QuicStatusToStr(vStatus)])
       else
-        raise Exception.CreateFmt(emQuicConnectFailed,
+        raise ERALException.CreateFmt(ecQuicConnectFailed,
           [AHost, APort, QuicStatusToStr(vStatus)]);
     end;
   finally

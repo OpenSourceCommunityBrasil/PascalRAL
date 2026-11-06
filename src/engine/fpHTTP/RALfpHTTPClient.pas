@@ -7,8 +7,8 @@ interface
 uses
   Classes, SysUtils,
   fphttpclient, fphttp, ssockets, sslsockets, opensslsockets, fpopenssl,
-  RALClient, RALTypes, RALConsts, RALParams,
-  RALRequest, RALCompress, RALResponse, RALMIMETypes, RALStream;
+  RALErrorCodes, RALClient, RALTypes, RALConsts, RALParams, RALRequest, RALCompress,
+  RALResponse, RALMIMETypes, RALStream;
 
 type
   { TRALfpHttpClientCore }
@@ -348,7 +348,7 @@ begin
   Result := inherited ReadResponse(Stream, AllowedResponseCodes, HeadersOnly);
   if (not Result) and (not Terminated) then
     { the URL is only known to SendUrl, which formats the message }
-    raise ERALfpConnectionClosed.Create(emConnectionClosedNoResponse);
+    raise ERALfpConnectionClosed.Create(ecConnectionClosedNoResponse);
 end;
 
 { fphttpclient decides whether to drop the socket after an answer by looking

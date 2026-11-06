@@ -19,14 +19,14 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes;
+  RALExceptions, RALTypes;
 
 type
   /// Hash under SCRAM, HMAC and PBKDF2.
   TRALSCRAMAlg = (rsaSHA1, rsaSHA256, rsaSHA512);
 
   /// A SCRAM message that breaks the RFC, or an exchange used out of order.
-  ERALSCRAMError = class(Exception);
+  ERALSCRAMError = class(ERALException);
 
   /// What a SCRAM server knows of a user: the salted keys, or the password.
   TRALSCRAMCredential = record

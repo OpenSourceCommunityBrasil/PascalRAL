@@ -5,8 +5,8 @@ interface
 
 uses
   Classes, SysUtils, SyncObjs, DateUtils,
-  RALCustomObjects, RALTypes, RALAuthBase, RALRequest, RALResponse,
-  RALCompress, RALCripto, RALConsts, RALTools, RALToken, RALJson, RALParams,
+  RALExceptions, RALErrorCodes, RALCustomObjects, RALTypes, RALAuthBase, RALRequest,
+  RALResponse, RALCompress, RALCripto, RALConsts, RALTools, RALToken, RALJson, RALParams,
   RALMimeTypes, RALStream, RALSSE;
 
 type
@@ -92,7 +92,7 @@ type
                                 var ACancel: boolean) of object;
 
   /// Raised inside the engine when a stream handler set ACancel.
-  ERALStreamCancelled = class(Exception);
+  ERALStreamCancelled = class(ERALException);
 
   { What the engine itself does about the server certificate when there is no pin
     or event: svEngine keeps its own rule, svAlways verifies, svNever accepts any. }
@@ -1291,7 +1291,7 @@ begin
       // the caller never receives this response when the method raises - a
       // transport error is enough - so what was created here dies here
       FreeAndNil(Result);
-      raise Exception.Create(e.Message);
+      raise;
     end;
   end;
 end;
@@ -1316,7 +1316,7 @@ begin
   vGeneration := FEngineGeneration;
   vClass := GetEngineClass(EngineType);
   if vClass = nil then
-    raise Exception.CreateFmt(emEngineNotFound, [EngineType]);
+    raise ERALException.CreateFmt(ecEngineNotFound, [EngineType]);
   Result := vClass.Create(Self);
   Result.FGeneration := vGeneration;
 end;
@@ -2351,7 +2351,7 @@ end;
 procedure TRALClientStreamSink.Cancel;
 begin
   FEngine.FStreamCancelled := True;
-  raise ERALStreamCancelled.Create(emStreamCancelled);
+  raise ERALStreamCancelled.Create(ecStreamCancelled);
 end;
 
 procedure TRALClientStreamSink.ParserEvent(ASender: TObject;
@@ -2414,7 +2414,7 @@ begin
     Exit; // events asked, and this is no event stream: the body as always
 
   if FResponse.ContentEncription <> '' then
-    raise Exception.Create(emStreamClientCipher);
+    raise ERALException.Create(ecStreamClientCipher);
   vEncoding := RALTrim(FResponse.ContentEncoding);
   if (vEncoding <> '') and (not RALSameName(vEncoding, 'identity')) then
   begin
@@ -2422,7 +2422,7 @@ begin
     if vType <> ctNone then
       FDecoder := RALCreateStreamDecoder(vType);
     if FDecoder = nil then
-      raise Exception.CreateFmt(emStreamClientCoding, [vEncoding]);
+      raise ERALException.CreateFmt(ecStreamClientCoding, [vEncoding]);
     FDecoded := TMemoryStream.Create;
   end;
   // what a followed redirect left in the body is not part of this answer
@@ -2546,7 +2546,7 @@ begin
 
   for vInt := 0 to Pred(FPins.Count) do
     if RALPinFingerprint(StringRAL(FPins.Strings[vInt])) = '' then
-      raise Exception.Create(emCertPinInvalid);
+      raise ERALException.Create(ecCertPinInvalid);
 end;
 
 procedure TRALClientSSL.Assign(ASource: TPersistent);
@@ -2807,7 +2807,7 @@ begin
     begin
       SetTransportError(AResponse, rteCertificate, 0,
                         StringRAL(Format(emCertRequiresTLS, [vURL])));
-      raise Exception.Create(Format(emCertRequiresTLS, [vURL]));
+      raise ERALException.CreateFmt(ecCertRequiresTLS, [vURL]);
     end;
 
     { only when a pin applies to this connection: a client that talks to
@@ -2817,7 +2817,7 @@ begin
     begin
       SetTransportError(AResponse, rteCertificate, 0,
                         StringRAL(Format(emCertPinUnsupported, [EngineName])));
-      raise Exception.Create(Format(emCertPinUnsupported, [EngineName]));
+      raise ERALException.CreateFmt(ecCertPinUnsupported, [EngineName]);
     end;
 
     { Same reasoning as the pin above, and in the same place: refuse before a
@@ -2827,15 +2827,14 @@ begin
     begin
       SetTransportError(AResponse, rteOther, 0,
         StringRAL(Format(emMethodUnsupported, [string(RALMethodToHTTPMethod(AMethod)), EngineName])));
-      raise Exception.Create(Format(emMethodUnsupported,
-        [string(RALMethodToHTTPMethod(AMethod)), EngineName]));
+      raise ERALException.CreateFmt(ecMethodUnsupported, [string(RALMethodToHTTPMethod(AMethod)), EngineName]);
     end;
 
     if (FParent.HTTPVersion = rhv2) and (not SupportsHTTP2) then
     begin
       SetTransportError(AResponse, rteOther, 0,
                         StringRAL(Format(emHTTP2Unsupported, [EngineName])));
-      raise Exception.Create(Format(emHTTP2Unsupported, [EngineName]));
+      raise ERALException.CreateFmt(ecHTTP2Unsupported, [EngineName]);
     end;
 
     { rhv10 belongs to the other direction of TRALHTTPVersion: it is a version a
@@ -2845,7 +2844,7 @@ begin
     if FParent.HTTPVersion = rhv10 then
     begin
       SetTransportError(AResponse, rteOther, 0, StringRAL(emHTTP10NotRequestable));
-      raise Exception.Create(emHTTP10NotRequestable);
+      raise ERALException.Create(ecHTTP10NotRequestable);
     end;
 
     { The application's say over this attempt: after the URL and its TLS policy
@@ -2877,7 +2876,7 @@ begin
         if vCancelReason = '' then
           vCancelReason := StringRAL(Format(emRequestCancelled, [vURL]));
         SetTransportError(AResponse, rteCancelled, 0, vCancelReason);
-        raise Exception.Create(string(vCancelReason));
+        raise ERALException.Create(string(vCancelReason));
       end;
 
       // the trace of the request this thread serves goes on with this one
@@ -3006,7 +3005,7 @@ begin
   until not vRepeat;
 
   if vErrorCode <> 0 then
-    raise Exception.Create(AResponse.ResponseText);
+    raise ERALException.Create(AResponse.ResponseText);
 end;
 
 function TRALClientHTTP.GetURL(ARoute: StringRAL; ARequest: TRALRequest;
@@ -3153,7 +3152,7 @@ begin
     begin
       SetTransportError(AResponse, rteCircuitOpen, 0,
         StringRAL(Format(emCircuitOpen, [vKey])));
-      raise Exception.Create(Format(emCircuitOpen, [vKey]));
+      raise ERALException.CreateFmt(ecCircuitOpen, [vKey]);
     end;
   end;
 

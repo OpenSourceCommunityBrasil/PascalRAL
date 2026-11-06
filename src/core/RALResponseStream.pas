@@ -11,7 +11,7 @@ interface
 
 uses
   Classes, SysUtils, SyncObjs,
-  RALTypes, RALConsts, RALCustomObjects, RALSSE, RALCompress;
+  RALExceptions, RALTypes, RALConsts, RALCustomObjects, RALSSE, RALCompress;
 
 type
   /// Why a stream ended: as asked, the client left, a send timed out, the server stopped, or an error.
@@ -145,11 +145,11 @@ type
   end;
 
   /// A response committed by Send can no longer have its status, headers or body changed.
-  ERALResponseCommitted = class(Exception);
+  ERALResponseCommitted = class(ERALException);
   /// A stream refused: the RAL cipher of the body has no piece a client can read.
-  ERALStreamCipher = class(Exception);
+  ERALStreamCipher = class(ERALException);
   /// A stream refused because TRALConcurrencyPlugin.MaxStreams streams are open.
-  ERALStreamLimit = class(Exception);
+  ERALStreamLimit = class(ERALException);
 
 { The chunked framing of one piece: its size in hex, CRLF, the bytes, CRLF. ASize
   must be above 0 - a chunk of size 0 ends the body }

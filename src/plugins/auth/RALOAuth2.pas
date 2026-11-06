@@ -27,9 +27,9 @@ interface
 
 uses
   Classes, SysUtils, DateUtils, SyncObjs,
-  RALTypes, RALConsts, RALTools, RALBase64, RALJson, RALToken, RALJWS,
-  RALHashBase, RALSHA2_32, RALMIMETypes, RALUrlCoder, RALRoutes, RALRequest,
-  RALResponse, RALParams, RALCustomObjects, RALPlugin, RALAuthBase, RALServer;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALTools, RALBase64, RALJson,
+  RALToken, RALJWS, RALHashBase, RALSHA2_32, RALMIMETypes, RALUrlCoder, RALRoutes,
+  RALRequest, RALResponse, RALParams, RALCustomObjects, RALPlugin, RALAuthBase, RALServer;
 
 type
   /// How a client proves itself to the token endpoint: HTTP Basic
@@ -2043,7 +2043,7 @@ begin
   Lock;
   try
     if (FPendingState = '') or not RALSameSecret(AState, FPendingState) then
-      raise Exception.Create(emOAuth2StateMismatch);
+      raise ERALException.Create(ecOAuth2StateMismatch);
     FPendingState := '';
     FPendingCode := ACode;
     FAccessToken := '';

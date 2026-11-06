@@ -5,7 +5,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALStream, RALBase64, RALConsts, RALHexadecimal;
+  RALExceptions, RALErrorCodes, RALTypes, RALStream, RALBase64, RALConsts, RALHexadecimal;
 
 type
 
@@ -117,7 +117,7 @@ var
   vStream: TStream;
 begin
   if AValue = '' then
-    raise Exception.Create(emHMACEmptyText);
+    raise ERALException.Create(ecHMACEmptyText);
 
   if ABinary then
     vStream := StringToStream(AValue)

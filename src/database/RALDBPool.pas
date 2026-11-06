@@ -5,7 +5,8 @@ interface
 
 uses
   Classes, SysUtils, DateUtils, SyncObjs,
-  RALTypes, RALConsts, RALThreadSafe, RALDBBase, RALRequest, RALResponse;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALThreadSafe, RALDBBase, RALRequest,
+  RALResponse;
 
 const
   { Upper bound, in milliseconds, of one wait for a free connection. Release
@@ -20,7 +21,7 @@ type
   TRALDBPoolExhausted = (peRaiseError, peOverflow);
 
   /// Raised when the pool cannot deliver a connection within WaitTimeout
-  ERALDBPoolTimeout = class(Exception);
+  ERALDBPoolTimeout = class(ERALException);
 
   { TRALDBPoolOptions }
 
@@ -538,7 +539,7 @@ begin
     Result := FOnCreateConnection(Self);
 
   if Result = nil then
-    raise Exception.Create(emDBDriverMissing);
+    raise ERALException.Create(ecDBDriverMissing);
 end;
 
 function TRALDBConnectionPool.ExhaustedItem(ARequest: TRALRequest;
@@ -564,7 +565,7 @@ begin
     FOnTimeout(Self, ARequest, AWaited);
 
   if Result = nil then
-    raise ERALDBPoolTimeout.Create(emDBPoolTimeout);
+    raise ERALDBPoolTimeout.Create(ecDBPoolTimeout);
 end;
 
 function TRALDBConnectionPool.PrepareItem(AItem: TRALDBPoolItem;
@@ -820,7 +821,7 @@ begin
     begin
       if Assigned(FOnError) then
         FOnError(Self, vError, nil);
-      raise Exception.Create(vError);
+      raise ERALException.Create(vError);
     end;
   finally
     FreeAndNil(vList);

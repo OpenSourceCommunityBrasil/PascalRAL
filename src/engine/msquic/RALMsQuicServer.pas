@@ -13,8 +13,8 @@ uses
   {$IFDEF RALMSQUIC_PROFILE}{$IFDEF RALWindows}Windows,{$ENDIF}{$ENDIF}
   Classes, SysUtils, DateUtils, SyncObjs,
   MsQuic,
-  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALCompress, RALStream, RALQuicFrame, RALContent;
+  RALExceptions, RALErrorCodes, RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest,
+  RALResponse, RALParams, RALTools, RALCompress, RALStream, RALQuicFrame, RALContent;
 
 type
   { TRALMsQuicSSL }
@@ -1446,7 +1446,7 @@ begin
   vStatus := MsQuicApi^.ConfigurationOpen(FRegistration, @FAlpnBuffer, 1,
     @vSettings, SizeOf(vSettings), nil, Result);
   if QUIC_FAILED(vStatus) then
-    raise Exception.CreateFmt(emQuicApiFailed,
+    raise ERALException.CreateFmt(ecQuicApiFailed,
       ['ConfigurationOpen', QuicStatusToStr(vStatus)]);
 
   vCertPath := AnsiString(SSL.CertificateFile);
@@ -1478,7 +1478,7 @@ begin
   begin
     MsQuicApi^.ConfigurationClose(Result);
     Result := nil;
-    raise Exception.CreateFmt(emQuicApiFailed,
+    raise ERALException.CreateFmt(ecQuicApiFailed,
       ['ConfigurationLoadCredential', QuicStatusToStr(vStatus)]);
   end;
 end;
@@ -1565,15 +1565,15 @@ begin
     certificate checks used to sit above it, so a wrong path left exactly that. }
   try
     if (SSL.CertificateFile = '') or (SSL.PrivateKeyFile = '') then
-      raise Exception.Create(emQuicRequiresTLS);
+      raise ERALException.Create(ecQuicRequiresTLS);
     if not FileExists(SSL.CertificateFile) then
-      raise Exception.CreateFmt(emQuicFileNotFound, [SSL.CertificateFile]);
+      raise ERALException.CreateFmt(ecQuicFileNotFound, [SSL.CertificateFile]);
     if not FileExists(SSL.PrivateKeyFile) then
-      raise Exception.CreateFmt(emQuicFileNotFound, [SSL.PrivateKeyFile]);
+      raise ERALException.CreateFmt(ecQuicFileNotFound, [SSL.PrivateKeyFile]);
 
     vStatus := MsQuicLoad(FLibPath);
     if QUIC_FAILED(vStatus) then
-      raise Exception.CreateFmt(emQuicLibrary, [MsQuicLoadError]);
+      raise ERALException.CreateFmt(ecQuicLibrary, [MsQuicLoadError]);
 
     { Every worker thread of MsQuic is created inside the C library, so
       BeginThread never runs and the flag the memory manager reads to decide
@@ -1592,7 +1592,7 @@ begin
     vRegCfg.ExecutionProfile := QUIC_EXECUTION_PROFILE_LOW_LATENCY;
     vStatus := MsQuicApi^.RegistrationOpen(@vRegCfg, FRegistration);
     if QUIC_FAILED(vStatus) then
-      raise Exception.CreateFmt(emQuicApiFailed,
+      raise ERALException.CreateFmt(ecQuicApiFailed,
         ['RegistrationOpen', QuicStatusToStr(vStatus)]);
 
     QuicSetAlpn(FAlpnBuffer, FAlpn);
@@ -1605,7 +1605,7 @@ begin
     vStatus := MsQuicApi^.ListenerOpen(FRegistration, RALMsQuicListenerCallback,
       Self, FListener);
     if QUIC_FAILED(vStatus) then
-      raise Exception.CreateFmt(emQuicApiFailed,
+      raise ERALException.CreateFmt(ecQuicApiFailed,
         ['ListenerOpen', QuicStatusToStr(vStatus)]);
 
     FillChar(vAddr, SizeOf(vAddr), 0);
@@ -1616,7 +1616,7 @@ begin
 
     vStatus := MsQuicApi^.ListenerStart(FListener, @FAlpnBuffer, 1, @vAddr);
     if QUIC_FAILED(vStatus) then
-      raise Exception.CreateFmt(emQuicListenFailed, [Port, QuicStatusToStr(vStatus)]);
+      raise ERALException.CreateFmt(ecQuicListenFailed, [Port, QuicStatusToStr(vStatus)]);
   except
     CloseServerHandles;
     inherited SetActive(False);
