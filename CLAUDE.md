@@ -20,8 +20,9 @@ in `pkg/Delphi` (`.dpk`/`.dproj`) and `pkg/Lazarus` (`.lpk`).
 
 - **One folder belongs to one package.** `src/core`, `common`, `compress`, `crypto` and
   `plugins` are `PascalRAL`; `src/design` is `PascalRALDsgn`; every optional package has
-  its own folder. `src/others` holds **only** the submodules (ZSTD, pascal_brotli,
-  kxBSON): a file missing there is a submodule not fetched.
+  its own folder. `src/others` holds **only** the submodules (ZSTD, pascal_brotli;
+  kxBSON is still registered but nothing uses it since `RALBSON`): a file missing there
+  is a submodule not fetched.
 - **Design-time units live in a `design/` subfolder**: `lazbuild -B` recompiles, inside
   the design package, every runtime unit it finds in the same folder.
 - **Names**: `PascalRAL` + `PascalRALDsgn` (mandatory, the only packages at the root of
@@ -303,8 +304,8 @@ itself (no `SvcMgr`), and on Linux is the foreground process of a `Type=notify` 
 environment it started with: libc's `setenv` does not reach `GetEnvironmentVariable`.
 `TRALSystemLog` is syslog (journal under systemd) or `ReportEvent`. `TRALConfig` layers
 defaults < file (JSON/INI/.env) < environment (`RAL_A__B` is `A.B`) < command line
-(`--A.B=v`, `--config=`); numbers from JSON go through `RALJSONNumberText` (the backend's
-`AsString` follows the locale). `TRALScheduler` is a plugin with no phase: it starts in
+(`--A.B=v`, `--config=`); numbers from JSON go through `RALJSONNumberText` (one short
+form with '.', whatever the locale). `TRALScheduler` is a plugin with no phase: it starts in
 `ServerActivating` and `ServerDeactivating` (so `Shutdown`) waits for running jobs.
 
 ### `TRALSynopseServer.Mode`
@@ -566,6 +567,16 @@ without copies and transforms happen at the edge, writing into the stream that g
   outbound request (picks a linked client engine). Password hashes
   (`RALCryptoPasswordPackage`) and TOTP (`RALOTP`) are pure Pascal; the unit is
   `RALPassword`, never `RALPasswordHash` (a unit named like a function breaks calls).
+- **JSON, BSON, errors, libraries** (`src/common`): `RALJson` is RAL's own parser and
+  writer on every compiler (no backend, no define); `TRALJSONValue`, `AsInteger`,
+  `AsFloat` and `JsonType` remain as the old names. `RALBSON` reads and writes BSON
+  through `TRALJSON` (canonical mode, the default, gives Int64 and other BSON types as
+  extended JSON: `{"$numberLong": "..."}`). Errors are `ERALException` (`RALExceptions`)
+  with a stable `ErrorCode` from `RALErrorCodes`, and a coded message starts with
+  `[RAL <code>]`; a class that must stay below another library's exception (fpHTTP's
+  `ERALfpConnectionClosed` is an `EHTTPClient`) keeps a plain message. Shared libraries
+  load through `RALDynLibs` (`TRALDynLibs`, one handle per object; `TryBind` leaves a
+  missing symbol nil); `RALTLS` keeps its candidate-name loader on top of it.
 - Unit names in `uses` keep the file's case (`RALMIMETypes`): FPC on Linux looks for the
   file by the name as written, or in lowercase.
 - A Linux-only block tests `RALLinux` **or** `RALLinuxFPC`: FPC on Linux defines only the
@@ -649,8 +660,8 @@ and an object route answers 500). Traps:
   registry (`RALRegisterPropertyName`), then `RALPropertyNameHook` (attributes), then
   `Naming`. Strings are read with `GetUnicodeStrProp` (FPC) / `GetStrProp` (Delphi).
 - Numbers are written by `TRALJSONTextWriter` (15 digits when they read back the same,
-  else 17), not by the JSON backend (fpjson prints `1.25E+001`); `RALJSONNumberText`
-  does the same for values already parsed (CSV, YAML in `src/common/RALYAML`).
+  else 17), not by `TRALJSON.ToJSON`; `RALJSONNumberText` does the same for values
+  already parsed (CSV, YAML in `src/common/RALYAML`).
 - q values and other decimals parse with a '.' format, never the machine's locale.
 - Controllers: among routes of equal weight the first wins, so literal paths are
   registered before `{param}` ones; a generic method may not use an implementation-only
@@ -727,8 +738,7 @@ broker itself; the wake callback runs under the broker's lock). Wire text is
   `RALHasAttributes`, `RALHasExtRTTI`, `RALHasVirtualInterface`, `RALHasGenerics`)
   guard optional sugar units, which compile empty without them (`.agents/tools/
   capabilities` prints and exercises them). Its IFEND block stays at the top. It also selects the
-  language (`LANG_ENUS`, `LANG_ESES`, `LANG_PTBR`), the JSON backend (`RALlkJSON`,
-  `RALuJSON`) and `RAL_DEBUG`.
+  language (`LANG_ENUS`, `LANG_ESES`, `LANG_PTBR`) and `RAL_DEBUG`.
 - User-facing strings are constants in `src/languages/ralconsts_*.inc` (all three),
   UTF-8 with BOM, edited byte-exact; `RALConsts.pas` stays ASCII and declares
   `{$CODEPAGE UTF8}` under FPC.

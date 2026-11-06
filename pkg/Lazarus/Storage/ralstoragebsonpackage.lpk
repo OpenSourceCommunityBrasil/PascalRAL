@@ -10,7 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\..\src\others\kxBSON\Source;..\..\..\src\storage\bson"/>
+        <OtherUnitFiles Value="..\..\..\src\storage\bson"/>
         <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralstoragebsonpackage"/>
       </SearchPaths>
       <Linking>
@@ -26,24 +26,20 @@
     </CompilerOptions>
     <Description Value="PascalRAL | BSON storage"/>
     <Version Major="2"/>
-    <Files Count="4">
+    <Files Count="3">
       <Item1>
-        <Filename Value="..\..\..\src\others\kxBSON\Source\kxBSON.pas"/>
-        <UnitName Value="kxBSON"/>
-      </Item1>
-      <Item2>
         <Filename Value="..\..\..\src\storage\bson\RALStorageBSON.pas"/>
         <UnitName Value="RALStorageBSON"/>
-      </Item2>
-      <Item3>
+      </Item1>
+      <Item2>
         <Filename Value="..\..\..\src\storage\bson\RALStorageBSONReg.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="RALStorageBSONReg"/>
-      </Item3>
-      <Item4>
+      </Item2>
+      <Item3>
         <Filename Value="ralstoragebsonpackage.lrs"/>
         <Type Value="LRS"/>
-      </Item4>
+      </Item3>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

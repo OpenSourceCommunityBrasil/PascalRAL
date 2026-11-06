@@ -61,7 +61,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/controllers/` | `RALModuleControllersPackage` | controllers by attributes and the interface client (Delphi 2010+) |
 | `src/modules/web/` | `RALModuleWebPackage` | Web module (static files, sessions) |
 | `src/modules/xml/` | `RALModuleXMLPackage` | XML reader, writer, DOM, and the XML storage |
-| `src/others/` | (the package that uses each) | submodules only: ZSTD, pascal_brotli, kxBSON |
+| `src/others/` | (the package that uses each) | submodules only: ZSTD, pascal_brotli (kxBSON is registered but unused) |
 | `src/plugins/` | `PascalRAL` | core plugins: security, CORS, content (limits, compression, cipher, JSON body), concurrency |
 | `src/plugins/auth/` | `RALPluginAuthPackage` | Basic and JWT (`RALAuthentication`), Digest, OAuth2, policies (`RALAuthorization`), OpenID Connect (`RALOIDC`) |
 | `src/plugins/cache/` | `RALPluginCachePackage` | response cache and dynamic ETag (`RALResponseCache`) |
@@ -70,7 +70,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/plugins/tls/` | `RALPluginTLSPackage` | self-signed certificate plugin (`RALSelfSigned`) |
 | `src/plugins/traffic/` | `RALPluginTrafficPackage` | rate limit, HTTPS redirect, maintenance, method override (`RALTraffic`) |
 | `src/storage/` | `RALStoragePackage` | dataset storage: base, types (`RALStorageTypes`; `RALDBTypes` is the deprecated old name), BIN, JSON, CSV |
-| `src/storage/bson/` | `RALStorageBSONPackage` | BSON storage (submodule kxBSON in `src/others/kxBSON`) |
+| `src/storage/bson/` | `RALStorageBSONPackage` | BSON storage over the native `RALBSON` (`src/common`) |
 | `src/wizard/delphi/` | `RALWizardDsgn` | Delphi project wizards (`cgi/`, `console/`, `standalone/`) |
 | `src/wizard/lazarus/` | (Lazarus wizard) | Lazarus project wizard |
 
@@ -101,8 +101,10 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 
 ### `src/common/` (PascalRAL)
 
-`RALBase64`, `RALExternalsLibraries` (dynamic library loading), `RALHexadecimal`,
-`RALJson` (+ `RALJSON_Delphi/FPC/lkJSON/uJSON.inc` backends), `RALMIMETypes`,
+`RALBase64`, `RALBSON` (BSON reader and writer over `TRALJSON`), `RALDynLibs` (shared
+library loading), `RALErrorCodes` (stable error codes and their messages),
+`RALExceptions` (`ERALException` with `ErrorCode`), `RALHexadecimal`,
+`RALJson` (RAL's own JSON parser and writer), `RALMIMETypes`,
 `RALMultipartCoder`, `RALNetwork` (the server's own address), `RALRegex` (RAL's own
 regular expressions: RE2 syntax, lazy DFA and Pike VM, linear time), `RALQuicFrame` (RAL's
 frame over QUIC), `RALResponsePages`, `RALSSE` (Server-Sent Events writer and

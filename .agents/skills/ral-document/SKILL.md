@@ -54,8 +54,8 @@ constant, routine and every class member, private ones included.
 - Left without a description on purpose: `Create`/`Destroy` without a parameter worth
   explaining, an `override` that keeps the ancestor's contract, and the private field,
   getter and setter of a documented property.
-- The same declaration in two `{$IFDEF}` branches or parallel includes
-  (`RALJSON_*.inc`) gets the same text in each.
+- The same declaration in two `{$IFDEF}` branches or parallel includes gets the same
+  text in each.
 - A long "why" does not go in the code: it goes to the wiki pages `internos-*`
   ([guia-contribuicao](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/guia-contribuicao)).
   In the code stays one sentence with the constraint.

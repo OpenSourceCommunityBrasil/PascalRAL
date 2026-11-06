@@ -1,5 +1,5 @@
 /// JSON values, UTF-8 conversion and incremental parsing.
-unit RALJSON;
+unit RALJson;
 
 {$IFDEF FPC}
 {$mode delphi}

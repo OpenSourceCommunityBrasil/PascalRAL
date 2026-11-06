@@ -200,7 +200,10 @@
         <DCCReference Include="..\..\src\common\RALBase64.pas"/>
         <DCCReference Include="..\..\src\common\RALHexadecimal.pas"/>
         <DCCReference Include="..\..\src\common\RALResponsePages.pas"/>
-        <DCCReference Include="..\..\src\common\RALExternalsLibraries.pas"/>
+        <DCCReference Include="..\..\src\common\RALDynLibs.pas"/>
+        <DCCReference Include="..\..\src\common\RALErrorCodes.pas"/>
+        <DCCReference Include="..\..\src\common\RALExceptions.pas"/>
+        <DCCReference Include="..\..\src\common\RALBSON.pas"/>
         <DCCReference Include="..\..\src\common\RALQuicFrame.pas"/>
         <DCCReference Include="..\..\src\compress\RALCompress.pas"/>
         <DCCReference Include="..\..\src\compress\RALCompressZLib.pas"/>

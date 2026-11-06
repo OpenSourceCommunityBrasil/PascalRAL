@@ -189,7 +189,6 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="RALStoragePackage.dcp"/>
-        <DCCReference Include="..\..\..\src\others\kxBSON\Source\kxBSON.pas"/>
         <DCCReference Include="..\..\..\src\storage\bson\RALStorageBSON.pas"/>
         <DCCReference Include="..\..\..\src\storage\bson\RALStorageBSONReg.pas"/>
         <BuildConfiguration Include="Base">

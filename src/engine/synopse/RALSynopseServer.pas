@@ -16,9 +16,9 @@ uses
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
   mormot.core.base, mormot.rest.http.server, mormot.rest.server, mormot.net.sock,
   {$IFDEF RALWindows}
-  RALExceptions, RALErrorCodes, RALHttpSysCert,
+  RALHttpSysCert,
   {$ENDIF}
-  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
+  RALExceptions, RALErrorCodes, RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools, RALBase64, RALRSA, RALX509, RALNetwork, RALStream,
   RALResponseStream, RALCustomObjects;
 

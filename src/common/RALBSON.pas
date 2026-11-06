@@ -12,7 +12,7 @@ interface
 uses
   Classes,
   SysUtils,
-  RALJSON, RALTypes;
+  RALJson, RALTypes;
 
 const
   RALBSONRootElementKey = '$RALElement';

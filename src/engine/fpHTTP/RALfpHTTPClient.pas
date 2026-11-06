@@ -348,7 +348,7 @@ begin
   Result := inherited ReadResponse(Stream, AllowedResponseCodes, HeadersOnly);
   if (not Result) and (not Terminated) then
     { the URL is only known to SendUrl, which formats the message }
-    raise ERALfpConnectionClosed.Create(ecConnectionClosedNoResponse);
+    raise ERALfpConnectionClosed.Create(emConnectionClosedNoResponse);
 end;
 
 { fphttpclient decides whether to drop the socket after an answer by looking

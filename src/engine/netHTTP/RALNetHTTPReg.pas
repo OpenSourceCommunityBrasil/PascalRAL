@@ -5,7 +5,7 @@ interface
 
 uses
   Classes,
-  RALNetHttpClient;
+  RALnetHTTPClient;
 
 procedure Register;
 

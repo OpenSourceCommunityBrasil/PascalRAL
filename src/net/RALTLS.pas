@@ -22,7 +22,7 @@ uses
   Windows,
   {$ENDIF}
   Classes, SysUtils, SyncObjs,
-  RALErrorCodes, RALTypes, RALConsts, RALClient, RALExternalsLibraries, RALSocket;
+  RALErrorCodes, RALTypes, RALConsts, RALClient, RALSocket;
 
 type
   /// Lowest TLS version accepted.
@@ -338,7 +338,7 @@ uses
   {$IF Defined(POSIX) and not Defined(FPC)}
   Posix.Base,
   {$IFEND}
-  RALSHA2_32, RALNetwork;
+  RALSHA2_32, RALNetwork, RALDynLibs;
 
 const
   SSL_ERROR_NONE = 0;
@@ -373,15 +373,37 @@ const
   X509_V_OK = 0;
 
 type
+  { one shared library found among candidate names: the first one that loads
+    wins and binds its symbols. A missing symbol stays nil, so the caller
+    decides which ones it cannot live without. }
+  TRALTLSLibrary = class
+  private
+    FCandidates: TStringList;
+    FProcs: TList;
+    FLibrary: IRALDynLibs;
+    FLibraryName: string;
+    function GetLibraryHandle: NativeUInt;
+  protected
+    procedure AddLibrary(const AName: string);
+    procedure LoadLibrary;
+    procedure LoadProc(var AProc: Pointer; AName: PAnsiChar);
+    procedure LoadProcs; virtual; abstract;
+  public
+    constructor Create; virtual;
+    destructor Destroy; override;
+    property LibraryHandle: NativeUInt read GetLibraryHandle;
+    property LibraryName: string read FLibraryName;
+  end;
+
   { the two libraries; libcrypto first, libssl needs it }
-  TRALTLSCryptoLib = class(TRALExternalsLibraries)
+  TRALTLSCryptoLib = class(TRALTLSLibrary)
   protected
     procedure LoadProcs; override;
   public
     constructor Create; override;
   end;
 
-  TRALTLSSSLLib = class(TRALExternalsLibraries)
+  TRALTLSSSLLib = class(TRALTLSLibrary)
   protected
     procedure LoadProcs; override;
   public
@@ -511,6 +533,68 @@ function CertEnumCertificatesInStore(hCertStore: Pointer; pPrevCertContext: PCer
 function CertCloseStore(hCertStore: Pointer; dwFlags: Cardinal): LongBool; stdcall;
   external cCrypt32 name 'CertCloseStore';
 {$ENDIF}
+
+{ TRALTLSLibrary }
+
+constructor TRALTLSLibrary.Create;
+begin
+  inherited Create;
+  FCandidates := TStringList.Create;
+  FProcs := TList.Create;
+end;
+
+destructor TRALTLSLibrary.Destroy;
+var
+  vInt: IntegerRAL;
+begin
+  { nothing may call into the library once it is unloaded }
+  for vInt := 0 to Pred(FProcs.Count) do
+    PPointer(FProcs.Items[vInt])^ := nil;
+  FLibrary := nil;
+  FreeAndNil(FProcs);
+  FreeAndNil(FCandidates);
+  inherited Destroy;
+end;
+
+procedure TRALTLSLibrary.AddLibrary(const AName: string);
+begin
+  FCandidates.Add(AName);
+end;
+
+function TRALTLSLibrary.GetLibraryHandle: NativeUInt;
+begin
+  if FLibrary <> nil then
+    Result := FLibrary.Handle
+  else
+    Result := 0;
+end;
+
+procedure TRALTLSLibrary.LoadLibrary;
+var
+  vInt: IntegerRAL;
+begin
+  for vInt := 0 to Pred(FCandidates.Count) do
+  begin
+    try
+      FLibrary := TRALDynLibs.Create(FCandidates.Strings[vInt]);
+    except
+      { not this name (absent or another architecture): try the next one }
+      FLibrary := nil;
+    end;
+    if FLibrary <> nil then
+    begin
+      FLibraryName := FCandidates.Strings[vInt];
+      LoadProcs;
+      Break;
+    end;
+  end;
+end;
+
+procedure TRALTLSLibrary.LoadProc(var AProc: Pointer; AName: PAnsiChar);
+begin
+  FLibrary.TryBind(AProc, AnsiString(AName));
+  FProcs.Add(@AProc);
+end;
 
 { TRALTLSCryptoLib }
 

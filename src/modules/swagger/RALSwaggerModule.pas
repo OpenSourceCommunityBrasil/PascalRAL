@@ -6,7 +6,7 @@ interface
 uses
   Classes, SysUtils,
   RALServer, RALTypes, RALRoutes, RALRequest, RALResponse, RALMIMETypes,
-  RAlTools;
+  RALTools;
 
 type
 

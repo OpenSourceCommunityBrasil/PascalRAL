@@ -8,7 +8,7 @@ unit RALStorageBSONPackage;
 interface
 
 uses
-  kxBSON, RALStorageBSON, RALStorageBSONReg, LazarusPackageIntf;
+  RALStorageBSON, RALStorageBSONReg, LazarusPackageIntf;
 
 implementation
 

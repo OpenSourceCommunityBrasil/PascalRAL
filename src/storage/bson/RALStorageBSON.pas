@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, DB, DateUtils, Math,
-  RALBSON, RALJSON, RALExceptions, RALErrorCodes, RALTypes, RALStorage,
+  RALBSON, RALJson, RALExceptions, RALErrorCodes, RALTypes, RALStorage,
   RALTools, RALMIMETypes, RALDBTypes, RALBase64, RALConsts;
 
 type

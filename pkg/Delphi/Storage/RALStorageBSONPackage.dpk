@@ -33,7 +33,6 @@ requires
   RALStoragePackage;
 
 contains
-  kxBSON in '..\..\..\src\others\kxBSON\Source\kxBSON.pas',
   RALStorageBSON in '..\..\..\src\storage\bson\RALStorageBSON.pas',
   RALStorageBSONReg in '..\..\..\src\storage\bson\RALStorageBSONReg.pas';
 
