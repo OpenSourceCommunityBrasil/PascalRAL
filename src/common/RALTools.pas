@@ -24,7 +24,7 @@ uses
     Linux,         // RALTickMicro
   {$IFEND}
   Classes, SysUtils, Variants, StrUtils, TypInfo, DateUtils,
-  RALTypes, RALConsts, RALCompress;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALCompress;
 
 /// A monotonic clock in microseconds, for durations only (not the time of day).
 function RALTickMicro: Int64RAL;
@@ -946,7 +946,7 @@ begin
     sources instead. }
   {$IFDEF RALWindows}
   if not SystemFunction036(@Result[0], numOfBytes) then
-    raise Exception.Create(emRandomBytesFailed);
+    raise ERALException.Create(ecRandomBytesFailed);
   {$ELSE}
   vHandle := URandomHandle;
   if (vHandle >= 0) and URandomRead(vHandle, Result, numOfBytes) then

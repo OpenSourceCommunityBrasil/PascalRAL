@@ -12,9 +12,9 @@ interface
 uses
   Classes, SysUtils, DateUtils, SyncObjs,
   libsagui,
-  RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
-  RALParams, RALTools, RALCompress, RALResponseStream, RALCustomObjects, RALRoutes,
-  RALStream;
+  RALExceptions, RALErrorCodes, RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest,
+  RALResponse, RALParams, RALTools, RALCompress, RALResponseStream, RALCustomObjects,
+  RALRoutes, RALStream;
 
 type
   { TRALSaguiSSL }
@@ -392,7 +392,7 @@ begin
       DoUploadFree, DoUploadSave, DoUploadSaveAs);
   if not Assigned(FHandle) then
   begin
-    e := Exception.Create(emSaguiServerCreateError);
+    e := ERALException.Create(ecSaguiServerCreateError);
     if assigned(OnServerError) then
       OnServerError(e);
   end;
@@ -1115,7 +1115,7 @@ begin
     try
       SgLib.Load(FLibPath);
     except
-      e := Exception.Create(emSaguiLibraryLoadError);
+      e := ERALException.Create(ecSaguiLibraryLoadError);
       if assigned(OnServerError) then
         OnServerError(e);
     end;
@@ -1194,7 +1194,7 @@ begin
   if not InitializeServer then
   begin
     FreeServerHandle;
-    raise Exception.CreateFmt(emServerListenFailed, ['Sagui', Port]);
+    raise ERALException.CreateFmt(ecServerListenFailed, ['Sagui', Port]);
   end;
 end;
 
@@ -1345,7 +1345,7 @@ begin
     if not Assigned(sg_httpsrv_tls_listen3) then
     begin
       { it used to report the error and then call the nil pointer anyway }
-      e := Exception.Create(emSaguiServerUnsupportedTLS);
+      e := ERALException.Create(ecSaguiServerUnsupportedTLS);
       if assigned(OnServerError) then
         OnServerError(e);
       raise e;

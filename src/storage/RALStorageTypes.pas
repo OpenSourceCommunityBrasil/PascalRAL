@@ -9,8 +9,8 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, DB, FMTBcd, DateUtils,
-  RALTools,
-  RALTypes, RALJson, RALParams, RALResponse, RALConsts;
+  RALExceptions, RALErrorCodes, RALTools, RALTypes, RALJson, RALParams, RALResponse,
+  RALConsts;
 
 type
   /// Type of a field between client and server; its ordinal goes on the wire.
@@ -774,7 +774,7 @@ begin
   vJSON := TRALJSON.ParseJSON(AValue);
   try
     if (vJSON <> nil) and not (vJSON is TRALJSONObject) then
-      raise Exception.Create(emInvalidJSONFormat);
+      raise ERALException.Create(ecInvalidJSONFormat);
     AsJSONObj := TRALJSONObject(vJSON);
   finally
     FreeAndNil(vJSON);
@@ -891,7 +891,7 @@ begin
   begin
     vValue := AValue.Get(vInt);
     if not (vValue is TRALJSONObject) then
-      raise Exception.Create(emInvalidJSONFormat);
+      raise ERALException.Create(ecInvalidJSONFormat);
 
     vField := NewField;
     vField.AsJSONObj := TRALJSONObject(vValue);
@@ -918,7 +918,7 @@ begin
   try
     // see TRALDBInfoField.SetAsJSON
     if (vJSON <> nil) and not (vJSON is TRALJSONArray) then
-      raise Exception.Create(emInvalidJSONFormat);
+      raise ERALException.Create(ecInvalidJSONFormat);
     AsJSONObj := TRALJSONArray(vJSON);
   finally
     FreeAndNil(vJSON);
@@ -989,7 +989,7 @@ begin
   try
     // see TRALDBInfoField.SetAsJSON
     if (vJSON <> nil) and not (vJSON is TRALJSONObject) then
-      raise Exception.Create(emInvalidJSONFormat);
+      raise ERALException.Create(ecInvalidJSONFormat);
     AsJSONObj := TRALJSONObject(vJSON);
   finally
     FreeAndNil(vJSON);
@@ -1063,7 +1063,7 @@ begin
   try
     // see TRALDBInfoField.SetAsJSON
     if (vJSON <> nil) and not (vJSON is TRALJSONArray) then
-      raise Exception.Create(emInvalidJSONFormat);
+      raise ERALException.Create(ecInvalidJSONFormat);
     AsJSONObj := TRALJSONArray(vJSON);
   finally
     FreeAndNil(vJSON);
@@ -1083,7 +1083,7 @@ begin
   begin
     vValue := AValue.Get(vInt);
     if not (vValue is TRALJSONObject) then
-      raise Exception.Create(emInvalidJSONFormat);
+      raise ERALException.Create(ecInvalidJSONFormat);
 
     vTable := NewTable;
     vTable.AsJSONObj := TRALJSONObject(vValue);

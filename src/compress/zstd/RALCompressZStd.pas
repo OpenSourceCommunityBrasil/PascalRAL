@@ -8,7 +8,7 @@ interface
 
 uses
   Classes, SysUtils, ZSTD, ZSTDLib,
-  RALCompress, RALTypes, RALConsts;
+  RALExceptions, RALErrorCodes, RALCompress, RALTypes, RALConsts;
 
 type
   { TRALCompressZStd }
@@ -85,7 +85,7 @@ begin
 
   if AValue <> ctZStd then
   begin
-    raise Exception.Create(emInvalidFormat);
+    raise ERALException.Create(ecInvalidFormat);
     Exit;
   end;
 

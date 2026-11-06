@@ -26,7 +26,7 @@ interface
 
 uses
   Windows, SysUtils,
-  RALTypes, RALConsts;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts;
 
 /// The DER of the certificate bound to 0.0.0.0:APort, or to [::]:APort when
 /// the IPv4 one is not bound; empty when neither is, or the certificate is
@@ -211,7 +211,7 @@ function NCryptFreeObject(hObject: NativeUInt): Integer; stdcall;
 procedure CheckHttpApi(AResult: Cardinal; const AWhat: string);
 begin
   if AResult <> NO_ERROR then
-    raise Exception.CreateFmt(emHttpSysCallFailed, [AWhat, AResult,
+    raise ERALException.CreateFmt(ecHttpSysCallFailed, [AWhat, AResult,
       SysErrorMessage(AResult)]);
 end;
 
@@ -425,7 +425,7 @@ begin
   vTemp := PFXImportCertStore(@vBlob, PWideChar(vPassword),
     CRYPT_MACHINE_KEYSET or PKCS12_INCLUDE_EXTENDED_PROPERTIES);
   if vTemp = nil then
-    raise Exception.CreateFmt(emHttpSysImportFailed, [SysErrorMessage(GetLastError)]);
+    raise ERALException.CreateFmt(ecHttpSysImportFailed, [SysErrorMessage(GetLastError)]);
   try
     { the certificate that came with its key }
     vFound := nil;
@@ -440,14 +440,14 @@ begin
       vCert := CertEnumCertificatesInStore(vTemp, vCert);
     end;
     if vFound = nil then
-      raise Exception.Create(emHttpSysNoKey);
+      raise ERALException.Create(ecHttpSysNoKey);
     try
       if not CertAddCertificateContextToStore(AStore, vFound,
         CERT_STORE_ADD_REPLACE_EXISTING, nil) then
       begin
         { the import already persisted the key: it goes with the error }
         DeleteCertificateKey(vFound);
-        raise Exception.CreateFmt(emHttpSysStoreFailed, [SysErrorMessage(GetLastError)]);
+        raise ERALException.CreateFmt(ecHttpSysStoreFailed, [SysErrorMessage(GetLastError)]);
       end;
     finally
       CertFreeCertificateContext(vFound);
@@ -542,7 +542,7 @@ var
   vImported: boolean;
 begin
   if (Length(APfx) = 0) or (Length(AThumbprint) <> 20) then
-    raise Exception.Create(emHttpSysNoCertificate);
+    raise ERALException.Create(ecHttpSysNoCertificate);
 
   { the store first: without administrator rights it does not open for
     writing, and nothing may be imported before that is known - the import
@@ -550,7 +550,7 @@ begin
     the store would be left there for nobody }
   vMy := OpenMachineStore('MY', False);
   if vMy = nil then
-    raise Exception.CreateFmt(emHttpSysStoreFailed, [SysErrorMessage(GetLastError)]);
+    raise ERALException.CreateFmt(ecHttpSysStoreFailed, [SysErrorMessage(GetLastError)]);
   try
     { already there with its key - the same certificate bound again after a
       restart, or by the next run of the application: importing it once more

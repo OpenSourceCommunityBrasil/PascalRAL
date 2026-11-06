@@ -3,9 +3,9 @@ unit RALStorageBSON;
 interface
 
 uses
-  Classes, SysUtils, DB,
-  kxBSON,
-  RALTypes, RALStorage, RALTools, RALMIMETypes, RALStorageTypes, RALBase64, RALConsts;
+  Classes, SysUtils, DB, DateUtils, Math,
+  RALBSON, RALJSON, RALExceptions, RALErrorCodes, RALTypes, RALStorage,
+  RALTools, RALMIMETypes, RALDBTypes, RALBase64, RALConsts;
 
 type
 
@@ -13,11 +13,11 @@ type
 
   TRALStorageBSON = class(TRALStorage)
   protected
-    procedure WriteFields(ADataset : TDataSet; ADocument : TBSONDocument);
-    procedure WriteRecords(ADataset : TDataSet; ADocument : TBSONDocument);
+    procedure WriteFields(ADataset : TDataSet; ADocument : TRALJSONObject);
+    procedure WriteRecords(ADataset : TDataSet; ADocument : TRALJSONObject);
 
-    procedure ReadFields(ADataset : TDataSet; ADocument : TBSONDocument);
-    procedure ReadRecords(ADataset : TDataSet; ADocument : TBSONDocument);
+    procedure ReadFields(ADataset : TDataSet; ADocument : TRALJSONObject);
+    procedure ReadRecords(ADataset : TDataSet; ADocument : TRALJSONObject);
   public
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
@@ -36,127 +36,193 @@ type
 
 implementation
 
+function StorageArray(AValue: TRALJSON): TRALJSONArray;
+begin
+  if (AValue = nil) or (AValue.Kind <> rjkArray) then
+    raise ERALException.Create(ecStorageInvalidBinary);
+  Result := AValue.AsArray;
+end;
+
+function BSONNumber(const AKind, AValue: StringRAL): TRALJSONObject;
+begin
+  Result := TRALJSONObject.Create;
+  try
+    Result.Add(AKind, AValue);
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function BSONDouble(AValue: Double): TRALJSONObject;
+var
+  vFormat: TFormatSettings;
+begin
+  {$IFDEF FPC}
+  vFormat := DefaultFormatSettings;
+  {$ELSE}
+  vFormat := TFormatSettings.Create;
+  {$ENDIF}
+  vFormat.DecimalSeparator := '.';
+  if IsNan(AValue) then
+    Result := BSONNumber('$numberDouble', 'NaN')
+  else if IsInfinite(AValue) then
+  begin
+    if AValue < 0 then
+      Result := BSONNumber('$numberDouble', '-Infinity')
+    else
+      Result := BSONNumber('$numberDouble', 'Infinity');
+  end
+  else
+    Result := BSONNumber('$numberDouble', FloatToStrF(AValue, ffGeneral, 17, 0, vFormat));
+end;
+
+function StorageDouble(AValue: TRALJSON): Double;
+var
+  vText: StringRAL;
+begin
+  if AValue.Kind <> rjkObject then
+  begin
+    Result := AValue.AsNumber;
+    Exit;
+  end;
+  vText := AValue.AsObject.Get('$numberDouble').AsString;
+  if vText = 'NaN' then
+    Result := NaN
+  else if vText = 'Infinity' then
+    Result := Infinity
+  else if vText = '-Infinity' then
+    Result := -Infinity
+  else
+    raise ERALException.Create(ecStorageInvalidBinary);
+end;
+
+function BSONLegacyDate(AValue: TDateTime): TRALJSONObject;
+begin
+  Result := TRALJSONObject.Create;
+  try
+    Result.Add('$date', BSONNumber('$numberLong', IntToStr(DateTimeToUnix(AValue))));
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
 { TRALStorageBSON }
 
-procedure TRALStorageBSON.WriteFields(ADataset: TDataSet; ADocument: TBSONDocument);
+procedure TRALStorageBSON.WriteFields(ADataset: TDataSet; ADocument: TRALJSONObject);
 var
   vInt: IntegerRAL;
-  vFields, vField : PBSONItemArray;
+  vFields, vField : TRALJSONArray;
   vType: TRALFieldType;
   vByte: Byte;
 begin
   SetLength(FFieldTypes, ADataset.FieldCount);
 
-  vFields := TBSONItemArray.Create('fd');
+  vFields := TRALJSONArray.Create;
+  ADocument.Add('fd', vFields);
   for vInt := 0 to Pred(ADataset.FieldCount) do
   begin
-    vField := TBSONItemArray.Create('');
+    vField := TRALJSONArray.Create;
+    vFields.Add(vField);
 
-    vField^.Values.Add(TBSONItemString.Create('', ADataset.Fields[vInt].FieldName));
+    vField.Add(TRALJSONString.Create(ADataset.Fields[vInt].FieldName));
 
     vType := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
-    vField^.Values.Add(TBSONItemInt32.Create('', Ord(vType)));
+    vField.Add(TRALJSONNumber.Create(IntToStr(Ord(vType))));
     FFieldTypes[vInt] := vType;
 
     vByte := TRALDB.GetFieldProviderFlags(ADataset.Fields[vInt]);
-    vField^.Values.Add(TBSONItemInt32.Create('', vByte));
+    vField.Add(TRALJSONNumber.Create(IntToStr(vByte)));
 
-    vField^.Values.Add(TBSONItemInt32.Create('', ADataset.Fields[vInt].Size));
+    vField.Add(TRALJSONNumber.Create(IntToStr(ADataset.Fields[vInt].Size)));
 
     // a decimal also says its precision - Size is its scale (see RALStorageBIN)
     if vType = sftBCD then
-      vField^.Values.Add(TBSONItemInt32.Create('', RALFieldPrecision(ADataset.Fields[vInt])));
-
-    vFields^.Values.Add(vField);
+      vField.Add(TRALJSONNumber.Create(IntToStr(RALFieldPrecision(ADataset.Fields[vInt]))));
   end;
-
-  ADocument.Values.Add(vFields);
 end;
 
-procedure TRALStorageBSON.WriteRecords(ADataset: TDataSet; ADocument: TBSONDocument);
+procedure TRALStorageBSON.WriteRecords(ADataset: TDataSet; ADocument: TRALJSONObject);
 var
-  vRecords, vRecord : PBSONItemArray;
+  vRecords, vRecord : TRALJSONArray;
   vInt : IntegerRAL;
   vBookMark: TBookMark;
   vMem : TStream;
 begin
-  vRecords := TBSONItemArray.Create('rc');
+  vRecords := TRALJSONArray.Create;
+  ADocument.Add('rc', vRecords);
 
   ADataset.DisableControls;
+  vBookMark := nil;
+  try
 
-  if not ADataset.IsUniDirectional then
-  begin
-    vBookMark := ADataset.GetBookmark;
-    ADataset.First;
-  end;
-
-  while not(ADataset.Eof) do
-  begin
-    vRecord := TBSONItemArray.Create('');
-
-    for vInt := 0 to Pred(ADataset.FieldCount) do
+    if not ADataset.IsUniDirectional then
     begin
-      if not ADataset.Fields[vInt].IsNull then
-      begin
-        case FFieldTypes[vInt] of
-          sftShortInt,
-          sftSmallInt,
-          sftInteger,
-          sftByte,
-          sftWord     : vRecord^.Values.Add(TBSONItemInt32.Create('', ADataset.Fields[vInt].AsInteger));
-          sftCardinal,
-          sftInt64,
-          sftQWord    : vRecord^.Values.Add(TBSONItemInt64.Create('', ADataset.Fields[vInt].AsLargeInt));
-          sftDouble   : vRecord^.Values.Add(TBSONItemDouble.Create('', ADataset.Fields[vInt].AsFloat));
-          sftBoolean  : vRecord^.Values.Add(TBSONItemBoolean.Create('', ADataset.Fields[vInt].AsBoolean));
-          sftString,
-          sftMemo     : vRecord^.Values.Add(TBSONItemString.Create('', ADataset.Fields[vInt].AsString));
-          sftBlob     : begin
-            vMem := TMemoryStream.Create;
-            try
-              TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
-              vRecord^.Values.Add(TBSONItemString.Create('', TRALBase64.Encode(vMem)));
-            finally
-              FreeAndNil(vMem);
-            end;
-          end;
-          { kxBSON writes a BSON date in whole seconds (DateTimeToUnix), where
-            the spec says milliseconds, so every time went out cut to the
-            second. A double holds the TDateTime whole; RALLegacyWire keeps
-            the date an older RAL reads }
-          sftDateTime : if RALLegacyWire then
-                          vRecord^.Values.Add(TBSONItemDateTime.Create('', ADataset.Fields[vInt].AsDateTime))
-                        else
-                          vRecord^.Values.Add(TBSONItemDouble.Create('', ADataset.Fields[vInt].AsDateTime));
-          sftBCD      : vRecord^.Values.Add(TBSONItemString.Create('', RALBCDToText(ADataset.Fields[vInt].AsBCD)));
-        end;
-      end
-      else
-      begin
-        vRecord^.Values.Add(TBSONItemNull.Create(''));
-      end;
+      vBookMark := ADataset.GetBookmark;
+      ADataset.First;
     end;
 
-    vRecords^.Values.Add(vRecord);
+    while not(ADataset.Eof) do
+    begin
+      vRecord := TRALJSONArray.Create;
+      vRecords.Add(vRecord);
 
-    ADataset.Next;
+      for vInt := 0 to Pred(ADataset.FieldCount) do
+      begin
+        if not ADataset.Fields[vInt].IsNull then
+        begin
+          case FFieldTypes[vInt] of
+            sftShortInt,
+            sftSmallInt,
+            sftInteger,
+            sftByte,
+            sftWord     : vRecord.Add(TRALJSONNumber.Create(IntToStr(ADataset.Fields[vInt].AsInteger)));
+            sftCardinal,
+            sftInt64,
+            sftQWord    : vRecord.Add(BSONNumber('$numberLong', IntToStr(ADataset.Fields[vInt].AsLargeInt)));
+            sftDouble   : vRecord.Add(BSONDouble(ADataset.Fields[vInt].AsFloat));
+            sftBoolean  : vRecord.Add(TRALJSONBoolean.Create(ADataset.Fields[vInt].AsBoolean));
+            sftString,
+            sftMemo     : vRecord.Add(TRALJSONString.Create(ADataset.Fields[vInt].AsString));
+            sftBlob     : begin
+              vMem := TMemoryStream.Create;
+              try
+                TBlobField(ADataset.Fields[vInt]).SaveToStream(vMem);
+                vRecord.Add(TRALJSONString.Create(TRALBase64.Encode(vMem)));
+              finally
+                FreeAndNil(vMem);
+              end;
+            end;
+            { Older RAL versions store date values as Unix seconds. Keep that
+              layout in legacy mode; otherwise preserve the full TDateTime. }
+            sftDateTime : if RALLegacyWire then
+                            vRecord.Add(BSONLegacyDate(ADataset.Fields[vInt].AsDateTime))
+                          else
+                            vRecord.Add(BSONDouble(ADataset.Fields[vInt].AsDateTime));
+            sftBCD      : vRecord.Add(TRALJSONString.Create(RALBCDToText(ADataset.Fields[vInt].AsBCD)));
+          end;
+        end
+        else
+          vRecord.Add(TRALJSONNull.Create);
+      end;
+      ADataset.Next;
+    end;
+
+    if vBookMark <> nil then
+      ADataset.GotoBookmark(vBookMark);
+  finally
+    if vBookMark <> nil then
+      ADataset.FreeBookmark(vBookMark);
+    ADataset.EnableControls;
   end;
 
-  if not ADataset.IsUniDirectional then
-  begin
-    ADataset.GotoBookmark(vBookMark);
-    ADataset.FreeBookmark(vBookMark);
-  end;
-
-  ADataset.EnableControls;
-
-  ADocument.Values.Add(vRecords);
 end;
 
-procedure TRALStorageBSON.ReadFields(ADataset: TDataSet; ADocument: TBSONDocument);
+procedure TRALStorageBSON.ReadFields(ADataset: TDataSet; ADocument: TRALJSONObject);
 var
   vInt, vSize: IntegerRAL;
-  vFields, vItemField : PBSONItemArray;
+  vFields, vItemField : TRALJSONArray;
   vName: StringRAL;
   vType: TFieldType;
   vTypeOrd: IntegerRAL;
@@ -168,38 +234,35 @@ begin
 
   ADataset.FieldDefs.Clear;
 
-  { the document is whatever came over the wire - a server's answer, a
-    client's delta to applyupdates - so every item is asked for by type: the
-    untyped ByName handed back an item of any type, read as an array from
-    then on, and the item list does not check its index }
-  vFields := ADocument.Values.ByName('fd', BSON_TYPE_ARRAY);
+  // Validate the arrays received over the wire before reading their items.
+  vFields := StorageArray(ADocument.Get('fd'));
   if vFields = nil then
-    raise Exception.Create(emStorageInvalidBinary);
+    raise ERALException.Create(ecStorageInvalidBinary);
 
-  SetLength(FFieldNames, vFields^.Values.Count);
-  SetLength(FFieldTypes, vFields^.Values.Count);
-  SetLength(FFoundFields, vFields^.Values.Count);
-  SetLength(vFlags, vFields^.Values.Count);
+  SetLength(FFieldNames, vFields.Count);
+  SetLength(FFieldTypes, vFields.Count);
+  SetLength(FFoundFields, vFields.Count);
+  SetLength(vFlags, vFields.Count);
 
-  for vInt := 0 to Pred(vFields^.Values.Count) do
+  for vInt := 0 to Pred(vFields.Count) do
   begin
     // a field is [name, type, flags, size], and a decimal adds its precision
-    vItemField := vFields^.Values.Item[vInt]^.PBSONArray;
-    if (vItemField = nil) or (vItemField^.Values.Count < 4) then
-      raise Exception.Create(emStorageInvalidBinary);
+    vItemField := StorageArray(vFields[vInt]);
+    if (vItemField = nil) or (vItemField.Count < 4) then
+      raise ERALException.Create(ecStorageInvalidBinary);
 
-    vName := vItemField^.Values[0]^.ToString;
+    vName := vItemField[0].AsString;
     FFieldNames[vInt] := vName;
 
     // checked before it becomes an enum - see RALStorageBIN
-    vTypeOrd := vItemField^.Values[1]^.ToInt;
+    vTypeOrd := vItemField[1].AsInt64;
     if not RALIsFieldTypeOrdinal(vTypeOrd) then
-      raise Exception.Create(emStorageInvalidBinary);
+      raise ERALException.Create(ecStorageInvalidBinary);
     FFieldTypes[vInt] := TRALFieldType(vTypeOrd);
     vType := TRALDB.RALFieldTypeToFieldType(FFieldTypes[vInt]);
 
-    vFlags[vInt] := vItemField^.Values[2]^.ToInt;
-    vSize := vItemField^.Values[3]^.ToInt;
+    vFlags[vInt] := vItemField[2].AsInt64;
+    vSize := vItemField[3].AsInt64;
 
     vField := ADataset.FieldDefs.AddFieldDef;
     vField.Name := vName;
@@ -213,12 +276,11 @@ begin
     if (FFieldTypes[vInt] = sftDouble) and (vSize > 0) then
       vField.Precision := vSize;
 
-    // the item list does not check its index (see above): asked only if there
     if FFieldTypes[vInt] = sftBCD then
     begin
-      if vItemField^.Values.Count < 5 then
-        raise Exception.Create(emStorageInvalidBinary);
-      vField.Precision := RALDecimalPrecision(vItemField^.Values[4]^.ToInt);
+      if vItemField.Count < 5 then
+        raise ERALException.Create(ecStorageInvalidBinary);
+      vField.Precision := RALDecimalPrecision(vItemField[4].AsInt64);
     end;
 
     if vFlags[vInt] and 1 > 0 then
@@ -238,7 +300,7 @@ begin
   begin
     vName := ADataset.Fields[vInt].FieldName;
 
-    for vSize := 0 to Pred(vFields^.Values.Count) do
+    for vSize := 0 to Pred(vFields.Count) do
     begin
       if RALSameName(vName, FFieldNames[vSize]) then
       begin
@@ -250,17 +312,16 @@ begin
 end;
 
 procedure TRALStorageBSON.ReadRecords(ADataset: TDataSet;
-  ADocument: TBSONDocument);
+  ADocument: TRALJSONObject);
 var
-  vRecords, vRecord: PBSONItemArray;
-  vItem: PBSONItemBase;
+  vRecords, vRecord: TRALJSONArray;
+  vItem: TRALJSON;
   vInt1, vInt2, vCount: IntegerRAL;
   vBookMark: TBookMark;
 begin
-  // typed, like everything read here - see ReadFields
-  vRecords := ADocument.Values.ByName('rc', BSON_TYPE_ARRAY);
+  vRecords := StorageArray(ADocument.Get('rc'));
   if vRecords = nil then
-    raise Exception.Create(emStorageInvalidBinary);
+    raise ERALException.Create(ecStorageInvalidBinary);
 
   ADataset.DisableControls;
   LiftReadOnly;
@@ -273,51 +334,50 @@ begin
     end;
 
     // the array is zero-based: starting at 1 silently dropped the first record
-    for vInt1 := 0 to Pred(vRecords^.Values.Count) do
+    for vInt1 := 0 to Pred(vRecords.Count) do
     begin
-      vRecord := vRecords^.Values.Item[vInt1]^.PBSONArray;
+      vRecord := StorageArray(vRecords[vInt1]);
       if vRecord = nil then
-        raise Exception.Create(emStorageInvalidBinary);
+        raise ERALException.Create(ecStorageInvalidBinary);
 
       { values go by position, and only as far as there are fields: a record
         with more values indexed past FFieldTypes }
-      vCount := vRecord^.Values.Count;
+      vCount := vRecord.Count;
       if vCount > Length(FFieldTypes) then
         vCount := Length(FFieldTypes);
 
       ADataset.Append;
       for vInt2 := 0 to Pred(vCount) do
       begin
-        vItem := vRecord^.Values[vInt2];
-        if vItem^.BSONType = BSON_TYPE_NULL then
+        vItem := vRecord[vInt2];
+        if vItem.IsNull then
           Continue;
 
-        { PBSONBoolean and PBSONDateTime are nil for an item of another type }
         case FFieldTypes[vInt2] of
           sftShortInt,
           sftSmallInt,
           sftInteger,
           sftByte,
-          sftWord     : ReadFieldInteger(FFoundFields[vInt2], vItem^.ToInt);
+          sftWord     : ReadFieldInteger(FFoundFields[vInt2], vItem.AsInt64);
           sftCardinal,
           sftInt64,
-          sftQWord    : ReadFieldInt64(FFoundFields[vInt2], vItem^.ToInt64);
-          sftDouble   : ReadFieldFloat(FFoundFields[vInt2], vItem^.ToDouble);
-          sftBoolean  : if vItem^.PBSONBoolean <> nil then
-                          ReadFieldBoolean(FFoundFields[vInt2], vItem^.PBSONBoolean^.Value);
+          sftQWord    : ReadFieldInt64(FFoundFields[vInt2], vItem.AsInt64);
+          sftDouble   : ReadFieldFloat(FFoundFields[vInt2], StorageDouble(vItem));
+          sftBoolean  : if vItem.Kind = rjkBoolean then
+                          ReadFieldBoolean(FFoundFields[vInt2], vItem.AsBoolean);
           sftString,
-          sftMemo     : ReadFieldString(FFoundFields[vInt2], vItem^.ToString);
-          sftBlob     : ReadFieldStream(FFoundFields[vInt2], vItem^.ToString);
-          // the exact double, or the date in seconds an older RAL wrote
-          sftDateTime : if vItem^.PBSONDateTime <> nil then
-                          ReadFieldDateTime(FFoundFields[vInt2], vItem^.PBSONDateTime^.Value)
-                        else if vItem^.BSONType = BSON_TYPE_DOUBLE then
-                          ReadFieldDateTime(FFoundFields[vInt2], TDateTime(vItem^.ToDouble));
-          sftBCD      : ReadFieldBCD(FFoundFields[vInt2], RALTextToBCD(vItem^.ToString));
+          sftMemo     : ReadFieldString(FFoundFields[vInt2], vItem.AsString);
+          sftBlob     : ReadFieldStream(FFoundFields[vInt2], vItem.AsString);
+          // Legacy kxBSON dates carry seconds, despite BSON specifying milliseconds.
+          sftDateTime : if vItem.Kind = rjkObject then
+                          ReadFieldDateTime(FFoundFields[vInt2],
+                            UnixToDateTime(vItem.AsObject.Get('$date').AsObject.Get('$numberLong').AsInt64))
+                        else if vItem.Kind = rjkNumber then
+                          ReadFieldDateTime(FFoundFields[vInt2], TDateTime(vItem.AsNumber));
+          sftBCD      : ReadFieldBCD(FFoundFields[vInt2], RALTextToBCD(vItem.AsString));
         end;
       end;
       ADataset.Post;
-      RALStoragePosted(ADataset);
     end;
 
     if vBookMark <> nil then
@@ -335,14 +395,14 @@ end;
 
 procedure TRALStorageBSON.SaveToStream(ADataset: TDataSet; AStream: TStream);
 var
-  vDocument: TBSONDocument;
+  vDocument: TRALJSONObject;
 begin
-  vDocument := TBSONDocument.Create;
+  vDocument := TRALJSONObject.Create;
   try
     WriteFields(ADataset, vDocument);
     WriteRecords(ADataset, vDocument);
 
-    vDocument.WriteStream(AStream);
+    TRALBSON.SaveToStream(vDocument, AStream);
   finally
     FreeAndNil(vDocument);
   end;
@@ -350,14 +410,12 @@ end;
 
 procedure TRALStorageBSON.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
-  vDocument: TBSONDocument;
+  vDocument: TRALJSON;
 begin
-  vDocument := TBSONDocument.Create;
+  vDocument := TRALBSON.Parse(AStream, False, 0, 0, False);
   try
-    vDocument.ReadStream(AStream);
-
-    ReadFields(ADataset, vDocument);
-    ReadRecords(ADataset, vDocument);
+    ReadFields(ADataset, vDocument.AsObject);
+    ReadRecords(ADataset, vDocument.AsObject);
   finally
     FreeAndNil(vDocument);
   end;
@@ -384,7 +442,6 @@ end;
 
 initialization
   RegisterClass(TRALStorageBSONLink);
-  RegisterStorageLink(rsfBSON, TRALStorageBSONLink);
 
 finalization
   UnregisterStorageLink(TRALStorageBSONLink);

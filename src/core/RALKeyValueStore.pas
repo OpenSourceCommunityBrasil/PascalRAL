@@ -10,7 +10,7 @@ interface
 
 uses
   Classes, SysUtils, SyncObjs, DateUtils,
-  RALTypes, RALCustomObjects;
+  RALExceptions, RALErrorCodes, RALTypes, RALCustomObjects;
 
 type
   /// The clock of a store, in milliseconds; a test sets one to move time by hand.
@@ -143,7 +143,7 @@ type
   end;
 
   /// A store that could not take the lock of a key in time.
-  ERALStoreLock = class(Exception);
+  ERALStoreLock = class(ERALException);
 
 implementation
 
@@ -510,7 +510,7 @@ begin
       Exit;
     end;
     if (RALTickMicro - vStart) div 1000 > FLockTimeout then
-      raise ERALStoreLock.CreateFmt(emStoreLockTimeout, [string(AKey)]);
+      raise ERALStoreLock.CreateFmt(ecStoreLockTimeout, [string(AKey)]);
     Sleep(1);
   end;
 end;

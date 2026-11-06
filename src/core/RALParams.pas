@@ -5,9 +5,8 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, Variants,
-  RALHashes,
-  RALTypes, RALMIMETypes, RALMultipartCoder, RALTools, RALUrlCoder,
-  RALCripto, RALCriptoAES, RALStream, RALCompress, RALConsts;
+  RALExceptions, RALErrorCodes, RALHashes, RALTypes, RALMIMETypes, RALMultipartCoder,
+  RALTools, RALUrlCoder, RALCripto, RALCriptoAES, RALStream, RALCompress, RALConsts;
 
 type
   /// SameSite of a cookie; cssDefault writes none and leaves the browser's own rule.
@@ -1364,7 +1363,7 @@ begin
   AFileName := ExtractFileName(StringReplace(StringReplace(AFileName,
     '\', PathDelim, [rfReplaceAll]), '/', PathDelim, [rfReplaceAll]));
   if AFileName = '' then
-    raise Exception.Create(emParamFileNameEmpty);
+    raise ERALException.Create(ecParamFileNameEmpty);
 
   SaveToFile(AFolderName + AFileName);
 end;

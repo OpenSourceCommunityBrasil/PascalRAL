@@ -22,7 +22,7 @@ uses
   Windows,
   {$ENDIF}
   Classes, SysUtils, SyncObjs,
-  RALTypes, RALConsts, RALClient, RALExternalsLibraries, RALSocket;
+  RALErrorCodes, RALTypes, RALConsts, RALClient, RALExternalsLibraries, RALSocket;
 
 type
   /// Lowest TLS version accepted.
@@ -776,7 +776,7 @@ begin
   vDetail := OpenSSLErrors;
   if vDetail = '' then
     vDetail := '-';
-  raise ERALTLSError.Create(Format(emTLSError, [AWhat, vDetail]));
+  raise ERALTLSError.CreateFmt(ecTLSError, [AWhat, vDetail]);
 end;
 
 { ALPN on the wire: each name preceded by its length }
@@ -1377,7 +1377,7 @@ var
   vIndex: IntegerRAL;
 begin
   if FRole <> mtrServer then
-    raise ERALTLSError.Create(Format(emTLSError, ['AddCertificate', 'server only']));
+    raise ERALTLSError.CreateFmt(ecTLSError, ['AddCertificate', 'server only']);
   vName := LowerCase(Trim(string(AServerName)));
   Result := TRALTLSContext.Create(mtrServer, FDatagram);
   try
@@ -1741,10 +1741,10 @@ begin
     if vRes = 1 then
       Break;
     if CheckIO(vRes, 'SSL_connect') <> RALSocketWouldBlock then
-      raise ERALTLSError.Create(emTLSClosed);
+      raise ERALTLSError.Create(ecTLSClosed);
     vNow := RALSocketNow;
     if vNow >= vDeadline then
-      raise ERALTLSError.Create(Format(emTLSTimeout, [ATimeout]));
+      raise ERALTLSError.CreateFmt(ecTLSTimeout, [ATimeout]);
     Socket.WaitFor(FWant, vDeadline - vNow);
   until False;
   FDone := True;
@@ -1770,7 +1770,7 @@ begin
     Exit;
   end;
   if CheckIO(vRes, 'handshake') <> RALSocketWouldBlock then
-    raise ERALTLSError.Create(emTLSClosed);
+    raise ERALTLSError.Create(ecTLSClosed);
 end;
 
 function TRALTLSChannel.HasBuffered: boolean;

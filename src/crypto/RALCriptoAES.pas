@@ -1,4 +1,4 @@
-﻿/// Unit for AES Criptography functions
+/// Unit for AES Criptography functions
 /// AES-CBC with PKCS#7 padding. The wire format is IV (16 bytes, random per
 /// message) followed by the ciphertext, which is what the Content-Encription
 /// header (aesNNNcbc_pkcs7) has always announced. Until 04/09/2026 this was
@@ -13,7 +13,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALCripto, RALTypes, RALConsts, RALTools, RALStream, RALHashBase, RALSHA2_32;
+  RALExceptions, RALErrorCodes, RALCripto, RALTypes, RALConsts, RALTools, RALStream, RALHashBase, RALSHA2_32;
 
 type
   TRALAESType = (tAES128, tAES192, tAES256);
@@ -609,7 +609,7 @@ begin
   if Length(FWordKeys) = 0 then
   begin
     Result := False;
-    raise Exception.Create(emCryptEmptyKey);
+    raise ERALException.Create(ecCryptEmptyKey);
   end
   else
     Result := True;
@@ -892,11 +892,11 @@ begin
   SetLength(vTag, cMacSize);
   AStream.Position := AEnd;
   if ReadFull(AStream, @vTag[0], cMacSize) <> cMacSize then
-    raise Exception.Create(emCryptInvalidLength);
+    raise ERALException.Create(ecCryptInvalidLength);
   { in constant time: a body altered on the way, or one under another key,
     stops here }
   if not RALSameBytes(vMac, vTag) then
-    raise Exception.Create(emCryptInvalidMAC);
+    raise ERALException.Create(ecCryptInvalidMAC);
 end;
 
 function TRALCriptoAES.DecryptRange(AStream: TStream; AStart, AEnd: Int64RAL;
@@ -917,7 +917,7 @@ begin
   SetLength(vIV, 16);
   AStream.Position := AStart;
   if ReadFull(AStream, @vIV[0], 16) <> 16 then
-    raise Exception.Create(emCryptInvalidLength);
+    raise ERALException.Create(ecCryptInvalidLength);
 
   vCipher := CreateCipher(True);
   try
@@ -943,10 +943,10 @@ begin
           key or an altered body, and the honest answer is an error }
         vPad := vOut[vRead - 1];
         if (vPad < 1) or (vPad > 16) or (vPad > vRead) then
-          raise Exception.Create(emCryptInvalidPadding);
+          raise ERALException.Create(ecCryptInvalidPadding);
         for vInt := vRead - vPad to vRead - 1 do
           if vOut[vInt] <> vPad then
-            raise Exception.Create(emCryptInvalidPadding);
+            raise ERALException.Create(ecCryptInvalidPadding);
         vKeep := vRead - vPad;
       end;
 
@@ -977,7 +977,7 @@ begin
   // IV, at least one block in whole blocks, and the MAC: anything else was
   // never produced by this cipher
   if (vSize < 16 + 16 + cMacSize) or ((vSize - 16 - cMacSize) mod 16 <> 0) then
-    raise Exception.Create(emCryptInvalidLength);
+    raise ERALException.Create(ecCryptInvalidLength);
 
   vEnd := vSize - cMacSize;
   CheckMac(AInput, 0, vEnd);
@@ -994,7 +994,7 @@ begin
   if vSize <= 0 then
     Exit;
   if (vSize < 16 + 16 + cMacSize) or ((vSize - 16 - cMacSize) mod 16 <> 0) then
-    raise Exception.Create(emCryptInvalidLength);
+    raise ERALException.Create(ecCryptInvalidLength);
 
   vEnd := AStream.Size - cMacSize;
   CheckMac(AStream, AStart, vEnd);

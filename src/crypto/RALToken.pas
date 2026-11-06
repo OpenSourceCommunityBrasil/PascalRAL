@@ -6,8 +6,8 @@ interface
 
 uses
   Classes, SysUtils, DateUtils,
-  RALTypes, RALConsts, RALSHA2_32, RALSHA2_64, RALHashBase, RALBase64, RALMD5,
-  RALJson, RALTools, RALJWS;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALSHA2_32, RALSHA2_64, RALHashBase,
+  RALBase64, RALMD5, RALJson, RALTools, RALJWS;
 
 type
   /// Digest hashes: MD5, SHA-256 and SHA-512-256 (tdaSHA2_512, the name it
@@ -1137,9 +1137,9 @@ begin
           StringReplace - which on Delphi are UTF-16 - on every token checked.
           It refuses what HMACAsString refused, in the same order }
         if AInput = '' then
-          raise Exception.Create(emHMACEmptyText);
+          raise ERALException.Create(ecHMACEmptyText);
         if FSignSecretKey = '' then
-          raise Exception.Create(emCryptEmptyKey);
+          raise ERALException.Create(ecCryptEmptyKey);
         vHash.HMACBegin(StringToBytesUTF8(FSignSecretKey));
         vHash.HMACUpdate(Pointer(AInput), Length(AInput));
         vDigest := vHash.HMACEnd;
@@ -1151,19 +1151,19 @@ begin
     tjaRS256, tjaES256:
     begin
       if FSignKey = nil then
-        raise Exception.Create(emJWSNoPrivateKey);
+        raise ERALException.Create(ecJWSNoPrivateKey);
       Result := RALBase64UrlEncode(FSignKey.Sign(AInput, jdSHA256));
     end;
     tjaRS384, tjaES384:
     begin
       if FSignKey = nil then
-        raise Exception.Create(emJWSNoPrivateKey);
+        raise ERALException.Create(ecJWSNoPrivateKey);
       Result := RALBase64UrlEncode(FSignKey.Sign(AInput, jdSHA384));
     end;
   else
     begin
       if FSignKey = nil then
-        raise Exception.Create(emJWSNoPrivateKey);
+        raise ERALException.Create(ecJWSNoPrivateKey);
       Result := RALBase64UrlEncode(FSignKey.Sign(AInput, jdSHA512));
     end;
   end;

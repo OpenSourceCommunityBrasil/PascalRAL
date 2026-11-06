@@ -14,7 +14,7 @@ interface
 
 uses
   Classes, SysUtils, SyncObjs,
-  RALTypes, RALConsts;
+  RALExceptions, RALTypes, RALConsts;
 
 const
   /// Longest pattern accepted, in bytes.
@@ -28,7 +28,7 @@ const
 
 type
   /// A pattern that does not compile; Position is the byte (from 1) where it failed.
-  ERALRegex = class(Exception)
+  ERALRegex = class(ERALException)
   private
     FPosition: IntegerRAL;
   public

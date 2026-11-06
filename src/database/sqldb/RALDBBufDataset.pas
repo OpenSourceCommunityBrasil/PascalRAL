@@ -9,9 +9,9 @@ uses
     and the rest of the widgetset registration }
   Classes, SysUtils, DB,
   BufDataset, XMLDatapacketReader,
-  RALStorage, RALTools, RALTypes, RALResponse, RALMIMETypes,
-  RALStorageBIN, RALStorageJSON, RALStorageTypes, RALDBSQLCache,
-  RALDBConnection, RALConsts;
+  RALExceptions, RALErrorCodes, RALStorage, RALTools, RALTypes, RALResponse, RALMIMETypes,
+  RALStorageBIN, RALStorageJSON, RALStorageTypes, RALDBSQLCache, RALDBConnection,
+  RALConsts;
 
 type
 
@@ -241,7 +241,7 @@ begin
     except
       on e: Exception do
       begin
-        raise Exception.CreateFmt(emDBFieldLoad, [vField.Name, e.Message]);
+        raise ERALException.CreateFmt(ecDBFieldLoad, [vField.Name, e.Message]);
       end;
     end;
 
@@ -362,7 +362,7 @@ begin
     if Trim(vSQL) = '' then
     begin
       if FUpdateTable = '' then
-        raise Exception.Create(emDBUpdateSQLMissing);
+        raise ERALException.Create(ecDBUpdateSQLMissing);
 
       case State of
         dsInsert: vSQL := FRALConnection.ConstructInsertSQL(Self, FUpdateTable);
@@ -371,7 +371,7 @@ begin
     end;
 
     if Trim(vSQL) = '' then
-      raise Exception.Create(emDBUpdateSQLMissing);
+      raise ERALException.Create(ecDBUpdateSQLMissing);
 
     CacheSQL(vSQL);
     inherited InternalPost;
@@ -388,7 +388,7 @@ begin
     vSQL := FRALConnection.ConstructDeleteSQL(Self, FUpdateTable, FUpdateMode);
 
   if Trim(vSQL) = '' then
-    raise Exception.Create(emDBUpdateSQLMissing);
+    raise ERALException.Create(ecDBUpdateSQLMissing);
 
   CacheSQL(vSQL);
 
@@ -802,7 +802,7 @@ var
   vReader: TDataSet;
 begin
   if FRALConnection = nil then
-    raise Exception.Create(emDBConnectionUndefined);
+    raise ERALException.Create(ecDBConnectionUndefined);
   if Self.Active then
     Close;
   Clear;
@@ -852,7 +852,7 @@ begin
   vError := FFailure;
   FFailure := '';
   if vError <> '' then
-    raise Exception.Create(string(vError));
+    raise ERALException.Create(string(vError));
 end;
 
 procedure TRALDBBufDataset.Clear;
@@ -911,7 +911,7 @@ begin
   if FStorage <> nil then
     FStorage.LoadFromStream(ADataSet, AStream)
   else
-    raise Exception.Create(emStorageClassNotFound);
+    raise ERALException.Create(ecStorageClassNotFound);
 end;
 
 constructor TRALDBBufDataset.Create(AOwner: TComponent);
@@ -953,7 +953,7 @@ end;
 procedure TRALDBBufDataset.ApplyUpdates;
 begin
   if FRALConnection = nil then
-    raise Exception.Create(emDBConnectionUndefined);
+    raise ERALException.Create(ecDBConnectionUndefined);
 
   FFailure := '';
   if FRALConnection.InTransaction then
@@ -980,11 +980,11 @@ begin
   begin
     if (FRALConnection = nil) and (not (csDestroying in ComponentState)) and
       (not (csLoading in ComponentState)) then
-      raise Exception.Create(emDBConnectionUndefined);
+      raise ERALException.Create(ecDBConnectionUndefined);
 
     if (FRALConnection <> nil) and FRALConnection.InTransaction and
        not (csLoading in ComponentState) then
-      raise Exception.Create(emDBQueueOpen);
+      raise ERALException.Create(ecDBQueueOpen);
     // a stored procedure opens with its rows
     if (FRALConnection <> nil) and (FStoredProcName <> '') then
     begin
@@ -1029,7 +1029,7 @@ begin
   FOpened := False;
 
   if FRALConnection = nil then
-    raise Exception.Create(emDBConnectionUndefined);
+    raise ERALException.Create(ecDBConnectionUndefined);
 
   FFailure := '';
   if FRALConnection.InTransaction then

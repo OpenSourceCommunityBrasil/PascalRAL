@@ -5,7 +5,8 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALStorage, RALTools, RALMIMETypes, RALStorageTypes, RALConsts, RALStream;
+  RALExceptions, RALErrorCodes, RALTypes, RALStorage, RALTools, RALMIMETypes,
+  RALStorageTypes, RALConsts, RALStream;
 
 type
 
@@ -305,7 +306,7 @@ begin
 
   if (vHeader[0] <> 18) or (vHeader[1] <> 01) or (vHeader[2] <> 12) or
      (vHeader[3] <> GetStoreVersion) then
-    raise Exception.Create(emStorageInvalidBinary);
+    raise ERALException.Create(ecStorageInvalidBinary);
 
   Result := True;
 end;
@@ -330,7 +331,7 @@ begin
     least ten bytes (name size, type, flags, size): a count the rest of the
     stream cannot hold is a lie, refused before it is allocated }
   if (vFields < 0) or (Int64RAL(vFields) * 10 > AStream.Size - AStream.Position) then
-    raise Exception.Create(emStreamSizeBeyondEnd);
+    raise ERALException.Create(ecStreamSizeBeyondEnd);
 
   SetLength(FFieldNames, vFields);
   SetLength(FFieldTypes, vFields);
@@ -347,7 +348,7 @@ begin
     // by a case over it, and past the last member that is no type at all
     vByte := ReadByte(AStream);
     if not RALIsFieldTypeOrdinal(vByte) then
-      raise Exception.Create(emStorageInvalidBinary);
+      raise ERALException.Create(ecStorageInvalidBinary);
     vType := TRALDB.RALFieldTypeToFieldType(TRALFieldType(vByte));
     FFieldTypes[vInt] := TRALFieldType(vByte);
 
@@ -417,7 +418,7 @@ begin
     as the count said }
   if (vRecords < 0) or ((vRecords > 0) and ((vFields = 0) or
      (vRecords > (AStream.Size - AStream.Position) div vFields))) then
-    raise Exception.Create(emStreamSizeBeyondEnd);
+    raise ERALException.Create(ecStreamSizeBeyondEnd);
 
   ADataset.DisableControls;
   LiftReadOnly;
@@ -483,7 +484,7 @@ end;
 procedure TRALStorageBIN.ReadExact(AStream: TStream; var ABuffer; ACount: IntegerRAL);
 begin
   if AStream.Read(ABuffer, ACount) <> ACount then
-    raise Exception.Create(emStreamSizeBeyondEnd);
+    raise ERALException.Create(ecStreamSizeBeyondEnd);
 end;
 
 function TRALStorageBIN.ReadString(AStream: TStream): StringRAL;
@@ -497,7 +498,7 @@ begin
   begin
     // refused before it is allocated: a size the stream cannot hold is a lie
     if vSize > AStream.Size - AStream.Position then
-      raise Exception.Create(emStreamSizeBeyondEnd);
+      raise ERALException.Create(ecStreamSizeBeyondEnd);
     SetLength(vBytes, vSize);
     ReadExact(AStream, vBytes[0], vSize);
     Result := BytesToStringUTF8(vBytes);
@@ -562,7 +563,7 @@ var
 begin
   ReadExact(AStream, vSize, SizeOf(vSize));
   if (vSize < 0) or (vSize > AStream.Size - AStream.Position) then
-    raise Exception.Create(emStreamSizeBeyondEnd);
+    raise ERALException.Create(ecStreamSizeBeyondEnd);
   SetLength(vText, vSize div SizeOf(WideChar));
   if vText <> '' then
     ReadExact(AStream, vText[1], Length(vText) * SizeOf(WideChar));
@@ -583,7 +584,7 @@ begin
     to whatever size the data announced }
   ReadExact(AStream, vSize, SizeOf(vSize));
   if vSize > AStream.Size - AStream.Position then
-    raise Exception.Create(emStreamSizeBeyondEnd);
+    raise ERALException.Create(ecStreamSizeBeyondEnd);
 
   Result := TMemoryStream.Create;
   try

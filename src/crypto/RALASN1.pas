@@ -17,7 +17,7 @@ interface
 
 uses
   SysUtils,
-  RALTypes, RALConsts, RALBase64, RALBigInt;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALBase64, RALBigInt;
 
 const
   ASN1_BOOLEAN = $01;
@@ -40,7 +40,7 @@ const
   ASN1_CONTEXT_CONSTRUCTED = $A0;
 
 type
-  ERALASN1 = class(Exception);
+  ERALASN1 = class(ERALException);
 
   TRALBytesArray = array of TBytes;
 
@@ -292,7 +292,7 @@ var
   vInt: IntegerRAL;
 begin
   if AValue < 0 then
-    raise ERALASN1.Create(emASN1Negative);
+    raise ERALASN1.Create(ecASN1Negative);
 
   SetLength(vBytes, 8);
   for vInt := 0 to 7 do
@@ -366,14 +366,14 @@ begin
     else if (vChar >= '0') and (vChar <= '9') then
       vValue := vValue * 10 + (Ord(vChar) - Ord('0'))
     else
-      raise ERALASN1.CreateFmt(emASN1InvalidOID, [string(ADotted)]);
+      raise ERALASN1.CreateFmt(ecASN1InvalidOID, [string(ADotted)]);
   end;
   SetLength(vArcs, vCount + 1);
   vArcs[vCount] := vValue;
   Inc(vCount);
 
   if (vCount < 2) or (vArcs[0] > 2) then
-    raise ERALASN1.CreateFmt(emASN1InvalidOID, [string(ADotted)]);
+    raise ERALASN1.CreateFmt(ecASN1InvalidOID, [string(ADotted)]);
 
   vContent := nil;
   AddArc(vArcs[0] * 40 + vArcs[1]);
@@ -507,12 +507,12 @@ begin
     ALimit := Length(AData);
 
   if APos + 2 > ALimit then
-    raise ERALASN1.Create(emASN1Truncated);
+    raise ERALASN1.Create(ecASN1Truncated);
 
   Result.Start := APos;
   Result.Tag := AData[APos];
   if Result.Tag and $1F = $1F then
-    raise ERALASN1.Create(emASN1Unsupported);
+    raise ERALASN1.Create(ecASN1Unsupported);
 
   Inc(APos);
   vLen := AData[APos];
@@ -522,21 +522,21 @@ begin
     vCount := vLen and $7F;
     { no indefinite length (0) in DER, and nothing here is 2 GB }
     if (vCount = 0) or (vCount > 4) then
-      raise ERALASN1.Create(emASN1Unsupported);
+      raise ERALASN1.Create(ecASN1Unsupported);
     if APos + vCount > ALimit then
-      raise ERALASN1.Create(emASN1Truncated);
+      raise ERALASN1.Create(ecASN1Truncated);
     vLen := 0;
     for vInt := 1 to vCount do
     begin
       if vLen > $7FFFFF then
-        raise ERALASN1.Create(emASN1Truncated);
+        raise ERALASN1.Create(ecASN1Truncated);
       vLen := (vLen shl 8) or AData[APos];
       Inc(APos);
     end;
   end;
 
   if (vLen < 0) or (APos + vLen > ALimit) then
-    raise ERALASN1.Create(emASN1Truncated);
+    raise ERALASN1.Create(ecASN1Truncated);
 
   Result.ContentStart := APos;
   Result.ContentLength := vLen;
@@ -548,7 +548,7 @@ function DerExpect(const AData: TBytes; APos: IntegerRAL; ATag: Byte;
 begin
   Result := DerRead(AData, APos, ALimit);
   if Result.Tag <> ATag then
-    raise ERALASN1.CreateFmt(emASN1UnexpectedTag, [ATag, Result.Tag, APos]);
+    raise ERALASN1.CreateFmt(ecASN1UnexpectedTag, [ATag, Result.Tag, APos]);
 end;
 
 function DerChildren(const AData: TBytes; const AParent: TRALASN1Element): TRALASN1Element;
@@ -589,10 +589,10 @@ end;
 function DerAsBigNum(const AData: TBytes; const AElement: TRALASN1Element): TRALBigNum;
 begin
   if AElement.Tag <> ASN1_INTEGER then
-    raise ERALASN1.CreateFmt(emASN1UnexpectedTag, [ASN1_INTEGER, AElement.Tag,
+    raise ERALASN1.CreateFmt(ecASN1UnexpectedTag, [ASN1_INTEGER, AElement.Tag,
       AElement.Start]);
   if (AElement.ContentLength > 0) and (AData[AElement.ContentStart] and $80 <> 0) then
-    raise ERALASN1.Create(emASN1Negative);
+    raise ERALASN1.Create(ecASN1Negative);
   Result := BigFromBytes(DerContent(AData, AElement));
 end;
 
@@ -601,12 +601,12 @@ var
   vInt: IntegerRAL;
 begin
   if AElement.Tag <> ASN1_INTEGER then
-    raise ERALASN1.CreateFmt(emASN1UnexpectedTag, [ASN1_INTEGER, AElement.Tag,
+    raise ERALASN1.CreateFmt(ecASN1UnexpectedTag, [ASN1_INTEGER, AElement.Tag,
       AElement.Start]);
   if AElement.ContentLength > 8 then
-    raise ERALASN1.Create(emASN1Unsupported);
+    raise ERALASN1.Create(ecASN1Unsupported);
   if (AElement.ContentLength > 0) and (AData[AElement.ContentStart] and $80 <> 0) then
-    raise ERALASN1.Create(emASN1Negative);
+    raise ERALASN1.Create(ecASN1Negative);
 
   Result := 0;
   for vInt := 0 to AElement.ContentLength - 1 do
@@ -621,7 +621,7 @@ var
   vByte: Byte;
 begin
   if AElement.Tag <> ASN1_OID then
-    raise ERALASN1.CreateFmt(emASN1UnexpectedTag, [ASN1_OID, AElement.Tag,
+    raise ERALASN1.CreateFmt(ecASN1UnexpectedTag, [ASN1_OID, AElement.Tag,
       AElement.Start]);
 
   Result := '';
@@ -674,7 +674,7 @@ var
   begin
     Result := StrToIntDef(Copy(vText, AStart, ALen), -1);
     if Result < 0 then
-      raise ERALASN1.CreateFmt(emASN1InvalidTime, [vText]);
+      raise ERALASN1.CreateFmt(ecASN1InvalidTime, [vText]);
   end;
 
 begin
@@ -694,12 +694,12 @@ begin
     vPos := 5;
   end
   else
-    raise ERALASN1.CreateFmt(emASN1UnexpectedTag, [ASN1_UTC_TIME, AElement.Tag,
+    raise ERALASN1.CreateFmt(ecASN1UnexpectedTag, [ASN1_UTC_TIME, AElement.Tag,
       AElement.Start]);
 
   { DER times are always YY[YY]MMDDHHMMSSZ }
   if (Length(vText) < vPos + 10) or (vText[Length(vText)] <> 'Z') then
-    raise ERALASN1.CreateFmt(emASN1InvalidTime, [vText]);
+    raise ERALASN1.CreateFmt(ecASN1InvalidTime, [vText]);
 
   Result := EncodeDate(vYear, Num(vPos, 2), Num(vPos + 2, 2)) +
     EncodeTime(Num(vPos + 4, 2), Num(vPos + 6, 2), Num(vPos + 8, 2), 0);
@@ -708,10 +708,10 @@ end;
 function DerAsBitString(const AData: TBytes; const AElement: TRALASN1Element): TBytes;
 begin
   if AElement.Tag <> ASN1_BIT_STRING then
-    raise ERALASN1.CreateFmt(emASN1UnexpectedTag, [ASN1_BIT_STRING, AElement.Tag,
+    raise ERALASN1.CreateFmt(ecASN1UnexpectedTag, [ASN1_BIT_STRING, AElement.Tag,
       AElement.Start]);
   if AElement.ContentLength < 1 then
-    raise ERALASN1.Create(emASN1Truncated);
+    raise ERALASN1.Create(ecASN1Truncated);
   Result := Copy(AData, AElement.ContentStart + 1, AElement.ContentLength - 1);
 end;
 
@@ -719,7 +719,7 @@ function DerRoot(const AData: TBytes): TRALASN1Element;
 begin
   Result := DerRead(AData, 0);
   if Result.Next <> Length(AData) then
-    raise ERALASN1.Create(emASN1Trailing);
+    raise ERALASN1.Create(ecASN1Trailing);
 end;
 
 function PemEncode(const ALabel: StringRAL; const ADER: TBytes): StringRAL;

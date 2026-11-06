@@ -5,8 +5,8 @@ interface
 
 uses
   Classes, SysUtils, DB,
-  RALTypes, RALCustomObjects, RALStorageTypes, RALStorage, RALRequest,
-  RALResponse;
+  RALExceptions, RALErrorCodes, RALTypes, RALCustomObjects, RALStorageTypes, RALStorage,
+  RALRequest, RALResponse;
 
 type
   TRALDatabaseType = (dtFirebird, dtSQLite, dtMySQL, dtPostgreSQL);
@@ -534,7 +534,7 @@ end;
 
 procedure TRALDBBase.StartTransaction;
 begin
-  raise Exception.Create(emDBNoTransaction);
+  raise ERALException.Create(ecDBNoTransaction);
 end;
 
 function TRALDBBase.InTransaction: boolean;
@@ -818,7 +818,7 @@ begin
             DropCandidate(vInt);
     end;
     if vCandidates.Count > 1 then
-      raise Exception.CreateFmt(emDBProcAmbiguous, [string(AName)]);
+      raise ERALException.CreateFmt(ecDBProcAmbiguous, [string(AName)]);
     if vCandidates.Count = 1 then
     begin
       Result := TRALDBProcInfo(vCandidates[0]);
@@ -912,7 +912,7 @@ begin
     dtPostgreSQL: Result := PostgresProcInfo(Self, vSchema, vName, AParamNames);
     dtMySQL: Result := MySQLProcInfo(Self, vSchema, vName);
   else
-    raise Exception.Create(emDBNoStoredProc);
+    raise ERALException.Create(ecDBNoStoredProc);
   end;
 end;
 
@@ -936,7 +936,7 @@ begin
       vSQL := 'select routine_name from information_schema.routines ' +
         'where routine_schema = coalesce(nullif(:pschema, ''''), database()) order by 1';
   else
-    raise Exception.Create(emDBNoStoredProc);
+    raise ERALException.Create(ecDBNoStoredProc);
   end;
 
   vParams := nil;
@@ -1006,7 +1006,7 @@ begin
   Result := nil;
   ARowsAffected := 0;
   if DatabaseType = dtSQLite then
-    raise Exception.Create(emDBNoStoredProc);
+    raise ERALException.Create(ecDBNoStoredProc);
 
   // every output is in AParams, with the direction and type of the catalog
   for vInt := 0 to Pred(AProc.Params.Count) do

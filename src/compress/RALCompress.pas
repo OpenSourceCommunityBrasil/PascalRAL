@@ -8,7 +8,7 @@ uses
     bufstream,
   {$ENDIF}
   Classes, SysUtils, TypInfo,
-  RALTypes, RALStream, RALConsts;
+  RALExceptions, RALErrorCodes, RALTypes, RALStream, RALConsts;
 
 type
   TRALCompressClass = class of TRALCompress;
@@ -248,7 +248,7 @@ end;
 procedure RALCheckDecompressedSize(ACurrent: Int64);
 begin
   if (RALMaxDecompressedSize > 0) and (ACurrent > RALMaxDecompressedSize) then
-    raise Exception.Create(emDecompressLimit);
+    raise ERALException.Create(ecDecompressLimit);
 end;
 
 procedure RALSplitCoding(const AToken: StringRAL; out AName: StringRAL;

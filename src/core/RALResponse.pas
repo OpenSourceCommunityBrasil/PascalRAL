@@ -5,8 +5,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALParams, RALMIMETypes, RALCustomObjects, RALStream, RALConsts,
-  RALCompress, RALTools, RALResponseStream;
+  RALErrorCodes, RALTypes, RALParams, RALMIMETypes, RALCustomObjects, RALStream,
+  RALConsts, RALCompress, RALTools, RALResponseStream;
 
 type
   /// A response: status, headers, cookies and body.
@@ -597,7 +597,7 @@ end;
 procedure TRALResponse.CheckNotCommitted;
 begin
   if FGuarded then
-    raise ERALResponseCommitted.Create(emResponseCommitted);
+    raise ERALResponseCommitted.Create(ecResponseCommitted);
 end;
 
 procedure TRALResponse.Unguard;
@@ -630,14 +630,14 @@ begin
   if FCommitted then
     Exit;
   if (Parent = nil) or not Parent.InheritsFrom(TRALServer) then
-    raise ERALResponseCommitted.Create(emStreamNoServer);
+    raise ERALResponseCommitted.Create(ecStreamNoServer);
   vServer := TRALServer(Parent);
 
   { the RAL cipher is IV + CBC + HMAC over the whole body: no piece of it is
     something a client can read, and sending in clear what was asked encrypted is
     not an option. Nothing went out yet, so the request still answers 500 }
   if ContentCripto <> crNone then
-    raise ERALStreamCipher.Create(emStreamCipher);
+    raise ERALStreamCipher.Create(ecStreamCipher);
   vServer.CheckStreamLimit;
 
   // the default JSON is nobody's choice: SendEvent and BeginStream make it SSE
@@ -809,10 +809,10 @@ function TRALResponse.Detach: IRALResponseStream;
 begin
   if (Parent <> nil) and Parent.InheritsFrom(TRALServer) and
      not TRALServer(Parent).SupportsLiveStream then
-    raise ERALResponseCommitted.Create(emStreamNoLive);
+    raise ERALResponseCommitted.Create(ecStreamNoLive);
   Commit;
   if FChannel = nil then
-    raise ERALResponseCommitted.Create(emStreamNoLive);
+    raise ERALResponseCommitted.Create(ecStreamNoLive);
   FDetached := True;
   Result := FChannelRef;
 end;

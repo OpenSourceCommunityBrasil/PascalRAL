@@ -8,7 +8,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALTools;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALTools;
 
 type
   /// One event as the reader hands it over.
@@ -73,7 +73,7 @@ type
   end;
 
   /// An event past MaxEventSize.
-  ERALSSEError = class(Exception);
+  ERALSSEError = class(ERALException);
 
 { One event as text/event-stream writes it: AData split on CR, LF and CRLF into
   data: lines, then event: and id: (CR, LF and NUL taken out, so a value cannot open
@@ -260,7 +260,7 @@ var
     if (FMaxEventSize > 0) and (FSize > FMaxEventSize) then
     begin
       Reset;
-      raise ERALSSEError.Create(emSSEEventTooBig);
+      raise ERALSSEError.Create(ecSSEEventTooBig);
     end;
   end;
 

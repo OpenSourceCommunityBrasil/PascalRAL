@@ -19,11 +19,11 @@ interface
 
 uses
   Classes, SysUtils, SyncObjs,
-  RALTypes, RALConsts, RALTLS, RALProxyCore, RALBalancer;
+  RALExceptions, RALTypes, RALConsts, RALTLS, RALProxyCore, RALBalancer;
 
 type
   /// A configuration that cannot be used: where, and why.
-  ERALProxyConfigError = class(Exception)
+  ERALProxyConfigError = class(ERALException)
   private
     FColumn: IntegerRAL;
     FFileName: string;
@@ -1652,7 +1652,7 @@ begin
     end;
     // the configuration is in; a port that changed mode and did not open is told now
     if vLaterError <> '' then
-      raise Exception.Create(vLaterError);
+      raise ERALException.Create(vLaterError);
   finally
     vLater.Free;
     vStarted.Free;

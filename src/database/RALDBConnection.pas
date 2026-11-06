@@ -4,8 +4,9 @@ interface
 
 uses
   Classes, SysUtils, DB, Variants,
-  RALCustomObjects, RALTypes, RALTools, RALDBSQLCache, RALClient, RALResponse,
-  RALStorageTypes, RALRequest, RALMimeTypes, RALConsts, RALStorage;
+  RALExceptions, RALErrorCodes, RALCustomObjects, RALTypes, RALTools, RALDBSQLCache,
+  RALClient, RALResponse, RALStorageTypes, RALRequest, RALMimeTypes, RALConsts,
+  RALStorage;
 
 type
   { Hands a queued caller its answers when TRALDBConnection.Commit returns: the
@@ -205,7 +206,7 @@ begin
   if not Result then
     Exit;
   if vNative or (AStorage = nil) then
-    raise Exception.Create(emStorageClassNotFound);
+    raise ERALException.Create(ecStorageClassNotFound);
   AStorage.LoadFromStream(ADataSet, vStream);
 end;
 
@@ -359,7 +360,7 @@ end;
 procedure TRALDBConnection.Rollback;
 begin
   if FQueue = nil then
-    raise Exception.Create(emDBNoQueue);
+    raise ERALException.Create(ecDBNoQueue);
   DropQueue;
 end;
 
@@ -370,7 +371,7 @@ var
   vDBSQL: TRALDBSQL;
 begin
   if FQueue = nil then
-    raise Exception.Create(emDBNoQueue);
+    raise ERALException.Create(ecDBNoQueue);
   if ASource.Count = 0 then
     Exit;
   // one storage goes with the request: the first caller's that has one
@@ -400,7 +401,7 @@ var
   vError, vText: StringRAL;
 begin
   if FQueue = nil then
-    raise Exception.Create(emDBNoQueue);
+    raise ERALException.Create(ecDBNoQueue);
   // taken out first: a handler may queue again, or the request may raise
   vQueue := FQueue;
   vEntries := FQueueEntries;
@@ -457,7 +458,7 @@ begin
     vQueue.Free;
   end;
   if vError <> '' then
-    raise Exception.Create(string(vError));
+    raise ERALException.Create(string(vError));
 end;
 
 procedure TRALDBConnection.ExecProcRemote(const AName: StringRAL; AParams: TParams;
@@ -532,7 +533,7 @@ begin
         vError := RALDBResponseError(vResponse);
         if vResponse.StatusCode <> HTTP_InternalError then
           vError := StringRAL(Trim('HTTP ' + IntToStr(vResponse.StatusCode) + ' ' + string(vError)));
-        raise Exception.Create(string(vError));
+        raise ERALException.Create(string(vError));
       end;
       vSQLCache.ResponseFromStream(vResponse.Body.Content);
     finally
@@ -541,7 +542,7 @@ begin
     end;
 
     if vSQLCache.SQLList[0].Response.Error then
-      raise Exception.Create(string(vSQLCache.SQLList[0].Response.StrError));
+      raise ERALException.Create(string(vSQLCache.SQLList[0].Response.StrError));
     RALDBCopyOutputs(vSQLCache.SQLList[0].Response, AParams);
     for vInt := 0 to High(ADataSets) do
       if ADataSets[vInt] <> nil then

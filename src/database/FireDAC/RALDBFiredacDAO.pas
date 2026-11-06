@@ -15,8 +15,8 @@ uses
   {$ELSE}{$IFDEF HAS_FMX}Firedac.FMXUI.Wait, {$ELSE}Firedac.VCLUI.Wait, {$ENDIF}
   {$ENDIF}
   Firedac.Stan.Intf,
-  RALClient, RALRoutes, RALTypes, RALStorageTypes, RALServer, RALDBBase, RALRequest, RALResponse,
-  RALConsts,
+  RALExceptions, RALErrorCodes, RALClient, RALRoutes, RALTypes, RALStorageTypes,
+  RALServer, RALDBBase, RALRequest, RALResponse, RALConsts,
   System.SyncObjs;
 
 type
@@ -166,20 +166,20 @@ begin
   try
     try
       if AException <> '' then
-        raise Exception.Create(AException);
+        raise ERALException.Create(AException);
 
       if AResponse.StatusCode = HTTP_OK then
       begin
         Self.vRowsAffectedRemote := StrToInt(AffectedRowsFromResponse(AResponse));
       end
       else
-        raise Exception.Create(RALDBResponseError(AResponse));
+        raise ERALException.Create(RALDBResponseError(AResponse));
     except
       on e: Exception do
       begin
         Self.Close;
 
-        vException := Exception.Create(e.Message);
+        vException := ERALException.CreateCopy(e);
       end;
     end;
   finally
@@ -286,7 +286,7 @@ begin
       begin
         Self.Close;
 
-        vException := Exception.Create(e.Message);
+        vException := ERALException.CreateCopy(e);
       end;
     end;
   finally
@@ -315,7 +315,7 @@ begin
   try
     try
       if AException <> '' then
-        raise Exception.Create(AException);
+        raise ERALException.Create(AException);
 
       if AResponse.StatusCode = HTTP_OK then
       begin
@@ -324,13 +324,13 @@ begin
         Self.vRowsAffectedRemote := StrToInt(AffectedRowsFromResponse(AResponse));
       end
       else
-        raise Exception.Create(RALDBResponseError(AResponse));
+        raise ERALException.Create(RALDBResponseError(AResponse));
     except
       on e: Exception do
       begin
         Self.Close;
 
-        vException := Exception.Create(e.Message);
+        vException := ERALException.CreateCopy(e);
       end;
     end;
   finally
@@ -437,7 +437,7 @@ begin
       begin
         Self.Close;
 
-        vException := Exception.Create(e.Message);
+        vException := ERALException.CreateCopy(e);
       end;
     end;
   finally
@@ -469,7 +469,7 @@ begin
   try
     try
       if AException <> '' then
-        raise Exception.Create(AException);
+        raise ERALException.Create(AException);
 
       if AResponse.StatusCode = HTTP_OK then
       begin
@@ -499,13 +499,13 @@ begin
         Self.CachedUpdates := true;
       end
       else
-        raise Exception.Create(RALDBResponseError(AResponse));
+        raise ERALException.Create(RALDBResponseError(AResponse));
     except
       on e: Exception do
       begin
         Self.Close;
 
-        vException := Exception.Create(e.Message);
+        vException := ERALException.CreateCopy(e);
       end;
     end;
   finally
@@ -598,7 +598,7 @@ begin
       begin
         Self.Close;
 
-        vException := Exception.Create(e.Message);
+        vException := ERALException.CreateCopy(e);
       end;
     end;
   finally
@@ -666,7 +666,7 @@ begin
   vAllow := True;
   vOnValidateSQL(Self, ARequest, ASQL, vAllow);
   if not vAllow then
-    raise Exception.Create(emDBSQLRejected);
+    raise ERALException.Create(ecDBSQLRejected);
 end;
 
 procedure TRALFDConnection.CheckApplyUpdates(ARequest: TRALRequest; const ASQL: StringRAL);
@@ -678,10 +678,10 @@ begin
     vAllow := True;
     vOnValidateApplyUpdates(Self, ARequest, ASQL, vAllow);
     if not vAllow then
-      raise Exception.Create(emDBSQLRejected);
+      raise ERALException.Create(ecDBSQLRejected);
   end
   else if Assigned(vOnValidateSQL) then
-    raise Exception.Create(emApplyUpdatesNotValidated);
+    raise ERALException.Create(emApplyUpdatesNotValidated);
 end;
 
 procedure TRALFDConnection.OnReplyQuery(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -838,7 +838,7 @@ begin
 
               vQueryAux.CachedUpdates := false;
 
-              raise Exception.Create(vAuxException);
+              raise ERALException.Create(vAuxException);
             end;
 
             vQueryAux.Next;
@@ -876,7 +876,7 @@ begin
       else
       begin
         AResponse.StatusCode := 501;
-        raise Exception.Create(emTypeNotImplemented);
+        raise ERALException.Create(emTypeNotImplemented);
       end;
 
       AResponse.StatusCode := HTTP_OK;
@@ -936,7 +936,7 @@ begin
   if not(csDesigning in ComponentState) then
   begin
     if not(Assigned(vRALServer)) then
-      raise Exception.Create(emInvalidServer);
+      raise ERALException.Create(emInvalidServer);
 
     FreeAndNil(vRALModule);
 

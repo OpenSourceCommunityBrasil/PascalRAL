@@ -27,8 +27,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALTools, RALBigInt, RALASN1, RALRSA, RALHashBase,
-  RALSHA2_32;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALTools, RALBigInt, RALASN1, RALRSA,
+  RALHashBase, RALSHA2_32;
 
 const
   OID_COMMON_NAME = '2.5.4.3';
@@ -50,7 +50,7 @@ const
   RALPKCS12DefaultIterations = 2048;
 
 type
-  ERALX509 = class(Exception);
+  ERALX509 = class(ERALException);
 
   { TRALX509Certificate }
 
@@ -598,7 +598,7 @@ var
 begin
   vDER := PemDecode(APEM, 'CERTIFICATE');
   if vDER = nil then
-    raise ERALX509.Create(emX509NoCertificate);
+    raise ERALX509.Create(ecX509NoCertificate);
   Result := TRALX509Certificate.Create(vDER);
 end;
 
@@ -621,7 +621,7 @@ begin
   try
     vCert := DerRoot(FDER);
     if vCert.Tag <> ASN1_SEQUENCE then
-      raise ERALX509.Create(emX509Invalid);
+      raise ERALX509.Create(ecX509Invalid);
 
     vTBS := DerExpect(FDER, vCert.ContentStart, ASN1_SEQUENCE, vCert.Next);
     FTBS := DerBytes(FDER, vTBS);
@@ -635,7 +635,7 @@ begin
     if vItem.Tag = ASN1_CONTEXT_CONSTRUCTED then
       vItem := DerRead(FDER, vItem.Next, vTBS.Next);
     if vItem.Tag <> ASN1_INTEGER then
-      raise ERALX509.Create(emX509Invalid);
+      raise ERALX509.Create(ecX509Invalid);
     FSerial := DerContent(FDER, vItem);
 
     vItem := DerExpect(FDER, vItem.Next, ASN1_SEQUENCE, vTBS.Next);
@@ -671,7 +671,7 @@ begin
     on E: ERALX509 do
       raise;
     on E: Exception do
-      raise ERALX509.CreateFmt(emX509InvalidDetail, [E.Message]);
+      raise ERALX509.CreateFmt(ecX509InvalidDetail, [E.Message]);
   end;
 end;
 
@@ -693,7 +693,7 @@ begin
     if vItem.Tag = ASN1_BOOLEAN then
       vItem := DerRead(AData, vItem.Next, vExt.Next);
     if vItem.Tag <> ASN1_OCTET_STRING then
-      raise ERALX509.Create(emX509Invalid);
+      raise ERALX509.Create(ecX509Invalid);
     vValueDER := DerContent(AData, vItem);
 
     if vOID = OID_SUBJECT_ALT_NAME then
@@ -866,7 +866,7 @@ begin
       if Copy(vUpper, 1, 3) = 'IP:' then
       begin
         if not RALParseIPAddress(RALTrim(Copy(vName, 4, Length(vName))), vAddress) then
-          raise ERALX509.CreateFmt(emX509InvalidAddress, [string(vName)]);
+          raise ERALX509.CreateFmt(ecX509InvalidAddress, [string(vName)]);
         vNames[High(vNames)] := DerImplicit(7, vAddress);
       end
       else if vUpper = 'DNS:' then
@@ -890,13 +890,13 @@ var
   vSigner: TRALRSAKey;
 begin
   if (ASubjectKey = nil) or ((AIssuer = nil) and not ASubjectKey.IsPrivate) then
-    raise ERALX509.Create(emX509NoKey);
+    raise ERALX509.Create(ecX509NoKey);
   if (AIssuer <> nil) and ((AIssuerKey = nil) or not AIssuerKey.IsPrivate) then
-    raise ERALX509.Create(emX509NoKey);
+    raise ERALX509.Create(ecX509NoKey);
   if (AIssuer <> nil) and not AIssuer.MatchesKey(AIssuerKey) then
-    raise ERALX509.Create(emX509IssuerKeyMismatch);
+    raise ERALX509.Create(ecX509IssuerKeyMismatch);
   if ANotAfterUTC <= ANotBeforeUTC then
-    raise ERALX509.Create(emX509InvalidValidity);
+    raise ERALX509.Create(ecX509InvalidValidity);
 
   { 16 random bytes, positive, with the top byte never zero so the length is
     fixed (RFC 5280: at most 20 octets, and CAs are asked for 64 bits of
@@ -1011,7 +1011,7 @@ var
   vByte: Byte;
 begin
   if Length(AKey) <> 32 then
-    raise ERALX509.Create(emX509AESKey);
+    raise ERALX509.Create(ecX509AESKey);
 
   Move(AKey[0], ARoundKeys[0], 32);
   vInt := 32;
@@ -1101,7 +1101,7 @@ var
   vPadded: TBytes;
 begin
   if Length(AIV) <> 16 then
-    raise ERALX509.Create(emX509AESKey);
+    raise ERALX509.Create(ecX509AESKey);
   AES256Expand(AKey, vKeys);
 
   vPad := 16 - Length(AData) mod 16;
@@ -1295,11 +1295,11 @@ var
   vCert: TRALX509Certificate;
 begin
   if (AKey = nil) or not AKey.IsPrivate then
-    raise ERALX509.Create(emX509NoKey);
+    raise ERALX509.Create(ecX509NoKey);
   vCert := TRALX509Certificate.Create(ACertDER);
   try
     if not vCert.MatchesKey(AKey) then
-      raise ERALX509.Create(emX509KeyMismatch);
+      raise ERALX509.Create(ecX509KeyMismatch);
   finally
     vCert.Free;
   end;

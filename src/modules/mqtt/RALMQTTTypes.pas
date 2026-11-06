@@ -16,7 +16,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts;
+  RALExceptions, RALTypes, RALConsts;
 
 const
   /// Default port of MQTT over TCP.
@@ -242,7 +242,7 @@ type
     mpkString, mpkBinary, mpkPair);
 
   /// Raised for an MQTT failure; ReasonCode is the protocol's reason code.
-  ERALMQTTError = class(Exception)
+  ERALMQTTError = class(ERALException)
   private
     FReasonCode: Byte;
   public
