@@ -253,7 +253,12 @@ new limits are set off so it serves what 3.2 served. `MaxConnections` maps to
 `MaxLiveConnectionCount`. The thread's destructor terminates and waits; `Active := False`
 wakes `accept()` itself. fcl-web parses the headers it knows (Host, User-Agent,
 Referer...) into fields: they are filed as headers before `ValidateRequest`, as every
-engine does.
+engine does. `Active := True` returns only once the port listens: the thread's first
+accept round runs with a 1 ms idle timeout, whose idle call (or the first connection
+asked about) sets `FListening` and puts the configured timeout back; a port that cannot
+be opened raises from `SetActive` and leaves the server stopped. Before that, a client
+connecting right after `Active` was refused at once on loopback (the thread polls every
+50 ms), which looked like an fcl-net 3.2.2 problem on Windows.
 
 **fpHTTP client**: `KeepConnection` follows `KeepAlive` per request;
 `TRALfpHttpClientCore` replaces fphttpclient's broken resend (it read `Connection:
@@ -302,7 +307,9 @@ itself (no `SvcMgr`), and on Linux is the foreground process of a `Type=notify` 
 (`sd_notify` over the `NOTIFY_SOCKET` datagram socket; SIGTERM/SIGINT stop with
 `Shutdown`, SIGHUP is `OnReload`; the handlers only set flags). FPC reads the
 environment it started with: libc's `setenv` does not reach `GetEnvironmentVariable`.
-`TRALSystemLog` is syslog (journal under systemd) or `ReportEvent`. `TRALConfig` layers
+`TRALSystemLog` is syslog (journal under systemd) or `ReportEvent`. Errors of these
+units and of the new engines are `ERALException` with codes 6400-6407
+(`RALErrorCodes`, texts in the three `ralconsts_*`). `TRALConfig` layers
 defaults < file (JSON/INI/.env) < environment (`RAL_A__B` is `A.B`) < command line
 (`--A.B=v`, `--config=`); numbers from JSON go through `RALJSONNumberText` (one short
 form with '.', whatever the locale). `TRALScheduler` is a plugin with no phase: it starts in

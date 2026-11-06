@@ -547,6 +547,22 @@ const
   ecProxyRefused = 6206;
   /// Error identifier for emForwardedBadRange.
   ecForwardedBadRange = 6210;
+  /// Error identifier for emInProcNameTaken.
+  ecInProcNameTaken = 6400;
+  /// Error identifier for emInProcNotFound.
+  ecInProcNotFound = 6401;
+  /// Error identifier for emServiceNoServer.
+  ecServiceNoServer = 6402;
+  /// Error identifier for emConfigInvalidJSON.
+  ecConfigInvalidJSON = 6403;
+  /// Error identifier for emCronFieldCount.
+  ecCronFieldCount = 6404;
+  /// Error identifier for emCronOutOfRange.
+  ecCronOutOfRange = 6405;
+  /// Error identifier for emCronBadStep.
+  ecCronBadStep = 6406;
+  /// Error identifier for emCronBadRange.
+  ecCronBadRange = 6407;
 
 /// Returns the localized template; an unknown code includes its number.
 function RALGetErrorMessage(AErrorCode: Integer): string;
@@ -825,6 +841,14 @@ begin
     ecTLSTimeout: Result := emTLSTimeout;
     ecProxyRefused: Result := emProxyRefused;
     ecForwardedBadRange: Result := emForwardedBadRange;
+    ecInProcNameTaken: Result := emInProcNameTaken;
+    ecInProcNotFound: Result := emInProcNotFound;
+    ecServiceNoServer: Result := emServiceNoServer;
+    ecConfigInvalidJSON: Result := emConfigInvalidJSON;
+    ecCronFieldCount: Result := emCronFieldCount;
+    ecCronOutOfRange: Result := emCronOutOfRange;
+    ecCronBadStep: Result := emCronBadStep;
+    ecCronBadRange: Result := emCronBadRange;
   else
     Result := Format(emUnknownError, [AErrorCode]);
   end;

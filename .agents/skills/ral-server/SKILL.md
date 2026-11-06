@@ -22,7 +22,7 @@ The engine is the `TRALServer` descendant; the routes and handlers are the same 
 | `TRALSaguiServer` (`RALSaguiServer`) | 2009+ | yes | needs `libsagui` |
 | `TRALMsQuicServer` (`RALMsQuicServer`) | yes | yes | QUIC, RAL clients only |
 | `TRALCGIServer` (`RALCGIServer`) | yes | yes | behind IIS/Apache/nginx |
-| `TRALFastCGIServer` (`RALFastCGIServer`) | yes | yes | behind nginx/Apache/IIS over FastCGI (TCP); needs `RALNetPackage` |
+| `TRALFastCGIServer` (`RALFastCGIServer`) | yes | yes | behind nginx/Apache over FastCGI (TCP); needs `RALNetPackage` |
 | `TRALWebBrokerServer` (`RALWebBrokerServer`) | yes | yes | a library: ISAPI (IIS) or Apache 2.4 module on Delphi, Apache 2.4 on Lazarus |
 | `TRALInProcServer` (`RALInProc`) | yes | yes | no socket: tests with a `TRALClient` on `inproc://name` |
 | `TRALUniGUIServer` | yes | no | inside a UniGUI application |

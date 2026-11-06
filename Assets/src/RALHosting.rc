@@ -1,0 +1,4 @@
+TRALServiceHost BITMAP "..\components\base\modules\TRALServiceHost.bmp"
+TRALSystemLog BITMAP "..\components\base\modules\TRALSystemLog.bmp"
+TRALConfig BITMAP "..\components\base\modules\TRALConfig.bmp"
+TRALScheduler BITMAP "..\components\base\modules\TRALScheduler.bmp"

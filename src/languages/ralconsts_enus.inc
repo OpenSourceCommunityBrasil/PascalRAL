@@ -674,3 +674,11 @@
   emCertificateInvalidPEM = 'Invalid PEM certificate.';
   emCertificateNotYetValid = 'Certificate is not valid yet.';
   emAESKeySize = 'AES-%d requires a %d-byte key.';
+  emInProcNameTaken = 'inproc://%s is already in use by another active server.';
+  emInProcNotFound = 'No active in-memory server is named %s.';
+  emServiceNoServer = 'TRALServiceHost.Server is not set.';
+  emConfigInvalidJSON = 'The configuration file is not valid JSON: %s';
+  emCronFieldCount = 'Cron expression "%s" needs 5 or 6 fields.';
+  emCronOutOfRange = 'Cron value "%s" is out of range.';
+  emCronBadStep = 'Cron step in "%s" is not valid.';
+  emCronBadRange = 'Cron range "%s" is not valid.';

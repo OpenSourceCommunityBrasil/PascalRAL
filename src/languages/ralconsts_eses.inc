@@ -674,3 +674,11 @@
   emCertificateInvalidPEM = 'Certificado PEM no válido.';
   emCertificateNotYetValid = 'El certificado aún no es válido.';
   emAESKeySize = 'AES-%d requiere una clave de %d bytes.';
+  emInProcNameTaken = 'inproc://%s ya está en uso por otro servidor activo.';
+  emInProcNotFound = 'Ningún servidor en memoria activo se llama %s.';
+  emServiceNoServer = 'TRALServiceHost.Server no fue definido.';
+  emConfigInvalidJSON = 'El archivo de configuración no es un JSON válido: %s';
+  emCronFieldCount = 'La expresión cron "%s" necesita 5 o 6 campos.';
+  emCronOutOfRange = 'El valor cron "%s" está fuera de rango.';
+  emCronBadStep = 'El paso cron en "%s" no es válido.';
+  emCronBadRange = 'El rango cron "%s" no es válido.';

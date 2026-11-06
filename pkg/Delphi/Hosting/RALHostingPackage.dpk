@@ -1,0 +1,43 @@
+package RALHostingPackage;
+
+{$R *.res}
+{$R 'RALHostingPackage.dcr'}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | Hosting: service and daemon, system log, configuration, scheduler'}
+{$IMPLICITBUILD ON}
+
+requires
+  PascalRAL,
+  RALPluginObservabilityPackage;
+
+contains
+  RALServiceHost in '..\..\..\src\hosting\RALServiceHost.pas',
+  RALSystemLog in '..\..\..\src\hosting\RALSystemLog.pas',
+  RALConfig in '..\..\..\src\hosting\RALConfig.pas',
+  RALScheduler in '..\..\..\src\hosting\RALScheduler.pas',
+  RALHostingReg in '..\..\..\src\hosting\RALHostingReg.pas';
+
+end.

@@ -153,7 +153,8 @@ bcrypt core), `RALSalsa20` (the Salsa20 core), `RALOTP` (HOTP/TOTP, base32, otpa
   only (Delphi CGI compiles from source)
 - `fastcgi/` - `RALFastCGIServer`, `RALFastCGIReg` (`FastCGIRAL`, requires
   `RALNetPackage`): FastCGI 1.0 responder of its own on `RALSocket`, both compilers,
-  kept connections and live streams, behind nginx, Apache or IIS
+  kept connections and live streams, behind nginx or Apache (IIS's FastCGI only
+  talks to processes it starts, over a pipe)
 - `inproc/` - `RALInProc`, `RALInProcReg` (`InProcRAL`): `TRALInProcServer` and the
   `InProc` client engine (`inproc://name`), for integration tests without a port
 - `webbroker/` - `RALWebBrokerServer` (+ `_Delphi.inc`, `_FPC.inc`), `RALWebBrokerReg`
