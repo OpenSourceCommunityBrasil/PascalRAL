@@ -9,7 +9,8 @@ uses
   fphttpserver, sslbase, fpHTTP, httpprotocol, fphttpclient, opensslsockets,
   ssockets, HTTPDefs, DateUtils,
   RALServer, RALTypes, RALConsts, RALRequest, RALResponse,
-  RALParams, RALMultipartCoder, RALTools, RALResponseStream, RALCustomObjects;
+  RALParams, RALMultipartCoder, RALTools, RALResponseStream, RALCustomObjects,
+  RALExceptions;
 
 { fcl-web 3.3 gives each connection to a TFPHTTPServerConnectionHandler, where 3.2
   asks CreateConnectionThread for a thread. It also keeps the request body as TBytes
@@ -137,6 +138,16 @@ type
   private
     FParent: TRALfpHttpServer;
     FHttp: TRALfpHttpServerCore;
+    { set once the port listens (or failed to): Active := True waits for it,
+      so a client connecting right after finds the port open }
+    FListening: TEvent;
+    FListenError: string;
+    FUserIdleTimeout: Integer;
+    { the accept loop runs its first round with a 1 ms idle timeout: the idle
+      call (or the first connection asked about) says the socket listens, and
+      puts the timeout back to the configured one }
+    procedure ListenConfirmed(Sender: TObject);
+    procedure OnAcceptIdle(Sender: TObject);
   protected
     function GetActive: boolean;
     procedure SetActive(AValue: boolean);
@@ -1129,8 +1140,22 @@ begin
       the loop is idle-only: without the Sleep it spun at 100% of a core
       the whole time the server was inactive and the thread alive (a server
       created and not yet started, or stopped and not freed) }
-    if FParent.Active and not Terminated then
-      FHttp.Active := FParent.Active
+    if FParent.Active and not Terminated and (FListenError = '') then
+    begin
+      FUserIdleTimeout := FHttp.AcceptIdleTimeout;
+      FHttp.AcceptIdleTimeout := 1;
+      try
+        FHttp.Active := FParent.Active;
+      except
+        { the port could not be opened: SetActive raises it }
+        on E: Exception do
+        begin
+          FListenError := E.Message;
+          FHttp.AcceptIdleTimeout := FUserIdleTimeout;
+          FListening.SetEvent;
+        end;
+      end;
+    end
     else
       Sleep(50);
   end;
@@ -1146,9 +1171,25 @@ begin
   inherited TerminatedSet;
 end;
 
+procedure TRALfpHttpServerThread.ListenConfirmed(Sender: TObject);
+begin
+  if Sender is TSocketServer then
+    TSocketServer(Sender).AcceptIdleTimeOut := FUserIdleTimeout;
+  FHttp.AcceptIdleTimeout := FUserIdleTimeout;
+  FListening.SetEvent;
+end;
+
+procedure TRALfpHttpServerThread.OnAcceptIdle(Sender: TObject);
+begin
+  if FListening.WaitFor(0) <> wrSignaled then
+    ListenConfirmed(Sender);
+end;
+
 procedure TRALfpHttpServerThread.OnAllowConnect(Sender: TObject; ASocket: Longint;
   var AAllow: Boolean);
 begin
+  if FListening.WaitFor(0) <> wrSignaled then
+    ListenConfirmed(Sender);
   { ConnectionCount is kept by TFPHTTPConnection's own constructor and
     destructor on fcl-web 3.2, and is the pool's count on 3.3 - interlocked or
     locked either way. The connection being asked about is NOT in it yet:
@@ -1173,6 +1214,8 @@ begin
   {$ENDIF}
   FHttp.OnRequest := @OnCommandProcess;
   FHttp.OnAllowConnect := @OnAllowConnect;
+  FHttp.OnAcceptIdle := @OnAcceptIdle;
+  FListening := TEvent.Create(nil, True, False, '');
   { AcceptIdleTimeout stays at fcl-web's default (0, a blocking accept):
     with an idle loop the server stops on its own within the timeout, but
     that faster teardown races fcl-web's own connection-thread cleanup on
@@ -1229,6 +1272,7 @@ begin
     closed }
   FHttp.WaitHandlers(10000);
   FreeAndNil(FHttp);
+  FreeAndNil(FListening);
   FParent := nil;
   inherited Destroy;
 end;
@@ -1368,8 +1412,15 @@ end;
 procedure TRALfpHttpServer.SetActive(const AValue: boolean);
 var
   vActive: boolean;
+  vError: string;
 begin
   vActive := Active;
+  { cleared before the thread can see Active: it signals when the port listens }
+  if AValue and not vActive then
+  begin
+    FHttpThread.FListenError := '';
+    FHttpThread.FListening.ResetEvent;
+  end;
 
   inherited;
 
@@ -1379,7 +1430,21 @@ begin
   FHttpThread.Active := AValue;
 
   if AValue then
-    FHttpThread.Start;
+  begin
+    if FHttpThread.Suspended then
+      FHttpThread.Start;
+    { Active := True returns with the port open: a client that connected
+      right after it was refused (at once, on loopback) while the thread had
+      not reached listen yet }
+    FHttpThread.FListening.WaitFor(10000);
+    vError := FHttpThread.FListenError;
+    if vError <> '' then
+    begin
+      Active := False;
+      FHttpThread.FListenError := '';
+      raise ERALException.Create(vError);
+    end;
+  end;
 end;
 
 procedure TRALfpHttpServer.SetPort(const AValue: IntegerRAL);
