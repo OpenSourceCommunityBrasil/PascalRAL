@@ -52,7 +52,9 @@ The request path every server must keep, in this order:
    (`ErrorText`, `OnServerError`, `RaiseError`), never the library's own page.
 
 Also: `Active := False` must return promptly and free the port (wake any thread
-blocked in `accept`); `TCP_NODELAY` on (two sends per answer otherwise stall 40 ms);
+blocked in `accept`); call `inherited SetActive` **before** reading `Port` (port 0 is
+resolved there), and let `ValidateRequest` decide during `Shutdown` (it answers 503 and
+counts the request until `Finish`); `TCP_NODELAY` on (two sends per answer otherwise stall 40 ms);
 a HEAD answers the GET's length with no body; a thread created inside a C library
 needs `IsMultiThread := True`.
 
@@ -106,7 +108,10 @@ registered on every platform and refuses at run time elsewhere (see `RALOkHttpCl
 
 Compile on both compilers and every platform it claims (`ral-check-unit`), build the
 package (`ral-build`), then run it against the other engines with a real client and a
-third-party one (`curl`): assert on the body, not only the status.
+third-party one (`curl`): assert on the body, not only the status. A server that lives
+inside another program (FastCGI, ISAPI, Apache) is proven by a small host in Pascal
+that speaks its protocol (records, an `EXTENSION_CONTROL_BLOCK`), when the web server
+itself is not at hand.
 
 Background (Portuguese): wiki
 [internos-motores](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/internos-motores).

@@ -113,6 +113,14 @@ type
   TRALOnStreamClosed = procedure(Sender: TObject; AStream: TRALResponseStream;
     AReason: TRALStreamCloseReason) of object;
 
+  /// Where a graceful shutdown is: refusing new requests, or stopped.
+  TRALShutdownStage = (ssDraining, ssStopped);
+  { Fired as a graceful shutdown goes: ssDraining when new requests start to be
+    refused, ssStopped when the server stopped (ATimedOut: requests were still
+    running when the time ran out). }
+  TRALOnShutdown = procedure(Sender: TObject; AStage: TRALShutdownStage;
+    ATimedOut: boolean) of object;
+
   { Base of the server components: answers each request through its plugins, then
     its modules. Every feature other than routing is a plugin. }
   /// Where the API version of a request is read from.
@@ -213,6 +221,13 @@ type
   TRALServer = class(TRALPluginHost)
   private
     FActive: boolean;
+    /// Requests between ValidateRequest and Finish.
+    FActiveRequests: Integer;
+    /// Port was 0: the one listened on was chosen, and goes back to 0 on stop.
+    FAutoPort: boolean;
+    FOnShutdown: TRALOnShutdown;
+    FShutdownRetryAfter: IntegerRAL;
+    FShuttingDown: boolean;
     FApiVersioning: TRALApiVersioning;
     FAuthentication: TRALAuthServer;
     /// Internal module of the server's own routes and of its status page.
@@ -284,6 +299,9 @@ type
     procedure PluginRemoved(APlugin: TRALServerPlugin); override;
     /// Starts or stops the server; plugins and modules hear it before the engine opens.
     procedure SetActive(const AValue: boolean); virtual;
+    /// A request handed by ValidateRequest is done (its finish handler).
+    procedure RequestFinished(ARequest: TRALRequest);
+    function GetBoundPort: IntegerRAL;
     procedure SetAuthentication(const AValue: TRALAuthServer);
     /// Sets Engine, the name of the engine.
     procedure SetEngine(const AValue: StringRAL);
@@ -385,6 +403,11 @@ type
       False keeps them and sends the body whole when the handler returns }
     class function SupportsLiveStream: boolean; virtual;
     /// Starts the server.
+    { Stops the server gracefully: new requests get 503 with Connection: close and
+      Retry-After, the running ones are waited for up to ATimeout milliseconds,
+      the open streams are closed, then Active goes False. True when every
+      request finished in time. }
+    function Shutdown(ATimeout: IntegerRAL = 30000): boolean;
     procedure Start;
     /// Stops the server.
     procedure Stop;
@@ -396,6 +419,13 @@ type
     { Most streams open at once; 0 is no limit. TRALConcurrencyPlugin.MaxStreams
       sets it }
     property StreamLimit: IntegerRAL read FStreamLimit write FStreamLimit;
+    /// Requests being answered now (between ValidateRequest and Finish).
+    property ActiveRequests: Integer read FActiveRequests;
+    { The port listened on: Port, or the one the system gave when Port is 0
+      (while active; 0 when stopped). }
+    property BoundPort: IntegerRAL read GetBoundPort;
+    /// True while Shutdown waits: new requests are refused, /health/ready is 503.
+    property IsShuttingDown: boolean read FShuttingDown;
     /// Linked module at AIndex, or nil.
     property SubModule[AIndex: IntegerRAL]: TRALModuleRoutes read GetSubModule;
   published
@@ -430,6 +460,11 @@ type
     property OnResponse: TRALOnReply read FOnResponse write FOnResponse;
     /// Fired with an exception the server caught.
     property OnServerError: TRALOnServerError read FOnServerError write FOnServerError;
+    /// Fired as Shutdown goes.
+    property OnShutdown: TRALOnShutdown read FOnShutdown write FOnShutdown;
+    /// Seconds of the Retry-After the requests refused during Shutdown get.
+    property ShutdownRetryAfter: IntegerRAL read FShutdownRetryAfter
+      write FShutdownRetryAfter default 5;
     /// Fired for every error RAL answers itself, to give it another body.
     property OnFormatError: TRALOnFormatError read FOnFormatError write FOnFormatError;
     /// Gives DeveloperMode the stack of an exception.
@@ -815,6 +850,7 @@ begin
   inherited;
 
   FIPConfig := TRALIPConfig.Create(Self);
+  FShutdownRetryAfter := 5;
   FApiVersioning := TRALApiVersioning.Create;
   FExceptionMap := TRALExceptionMap.Create(Self);
   FDeveloperIPs := TStringList.Create;
@@ -1548,9 +1584,23 @@ begin
 end;
 
 procedure TRALServer.SetActive(const AValue: boolean);
+var
+  vPort: IntegerRAL;
 begin
   if FActive = AValue then
     Exit;
+
+  { Port 0: a port the system says is free, chosen before the engine reads
+    Port (it reads it after this inherited call); back to 0 when stopped }
+  if AValue and (FPort = 0) then
+  begin
+    vPort := RALFreeTCPPort(rimIPv4);
+    if vPort > 0 then
+    begin
+      SetPort(vPort);
+      FAutoPort := True;
+    end;
+  end;
 
   FActive := AValue;
   if AValue then
@@ -1587,7 +1637,48 @@ begin
   begin
     NotifyModules(False);
     NotifyPlugins(False);
+    if FAutoPort then
+    begin
+      FAutoPort := False;
+      SetPort(0);
+    end;
   end;
+end;
+
+function TRALServer.GetBoundPort: IntegerRAL;
+begin
+  if FActive then
+    Result := FPort
+  else
+    Result := 0;
+end;
+
+procedure TRALServer.RequestFinished(ARequest: TRALRequest);
+begin
+  RALAtomicDec(FActiveRequests);
+end;
+
+function TRALServer.Shutdown(ATimeout: IntegerRAL): boolean;
+var
+  vStart: Int64RAL;
+begin
+  Result := True;
+  if not FActive then
+    Exit;
+  FShuttingDown := True;
+  try
+    if Assigned(FOnShutdown) then
+      FOnShutdown(Self, ssDraining, False);
+    vStart := RALTickMicro;
+    while (FActiveRequests > 0) and ((RALTickMicro - vStart) div 1000 < ATimeout) do
+      Sleep(10);
+    Result := FActiveRequests <= 0;
+    Active := False;
+  finally
+    FShuttingDown := False;
+  end;
+  if Assigned(FOnShutdown) then
+    FOnShutdown(Self, ssStopped, not Result);
 end;
 
 { While loading, Active is only kept: Loaded applies it after Port, IPConfig and
@@ -1715,6 +1806,16 @@ begin
   if ARequest.StartTick = 0 then
     ARequest.StartTick := RALTickMicro;
   AResponse.StreamRequest := ARequest;
+  { counted until Finish, so Shutdown knows when the last one is done }
+  RALAtomicInc(FActiveRequests);
+  ARequest.AddFinishHandler({$IFDEF FPC}@{$ENDIF}RequestFinished);
+  if FShuttingDown then
+  begin
+    AResponse.Answer(HTTP_ServiceUnavailable);
+    AResponse.AddHeader('Connection', 'close');
+    AResponse.AddHeader('Retry-After', StringRAL(IntToStr(FShutdownRetryAfter)));
+    Exit;
+  end;
   { the path the proxy put in front comes off first: plugins, routes and modules
     see the path of the application }
   if FPathBase <> '' then

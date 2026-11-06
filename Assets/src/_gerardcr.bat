@@ -63,3 +63,11 @@ echo RALModuleObjects
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleObjectsPackage.dcr" "RALModuleObjects.rc"
 echo RALModuleControllers
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleControllersPackage.dcr" "RALModuleControllers.rc"
+echo FastCGI
+%path_brcc32% -fo "..\..\pkg\Delphi\Engine\FastCGIRAL.dcr" "FastCGI.rc"
+echo InProc
+%path_brcc32% -fo "..\..\pkg\Delphi\Engine\InProcRAL.dcr" "InProc.rc"
+echo WebBroker
+%path_brcc32% -fo "..\..\pkg\Delphi\Engine\WebBrokerRAL.dcr" "WebBroker.rc"
+echo RALHosting
+%path_brcc32% -fo "..\..\pkg\Delphi\Hosting\RALHostingPackage.dcr" "RALHosting.rc"

@@ -47,6 +47,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/database/design/` | `RALDBDsgn` | DBWare design time |
 | `src/design/` | `PascalRALDsgn` | core design time (`RALRegister`, property editors) |
 | `src/engine/<engine>/` | `<Engine>RAL` | one transport engine per folder |
+| `src/hosting/` | `RALHostingPackage` (requires `RALPluginObservabilityPackage`) | Windows service and Linux daemon (`TRALServiceHost`), syslog/Event Log (`TRALSystemLog`), layered configuration (`TRALConfig`), cron and interval jobs (`TRALScheduler`) |
 | `src/languages/` | (included by `RALConsts`) | user-facing texts per language, UTF-8 with BOM |
 | `src/net/` | `RALNetPackage` | RAL's own sockets: TCP/UDP for every OS with poll, TLS and DTLS over OpenSSL loaded at run time (session resumption, a certificate per SNI name, ClientHello peek), WebSocket channel, HTTP CONNECT/SOCKS5 proxy, the server event loop |
 | `src/modules/proxy/` | `RALModuleProxyPackage` (requires `RALNetPackage`); `design/` `RALModuleProxyDsgn` | reverse proxy and load balancing: `TRALUpstream` (policies, health, stats), `TRALProxyModule`, `TRALBalancer` (own listener, HTTP and TCP modes), `RALProxyConfig` (NGINX-style configuration, `TRALProxyHost` with reload) |
@@ -148,6 +149,14 @@ bcrypt core), `RALSalsa20` (the Salsa20 core), `RALOTP` (HOTP/TOTP, base32, otpa
 
 - `cgi/` - `RALCGIServer` (+ `_Delphi.inc`, `_FPC.inc`), `RALCGIReg`; Lazarus package
   only (Delphi CGI compiles from source)
+- `fastcgi/` - `RALFastCGIServer`, `RALFastCGIReg` (`FastCGIRAL`, requires
+  `RALNetPackage`): FastCGI 1.0 responder of its own on `RALSocket`, both compilers,
+  kept connections and live streams, behind nginx, Apache or IIS
+- `inproc/` - `RALInProc`, `RALInProcReg` (`InProcRAL`): `TRALInProcServer` and the
+  `InProc` client engine (`inproc://name`), for integration tests without a port
+- `webbroker/` - `RALWebBrokerServer` (+ `_Delphi.inc`, `_FPC.inc`), `RALWebBrokerReg`
+  (`WebBrokerRAL`; Delphi requires `inet`): ISAPI and Apache 2.4 modules over WebBroker
+  (Delphi), Apache 2.4 module over fcl-web's `custapache24` (FPC)
 - `fpHTTP/` - `RALfpHTTPServer`, `RALfpHTTPClient`, `RALfpHTTPReg` (Lazarus)
 - `indy/` - `RALIndyServer`, `RALIndyClient`, `RALIndyReg`
 - `kwik/` - `RALKwikClient`, `RALKwikReg`, `java/` (JNI bridge + jars): Android QUIC

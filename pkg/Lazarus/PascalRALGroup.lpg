@@ -7,6 +7,9 @@
       <Target FileName="Engine\indyral.lpk"/>
       <Target FileName="Engine\synopseral.lpk"/>
       <Target FileName="Engine\saguiral.lpk"/>
+      <Target FileName="Engine\fastcgiral.lpk"/>
+      <Target FileName="Engine\inprocral.lpk"/>
+      <Target FileName="Engine\webbrokerral.lpk"/>
       <Target FileName="Engine\msquicral.lpk"/>
       <Target FileName="Engine\cgiral.lpk"/>
       <Target FileName="Engine\fphttpral.lpk"/>
@@ -14,6 +17,7 @@
       <Target FileName="Plugins\ralplugintlspackage.lpk"/>
       <Target FileName="Crypto\ralcryptopasswordpackage.lpk"/>
       <Target FileName="Plugins\ralpluginobservabilitypackage.lpk"/>
+      <Target FileName="Hosting\ralhostingpackage.lpk"/>
       <Target FileName="Plugins\ralplugintrafficpackage.lpk"/>
       <Target FileName="Plugins\ralplugincachepackage.lpk"/>
       <Target FileName="Storage\ralstoragepackage.lpk"/>

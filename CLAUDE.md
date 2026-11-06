@@ -268,6 +268,45 @@ keeps the milliseconds fcl-net 3.2 dropped; to a loopback host it also turns off
 retransmission (`SIO_TCP_INITIAL_RTO`), so a closed local port fails at once instead of
 after Windows' ~2 s of retries. Linux is untouched.
 
+**Graceful stop and port 0** (core, `RALServer`): every request `ValidateRequest` admits
+counts in `ActiveRequests` until its `Finish`. `Shutdown(ATimeout)` sets
+`IsShuttingDown` (new requests 503 + `Connection: close` + `Retry-After`, so the health
+readiness fails too), waits for the count to reach 0, then `Active := False`;
+`OnShutdown` fires at `ssDraining` and `ssStopped`. `Port = 0` asks the system for a free
+port in `SetActive` before the engine reads `Port` (`RALFreeTCPPort`), `BoundPort` says
+which; stopping puts 0 back.
+
+**FastCGI** (`src/engine/fastcgi`): its own FastCGI 1.0 responder on `RALSocket` (not
+fcl-web's `custfcgi`), a thread per connection with the web server, one request at a
+time on it (`FCGI_MPXS_CONNS` 0). Without `FCGI_KEEP_CONN` the connection closes when
+the request ends, not at `BEGIN_REQUEST`. Streams are live (`STDOUT` records, the writer
+frames itself); `ABORT_REQUEST` ends a request whose body has not finished arriving.
+
+**InProc** (`src/engine/inproc`): `TRALInProcServer` registers its `ServerName` while
+active; the `InProc` client engine hands `inproc://name/path` straight to it, through
+`ValidateRequest`, `ProcessCommands` and `TakeWireStream`, plugins included. A
+`BaseURL` with a scheme of its own keeps it (`TRALClient` adds `http://` only where no
+`://` is). An unknown name is a transport error (`rteConnect`).
+
+**WebBroker** (`src/engine/webbroker`): one `TRALWebBrokerServer` per library, active
+from load to unload (the lifecycle runs once); `TRALWebBrokerModule` is the web module
+class. Delphi reads the headers from `ExtractAllHeaders` (13), IIS's `ALL_RAW`, else
+known names plus `ExtraHeaders` (Apache before 13); the body is `ReadTotalContent`
+(10 Seattle+) plus `ReadClient`, since IIS hands over only the first piece. FPC is
+Apache 2.4 only (`custapache24`, `RALApacheStart` in the library's main block; headers
+from Apache's table). Apache on Delphi needs `Web.HTTPD24Impl` (not in XE2 here).
+
+**Hosting** (`src/hosting`, `RALHostingPackage`): `TRALServiceHost` speaks the SCM API
+itself (no `SvcMgr`), and on Linux is the foreground process of a `Type=notify` unit
+(`sd_notify` over the `NOTIFY_SOCKET` datagram socket; SIGTERM/SIGINT stop with
+`Shutdown`, SIGHUP is `OnReload`; the handlers only set flags). FPC reads the
+environment it started with: libc's `setenv` does not reach `GetEnvironmentVariable`.
+`TRALSystemLog` is syslog (journal under systemd) or `ReportEvent`. `TRALConfig` layers
+defaults < file (JSON/INI/.env) < environment (`RAL_A__B` is `A.B`) < command line
+(`--A.B=v`, `--config=`); numbers from JSON go through `RALJSONNumberText` (the backend's
+`AsString` follows the locale). `TRALScheduler` is a plugin with no phase: it starts in
+`ServerActivating` and `ServerDeactivating` (so `Shutdown`) waits for running jobs.
+
 ### `TRALSynopseServer.Mode`
 
 `smThreads` (default, a thread per kept-alive connection), `smAsync` (mORMot2's event

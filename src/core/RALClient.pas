@@ -1330,7 +1330,8 @@ begin
     Exit;
 
   Result := RALTrim(FBaseURL.Strings[AIndexUrl]);
-  if not SameText(Copy(Result, POSINISTR, 4), 'http') then
+  { a URL without a scheme is http; another scheme (inproc://) stays }
+  if Pos(StringRAL('://'), Result) = 0 then
     Result := 'http://' + Result;
 
   { everything from the first slash after the scheme is route, not destination }
@@ -3023,7 +3024,7 @@ begin
       Exit;
 
     vURL := Trim(FParent.BaseURL.Strings[AIndexUrl]);
-    if not SameText(Copy(vURL, 1, 4), 'http') then
+    if Pos('://', vURL) = 0 then
       vURL := 'http://' + vURL;
 
     if (vURL <> '') and (vURL[RALHighStr(vURL)] = '/') then

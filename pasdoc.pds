@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=53
+Count=57
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -121,8 +121,12 @@ Item_49=src\modules\proxy
 Item_50=src\crypto\password
 Item_51=src\modules\objects
 Item_52=src\modules\controllers
+Item_53=src\engine\fastcgi
+Item_54=src\engine\inproc
+Item_55=src\engine\webbroker
+Item_56=src\hosting
 [Files]
-Count=198
+Count=209
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -321,6 +325,17 @@ Item_194=src\modules\objects\RALModuleObjectsReg.pas
 Item_195=src\modules\controllers\RALControllers.pas
 Item_196=src\modules\controllers\RALRestProxy.pas
 Item_197=src\modules\controllers\RALModuleControllersReg.pas
+Item_198=src\engine\fastcgi\RALFastCGIServer.pas
+Item_199=src\engine\fastcgi\RALFastCGIReg.pas
+Item_200=src\engine\inproc\RALInProc.pas
+Item_201=src\engine\inproc\RALInProcReg.pas
+Item_202=src\engine\webbroker\RALWebBrokerServer.pas
+Item_203=src\engine\webbroker\RALWebBrokerReg.pas
+Item_204=src\hosting\RALServiceHost.pas
+Item_205=src\hosting\RALSystemLog.pas
+Item_206=src\hosting\RALConfig.pas
+Item_207=src\hosting\RALScheduler.pas
+Item_208=src\hosting\RALHostingReg.pas
 [AdditionalFiles]
 Count=0
 

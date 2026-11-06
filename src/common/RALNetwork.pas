@@ -35,6 +35,10 @@ function RALIsAnyAddress(const AAddress: StringRAL): boolean;
 function RALIsIPAddress(const AValue: StringRAL; AMode: TRALIpMode): boolean;
 /// The loopback of the family: '127.0.0.1' or '::1'
 function RALLoopbackAddress(AMode: TRALIpMode): StringRAL;
+{ A TCP port the system says is free now (a socket bound to port 0, read and
+  closed): what a server with Port 0 listens on. Another program may take it
+  before the server binds; 0 when the system gave none }
+function RALFreeTCPPort(AMode: TRALIpMode = rimIPv4): IntegerRAL;
 
 implementation
 
@@ -106,6 +110,8 @@ function WinGetSockName(ASocket: TRALSock; AAddr: Pointer; var ALen: Integer): I
   external cWinsock name 'getsockname';
 function WinCloseSocket(ASocket: TRALSock): Integer; stdcall;
   external cWinsock name 'closesocket';
+function WinBind(ASocket: TRALSock; AAddr: Pointer; ALen: Integer): Integer; stdcall;
+  external cWinsock name 'bind';
 function WinGetHostName(AName: PAnsiChar; ALen: Integer): Integer; stdcall;
   external cWinsock name 'gethostname';
 function WinGetAddrInfo(ANode, AService: PAnsiChar; AHints: PRALAddrInfo;
@@ -167,6 +173,17 @@ end;
 procedure SysClose(ASock: TRALSock);
 begin
   WinCloseSocket(ASock);
+end;
+
+function SysOpenStream(AFamily: Integer; out ASock: TRALSock): boolean;
+begin
+  ASock := WinSocket(AFamily, 1 {SOCK_STREAM}, 0);
+  Result := ASock <> not TRALSock(0);
+end;
+
+function SysBind(ASock: TRALSock; const ABuf: TRALSockAddrBuf; ALen: Integer): boolean;
+begin
+  Result := WinBind(ASock, @ABuf, ALen) = 0;
 end;
 
 const
@@ -280,6 +297,25 @@ begin
   CloseSocket(ASock);
   {$ELSE}
   __close(ASock);
+  {$ENDIF}
+end;
+
+function SysOpenStream(AFamily: Integer; out ASock: TRALSock): boolean;
+begin
+  {$IFDEF FPC}
+  ASock := fpSocket(AFamily, SOCK_STREAM, 0);
+  {$ELSE}
+  ASock := socket(AFamily, SOCK_STREAM, 0);
+  {$ENDIF}
+  Result := ASock >= 0;
+end;
+
+function SysBind(ASock: TRALSock; const ABuf: TRALSockAddrBuf; ALen: Integer): boolean;
+begin
+  {$IFDEF FPC}
+  Result := fpBind(ASock, psockaddr(@ABuf), ALen) = 0;
+  {$ELSE}
+  Result := bind(ASock, psockaddr(@ABuf)^, ALen) = 0;
   {$ENDIF}
 end;
 
@@ -846,6 +882,39 @@ begin
   // "::" at most once, and a colon is what no host name can hold
   Result := (vColons >= 2) and (vColons <= 7) and
             (Pos('::', Copy(vText, Pos('::', vText) + 1, Length(vText))) = 0);
+end;
+
+function RALFreeTCPPort(AMode: TRALIpMode): IntegerRAL;
+var
+  vSock: TRALSock;
+  vBuf: TRALSockAddrBuf;
+  vLen: Integer;
+begin
+  Result := 0;
+  if not NetStart then
+    Exit;
+  try
+    if not SysOpenStream(FamilyOf(AMode), vSock) then
+      Exit;
+    try
+      { every address, port 0: the system picks the port }
+      FillChar(vBuf, SizeOf(vBuf), 0);
+      SetFamily(vBuf, FamilyOf(AMode));
+      if AMode = rimIPv6 then
+        vLen := 28
+      else
+        vLen := 16;
+      if not SysBind(vSock, vBuf, vLen) then
+        Exit;
+      FillChar(vBuf, SizeOf(vBuf), 0);
+      if SysGetSockName(vSock, vBuf) then
+        Result := (Integer(vBuf[2]) shl 8) or vBuf[3]; // network byte order
+    finally
+      SysClose(vSock);
+    end;
+  finally
+    NetStop;
+  end;
 end;
 
 function RALLoopbackAddress(AMode: TRALIpMode): StringRAL;

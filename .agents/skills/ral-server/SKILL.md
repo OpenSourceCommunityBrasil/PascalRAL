@@ -22,6 +22,9 @@ The engine is the `TRALServer` descendant; the routes and handlers are the same 
 | `TRALSaguiServer` (`RALSaguiServer`) | 2009+ | yes | needs `libsagui` |
 | `TRALMsQuicServer` (`RALMsQuicServer`) | yes | yes | QUIC, RAL clients only |
 | `TRALCGIServer` (`RALCGIServer`) | yes | yes | behind IIS/Apache/nginx |
+| `TRALFastCGIServer` (`RALFastCGIServer`) | yes | yes | behind nginx/Apache/IIS over FastCGI (TCP); needs `RALNetPackage` |
+| `TRALWebBrokerServer` (`RALWebBrokerServer`) | yes | yes | a library: ISAPI (IIS) or Apache 2.4 module on Delphi, Apache 2.4 on Lazarus |
+| `TRALInProcServer` (`RALInProc`) | yes | yes | no socket: tests with a `TRALClient` on `inproc://name` |
 | `TRALUniGUIServer` | yes | no | inside a UniGUI application |
 
 Lazarus on Linux: `cthreads` first in the program's `uses`.
@@ -155,9 +158,20 @@ matching client. `tools/ralopenapi` writes classes and a client from an OpenAPI 
   requires `RALPluginAuthPackage`). Route descriptions and `InputParams` feed it.
 - Database over HTTP: `ral-dbware`. SOAP: `ral-xml-soap`. Your own: `ral-module`.
 
+## Running as a service
+
+`RALHostingPackage`: `TRALServiceHost` (`Server`, `ServiceName`; `Host.Run` reads
+`install`/`uninstall`/`start`/`stop`/`console` and otherwise runs as the Windows service
+or the systemd `Type=notify` daemon), `TRALSystemLog` (syslog/journal, Event Log;
+`LogPlugin` takes a `TRALLogPlugin`'s lines), `TRALConfig` (`Bind(Server, 'Server')`:
+JSON/INI/.env, `RAL_SERVER__PORT`, `--Server.Port=8080`), `TRALScheduler` (`Jobs` by
+cron or interval, linked to the server).
+
 ## Server properties worth knowing
 
-`Port` (8000), `IPConfig` (bind addresses, IPv6), `ShowServerStatus` (answers `/`),
+`Port` (8000; 0 = a free port, read it in `BoundPort`), `IPConfig` (bind addresses,
+IPv6), `ShowServerStatus` (answers `/`), `Shutdown(30000)` (stops after the running
+requests end; new ones get 503), `OnShutdown`,
 `HideErrorDetails` (a 500 says only "Internal Server Error" - turn on in production),
 `OnServerError` (log exceptions), `OnRequest`/`OnResponse`, `CookieLife` (minutes).
 
@@ -177,4 +191,9 @@ Guides (Portuguese): wiki
 [rotas](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/rotas),
 [plugins](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/plugins),
 [qual-motor](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/qual-motor),
-[resposta-em-fluxo](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/resposta-em-fluxo).
+[resposta-em-fluxo](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/resposta-em-fluxo),
+[servico](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/servico),
+[fastcgi](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/fastcgi),
+[iis-apache](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/iis-apache),
+[configuracao](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/configuracao),
+[testes-em-memoria](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/testes-em-memoria).
