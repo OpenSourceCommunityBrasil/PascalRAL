@@ -296,7 +296,7 @@ procedure ValidateJSONNumber(const Value: StringRAL);
 var
   Position: Integer;
 
-  function Peek: UTF8Char;
+  function Peek: AnsiChar;
   begin
     if Position > Length(Value) then
       Result := #0
@@ -439,7 +439,7 @@ begin
   if Length(Value) > MaxInt - Count then
     raise EIntOverflow.Create('JSON output is too large.');
   Needed := Count + Length(Value);
-  if NativeInt(Needed) > High(NativeInt) div SizeOf(UTF8Char) then
+  if NativeInt(Needed) > High(NativeInt) div SizeOf(AnsiChar) then
     raise EIntOverflow.Create('JSON output exceeds the native buffer capacity.');
   if Needed > Length(Text) then
   begin
@@ -451,12 +451,12 @@ begin
         Capacity := Needed
       else
         Capacity := Capacity * 2;
-    if NativeInt(Capacity) > High(NativeInt) div SizeOf(UTF8Char) then
+    if NativeInt(Capacity) > High(NativeInt) div SizeOf(AnsiChar) then
       Capacity := Needed;
     SetLength(Text, Capacity);
   end;
   if Length(Value) > 0 then
-    Move(Value[1], Text[Count + 1], NativeInt(Length(Value)) * SizeOf(UTF8Char));
+    Move(Value[1], Text[Count + 1], NativeInt(Length(Value)) * SizeOf(AnsiChar));
   Count := Needed;
 end;
 

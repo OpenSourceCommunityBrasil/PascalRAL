@@ -217,7 +217,7 @@ begin
   end;
 end;
 
-function HexValue(C: UTF8Char): Integer;
+function HexValue(C: AnsiChar): Integer;
 begin
   case C of
     '0'..'9':
