@@ -33,8 +33,8 @@ uses
   {$IFDEF ANDROID}
   Androidapi.Jni, Androidapi.JNIBridge, Androidapi.JNI.JavaTypes, Androidapi.Helpers,
   {$ENDIF}
-  RALClient, RALTypes, RALConsts, RALRequest, RALResponse, RALParams,
-  RALCompress, RALTools, RALQuicFrame;
+  RALExceptions, RALErrorCodes, RALClient, RALTypes, RALConsts, RALRequest, RALResponse,
+  RALParams, RALCompress, RALTools, RALQuicFrame;
 
 type
   {$IFDEF ANDROID}
@@ -475,7 +475,7 @@ begin
   inherited;
   AResponse.Clear;
   SetTransportError(AResponse, rteOther, -1, StringRAL(emKwikAndroidOnly));
-  raise Exception.Create(emKwikAndroidOnly);
+  raise ERALException.Create(ecKwikAndroidOnly);
 end;
 
 class function TRALKwikClientHTTP.EngineVersion: StringRAL;

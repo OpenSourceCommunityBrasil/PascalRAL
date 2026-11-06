@@ -21,8 +21,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALTools, RALBigInt, RALASN1, RALHashBase, RALSHA1,
-  RALSHA2_32, RALSHA2_64;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALTools, RALBigInt, RALASN1,
+  RALHashBase, RALSHA1, RALSHA2_32, RALSHA2_64;
 
 const
   OID_RSA_ENCRYPTION = '1.2.840.113549.1.1.1';
@@ -38,7 +38,7 @@ const
   RALRSADefaultBits = 2048;
 
 type
-  ERALRSA = class(Exception);
+  ERALRSA = class(ERALException);
 
   { TRALRSAKey }
 
@@ -204,15 +204,15 @@ end;
 procedure TRALRSAKey.CheckKey;
 begin
   if BigIsZero(FN) or BigIsZero(FE) or not BigIsOdd(FN) then
-    raise ERALRSA.Create(emRSAInvalidKey);
+    raise ERALRSA.Create(ecRSAInvalidKey);
 
   if IsPrivate then
   begin
     { a PKCS#1 file may omit the CRT values (all zero): rebuild them }
     if BigIsZero(FP) or BigIsZero(FQ) then
-      raise ERALRSA.Create(emRSANoPrimes);
+      raise ERALRSA.Create(ecRSANoPrimes);
     if BigCompare(BigMul(FP, FQ), FN) <> 0 then
-      raise ERALRSA.Create(emRSAInvalidKey);
+      raise ERALRSA.Create(ecRSAInvalidKey);
     if BigIsZero(FDP) then
       FDP := BigMod(FD, BigSubCardinal(FP, 1));
     if BigIsZero(FDQ) then
@@ -228,9 +228,9 @@ var
   vHalf: IntegerRAL;
 begin
   if (ABits < 1024) or (ABits mod 2 <> 0) then
-    raise ERALRSA.CreateFmt(emRSAKeySize, [ABits]);
+    raise ERALRSA.CreateFmt(ecRSAKeySize, [ABits]);
   if (AExponent < 3) or (AExponent and 1 = 0) then
-    raise ERALRSA.CreateFmt(emRSAExponent, [AExponent]);
+    raise ERALRSA.CreateFmt(ecRSAExponent, [AExponent]);
 
   vHalf := ABits div 2;
   vMinDiff := BigShl(BigFromCardinal(1), vHalf - 100);
@@ -280,7 +280,7 @@ var
 begin
   vSeq := DerRoot(ADER);
   if vSeq.Tag <> ASN1_SEQUENCE then
-    raise ERALRSA.Create(emRSAInvalidKey);
+    raise ERALRSA.Create(ecRSAInvalidKey);
 
   vItem := DerChildren(ADER, vSeq);
   for vInt := 0 to 8 do
@@ -291,7 +291,7 @@ begin
   end;
   { version 0 is two primes; 1 (multi-prime) is not read }
   if not BigIsZero(vValues[0]) then
-    raise ERALRSA.Create(emRSAInvalidKey);
+    raise ERALRSA.Create(ecRSAInvalidKey);
 
   Result := TRALRSAKey.Create;
   try
@@ -316,13 +316,13 @@ var
 begin
   vSeq := DerRoot(ADER);
   if vSeq.Tag <> ASN1_SEQUENCE then
-    raise ERALRSA.Create(emRSAInvalidKey);
+    raise ERALRSA.Create(ecRSAInvalidKey);
 
   vItem := DerChildren(ADER, vSeq);
   DerAsInt64(ADER, vItem);
   vAlg := DerExpect(ADER, vItem.Next, ASN1_SEQUENCE, vSeq.Next);
   if DerAsOID(ADER, DerChildren(ADER, vAlg)) <> OID_RSA_ENCRYPTION then
-    raise ERALRSA.Create(emRSANotRSA);
+    raise ERALRSA.Create(ecRSANotRSA);
 
   vItem := DerExpect(ADER, vAlg.Next, ASN1_OCTET_STRING, vSeq.Next);
   Result := FromPKCS1(DerContent(ADER, vItem));
@@ -335,11 +335,11 @@ var
 begin
   vSeq := DerRoot(ADER);
   if vSeq.Tag <> ASN1_SEQUENCE then
-    raise ERALRSA.Create(emRSAInvalidKey);
+    raise ERALRSA.Create(ecRSAInvalidKey);
 
   vAlg := DerExpect(ADER, vSeq.ContentStart, ASN1_SEQUENCE, vSeq.Next);
   if DerAsOID(ADER, DerChildren(ADER, vAlg)) <> OID_RSA_ENCRYPTION then
-    raise ERALRSA.Create(emRSANotRSA);
+    raise ERALRSA.Create(ecRSANotRSA);
 
   vBits := DerExpect(ADER, vAlg.Next, ASN1_BIT_STRING, vSeq.Next);
   vKey := DerAsBitString(ADER, vBits);
@@ -364,7 +364,7 @@ var
   vSeq, vItem: TRALASN1Element;
 begin
   if PemDecode(APEM, 'ENCRYPTED PRIVATE KEY') <> nil then
-    raise ERALRSA.Create(emRSAEncryptedKey);
+    raise ERALRSA.Create(ecRSAEncryptedKey);
 
   vDER := PemDecode(APEM, 'PRIVATE KEY');
   if vDER <> nil then
@@ -382,7 +382,7 @@ begin
   { an 'RSA PRIVATE KEY' with DEK-Info headers comes back empty with the label
     missing: it is encrypted }
   if Pos('-----BEGIN RSA PRIVATE KEY-----', string(APEM)) > 0 then
-    raise ERALRSA.Create(emRSAEncryptedKey);
+    raise ERALRSA.Create(ecRSAEncryptedKey);
 
   vDER := PemDecode(APEM, 'PUBLIC KEY');
   if vDER <> nil then
@@ -409,7 +409,7 @@ begin
     Exit;
   end;
 
-  raise ERALRSA.Create(emRSANoKeyInPEM);
+  raise ERALRSA.Create(ecRSANoKeyInPEM);
 end;
 
 class function TRALRSAKey.FromFile(const AFileName: string): TRALRSAKey;
@@ -457,9 +457,9 @@ var
   vM, vS: TRALBigNum;
 begin
   if not IsPrivate then
-    raise ERALRSA.Create(emRSANotPrivate);
+    raise ERALRSA.Create(ecRSANotPrivate);
   if Length(ADigest) <> 32 then
-    raise ERALRSA.Create(emRSADigestSize);
+    raise ERALRSA.Create(ecRSADigestSize);
 
   { EMSA-PKCS1-v1_5: 00 01 FF..FF 00 DigestInfo }
   vK := (Bits + 7) div 8;
@@ -476,7 +476,7 @@ begin
   vM := BigFromBytes(vEM);
   vS := PrivateOp(vM);
   if BigCompare(BigModPow(vS, FE, FN), vM) <> 0 then
-    raise ERALRSA.Create(emRSASignFault);
+    raise ERALRSA.Create(ecRSASignFault);
   Result := BigToBytes(vS, vK);
 end;
 
@@ -548,7 +548,7 @@ end;
 function TRALRSAKey.PrivateKeyPKCS1: TBytes;
 begin
   if not IsPrivate then
-    raise ERALRSA.Create(emRSANotPrivate);
+    raise ERALRSA.Create(ecRSANotPrivate);
 
   Result := DerSequence([DerIntegerValue(0), DerInteger(FN), DerInteger(FE),
     DerInteger(FD), DerInteger(FP), DerInteger(FQ), DerInteger(FDP),

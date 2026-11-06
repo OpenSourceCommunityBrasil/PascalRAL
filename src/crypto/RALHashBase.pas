@@ -5,7 +5,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALBase64, RALTypes, RALTools, RALStream, RALConsts, RALHexadecimal;
+  RALExceptions, RALErrorCodes, RALBase64, RALTypes, RALTools, RALStream, RALConsts,
+  RALHexadecimal;
 
 type
   TRALHashOutputType = (rhotNone, rhotHex, rhotBase64, rhotBase64Url);
@@ -333,9 +334,9 @@ var
   vStream: TStream;
 begin
   if AValue = '' then
-    Raise Exception.Create(emHMACEmptyText)
+    Raise ERALException.Create(ecHMACEmptyText)
   else if AKey = '' then
-    Raise Exception.Create(emCryptEmptyKey);
+    Raise ERALException.Create(ecCryptEmptyKey);
 
   vStream := StringToStreamUTF8(AValue);
   try

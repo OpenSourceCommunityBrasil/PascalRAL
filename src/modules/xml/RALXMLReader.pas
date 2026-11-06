@@ -14,7 +14,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts;
+  RALExceptions, RALTypes, RALConsts;
 
 const
   /// Namespace the prefix xml is bound to.
@@ -24,7 +24,7 @@ const
 
 type
   /// Error of a document not well-formed, or of a limit; Line and Column are 1-based.
-  ERALXMLError = class(Exception)
+  ERALXMLError = class(ERALException)
   private
     FColumn: IntegerRAL;
     FLine: IntegerRAL;

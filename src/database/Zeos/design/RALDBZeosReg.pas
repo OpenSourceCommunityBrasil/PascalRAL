@@ -14,7 +14,7 @@ uses
     DesignEditors, DesignIntf, DSDesign, DB,
   {$ENDIF}
   Classes, SysUtils, RALDBZeos, RALDBZeosMemTable, ZAbstractConnection,
-  RALTypes, RALStorageTypes, RALDBConnection, RALConsts;
+  RALExceptions, RALErrorCodes, RALTypes, RALStorageTypes, RALDBConnection, RALConsts;
 
 type
 
@@ -157,7 +157,7 @@ begin
   vZDataset := TRALDBZMemTable(GetComponent(0));
   vConnection := vZDataset.RALConnection;
   if vConnection = nil then
-    raise Exception.Create(emDBConnectionUndefined);
+    raise ERALException.Create(ecDBConnectionUndefined);
 
   vTables := vConnection.GetTables;
   try

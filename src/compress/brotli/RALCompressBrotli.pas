@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, brotlistream, brotlilib,
-  RALCompress, RALTypes, RALConsts;
+  RALExceptions, RALErrorCodes, RALCompress, RALTypes, RALConsts;
 
 type
   { TRALCompressBrotli }
@@ -47,7 +47,7 @@ begin
 
   vState := BrotliEncoderCreateInstance(nil, nil, nil);
   if vState = nil then
-    raise Exception.CreateFmt(emCompressFailed, ['brotli']);
+    raise ERALException.CreateFmt(ecCompressFailed, ['brotli']);
   try
     BrotliEncoderSetParameter(vState, Ord(BROTLI_PARAM_QUALITY), 5);
     BrotliEncoderSetParameter(vState, Ord(BROTLI_PARAM_LGWIN), 22);
@@ -70,7 +70,7 @@ begin
         vNextOut := @vOut[0];
         if BrotliEncoderCompressStream(vState, vOperation, vAvailIn, @vNextIn,
              vAvailOut, @vNextOut, nil) <> BROTLI_TRUE then
-          raise Exception.CreateFmt(emCompressFailed, ['brotli']);
+          raise ERALException.CreateFmt(ecCompressFailed, ['brotli']);
         if vAvailOut < NativeUInt(Length(vOut)) then
           AOutStream.WriteBuffer(vOut[0], Length(vOut) - Integer(vAvailOut));
       until (BrotliEncoderHasMoreOutput(vState) <> BROTLI_TRUE) and
@@ -111,7 +111,7 @@ begin
 
   if AValue <> ctBrotli then
   begin
-    raise Exception.Create(emInvalidFormat);
+    raise ERALException.Create(ecInvalidFormat);
     Exit;
   end;
 

@@ -7,8 +7,8 @@ interface
 
 uses
   Classes, SysUtils, DB, DateUtils, FMTBcd,
-  RALTypes, RALStorage, RALTools, RALBase64, RALStream, RALMIMETypes, RALStorageTypes,
-  RALJson, RALConsts;
+  RALExceptions, RALErrorCodes, RALTypes, RALStorage, RALTools, RALBase64, RALStream,
+  RALMIMETypes, RALStorageTypes, RALJson, RALConsts;
 
 type
   TRALJSONType = (jtDBWare, jtRAW);
@@ -543,7 +543,7 @@ begin
     call wraps the value anew, and the wrapper lives as long as AJSON }
   vjValue := AJSON.Get(0);
   if not (vjValue is TRALJSONObject) then
-    raise Exception.Create(emInvalidJSONFormat);
+    raise ERALException.Create(ecInvalidJSONFormat);
   vjObj := TRALJSONObject(vjValue);
 
   SetLength(FFieldNames, vjObj.Count);
@@ -633,7 +633,7 @@ begin
     begin
       vjValue := AJSON.Get(vInt64);
       if not (vjValue is TRALJSONObject) then
-        raise Exception.Create(emInvalidJSONFormat);
+        raise ERALException.Create(ecInvalidJSONFormat);
       vjObj := TRALJSONObject(vjValue);
 
       { values go by position, and only as far as there are fields: a record
@@ -697,7 +697,7 @@ begin
     if vjValue <> nil then
     begin
       if not (vjValue is TRALJSONArray) then
-        raise Exception.Create(emInvalidJSONFormat);
+        raise ERALException.Create(ecInvalidJSONFormat);
       ReadFields(ADataset, TRALJSONArray(vjValue));
       ReadRecords(ADataset, TRALJSONArray(vjValue));
     end;
@@ -860,7 +860,7 @@ begin
 
   if (vSign = nil) or (vVersion = nil) or (vSign.AsString <> 'RAL') or
      (vVersion.AsInteger <> GetStoreVersion) then
-    raise Exception.Create(emInvalidJSONFormat);
+    raise ERALException.Create(ecInvalidJSONFormat);
 
   Result := True;
 end;
@@ -896,7 +896,7 @@ begin
       // a field is [name, type, flags, size]
       vjValue := vjArr1.Get(vInt);
       if not (vjValue is TRALJSONArray) or (TRALJSONArray(vjValue).Count < 4) then
-        raise Exception.Create(emInvalidJSONFormat);
+        raise ERALException.Create(ecInvalidJSONFormat);
       vjArr2 := TRALJSONArray(vjValue);
 
       // name
@@ -907,7 +907,7 @@ begin
       // it was cut to a byte first, so 256 came back as the first type
       vTypeOrd := vjArr2.Get(1).AsInteger;
       if not RALIsFieldTypeOrdinal(vTypeOrd) then
-        raise Exception.Create(emInvalidJSONFormat);
+        raise ERALException.Create(ecInvalidJSONFormat);
       vType := TRALDB.RALFieldTypeToFieldType(TRALFieldType(vTypeOrd));
       FFieldTypes[vInt] := TRALFieldType(vTypeOrd);
 
@@ -981,7 +981,7 @@ begin
       begin
         vjValue := vjArr1.Get(vInt64);
         if not (vjValue is TRALJSONArray) then
-          raise Exception.Create(emInvalidJSONFormat);
+          raise ERALException.Create(ecInvalidJSONFormat);
         vjArr2 := TRALJSONArray(vjValue);
 
         vCount := vjArr2.Count;
@@ -1027,7 +1027,7 @@ begin
   try
     // see TRALStorageJSON_RAW.LoadFromStream
     if (vjValue <> nil) and not (vjValue is TRALJSONObject) then
-      raise Exception.Create(emInvalidJSONFormat);
+      raise ERALException.Create(ecInvalidJSONFormat);
     if ReadHeaders(TRALJSONObject(vjValue)) then
     begin
       ReadFields(ADataset, TRALJSONObject(vjValue));

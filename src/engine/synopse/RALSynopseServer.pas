@@ -16,7 +16,7 @@ uses
   mormot.net.server, mormot.net.http, mormot.net.async, mormot.core.os,
   mormot.core.base, mormot.rest.http.server, mormot.rest.server, mormot.net.sock,
   {$IFDEF RALWindows}
-  RALHttpSysCert,
+  RALExceptions, RALErrorCodes, RALHttpSysCert,
   {$ENDIF}
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools, RALBase64, RALRSA, RALX509, RALNetwork, RALStream,
@@ -359,7 +359,7 @@ begin
       "else" quietly starts a smThreads server instead: no error, no HTTP/2,
       and an application convinced it is running on the kernel queue. }
     if FMode = smHttpSys then
-      raise Exception.Create(emHttpSysWindowsOnly);
+      raise ERALException.Create(ecHttpSysWindowsOnly);
     {$ENDIF}
 
     if IPConfig.IPv6Enabled then
@@ -436,7 +436,7 @@ begin
       vError := THttpApiServer(FHttp).AddUrl('', IntToStr(Self.Port), SSL.Enabled,
                                             RawUtf8(FHttpSysDomain), False);
       if vError <> 0 then
-        raise Exception.CreateFmt(emHttpSysAddUrl, [Self.Port, vError]);
+        raise ERALException.CreateFmt(ecHttpSysAddUrl, [Self.Port, vError]);
       THttpApiServer(FHttp).WaitStarted(30);
     end
     else
@@ -1165,7 +1165,7 @@ begin
       procedural variable itself }
     vTls := NewNetTls();
     if vTls = nil then
-      raise Exception.Create(emSynopseNoTls);
+      raise ERALException.Create(ecSynopseNoTls);
     vTls.AfterBind(vSock.Sock, vCtx^, '');
   except
     Dispose(vCtx);

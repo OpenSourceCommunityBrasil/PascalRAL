@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALStream, RALConsts, RALTools;
+  RALExceptions, RALErrorCodes, RALTypes, RALStream, RALConsts, RALTools;
 
 type
   { TRALHexadecimal }
@@ -38,7 +38,7 @@ var
   vStream : TStream;
 begin
   if AValue = '' then
-    raise Exception.Create(emHMACEmptyText);
+    raise ERALException.Create(ecHMACEmptyText);
 
   vStream := StringToStream(AValue);
   try
@@ -140,7 +140,7 @@ var
   vStream : TStream;
 begin
   if AValue = '' then
-    raise Exception.Create(emHMACEmptyText);
+    raise ERALException.Create(ecHMACEmptyText);
 
   vStream := StringToStream(AValue);
   try
@@ -216,7 +216,7 @@ var
   vStream: TStream;
 begin
   if AValue = '' then
-    raise Exception.Create(emHMACEmptyText);
+    raise ERALException.Create(ecHMACEmptyText);
 
   if ABinary then
     vStream := StringToStream(AValue)

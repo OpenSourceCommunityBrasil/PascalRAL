@@ -10,8 +10,8 @@ uses
   bufstream,
   {$ENDIF}
   Classes, SysUtils, DB, TypInfo, Variants,
-  RALStorageTypes, RALDBBase, RALTypes, RALConsts, RALStream, RALMIMETypes,
-  RALStorage;
+  RALExceptions, RALErrorCodes, RALStorageTypes, RALDBBase, RALTypes, RALConsts,
+  RALStream, RALMIMETypes, RALStorage;
 
 type
   { What a statement of the cache does: etOpen answers rows, etExecute runs,
@@ -488,7 +488,7 @@ end;
 procedure TRALDBSQLCache.CheckVersion(AVersion: byte);
 begin
   if (AVersion < 1) or (AVersion > 2) then
-    raise Exception.Create(emQueryVersionError);
+    raise ERALException.Create(ecQueryVersionError);
 end;
 
 procedure TRALDBSQLCache.WriteParam(AWriter: TRALBinaryWriter; AParam: TParam; AVersion: byte);
@@ -558,7 +558,7 @@ begin
   // a type from 128 up was folded onto another one (see RALStorageTypes)
   vTypeByte := AWriter.ReadByte;
   if not RALIsFieldTypeOrdinal(vTypeByte) then
-    raise Exception.Create(emStorageInvalidBinary);
+    raise ERALException.Create(ecStorageInvalidBinary);
   vStorType := TRALFieldType(vTypeByte);
   vParam.DataType := TRALDB.RALFieldTypeToFieldType(vStorType);
 
@@ -618,7 +618,7 @@ begin
     indexes two tables further down }
   vByte := AWriter.ReadByte;
   if vByte > Ord(High(TRALStorageFormat)) then
-    raise Exception.CreateFmt(emStorageLinkNotFound, [IntToStr(vByte)]);
+    raise ERALException.CreateFmt(ecStorageLinkNotFound, [IntToStr(vByte)]);
   vFormat := TRALStorageFormat(vByte);
   if vFormat = rsfAuto then
     Exit;
@@ -634,7 +634,7 @@ begin
     { the class is nil in this branch - that is what put us here - so asking it
       for a ClassName faulted instead of showing the message it was meant to.
       The format number is what identifies the link that is missing. }
-    raise Exception.CreateFmt(emStorageLinkNotFound, [IntToStr(Ord(vFormat))]);
+    raise ERALException.CreateFmt(ecStorageLinkNotFound, [IntToStr(Ord(vFormat))]);
   end;
 end;
 
@@ -695,10 +695,10 @@ begin
     begin
       vDBSQL := TRALDBSQL(FSQLList.Items[vInt1]);
       if vDBSQL.ExecType = etProc then
-        raise Exception.Create(emDBLegacyWireProc);
+        raise ERALException.Create(ecDBLegacyWireProc);
       for vInt2 := 0 to Pred(vDBSQL.Params.Count) do
         if vDBSQL.Params.Items[vInt2].ParamType in [ptOutput, ptInputOutput, ptResult] then
-          raise Exception.Create(emDBLegacyWireProc);
+          raise ERALException.Create(ecDBLegacyWireProc);
     end;
 
   vWriter := TRALBinaryWriter.Create(AStream);

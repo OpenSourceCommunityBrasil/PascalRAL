@@ -1,9 +1,8 @@
-﻿/// Asymmetric keys of JSON Web Signature (RFC 7515/7518): RSA and ECDSA through
+/// Asymmetric keys of JSON Web Signature (RFC 7515/7518): RSA and ECDSA through
 /// OpenSSL, read from PEM or from a JWK (RFC 7517), and JWK sets
 unit RALJWS;
 
-{ Delphi mode on FPC: the OpenSSL bindings are procedural variables, called
-  without () as Delphi calls them }
+{ Delphi mode matches the shared JSON and cryptography units. }
 {$IFDEF FPC}
   {$MODE DELPHI}
 {$ENDIF}
@@ -25,7 +24,8 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALBase64, RALJson, RALHashBase, RALSHA2_32, RALOpenSSL;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALBase64, RALJson, RALHashBase,
+  RALSHA2_32, RALOpenSSL;
 
 type
   TRALJWSKeyType = (jktNone, jktRSA, jktEC);
@@ -41,14 +41,14 @@ type
     FKeyID: StringRAL;
     FKeyType: TRALJWSKeyType;
     FN: TBytes;
-    FPKey: Pointer;
+    FPKey: TRALOpenSSLKey;
     FPrivate: boolean;
     FX: TBytes;
     FY: TBytes;
     procedure Clear;
     function CurveSize: IntegerRAL;
     procedure ReadPublicKey;
-    procedure SetPKey(APKey: Pointer; APrivate: boolean);
+    procedure SetPKey(APKey: TRALOpenSSLKey; APrivate: boolean);
   public
     constructor Create;
     destructor Destroy; override;
@@ -284,20 +284,21 @@ begin
     vSize := 48;
   end
   else
-    raise Exception.Create(emJWSUnsupportedKey);
+    raise ERALException.Create(ecJWSUnsupportedKey);
   vAlg := DERItem(cTagSequence, Join([DERItem(cTagOID, Bytes(cOidEC)),
     DERItem(cTagOID, vCurve)]));
   Result := DERItem(cTagSequence, Join([vAlg, DERItem(cTagBitString,
     Join([Bytes([0, 4]), FixSize(AX, vSize), FixSize(AY, vSize)]))]));
 end;
 
-function DigestMD(ADigest: TRALJWSDigest): Pointer;
+/// Maps the JWS hash to the encapsulated OpenSSL signature API.
+function OpenSSLDigest(ADigest: TRALJWSDigest): TRALOpenSSLDigest;
 begin
   case ADigest of
-    jdSHA384: Result := EVP_sha384;
-    jdSHA512: Result := EVP_sha512;
+    jdSHA384: Result := osdSHA384;
+    jdSHA512: Result := osdSHA512;
   else
-    Result := EVP_sha256;
+    Result := osdSHA256;
   end;
 end;
 
@@ -337,7 +338,7 @@ begin
         vJson.Add('y', RALBase64UrlEncode(FixSize(FY, CurveSize)));
       end;
     else
-      raise Exception.Create(emJWSInvalidKey);
+      raise ERALException.Create(ecJWSInvalidKey);
     end;
     vJson.Add('use', 'sig');
     if FKeyID <> '' then
@@ -352,16 +353,12 @@ end;
 
 class function TRALJWSKey.Available: boolean;
 begin
-  Result := (TRALOpenSSL.GetInstance.LibraryHandle <> 0) and
-    Assigned(EVP_DigestSign) and Assigned(EVP_DigestVerify) and
-    Assigned(d2i_PUBKEY) and Assigned(i2d_PUBKEY) and Assigned(EVP_MD_CTX_new);
+  Result := TRALOpenSSL.GetInstance.SupportsJWS;
 end;
 
 procedure TRALJWSKey.Clear;
 begin
-  if (FPKey <> nil) and Assigned(EVP_PKEY_free) then
-    EVP_PKEY_free(FPKey);
-  FPKey := nil;
+  FreeAndNil(FPKey);
   FPrivate := False;
   FKeyType := jktNone;
   FCurve := '';
@@ -383,24 +380,23 @@ procedure TRALJWSKey.LoadFromJWK(AJWK: TRALJSONObject);
 var
   vType, vKid: StringRAL;
   vDER: TBytes;
-  vPtr: PByte;
-  vKey: Pointer;
+  vKey: TRALOpenSSLKey;
 
   function Member(const AName: StringRAL): StringRAL;
   var
     vValue: TRALJSONValue;
   begin
     Result := '';
-    vValue := AJWK.Get(AName);
+    vValue := AJWK.Find(AName);
     if (vValue <> nil) and (not vValue.IsNull) then
       Result := vValue.AsString;
   end;
 
 begin
   if not Available then
-    raise Exception.Create(emJWSOpenSSL);
+    raise ERALException.Create(ecJWSOpenSSL);
   if AJWK = nil then
-    raise Exception.Create(emJWSInvalidKey);
+    raise ERALException.Create(ecJWSInvalidKey);
 
   vType := Member('kty');
   if vType = 'RSA' then
@@ -409,12 +405,9 @@ begin
     vDER := SPKIForEC(Member('crv'), RALBase64UrlDecode(Member('x')),
       RALBase64UrlDecode(Member('y')))
   else
-    raise Exception.Create(emJWSUnsupportedKey);
+    raise ERALException.Create(ecJWSUnsupportedKey);
 
-  vPtr := @vDER[0];
-  vKey := d2i_PUBKEY(nil, @vPtr, Length(vDER));
-  if vKey = nil then
-    raise Exception.Create(emJWSInvalidKey);
+  vKey := TRALOpenSSL.GetInstance.LoadPublicKeyDER(vDER);
   SetPKey(vKey, False);
 
   vKid := Member('kid');
@@ -430,7 +423,7 @@ begin
   vJson := TRALJSON.ParseJSON(AJSON);
   try
     if not (vJson is TRALJSONObject) then
-      raise Exception.Create(emJWSInvalidKey);
+      raise ERALException.Create(ecJWSInvalidKey);
     LoadFromJWK(TRALJSONObject(vJson));
   finally
     vJson.Free;
@@ -438,39 +431,19 @@ begin
 end;
 
 procedure TRALJWSKey.LoadPrivateKeyPEM(const APEM: StringRAL);
-var
-  vBio, vKey: Pointer;
 begin
   if not Available then
-    raise Exception.Create(emJWSOpenSSL);
-  vBio := BIO_new_mem_buf(Pointer(APEM), Length(APEM));
-  try
-    vKey := PEM_read_bio_PrivateKey(vBio, nil, nil, nil);
-  finally
-    BIO_free(vBio);
-  end;
-  if vKey = nil then
-    raise Exception.Create(emJWSInvalidKey);
-  SetPKey(vKey, True);
+    raise ERALException.Create(ecJWSOpenSSL);
+  SetPKey(TRALOpenSSL.GetInstance.LoadPrivateKeyPEM(APEM), True);
   if FKeyID = '' then
     FKeyID := Thumbprint;
 end;
 
 procedure TRALJWSKey.LoadPublicKeyPEM(const APEM: StringRAL);
-var
-  vBio, vKey: Pointer;
 begin
   if not Available then
-    raise Exception.Create(emJWSOpenSSL);
-  vBio := BIO_new_mem_buf(Pointer(APEM), Length(APEM));
-  try
-    vKey := PEM_read_bio_PUBKEY(vBio, nil, nil, nil);
-  finally
-    BIO_free(vBio);
-  end;
-  if vKey = nil then
-    raise Exception.Create(emJWSInvalidKey);
-  SetPKey(vKey, False);
+    raise ERALException.Create(ecJWSOpenSSL);
+  SetPKey(TRALOpenSSL.GetInstance.LoadPublicKeyPEM(APEM), False);
   if FKeyID = '' then
     FKeyID := Thumbprint;
 end;
@@ -478,28 +451,22 @@ end;
 procedure TRALJWSKey.ReadPublicKey;
 var
   vDER, vOuter, vAlg, vBits, vOid, vCurve, vKey, vPart: TBytes;
-  vLen, vPos, vPos2, vSize: IntegerRAL;
-  vPtr: PByte;
+  vPos, vPos2, vSize: IntegerRAL;
   vTag: Byte;
 begin
-  vLen := i2d_PUBKEY(FPKey, nil);
-  if vLen <= 0 then
-    raise Exception.Create(emJWSInvalidKey);
-  SetLength(vDER, vLen);
-  vPtr := @vDER[0];
-  i2d_PUBKEY(FPKey, @vPtr);
+  vDER := FPKey.PublicKeyDER;
 
   vPos := 0;
   if not DERRead(vDER, vPos, vTag, vOuter) or (vTag <> cTagSequence) then
-    raise Exception.Create(emJWSInvalidKey);
+    raise ERALException.Create(ecJWSInvalidKey);
   vPos := 0;
   if not DERRead(vOuter, vPos, vTag, vAlg) or (vTag <> cTagSequence) or
      not DERRead(vOuter, vPos, vTag, vBits) or (vTag <> cTagBitString) or
      (Length(vBits) < 2) then
-    raise Exception.Create(emJWSInvalidKey);
+    raise ERALException.Create(ecJWSInvalidKey);
   vPos2 := 0;
   if not DERRead(vAlg, vPos2, vTag, vOid) or (vTag <> cTagOID) then
-    raise Exception.Create(emJWSInvalidKey);
+    raise ERALException.Create(ecJWSInvalidKey);
 
   { the first byte of a BIT STRING counts its unused bits: zero here }
   vKey := Copy(vBits, 1, Length(vBits) - 1);
@@ -509,12 +476,12 @@ begin
     FKeyType := jktRSA;
     vPos := 0;
     if not DERRead(vKey, vPos, vTag, vPart) or (vTag <> cTagSequence) then
-      raise Exception.Create(emJWSInvalidKey);
+      raise ERALException.Create(ecJWSInvalidKey);
     vKey := vPart;
     vPos := 0;
     if not DERRead(vKey, vPos, vTag, FN) or (vTag <> cTagInteger) or
        not DERRead(vKey, vPos, vTag, FE) or (vTag <> cTagInteger) then
-      raise Exception.Create(emJWSInvalidKey);
+      raise ERALException.Create(ecJWSInvalidKey);
     FN := StripZeros(FN);
     FE := StripZeros(FE);
   end
@@ -522,25 +489,25 @@ begin
   begin
     FKeyType := jktEC;
     if not DERRead(vAlg, vPos2, vTag, vCurve) or (vTag <> cTagOID) then
-      raise Exception.Create(emJWSInvalidKey);
+      raise ERALException.Create(ecJWSInvalidKey);
     if SameBytes(vCurve, cOidP256) then
       FCurve := 'P-256'
     else if SameBytes(vCurve, cOidP384) then
       FCurve := 'P-384'
     else
-      raise Exception.Create(emJWSUnsupportedKey);
+      raise ERALException.Create(ecJWSUnsupportedKey);
     vSize := CurveSize;
     { uncompressed point: 04 || x || y }
     if (Length(vKey) <> 1 + 2 * vSize) or (vKey[0] <> 4) then
-      raise Exception.Create(emJWSUnsupportedKey);
+      raise ERALException.Create(ecJWSUnsupportedKey);
     FX := Copy(vKey, 1, vSize);
     FY := Copy(vKey, 1 + vSize, vSize);
   end
   else
-    raise Exception.Create(emJWSUnsupportedKey);
+    raise ERALException.Create(ecJWSUnsupportedKey);
 end;
 
-procedure TRALJWSKey.SetPKey(APKey: Pointer; APrivate: boolean);
+procedure TRALJWSKey.SetPKey(APKey: TRALOpenSSLKey; APrivate: boolean);
 begin
   Clear;
   FPKey := APKey;
@@ -555,38 +522,23 @@ end;
 
 function TRALJWSKey.Sign(const AInput: StringRAL; ADigest: TRALJWSDigest): TBytes;
 var
-  vCtx: Pointer;
-  vLen: NativeUInt;
   vPos: IntegerRAL;
   vTag: Byte;
   vSeq, vR, vS: TBytes;
 begin
   if (FPKey = nil) or (not FPrivate) then
-    raise Exception.Create(emJWSNoPrivateKey);
+    raise ERALException.Create(ecJWSNoPrivateKey);
 
-  vCtx := EVP_MD_CTX_new;
-  try
-    if EVP_DigestSignInit(vCtx, nil, DigestMD(ADigest), nil, FPKey) <> 1 then
-      raise Exception.Create(Format(emOpenSSLCallFailed, ['EVP_DigestSignInit']));
-    vLen := 0;
-    if EVP_DigestSign(vCtx, nil, @vLen, Pointer(AInput), Length(AInput)) <> 1 then
-      raise Exception.Create(Format(emOpenSSLCallFailed, ['EVP_DigestSign']));
-    SetLength(Result, vLen);
-    if EVP_DigestSign(vCtx, @Result[0], @vLen, Pointer(AInput), Length(AInput)) <> 1 then
-      raise Exception.Create(Format(emOpenSSLCallFailed, ['EVP_DigestSign']));
-    SetLength(Result, vLen);
-  finally
-    EVP_MD_CTX_free(vCtx);
-  end;
+  Result := FPKey.Sign(AInput, OpenSSLDigest(ADigest));
 
   if FKeyType = jktEC then
   begin
     vPos := 0;
     if not DERRead(Result, vPos, vTag, vSeq) or (vTag <> cTagSequence) then
-      raise Exception.Create(Format(emOpenSSLCallFailed, ['EVP_DigestSign']));
+      raise ERALException.CreateFmt(ecOpenSSLCallFailed, ['EVP_DigestSign']);
     vPos := 0;
     if not DERRead(vSeq, vPos, vTag, vR) or not DERRead(vSeq, vPos, vTag, vS) then
-      raise Exception.Create(Format(emOpenSSLCallFailed, ['EVP_DigestSign']));
+      raise ERALException.CreateFmt(ecOpenSSLCallFailed, ['EVP_DigestSign']);
     Result := Join([FixSize(vR, CurveSize), FixSize(vS, CurveSize)]);
   end;
 end;
@@ -620,7 +572,6 @@ end;
 function TRALJWSKey.Verify(const AInput: StringRAL; const ASignature: TBytes;
   ADigest: TRALJWSDigest): boolean;
 var
-  vCtx: Pointer;
   vSig: TBytes;
   vSize: IntegerRAL;
 begin
@@ -638,15 +589,7 @@ begin
       DERInteger(Copy(ASignature, vSize, vSize))]));
   end;
 
-  vCtx := EVP_MD_CTX_new;
-  try
-    if EVP_DigestVerifyInit(vCtx, nil, DigestMD(ADigest), nil, FPKey) <> 1 then
-      Exit;
-    Result := EVP_DigestVerify(vCtx, @vSig[0], Length(vSig), Pointer(AInput),
-      Length(AInput)) = 1;
-  finally
-    EVP_MD_CTX_free(vCtx);
-  end;
+  Result := FPKey.Verify(AInput, vSig, OpenSSLDigest(ADigest));
 end;
 
 { TRALJWKSet }
@@ -709,10 +652,10 @@ begin
   vJson := TRALJSON.ParseJSON(AJSON);
   try
     if not (vJson is TRALJSONObject) then
-      raise Exception.Create(emJWSInvalidKey);
+      raise ERALException.Create(ecJWSInvalidKey);
     vKeys := TRALJSONObject(vJson).Get('keys');
     if not (vKeys is TRALJSONArray) then
-      raise Exception.Create(emJWSInvalidKey);
+      raise ERALException.Create(ecJWSInvalidKey);
     for vInt := 0 to Pred(TRALJSONArray(vKeys).Count) do
     begin
       vItem := TRALJSONArray(vKeys).Get(vInt);

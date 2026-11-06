@@ -5,8 +5,8 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, TypInfo, DateUtils, SyncObjs,
-  RALAuthBase, RALRoutes, RALTypes, RALTools, RALMIMETypes, RALConsts,
-  RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects,
+  RALExceptions, RALErrorCodes, RALAuthBase, RALRoutes, RALTypes, RALTools, RALMIMETypes,
+  RALConsts, RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects,
   RALResponsePages, RALCompressZLib, RALPlugin, RALResponseStream;
 
 const
@@ -804,7 +804,7 @@ begin
   begin
     // refused before the server is stopped
     if AValue and (not FOwner.IPv6IsImplemented) then
-      raise Exception.Create(wmIPv6notImplemented);
+      raise ERALException.Create(ecIPv6NotImplemented);
 
     vActive := FOwner.Active;
     FOwner.Active := False;
@@ -929,7 +929,7 @@ end;
 procedure TRALServer.CheckStreamLimit;
 begin
   if (FStreamLimit > 0) and (OpenStreamCount >= FStreamLimit) then
-    raise ERALStreamLimit.Create(emStreamLimit);
+    raise ERALStreamLimit.Create(ecStreamLimit);
 end;
 
 procedure TRALServer.RegisterStream(AStream: TRALResponseStream);

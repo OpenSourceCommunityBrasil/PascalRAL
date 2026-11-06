@@ -15,7 +15,8 @@ uses
       library to load - must be the ones the deflate below calls }
     ZStream, zbase, zdeflate, zinflate,
   {$ENDIF}
-  RALCompress, RALTypes, RALConsts, RALCRC32, RALHashBase, RALStream;
+  RALExceptions, RALErrorCodes, RALCompress, RALTypes, RALConsts, RALCRC32, RALHashBase,
+  RALStream;
 
 type
   { TRALCompressZLib }
@@ -88,7 +89,7 @@ begin
   {$ENDIF}
   if deflateInit2(vZ, Z_BEST_SPEED, Z_DEFLATED, AWindowBits, AMemLevel,
        Z_DEFAULT_STRATEGY) <> Z_OK then
-    raise Exception.CreateFmt(emCompressFailed, ['zlib']);
+    raise ERALException.CreateFmt(ecCompressFailed, ['zlib']);
   try
     { zpipe.c, zlib's own example: a piece in, out until the output comes
       back not full, and at the end of the input finish }
@@ -112,7 +113,7 @@ begin
         vZ.avail_out := cZLibPiece;
         vRes := deflate(vZ, vFlush);
         if (vRes <> Z_OK) and (vRes <> Z_STREAM_END) and (vRes <> Z_BUF_ERROR) then
-          raise Exception.CreateFmt(emCompressFailed, ['zlib']);
+          raise ERALException.CreateFmt(ecCompressFailed, ['zlib']);
         vMade := cZLibPiece - Integer(vZ.avail_out);
         if vMade > 0 then
           AOutStream.WriteBuffer(vOut[0], vMade);
@@ -330,7 +331,7 @@ begin
   if vFormat = ctGZip then
   begin
     if AInStream.Size < Length(GZipHeader) + 2 * SizeOf(LongWord) then
-      raise Exception.Create(emContentCheckError);
+      raise ERALException.Create(ecContentCheckError);
     AInStream.Position := AInStream.Size - (2 * SizeOf(LongWord));
     AInStream.ReadBuffer(vCRCFile, SizeOf(vCRCFile));
     AInStream.ReadBuffer(vFileSize, SizeOf(vFileSize));
@@ -384,7 +385,7 @@ begin
       vCRCFinal := 0;
       Move(vDigest[0], vCRCFinal, SizeOf(vCRCFinal));
       if (vCRCFinal <> vCRCFile) or (vFileSize <> LongWord(vWritten)) then
-        raise Exception.Create(emContentCheckError);
+        raise ERALException.Create(ecContentCheckError);
     end;
   finally
     vCRC32.Free;
@@ -539,7 +540,7 @@ end;
 procedure TRALZLibStreamDecoder.Start(AWindowBits: Integer);
 begin
   if inflateInit2(FZ, AWindowBits) <> Z_OK then
-    raise Exception.Create(emContentCheckError);
+    raise ERALException.Create(ecContentCheckError);
   FStarted := True;
 end;
 
@@ -575,7 +576,7 @@ begin
       if vSkip < 0 then
         Exit;
       if vSkip = 0 then
-        raise Exception.Create(emContentCheckError);
+        raise ERALException.Create(ecContentCheckError);
       Start(-cZLibMaxBits);
       FCRC32 := TRALCRC32.Create;
       FCRC32.OutputType := rhotNone;
@@ -607,7 +608,7 @@ begin
     FZ.avail_out := cZLibPiece;
     vRes := inflate(FZ, Z_NO_FLUSH);
     if (vRes <> Z_OK) and (vRes <> Z_STREAM_END) and (vRes <> Z_BUF_ERROR) then
-      raise Exception.Create(emContentCheckError);
+      raise ERALException.Create(ecContentCheckError);
     vMade := cZLibPiece - Integer(FZ.avail_out);
     if vMade > 0 then
     begin
@@ -682,24 +683,24 @@ begin
   begin
     // a deflate body of a single byte: the framing is guessed from what came
     if (FFormat <> ctDeflate) or (not TryStart(AOutput)) then
-      raise Exception.Create(emContentCheckError);
+      raise ERALException.Create(ecContentCheckError);
   end;
   if not FStarted then
     Exit; // no body at all
   // a body cut before its end is not a body
   if not FEnded then
-    raise Exception.Create(emContentCheckError);
+    raise ERALException.Create(ecContentCheckError);
   {$IFDEF FPC}
   if FCRC32 <> nil then
   begin
     if Length(FTrailer) < 8 then
-      raise Exception.Create(emContentCheckError);
+      raise ERALException.Create(ecContentCheckError);
     vDigest := FCRC32.HashEnd;
     vCRC := 0;
     Move(vDigest[0], vCRC, SizeOf(vCRC));
     Move(FTrailer[5], vSize, SizeOf(vSize));
     if (vCRC <> PLongWord(@FTrailer[1])^) or (vSize <> LongWord(FWritten)) then
-      raise Exception.Create(emContentCheckError);
+      raise ERALException.Create(ecContentCheckError);
   end;
   {$ENDIF}
 end;
@@ -734,7 +735,7 @@ begin
   end;
   if deflateInit2(FZ, Z_BEST_SPEED, Z_DEFLATED, vBits, cStreamMemLevel,
        Z_DEFAULT_STRATEGY) <> Z_OK then
-    raise Exception.CreateFmt(emCompressFailed, ['zlib']);
+    raise ERALException.CreateFmt(ecCompressFailed, ['zlib']);
 end;
 
 destructor TRALZLibStreamEncoder.Destroy;
@@ -769,7 +770,7 @@ begin
     FZ.avail_out := cZLibPiece;
     vRes := deflate(FZ, AFlush);
     if (vRes <> Z_OK) and (vRes <> Z_STREAM_END) and (vRes <> Z_BUF_ERROR) then
-      raise Exception.CreateFmt(emCompressFailed, ['zlib']);
+      raise ERALException.CreateFmt(ecCompressFailed, ['zlib']);
     vMade := cZLibPiece - Integer(FZ.avail_out);
     if vMade > 0 then
       AOutput.WriteBuffer(vOut[0], vMade);
@@ -840,7 +841,7 @@ begin
 
   if not (AValue in [ctDeflate, ctGZip, ctZLib]) then
   begin
-    raise Exception.Create(emCompressInvalidFormat);
+    raise ERALException.Create(ecCompressInvalidFormat);
     Exit;
   end;
 

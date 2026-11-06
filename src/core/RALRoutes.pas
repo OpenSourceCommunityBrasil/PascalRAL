@@ -5,8 +5,8 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, SyncObjs, TypInfo,
-  RALTypes, RALConsts, RALTools, RALMIMETypes, RALBase64, RALRequest,
-  RALParams, RALResponse, RALRegex;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALTools, RALMIMETypes, RALBase64,
+  RALRequest, RALParams, RALResponse, RALRegex;
 
 type
   TRALRoutes = class;
@@ -798,7 +798,7 @@ begin
         AParam.Values.DelimitedText := string(vArgs);
       end
       else
-        raise Exception.CreateFmt(emRouteBadConstraint, [string(vPart)]);
+        raise ERALException.CreateFmt(ecRouteBadConstraint, [string(vPart)]);
     end;
   finally
     vParts.Free;

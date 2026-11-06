@@ -30,8 +30,8 @@ uses
   {$IFDEF ANDROID}
   Androidapi.Jni, Androidapi.JNIBridge, Androidapi.JNI.JavaTypes, Androidapi.Helpers,
   {$ENDIF}
-  RALClient, RALTypes, RALConsts, RALRequest, RALResponse, RALParams,
-  RALCompress, RALTools, RALStream;
+  RALExceptions, RALErrorCodes, RALClient, RALTypes, RALConsts, RALRequest, RALResponse,
+  RALParams, RALCompress, RALTools, RALStream;
 
 type
   {$IFDEF ANDROID}
@@ -532,7 +532,7 @@ begin
   inherited;
   AResponse.Clear;
   SetTransportError(AResponse, rteOther, 0, StringRAL(emOkHttpAndroidOnly));
-  raise Exception.Create(emOkHttpAndroidOnly);
+  raise ERALException.Create(ecOkHttpAndroidOnly);
 end;
 
 {$ENDIF}

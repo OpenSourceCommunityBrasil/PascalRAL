@@ -9,7 +9,8 @@ uses
   LResources, ComponentEditors, FieldsEditor, PropEdits,
   {$ENDIF}
   Classes, SysUtils,
-  RALDBSQLDB, RALDBBufDataset, RALStorageTypes, RALDBConnection, RALTypes, RALConsts;
+  RALExceptions, RALErrorCodes, RALDBSQLDB, RALDBBufDataset, RALStorageTypes,
+  RALDBConnection, RALTypes, RALConsts;
 
 type
 
@@ -100,7 +101,7 @@ begin
   vBufDataset := TRALDBBufDataset(GetComponent(0));
   vConnection := vBufDataset.RALConnection;
   if vConnection = nil then
-    raise Exception.Create(emDBConnectionUndefined);
+    raise ERALException.Create(ecDBConnectionUndefined);
 
   vTables := vConnection.GetTables;
   try

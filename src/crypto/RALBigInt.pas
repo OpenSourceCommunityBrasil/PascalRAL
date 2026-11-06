@@ -24,12 +24,12 @@ interface
 
 uses
   SysUtils,
-  RALTypes, RALTools, RALConsts;
+  RALExceptions, RALErrorCodes, RALTypes, RALTools, RALConsts;
 
 type
   TRALBigNum = array of Cardinal;
 
-  ERALBigNum = class(Exception);
+  ERALBigNum = class(ERALException);
 
 /// the number whose big-endian bytes are ABytes (leading zeros allowed)
 function BigFromBytes(const ABytes: TBytes): TRALBigNum;
@@ -236,7 +236,7 @@ begin
       'a'..'f': vNibble := Ord(vChar) - Ord('a') + 10;
       'A'..'F': vNibble := Ord(vChar) - Ord('A') + 10;
     else
-      raise ERALBigNum.CreateFmt(emBigNumInvalidHex, [string(AHex)]);
+      raise ERALBigNum.CreateFmt(ecBigNumInvalidHex, [string(AHex)]);
     end;
     vPos := vInt div 8;
     Result[vPos] := Result[vPos] or (Cardinal(vNibble) shl ((vInt mod 8) * 4));
@@ -370,7 +370,7 @@ var
   vB: Cardinal;
 begin
   if BigCompare(A, B) < 0 then
-    raise ERALBigNum.Create(emBigNumNegative);
+    raise ERALBigNum.Create(ecBigNumNegative);
 
   SetLength(Result, Length(A));
   vBorrow := 0;
@@ -488,7 +488,7 @@ var
   vRem: TLimb2;
 begin
   if AValue = 0 then
-    raise ERALBigNum.Create(emBigNumDivByZero);
+    raise ERALBigNum.Create(ecBigNumDivByZero);
 
   vRem := 0;
   for vInt := High(A) downto 0 do
@@ -510,7 +510,7 @@ var
   vRem: TLimb2;
 begin
   if BigIsZero(B) then
-    raise ERALBigNum.Create(emBigNumDivByZero);
+    raise ERALBigNum.Create(ecBigNumDivByZero);
 
   if BigCompare(A, B) < 0 then
   begin
@@ -669,7 +669,7 @@ var
   vR0, vR1, vT0, vT1, vQ, vR, vT: TRALBigNum;
 begin
   if BigIsZero(M) then
-    raise ERALBigNum.Create(emBigNumDivByZero);
+    raise ERALBigNum.Create(ecBigNumDivByZero);
 
   vR0 := M;
   vR1 := BigMod(A, M);
@@ -692,7 +692,7 @@ begin
   end;
 
   if not BigIsOne(vR0) then
-    raise ERALBigNum.Create(emBigNumNoInverse);
+    raise ERALBigNum.Create(ecBigNumNoInverse);
   Result := vT0;
 end;
 
@@ -878,7 +878,7 @@ var
   vBit: IntegerRAL;
 begin
   if BigIsZero(AModulus) then
-    raise ERALBigNum.Create(emBigNumDivByZero);
+    raise ERALBigNum.Create(ecBigNumDivByZero);
 
   if BigIsOne(AModulus) then
   begin
@@ -930,7 +930,7 @@ var
   vExtra: IntegerRAL;
 begin
   if BigCompare(ALow, AHigh) > 0 then
-    raise ERALBigNum.Create(emBigNumNegative);
+    raise ERALBigNum.Create(ecBigNumNegative);
 
   { uniform in [0, span] by rejection: draw as many bits as span has }
   vSpan := BigSub(AHigh, ALow);
@@ -1058,7 +1058,7 @@ var
   vRounds: IntegerRAL;
 begin
   if ABits < 16 then
-    raise ERALBigNum.CreateFmt(emBigNumPrimeSize, [ABits]);
+    raise ERALBigNum.CreateFmt(ecBigNumPrimeSize, [ABits]);
 
   InitSmallPrimes;
   SetLength(vResidues, Length(gSmallPrimes));

@@ -42,7 +42,8 @@ uses
   Windows,
   {$ENDIF}
   Classes, SysUtils, SyncObjs, DateUtils,
-  RALTypes, RALConsts, RALTools, RALPlugin, RALServer, RALRSA, RALX509, RALASN1;
+  RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALTools, RALPlugin, RALServer,
+  RALRSA, RALX509, RALASN1;
 
 type
   /// Where a TRALSelfSignedPlugin stands
@@ -346,11 +347,11 @@ begin
   if FileExists(AFileName) and not DeleteFile(AFileName) then
   begin
     DeleteFile(vTemp);
-    raise Exception.CreateFmt(emSelfSignedWriteFailed, [AFileName,
+    raise ERALException.CreateFmt(ecSelfSignedWriteFailed, [AFileName,
       SysErrorMessage(LastOSError)]);
   end;
   if not RenameFile(vTemp, AFileName) then
-    raise Exception.CreateFmt(emSelfSignedWriteFailed, [AFileName,
+    raise ERALException.CreateFmt(ecSelfSignedWriteFailed, [AFileName,
       SysErrorMessage(LastOSError)]);
 end;
 
@@ -1075,7 +1076,7 @@ begin
   FLock.Acquire;
   try
     if FCertificate = nil then
-      raise Exception.Create(emSelfSignedNoCertificate);
+      raise ERALException.Create(ecSelfSignedNoCertificate);
 
     vFile := AFileName;
     if vFile = '' then

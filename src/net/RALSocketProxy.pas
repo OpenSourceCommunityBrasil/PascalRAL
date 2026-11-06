@@ -17,7 +17,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts, RALSocket;
+  RALErrorCodes, RALTypes, RALConsts, RALSocket;
 
 type
   /// Kind of proxy.
@@ -63,7 +63,7 @@ uses
 
 procedure ProxyError(const AReason: string);
 begin
-  raise ERALSocketError.Create(Format(emProxyRefused, [AReason]));
+  raise ERALSocketError.CreateFmt(ecProxyRefused, [AReason]);
 end;
 
 { reads exactly ACount bytes before the deadline }

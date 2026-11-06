@@ -11,7 +11,8 @@ interface
 
 uses
   Classes, SysUtils, SyncObjs,
-  RALTypes, RALTools, RALPlugin, RALRequest, RALResponse, RALParams;
+  RALExceptions, RALErrorCodes, RALTypes, RALTools, RALPlugin, RALRequest, RALResponse,
+  RALParams;
 
 const
   /// Priority of the forwarded plugin: first, so every plugin sees the client.
@@ -312,23 +313,23 @@ begin
         vBits := StrToIntDef(Copy(vLine, vPos + 1, MaxInt), -1);
         vLine := Copy(vLine, 1, vPos - 1);
         if vBits < 0 then
-          raise Exception.CreateFmt(emForwardedBadRange, [vLines[vInt]]);
+          raise ERALException.CreateFmt(ecForwardedBadRange, [vLines[vInt]]);
       end;
       if not RALParseIP(StringRAL(vLine), vBytes) then
-        raise Exception.CreateFmt(emForwardedBadRange, [vLines[vInt]]);
+        raise ERALException.CreateFmt(ecForwardedBadRange, [vLines[vInt]]);
       // an IPv4 prefix counts from the mapped address
       if Pos(':', vLine) = 0 then
       begin
         if vBits < 0 then
           vBits := 32;
         if vBits > 32 then
-          raise Exception.CreateFmt(emForwardedBadRange, [vLines[vInt]]);
+          raise ERALException.CreateFmt(ecForwardedBadRange, [vLines[vInt]]);
         vBits := vBits + 96;
       end
       else if vBits < 0 then
         vBits := 128;
       if vBits > 128 then
-        raise Exception.CreateFmt(emForwardedBadRange, [vLines[vInt]]);
+        raise ERALException.CreateFmt(ecForwardedBadRange, [vLines[vInt]]);
       AddRange(vBytes, vBits);
     end;
   finally

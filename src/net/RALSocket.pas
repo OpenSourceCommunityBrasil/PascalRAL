@@ -22,7 +22,7 @@ interface
 
 uses
   Classes, SysUtils,
-  RALTypes, RALConsts;
+  RALExceptions, RALTypes, RALConsts;
 
 const
   /// Read or Write found nothing to do without waiting.
@@ -75,7 +75,7 @@ type
   TRALPollItems = array of TRALPollItem;
 
   /// Raised for a socket failure; Code is the system's error number.
-  ERALSocketError = class(Exception)
+  ERALSocketError = class(ERALException)
   private
     FCode: IntegerRAL;
   public
