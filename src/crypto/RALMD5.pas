@@ -1,6 +1,13 @@
 /// Unit for MD5 Hash sources
 unit RALMD5;
 
+{ FPC 3.2 for i386 stops with "Internal error 200309041" on Compress at -O2: with
+  variables in registers it runs out of the few i386 has, so this unit keeps them
+  in memory there }
+{$IF Defined(FPC) and Defined(CPUI386)}
+  {$OPTIMIZATION NOREGVAR}
+{$IFEND}
+
 interface
 
 uses
