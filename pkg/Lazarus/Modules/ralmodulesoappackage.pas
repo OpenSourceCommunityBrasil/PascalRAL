@@ -8,7 +8,8 @@ unit RALModuleSOAPPackage;
 interface
 
 uses
-  RALSOAPTypes, RALSOAPModule, RALWSDLExporter, RALSOAPClient, RALSOAPActions;
+  RALSOAPTypes, RALSOAPModule, RALWSDLExporter, RALSOAPClient, RALSOAPActions, 
+  RALWSSecurity, RALWSSecurityAuth;
 
 implementation
 

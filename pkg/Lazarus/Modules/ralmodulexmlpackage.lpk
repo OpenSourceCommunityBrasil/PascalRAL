@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | XML module"/>
     <Version Major="2"/>
-    <Files Count="6">
+    <Files Count="7">
       <Item1>
         <Filename Value="..\..\..\src\modules\xml\RALXMLReader.pas"/>
         <UnitName Value="RALXMLReader"/>
@@ -52,6 +52,10 @@
         <Filename Value="ralmodulexmlpackage.lrs"/>
         <Type Value="LRS"/>
       </Item6>
+      <Item7>
+        <Filename Value="..\..\..\src\modules\xml\RALXMLC14N.pas"/>
+        <UnitName Value="RALXMLC14N"/>
+      </Item7>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

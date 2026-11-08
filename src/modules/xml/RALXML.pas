@@ -150,6 +150,8 @@ type
     function AttributeName(AIndex: IntegerRAL): StringRAL;
     /// Value of the attribute ALocalName in the namespace AURI, or ''.
     function AttributeNS(const AURI, ALocalName: StringRAL): StringRAL;
+    /// Value of the attribute AIndex, or '' out of range.
+    function AttributeValue(AIndex: IntegerRAL): StringRAL;
     /// First element child named AName (qualified, or local without a prefix), or nil.
     function Child(const AName: StringRAL): TRALXMLNode;
     /// First element child of the namespace AURI named ALocalName, or nil.
@@ -994,6 +996,14 @@ function TRALXMLNode.AttributeName(AIndex: IntegerRAL): StringRAL;
 begin
   if (AIndex >= 0) and (AIndex < FAttrCount) then
     Result := FAttributes[AIndex].Name
+  else
+    Result := '';
+end;
+
+function TRALXMLNode.AttributeValue(AIndex: IntegerRAL): StringRAL;
+begin
+  if (AIndex >= 0) and (AIndex < FAttrCount) then
+    Result := FAttributes[AIndex].Value
   else
     Result := '';
 end;

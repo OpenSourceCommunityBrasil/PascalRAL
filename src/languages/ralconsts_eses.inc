@@ -337,6 +337,9 @@
   emSOAPOperationNotFound = 'El servicio no tiene la operación "%s"%s.';
   emSOAPVersionMismatch = 'El sobre es de una versión de SOAP que este servicio no acepta.';
 
+  // SOAP: WS-Security
+  emWSSFailedAuthentication = 'No se pudo autenticar ni autorizar el token de seguridad.';
+
   // SOAP: IDE
   cmSOAPExportWSDL = 'Exportar WSDL...';
   cmSOAPImportWSDL = 'Importar WSDL...';

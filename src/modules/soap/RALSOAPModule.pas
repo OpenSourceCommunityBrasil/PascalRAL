@@ -34,11 +34,24 @@ type
     FDocument: TRALXMLDocument;
     FError: StringRAL;
     FErrorCode: TRALSOAPFaultCode;
+    /// Module that read the head; nil when a handler built the info.
+    FModule: TRALSOAPModule;
     FPayloadName: StringRAL;
     FPayloadNamespace: StringRAL;
+    /// Header blocks someone processed: "{namespace}local name", sorted.
+    FUnderstood: TStringList;
     FVersion: TRALSOAPVersion;
   public
     destructor Destroy; override;
+
+    /// True when a header block of ANamespace named ALocalName was marked processed.
+    function IsUnderstood(const ANamespace, ALocalName: StringRAL): boolean;
+    { The envelope of ARequest, parsed once with the module's ReaderOptions and kept
+      for whoever asks next; raises ERALSOAPFault (Sender) when it does not parse. }
+    function LoadDocument(ARequest: TRALRequest): TRALXMLDocument;
+    { Marks the header block of ANamespace named ALocalName as processed (an
+      authenticator did), so its mustUnderstand does not fault. }
+    procedure MarkUnderstood(const ANamespace, ALocalName: StringRAL);
 
     /// SOAPAction (1.1) or the action of the content type (1.2), unquoted.
     property Action: StringRAL read FAction;
@@ -48,6 +61,8 @@ type
     property Error: StringRAL read FError;
     /// Fault code of Error.
     property ErrorCode: TRALSOAPFaultCode read FErrorCode;
+    /// Module that read the head of the envelope; nil when a handler built the info.
+    property Module: TRALSOAPModule read FModule;
     /// Local name of the first element of the Body.
     property PayloadName: StringRAL read FPayloadName;
     /// Namespace of the first element of the Body.
@@ -313,7 +328,53 @@ end;
 destructor TRALSOAPEnvelopeInfo.Destroy;
 begin
   FreeAndNil(FDocument);
+  FreeAndNil(FUnderstood);
   inherited Destroy;
+end;
+
+function TRALSOAPEnvelopeInfo.IsUnderstood(const ANamespace, ALocalName: StringRAL): boolean;
+var
+  vIdx: integer;
+begin
+  Result := (FUnderstood <> nil) and
+    FUnderstood.Find('{' + string(ANamespace) + '}' + string(ALocalName), vIdx);
+end;
+
+procedure TRALSOAPEnvelopeInfo.MarkUnderstood(const ANamespace, ALocalName: StringRAL);
+begin
+  if FUnderstood = nil then
+  begin
+    FUnderstood := TStringList.Create;
+    FUnderstood.Sorted := True;
+    FUnderstood.Duplicates := dupIgnore;
+    FUnderstood.CaseSensitive := True;
+  end;
+  FUnderstood.Add('{' + string(ANamespace) + '}' + string(ALocalName));
+end;
+
+function TRALSOAPEnvelopeInfo.LoadDocument(ARequest: TRALRequest): TRALXMLDocument;
+var
+  vStream: TStream;
+begin
+  if FDocument = nil then
+  begin
+    FDocument := TRALXMLDocument.Create;
+    if FModule <> nil then
+      FDocument.Options.Assign(FModule.ReaderOptions);
+    try
+      vStream := ARequest.RequestStream;
+      if vStream = nil then
+        raise ERALXMLError.CreateAt(emSOAPNoEnvelope, 0, 0);
+      FDocument.LoadFromStream(vStream, RequestCharset(ARequest));
+    except
+      on E: Exception do
+      begin
+        FreeAndNil(FDocument);
+        raise ERALSOAPFault.CreateFault(sfcSender, StringRAL(E.Message));
+      end;
+    end;
+  end;
+  Result := FDocument;
 end;
 
 { TRALSOAPOperation }
@@ -438,33 +499,15 @@ begin
 end;
 
 function TRALSOAPRequest.Document: TRALXMLDocument;
-var
-  vStream: TStream;
 begin
   if FInfo = nil then
   begin
     FInfo := TRALSOAPEnvelopeInfo.Create;
     Core.RouteData := FInfo;
   end;
-  if FInfo.FDocument = nil then
-  begin
-    FInfo.FDocument := TRALXMLDocument.Create;
-    if Module is TRALSOAPModule then
-      FInfo.FDocument.Options.Assign(TRALSOAPModule(Module).ReaderOptions);
-    try
-      vStream := Core.RequestStream;
-      if vStream = nil then
-        raise ERALXMLError.CreateAt(emSOAPNoEnvelope, 0, 0);
-      FInfo.FDocument.LoadFromStream(vStream, RequestCharset(Core));
-    except
-      on E: Exception do
-      begin
-        FreeAndNil(FInfo.FDocument);
-        raise ERALSOAPFault.CreateFault(sfcSender, StringRAL(E.Message));
-      end;
-    end;
-  end;
-  Result := FInfo.FDocument;
+  if (FInfo.FModule = nil) and (Module is TRALSOAPModule) then
+    FInfo.FModule := TRALSOAPModule(Module);
+  Result := FInfo.LoadDocument(Core);
 end;
 
 function TRALSOAPRequest.Envelope: TRALXMLNode;
@@ -949,6 +992,7 @@ begin
   end;
 
   vInfo := TRALSOAPEnvelopeInfo.Create;
+  vInfo.FModule := Self;
   ARequest.RouteData := vInfo;
   ReadHead(ARequest, vInfo);
   if vInfo.FVersion = sv12 then
@@ -1067,7 +1111,8 @@ begin
            ((vRole = '') or (vRole = 'http://www.w3.org/2003/05/soap-envelope/role/next') or
             (vRole = 'http://www.w3.org/2003/05/soap-envelope/role/ultimateReceiver') or
             (vRole = 'http://schemas.xmlsoap.org/soap/actor/next')) and
-           (vOperation.Headers.IndexOf(string(vBlock.LocalName)) < 0) then
+           (vOperation.Headers.IndexOf(string(vBlock.LocalName)) < 0) and
+           not vInfo.IsUnderstood(vBlock.NamespaceURI, vBlock.LocalName) then
           raise ERALSOAPFault.CreateFault(sfcMustUnderstand,
             StringRAL(Format(emSOAPMustUnderstand, [string(vBlock.NodeName)])));
         vBlock := vBlock.NextElement;

@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | SOAP module"/>
     <Version Major="2"/>
-    <Files Count="5">
+    <Files Count="7">
       <Item1>
         <Filename Value="..\..\..\src\modules\soap\RALSOAPTypes.pas"/>
         <UnitName Value="RALSOAPTypes"/>
@@ -47,6 +47,14 @@
         <Filename Value="..\..\..\src\modules\soap\RALSOAPActions.pas"/>
         <UnitName Value="RALSOAPActions"/>
       </Item5>
+      <Item6>
+        <Filename Value="..\..\..\src\modules\soap\RALWSSecurity.pas"/>
+        <UnitName Value="RALWSSecurity"/>
+      </Item6>
+      <Item7>
+        <Filename Value="..\..\..\src\modules\soap\RALWSSecurityAuth.pas"/>
+        <UnitName Value="RALWSSecurityAuth"/>
+      </Item7>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

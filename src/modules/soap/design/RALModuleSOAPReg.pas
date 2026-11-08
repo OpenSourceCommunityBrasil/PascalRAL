@@ -1,4 +1,4 @@
-/// Registers the SOAP module, client and action in the IDE, with their verbs.
+/// Registers the SOAP module, client, WS-Security authenticator and action in the IDE, with their verbs.
 unit RALModuleSOAPReg;
 
 {$I ..\..\..\core\PascalRAL.inc}
@@ -15,7 +15,7 @@ uses
   {$ENDIF}
   Classes, SysUtils,
   RALTypes, RALConsts, RALServer, RALSOAPModule, RALWSDLExporter, RALSOAPClient,
-  RALSOAPActions;
+  RALSOAPActions, RALWSSecurityAuth;
 
 type
   /// Verb of TRALSOAPModule: saves its WSDL to a file.
@@ -50,6 +50,7 @@ procedure Register;
 begin
   RegisterComponents('RAL - Modules', [TRALSOAPModule]);
   RegisterComponents('RAL - Client', [TRALSOAPClient]);
+  RegisterComponents('RAL - Server', [TRALServerWSSecurityAuth]);
   RegisterActions('RAL', [TRALSOAPExecute], nil);
   RegisterComponentEditor(TRALSOAPModule, TRALSOAPModuleEditor);
   RegisterComponentEditor(TRALSOAPClient, TRALSOAPClientEditor);

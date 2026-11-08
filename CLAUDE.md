@@ -163,6 +163,9 @@ Routing details (`RALRoutes`):
   `ARequest.Params.CriptoOptions` in `ValidateRequest`, before the engine decodes),
   `TRALJSONBodyPlugin`, `TRALCORSPlugin.Options` (`TRALCORSOptions` in `RALCORS`), one
   plugin per protection (`RALSecurity`), `TRALSecurityHeadersPlugin.Headers`.
+- **A refusal can be answered in a scheme's own form**: `TRALAuthServer.AnswerRefusal`
+  (default False) is asked of every authenticator, in linking order, before the plain
+  401/403 (and the 403 of a missing role); the WS-Security one answers a SOAP fault.
 - **Authentication is a plugin** (`TRALAuthServer` descends from `TRALServerPlugin`;
   `Server.Authentication` adds one). The first authenticator in running order asks
   `Host.Authenticate`, which hears all (accepted when any accepts) and then runs
@@ -686,6 +689,14 @@ arrived. The WSDL has one binding per style (WS-I). `TRALSOAPClient` descends fr
 `TRALClient`, sends uncompressed, builds the payload on the caller's thread. FireDAC's
 `sfXML` is MSXML (COM): XML save/load are wrapped in `CoInitializeEx`. Loading a storage
 into a `TBufDataset` merges the change log (`RALStoragePosted`/`RALStorageLoaded`).
+`RALXMLC14N` is Canonical XML 1.0 and exclusive C14N over the DOM, iterative; the
+apex of a 1.0 subtree takes its ancestors' `xml:*` (RFC 3076 2.4; libxml2 does not, nor
+does it honour `#default` in the PrefixList: check against the RFCs, not against it).
+WS-Security (`RALWSSecurity`, `RALWSSecurityAuth`): the envelope is parsed once
+(`TRALSOAPEnvelopeInfo.LoadDocument`, shared by the authenticator and the operation), a
+header block an authenticator processed is marked (`MarkUnderstood`) so mustUnderstand
+does not fault, and a refusal is answered as a fault through the core hook
+`TRALAuthServer.AnswerRefusal` (every authenticator is asked; none answers: 401/403).
 
 ### MQTT (`src/modules/mqtt`)
 

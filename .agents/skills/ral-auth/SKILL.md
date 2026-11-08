@@ -83,6 +83,11 @@ Server `TRALServerDigest`: `UserName`/`Password` or `OnGetCredential` (password 
 H(A1)); `Algorithms` (SHA-256, SHA-512-256, MD5, each with `-sess`), `Realm`,
 `NonceLifetime`, `ReplayProtection`. Client `TRALClientDigest`: `UserName`/`Password`.
 
+## WS-Security (SOAP)
+
+Login inside the SOAP envelope (`wsse:Security` UsernameToken): `TRALServerWSSecurityAuth`
+and `TRALSOAPClient.Security`, in the SOAP package; see `ral-xml-soap`.
+
 ## OAuth2
 
 `TRALServerOAuth2` has two roles:

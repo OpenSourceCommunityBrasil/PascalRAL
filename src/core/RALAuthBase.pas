@@ -122,6 +122,12 @@ type
     procedure SetAuthType(AType: TRALAuthTypes);
   public
     constructor Create(AOwner: TComponent); override;
+    { Answers a request the server refused (AResult arUnauthorized or arForbidden)
+      in a form of this scheme, a SOAP fault for instance, and returns True; False
+      (the default) leaves the plain 401 or 403. Every authenticator of the server
+      is asked, in linking order, until one answers. }
+    function AnswerRefusal(ARequest: TRALRequest; AResponse: TRALResponse;
+      AResult: TRALAuthResult): boolean; virtual;
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
     /// Main method of authenticator, all validations must be done here
@@ -428,6 +434,27 @@ procedure TRALAuthServer.ProcessRequest(ARequest: TRALRequest; AResponse: TRALRe
 var
   vRoute: TRALRoute;
   vResult: TRALAuthResult;
+
+  { an authenticator that answers refusals in its own form (a SOAP fault) did,
+    so the plain 401/403 is not written over it }
+  function RefusalAnswered(AResult: TRALAuthResult): boolean;
+  var
+    vInt: IntegerRAL;
+    vPlugin: TRALServerPlugin;
+  begin
+    Result := False;
+    for vInt := 0 to Host.PluginCount - 1 do
+    begin
+      vPlugin := Host.GetPlugin(vInt);
+      if (vPlugin is TRALAuthServer) and vPlugin.Enabled and
+         TRALAuthServer(vPlugin).AnswerRefusal(ARequest, AResponse, AResult) then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
+
 begin
   vRoute := Host.FindRoute(ARequest, AResponse);
   if vRoute = nil then
@@ -477,20 +504,23 @@ begin
         matter: a missing role or a failed policy is 403, never 401 }
       if not RALRouteAuthorized(ARequest, vRoute) then
       begin
-        AResponse.Answer(HTTP_Forbidden);
+        if not RefusalAnswered(arForbidden) then
+          AResponse.Answer(HTTP_Forbidden);
         AHandled := True;
       end;
     end;
     arUnauthorized:
     begin
-      AResponse.Answer(HTTP_Unauthorized);
+      if not RefusalAnswered(arUnauthorized) then
+        AResponse.Answer(HTTP_Unauthorized);
       AHandled := True;
     end;
     arForbidden:
     begin
       { the authenticator's own server error - a JWT with no key says so - is
         not a refusal of the client: it goes out as it is }
-      if AResponse.StatusCode < HTTP_InternalError then
+      if (AResponse.StatusCode < HTTP_InternalError) and
+         not RefusalAnswered(arForbidden) then
         AResponse.Answer(HTTP_Forbidden);
       AHandled := True;
     end;
@@ -525,6 +555,12 @@ begin
     Result := raaPassed
   else if AResult = arUnauthorized then
     Result := raaFailed;
+end;
+
+function TRALAuthServer.AnswerRefusal(ARequest: TRALRequest; AResponse: TRALResponse;
+  AResult: TRALAuthResult): boolean;
+begin
+  Result := False;
 end;
 
 function TRALAuthServer.GetAuthRoute: TRALBaseRoute;

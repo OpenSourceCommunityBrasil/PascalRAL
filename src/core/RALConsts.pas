@@ -14,8 +14,8 @@ uses
   Classes, SysUtils;
 
 type
-  /// Authentication scheme of a request.
-  TRALAuthTypes = (ratNone, ratBasic, ratBearer, ratOAuth2, ratDigest);
+  /// Authentication scheme of a request; ratWSSecurity is a SOAP UsernameToken.
+  TRALAuthTypes = (ratNone, ratBasic, ratBearer, ratOAuth2, ratDigest, ratWSSecurity);
 
 const
   /// PascalRAL version, as text.

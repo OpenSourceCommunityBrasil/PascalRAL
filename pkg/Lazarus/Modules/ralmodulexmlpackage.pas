@@ -9,7 +9,7 @@ interface
 
 uses
   RALXMLReader, RALXMLWriter, RALXML, RALStorageXML, RALModuleXMLReg, 
-  LazarusPackageIntf;
+  RALXMLC14N, LazarusPackageIntf;
 
 implementation
 

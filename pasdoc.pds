@@ -126,7 +126,7 @@ Item_54=src\engine\inproc
 Item_55=src\engine\webbroker
 Item_56=src\hosting
 [Files]
-Count=212
+Count=215
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -339,6 +339,9 @@ Item_208=src\hosting\RALSystemLog.pas
 Item_209=src\hosting\RALConfig.pas
 Item_210=src\hosting\RALScheduler.pas
 Item_211=src\hosting\RALHostingReg.pas
+Item_212=src\modules\xml\RALXMLC14N.pas
+Item_213=src\modules\soap\RALWSSecurity.pas
+Item_214=src\modules\soap\RALWSSecurityAuth.pas
 [AdditionalFiles]
 Count=0
 

@@ -39,6 +39,11 @@ Typed values: `WithValue`, `WithDateTime` (ISO 8601), `WithBCD` (exact decimal),
 `WithBase64`. A dataset: `AppendDataSet(Query, xtDBWare)`. For large input use the pull
 reader (`RALXMLReader`) instead of the DOM. DOCTYPE is refused.
 
+Canonical XML (`RALXMLC14N`): `RALXMLCanonicalize(Node, xcmInclusive | xcmExclusive,
+WithComments, 'pfx #default')` on the document node or an element (its subtree);
+`TRALXMLCanonicalizer.SetAlgorithm(URI)` takes the algorithm URI of a signature. Load
+with `PreserveWhitespace := True`, or the blanks between elements are already gone.
+
 ## Datasets as XML
 
 `TRALStorageXMLLink` is a storage link like the BIN/JSON ones (`ral-dbware`); in
@@ -88,10 +93,21 @@ end;
 
 It sends uncompressed (`CompressType := ctNone`): most SOAP stacks (WCF answers 400)
 do not read a gzip request. The charset of a request comes from its `Content-Type`
-header, as SOAP requires.
+header, as SOAP requires. `OnBuildHeader` adds header blocks of your own.
+
+## WS-Security (UsernameToken)
+
+Server: `TRALServerWSSecurityAuth` (palette `RAL - Server`) in `Server.Authentication`;
+`UserName`/`Password` or `OnGetPassword` (both password types), `OnValidate` (text
+password against a hash), `PasswordTypes`, `MaxAge`, `ClockSkew`, `ReplayProtection` +
+`ReplayStore`. It reads the envelope the module parsed, marks `wsse:Security` understood
+(no MustUnderstand fault) and answers a refusal as the fault
+`wsse:FailedAuthentication`. Client: `RALSOAPClient1.Security.UserName/Password/
+PasswordType` (`wptText` over TLS, `wptDigest`).
 
 Guides (Portuguese): wiki
 [xml](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/xml),
 [storage-xml](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/storage-xml),
 [modulo-soap](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/modulo-soap),
-[cliente-soap](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/cliente-soap).
+[cliente-soap](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/cliente-soap),
+[ws-security](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/ws-security).

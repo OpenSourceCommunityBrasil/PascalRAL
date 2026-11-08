@@ -15,7 +15,8 @@ interface
 uses
   Classes, SysUtils, DB,
   RALTypes, RALConsts, RALClient, RALRequest, RALResponse, RALRoutes, RALParams,
-  RALMIMETypes, RALTools, RALCompress, RALXMLReader, RALXML, RALStorageXML, RALSOAPTypes;
+  RALMIMETypes, RALTools, RALCompress, RALXMLReader, RALXML, RALStorageXML, RALSOAPTypes,
+  RALWSSecurity;
 
 type
   TRALSOAPClient = class;
@@ -62,6 +63,8 @@ type
     property Param[const AName: StringRAL]: TRALSOAPClientParam read GetParam; default;
   end;
 
+  /// Event fired with the Header element of an envelope about to be sent.
+  TRALSOAPOnBuildHeader = procedure(Sender: TObject; AHeader: TRALXMLNode) of object;
   /// Event fired with a fault an operation received.
   TRALSOAPOnFault = procedure(Sender: TObject; AOperation: TRALSOAPClientOperation;
     AFault: ERALSOAPFault) of object;
@@ -153,9 +156,11 @@ type
   private
     FEnvelopeContentType: StringRAL;
     FNamespace: StringRAL;
+    FOnBuildHeader: TRALSOAPOnBuildHeader;
     FOnFault: TRALSOAPOnFault;
     FOnSOAPResponse: TRALSOAPOnResponse;
     FOperations: TRALSOAPClientOperations;
+    FSecurity: TRALSOAPClientSecurity;
     FServicePath: StringRAL;
     /// Calls running in threads of their own, waited for when the client is freed.
     FThreads: TThreadList;
@@ -177,6 +182,7 @@ type
     function Send(const AAction: StringRAL; APayload: TRALXMLNode;
       out AStatus: IntegerRAL): TRALXMLDocument;
     procedure SetOperations(const AValue: TRALSOAPClientOperations);
+    procedure SetSecurity(const AValue: TRALSOAPClientSecurity);
     /// Hands the answer of a finished call thread to its operation, in the main thread.
     procedure ThreadDone(Sender: TObject);
     /// Waits for the call threads still running; their answers are dropped.
@@ -211,12 +217,17 @@ type
     property EnvelopeContentType: StringRAL read FEnvelopeContentType write FEnvelopeContentType;
     /// Target namespace of the service.
     property Namespace: StringRAL read FNamespace write FNamespace;
+    { Fired with the Header element of every envelope, on the thread that sends it,
+      to add header blocks of the application's own; an empty Header is dropped. }
+    property OnBuildHeader: TRALSOAPOnBuildHeader read FOnBuildHeader write FOnBuildHeader;
     /// Fired with a fault an operation received, when the operation has no OnFault.
     property OnFault: TRALSOAPOnFault read FOnFault write FOnFault;
     /// Fired with each answer, when the operation has no OnResponse.
     property OnSOAPResponse: TRALSOAPOnResponse read FOnSOAPResponse write FOnSOAPResponse;
     /// Operations of the service.
     property Operations: TRALSOAPClientOperations read FOperations write SetOperations;
+    /// WS-Security UsernameToken sent in the header of every envelope.
+    property Security: TRALSOAPClientSecurity read FSecurity write SetSecurity;
     /// Path of the service below BaseURL.
     property ServicePath: StringRAL read FServicePath write FServicePath;
     /// Version of SOAP the client speaks.
@@ -768,6 +779,7 @@ begin
   inherited Create(AOwner);
   FThreads := TThreadList.Create;
   FOperations := TRALSOAPClientOperations.Create(Self);
+  FSecurity := TRALSOAPClientSecurity.Create;
   FVersion := sv11;
   // SOAP servers rarely read a compressed request; answers may still come compressed
   CompressType := ctNone;
@@ -778,12 +790,18 @@ begin
   WaitCalls;
   FreeAndNil(FThreads);
   FreeAndNil(FOperations);
+  FreeAndNil(FSecurity);
   inherited Destroy;
 end;
 
 procedure TRALSOAPClient.SetOperations(const AValue: TRALSOAPClientOperations);
 begin
   FOperations.Assign(AValue);
+end;
+
+procedure TRALSOAPClient.SetSecurity(const AValue: TRALSOAPClientSecurity);
+begin
+  FSecurity.Assign(AValue);
 end;
 
 procedure TRALSOAPClient.CopyProperties(ADest: TRALClient);
@@ -798,6 +816,8 @@ begin
     TRALSOAPClient(ADest).WSDL := FWSDL;
     TRALSOAPClient(ADest).OnFault := FOnFault;
     TRALSOAPClient(ADest).OnSOAPResponse := FOnSOAPResponse;
+    TRALSOAPClient(ADest).OnBuildHeader := FOnBuildHeader;
+    TRALSOAPClient(ADest).Security.Assign(FSecurity);
     TRALSOAPClient(ADest).Operations.Assign(FOperations);
   end;
 end;
@@ -858,14 +878,25 @@ function TRALSOAPClient.Send(const AAction: StringRAL; APayload: TRALXMLNode;
   out AStatus: IntegerRAL): TRALXMLDocument;
 var
   vEnvelope: TRALXMLDocument;
+  vRoot, vHeader: TRALXMLNode;
   vResponse: TRALResponse;
   vType, vText: StringRAL;
   vFault: ERALSOAPFault;
 begin
   vEnvelope := TRALXMLDocument.Create;
   try
-    vEnvelope.CreateRoot('soap:Envelope').AddNamespace('soap', RALSOAPNamespace(FVersion))
-      .AddChild('soap:Body').AddXML(APayload.ToXML(False));
+    vRoot := vEnvelope.CreateRoot('soap:Envelope')
+      .AddNamespace('soap', RALSOAPNamespace(FVersion));
+    if FSecurity.Enabled or Assigned(FOnBuildHeader) then
+    begin
+      vHeader := vRoot.AddChild('soap:Header');
+      FSecurity.AddTo(vHeader);
+      if Assigned(FOnBuildHeader) then
+        FOnBuildHeader(Self, vHeader);
+      if vHeader.FirstChild = nil then
+        vRoot.RemoveChild(vHeader);
+    end;
+    vRoot.AddChild('soap:Body').AddXML(APayload.ToXML(False));
     vText := vEnvelope.SaveToString(True);
   finally
     vEnvelope.Free;

@@ -229,13 +229,15 @@ on its own sockets.
   `design/RALModuleProxyReg` (RALModuleProxyDsgn: "Test servers", "Test port")
 - `soap/` (RALModuleSOAPPackage, requires XML): `RALSOAPTypes` (versions, faults),
   `RALSOAPModule` (`TRALSOAPModule`, operations), `RALWSDLExporter`, `RALSOAPClient`
-  (`TRALSOAPClient`, a `TRALClient`), `RALSOAPActions` (`TRALSOAPExecute`);
+  (`TRALSOAPClient`, a `TRALClient`), `RALSOAPActions` (`TRALSOAPExecute`),
+  `RALWSSecurity` (UsernameToken, `TRALSOAPClientSecurity`), `RALWSSecurityAuth`
+  (`TRALServerWSSecurityAuth`);
   `design/RALModuleSOAPReg` (RALModuleSOAPDsgn: Import/Export WSDL verbs)
 - `swagger/` (RALModuleSwaggerPackage): `RALSwaggerModule`, `RALSwaggerExporter`,
   `RALPostmanExporter`, `RALModuleSwaggerReg`
 - `web/` (RALModuleWebPackage): `RALWebModule`, `RALModuleWebReg`
 - `xml/` (RALModuleXMLPackage): `RALXMLReader` (pull parser), `RALXMLWriter`,
-  `RALXML` (DOM with a fluent API and paths), `RALStorageXML`
+  `RALXML` (DOM with a fluent API and paths), `RALXMLC14N` (canonical XML), `RALStorageXML`
   (`TRALStorageXMLLink`), `RALModuleXMLReg`
 
 ### `src/plugins/`

@@ -1,2 +1,3 @@
 TRALSOAPModule BITMAP "..\components\base\modules\TRALSOAPModule.bmp"
 TRALSOAPClient BITMAP "..\components\base\modules\TRALSOAPClient.bmp"
+TRALServerWSSecurityAuth BITMAP "..\components\base\server\TRALServerWSSecurityAuth.bmp"
