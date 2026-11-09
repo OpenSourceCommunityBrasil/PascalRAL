@@ -36,11 +36,11 @@ type
     network can make it hold. }
   TRALSSEParser = class
   private
-    /// The first line is still to come: a BOM at its start is skipped.
-    FFirstLine: boolean;
     FCancelled: boolean;
     FData: StringRAL;
     FEvent: StringRAL;
+    /// The first line is still to come: a BOM at its start is skipped.
+    FFirstLine: boolean;
     FHasData: boolean;
     FLastId: StringRAL;
     FLine: StringRAL;

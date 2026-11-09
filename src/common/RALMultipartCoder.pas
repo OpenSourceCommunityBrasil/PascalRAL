@@ -30,25 +30,26 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
+    /// Takes AStream as the content and owns it from now on
+    procedure AdoptBuffer(AStream: TStream);
     /// Initializes a File by its AFileName
     procedure OpenFile(const AFileName: StringRAL);
     /// Parse the Header of the Multipart Form
     procedure ProcessHeader(AHeader: StringRAL);
-    /// Saves the Multipart content to a AFileName in the disk
-    procedure SaveToFile(const AFileName: StringRAL);
-    /// Saves the Multipart content into an AStream
-    procedure SaveToStream(var AStream: TStream);
-    /// Takes AStream as the content and owns it from now on
-    procedure AdoptBuffer(AStream: TStream);
     { Hands the content over: the caller owns it from now on and this part is
       left empty. A copy when this part did not own it - a stream lent by the
       caller of TRALMultipartEncoder.AddStream }
     function ReleaseBuffer: TStream;
-    /// Whether the content is this part's own, freed with it
-    property OwnsBuffer: boolean read FFreeBuffer;
+    /// Saves the Multipart content to a AFileName in the disk
+    procedure SaveToFile(const AFileName: StringRAL);
+    /// Saves the Multipart content into an AStream
+    procedure SaveToStream(var AStream: TStream);
 
     property AsStream: TStream read GetBufferStream write SetBufferStream;
     property AsString: StringRAL read GetBufferString write SetBufferString;
+    /// Whether the content is this part's own, freed with it
+    property OwnsBuffer: boolean read FFreeBuffer;
   published
     property ContentType: StringRAL read FContentType write FContentType;
     property Description: StringRAL read FDescription write FDescription;
@@ -66,23 +67,23 @@ type
   /// Base class for the object that will parse Multipart from the HTTP Request
   TRALMultipartDecoder = class
   private
+    FAbs: Int64RAL;
     FBoundary: StringRAL;
     FBuffer: TBytes;
     FClosed: boolean;
+    FContentStart: Int64RAL;
     FFormData: TList;
     FIndex: IntegerRAL;
     FIs13: boolean;
     FItemForm: TRALMultipartFormData;
-    FPartCount: IntegerRAL;
-    FWaitSepEnd: boolean;
     FOnFormDataComplete: TRALMultipartFormDataComplete;
+    FPartCount: IntegerRAL;
     { parts as windows over the body instead of copies: the absolute position
       of the byte being read, where the content of the current part started,
       and the stream they are windows of }
     FSliceParts: boolean;
     FSliceSource: TStream;
-    FAbs: Int64RAL;
-    FContentStart: Int64RAL;
+    FWaitSepEnd: boolean;
   protected
     /// Resets what one body processed leaves behind, before the next one
     procedure BeginBody;
@@ -90,11 +91,11 @@ type
     function BurnBuffer: PByte;
     /// destroys the content of the Multipart
     procedure ClearItems;
+    /// Ends a body: its last line, and the part it never closed
+    procedure EndBody;
     { Method called at the end of each part. ALineStart is where the delimiter
       line that ends it starts: the content ends two bytes before (its CRLF) }
     procedure FinalizeItem(ALineStart: Int64RAL);
-    /// Ends a body: its last line, and the part it never closed
-    procedure EndBody;
     /// Gets an item from the FormData based on the index provided
     function GetFormData(idx: Integer): TRALMultipartFormData;
     /// Main method that reads the Multipart
@@ -115,24 +116,25 @@ type
     procedure ProcessMultiPart(AStream: TStream); overload;
     /// Processes the Multipart from a String input
     procedure ProcessMultiPart(const AString: StringRAL); overload;
-    /// Gets an item from the FormData based on the index provided
-    property FormData[idx: Integer]: TRALMultipartFormData read GetFormData;
+
     /// Whether the last body processed ended with its close delimiter - what
     /// an empty form, with no part at all, still carries
     property Closed: boolean read FClosed;
+    /// Gets an item from the FormData based on the index provided
+    property FormData[idx: Integer]: TRALMultipartFormData read GetFormData;
     /// The parts the last body processed was cut into, including those
     /// OnFormDataComplete took over. A part the body never closed is not one
     property PartCount: IntegerRAL read FPartCount;
   published
     property Boundary: StringRAL read FBoundary write FBoundary;
     property ContentType: StringRAL write SetContentType;
+    property OnFormDataComplete: TRALMultipartFormDataComplete read FOnFormDataComplete
+      write FOnFormDataComplete;
     { True: each part's content is a window (RALStreamSlice) over the stream
       given to ProcessMultiPart, not a copy - the caller keeps that stream
       alive for as long as the parts are read. The string overload always
       copies }
     property SliceParts: boolean read FSliceParts write FSliceParts;
-    property OnFormDataComplete: TRALMultipartFormDataComplete read FOnFormDataComplete
-      write FOnFormDataComplete;
   end;
 
   { TRALMultipartEncoder }
@@ -145,17 +147,25 @@ type
     FMediaType: StringRAL;
   protected
     procedure ClearItems;
+    /// The closing delimiter
+    function EndDelimiter: StringRAL;
     function GetBoundary: StringRAL;
     function GetContentType: StringRAL;
     /// The delimiter and the headers of one part, up to the blank line
     function PartHeader(AItem: TRALMultipartFormData): StringRAL;
-    /// The closing delimiter
-    function EndDelimiter: StringRAL;
   public
     constructor Create;
     destructor Destroy; override;
+
     /// Adds a pair of UTF8String to the Multipart
     procedure AddField(const AName: StringRAL; const AValue: StringRAL);
+    /// Adds a file into the multipart based on the AFileName
+    procedure AddFile(const AName: StringRAL; const AFileName: StringRAL;
+      const AContentType: StringRAL = '');
+    { Adds AStream as an inline part of a multipart/mixed (MediaType): a body
+      part with its own Content-Type, named by AName; taken over when AOwned }
+    procedure AddPart(const AName: StringRAL; const AStream: TStream;
+      const AContentType: StringRAL; AOwned: boolean);
     /// Adds a Stream into the multipart with the ContentType informed
     procedure AddStream(const AName: StringRAL; const AFileStream: TStream;
       const AFileName: StringRAL = ''; const AContentType: StringRAL = ''); overload;
@@ -163,19 +173,12 @@ type
     /// encoder, or moves into the stream AsConcatStream answers
     procedure AddStream(const AName: StringRAL; const AFileStream: TStream;
       const AFileName, AContentType: StringRAL; AOwned: boolean); overload;
-    { Adds AStream as an inline part of a multipart/mixed (MediaType): a body
-      part with its own Content-Type, named by AName; taken over when AOwned }
-    procedure AddPart(const AName: StringRAL; const AStream: TStream;
-      const AContentType: StringRAL; AOwned: boolean);
-    /// Adds a file into the multipart based on the AFileName
-    procedure AddFile(const AName: StringRAL; const AFileName: StringRAL;
-      const AContentType: StringRAL = '');
-    /// Returns a stream with the content of the Multipart
-    function AsStream: TStream;
     { The multipart as a TRALConcatStream: the headers and each part's stream,
       read in turn, nothing joined. The parts this encoder owns move into it;
       the ones it was lent stay referenced, and must outlive it }
     function AsConcatStream: TStream;
+    /// Returns a stream with the content of the Multipart
+    function AsStream: TStream;
     /// Gets the ammount of items in the Multipart
     function FormDataCount: IntegerRAL;
     /// Saves the content of the Multipart to an AFileName file

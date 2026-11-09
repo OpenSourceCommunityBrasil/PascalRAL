@@ -27,9 +27,8 @@ type
     FFoundFields: array of TField;
     FWasReadOnly: array of boolean;
 
-    function GetStoreVersion: byte;
     function CharCaseValue(AValue: StringRAL): StringRAL;
-
+    function GetStoreVersion: byte;
     { Every format writes its records through TField, and a field the server
       reported as read-only - an aggregate like count(*), a computed column -
       refuses the assignment and takes the whole record with it: the dataset
@@ -38,8 +37,6 @@ type
       fill in the row it was just sent. Each format lifts it around its record
       loop and puts it back afterwards, so what a grid allows does not change. }
     procedure LiftReadOnly;
-    procedure RestoreReadOnly;
-
     /// An sftBCD value: through AsBCD, so a decimal field keeps every digit
     /// and a float or currency field converts as it would from any TBcd
     procedure ReadFieldBCD(AField: TField; const AValue: TBcd);
@@ -49,8 +46,8 @@ type
     procedure ReadFieldDateTime(AField: TField; AValue: Int64RAL); overload;
     procedure ReadFieldDateTime(AField: TField; AValue: StringRAL); overload;
     procedure ReadFieldFloat(AField: TField; AValue: Double);
-    procedure ReadFieldInteger(AField: TField; AValue: Integer);
     procedure ReadFieldInt64(AField: TField; AValue: Int64RAL);
+    procedure ReadFieldInteger(AField: TField; AValue: Integer);
     procedure ReadFieldLongWord(AField: TField; AValue: LongWord);
     procedure ReadFieldShortint(AField: TField; AValue: Shortint);
     procedure ReadFieldSmallint(AField: TField; AValue: Smallint);
@@ -58,6 +55,7 @@ type
     procedure ReadFieldStream(AField: TField; AValue: TStream); overload;
     procedure ReadFieldString(AField: TField; AValue: StringRAL);
     procedure ReadFieldWord(AField: TField; AValue: Word);
+    procedure RestoreReadOnly;
   public
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); virtual; abstract;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); virtual; abstract;
@@ -78,7 +76,6 @@ type
     function GetContentType: StringRAL; virtual;
     class function GetDeclaredStorageLink: TRALStorageLinkClass;
     class function GetDefaultStorage: TRALStorage; virtual;
-
     procedure SetStorageFormat(AFormat: TRALStorageFormat);
   public
     constructor Create(AOwner : TComponent); override;
@@ -86,25 +83,22 @@ type
     { Whether a database answer may go in the native format of the server's driver
       to a client whose dataset is of AClientDriver; by default when both match. }
     function AllowNative(AServerDriver, AClientDriver: Byte): boolean; virtual;
+    function Clone : TRALStorageLink; virtual;
     function GetStorage: TRALStorage; virtual;
+    class function GetStorageClass(AFormat: TRALStorageFormat): TRALStorageLinkClass;
     procedure LoadFromFile(ADataset: TDataSet; AFileName: StringRAL);
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream);
+    procedure LoadPropsFromStream(AStream : TStream); overload;
+    procedure LoadPropsFromStream(AWriter : TRALBinaryWriter); overload; virtual;
     /// Content type the server's driver writes a native answer in.
     function NativeContentType: StringRAL; virtual;
     /// Called with the dataset the link serves, before its properties are sent.
     procedure PrepareForDataSet(ADataSet: TDataSet); virtual;
+    procedure SavePropsToStream(AStream : TStream); overload;
+    procedure SavePropsToStream(AWriter : TRALBinaryWriter); overload; virtual;
     procedure SaveToFile(ADataset: TDataSet; AFileName: StringRAL);
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); overload;
     function SaveToStream(ADataset: TDataSet): TStream; overload;
-
-    procedure SavePropsToStream(AStream : TStream); overload;
-    procedure SavePropsToStream(AWriter : TRALBinaryWriter); overload; virtual;
-
-    procedure LoadPropsFromStream(AStream : TStream); overload;
-    procedure LoadPropsFromStream(AWriter : TRALBinaryWriter); overload; virtual;
-    function Clone : TRALStorageLink; virtual;
-
-    class function GetStorageClass(AFormat: TRALStorageFormat): TRALStorageLinkClass;
   published
     property ContentType: StringRAL read GetContentType;
     property FieldCharCase: TRALFieldCharCase read FFieldCharCase write FFieldCharCase;

@@ -117,20 +117,20 @@ type
   public
     /// Whether the set holds ropMatch.
     Accepting: Boolean;
-    /// Whether the set holds ropEndText (it may accept when the text ends).
-    HasEndText: Boolean;
     /// Whether the state accepts when the text ends there: -1 not known yet, 0, 1.
     AcceptsAtEnd: IntegerRAL;
-    /// Instructions of the set, in order.
-    PCs: array of IntegerRAL;
-    /// Next state for each ASCII byte: -2 not built yet, -1 dead.
-    Next: array[0..127] of IntegerRAL;
     /// Next state in the same bucket of the state table, or -1.
     Chain: IntegerRAL;
+    /// Whether the set holds ropEndText (it may accept when the text ends).
+    HasEndText: Boolean;
     /// Hash of PCs.
     Hash: Cardinal;
     /// Index of the state in the table.
     Id: IntegerRAL;
+    /// Next state for each ASCII byte: -2 not built yet, -1 dead.
+    Next: array[0..127] of IntegerRAL;
+    /// Instructions of the set, in order.
+    PCs: array of IntegerRAL;
   end;
 
   { A compiled pattern. Compile once (the constructor), use from any thread: the
@@ -141,20 +141,20 @@ type
     FAnchorStart: Boolean;
     FCapCount: IntegerRAL;
     FClasses: array of TRALRegexClass;
+    /// The same states as FDFAStates, for the hot loop.
+    FDFAArray: array of TRALRegexDFAState;
+    /// Buckets of the state table: first state of each hash, or -1.
+    FDFABuckets: array of IntegerRAL;
     FDFAEnabled: Boolean;
     FDFAFull: Boolean;
     FDFALock: TCriticalSection;
     FDFAStart: array[Boolean] of IntegerRAL;
     FDFAStates: TList;
-    /// The same states as FDFAStates, for the hot loop.
-    FDFAArray: array of TRALRegexDFAState;
-    /// Buckets of the state table: first state of each hash, or -1.
-    FDFABuckets: array of IntegerRAL;
     FLiteral: RawByteString;
+    FLiteralEnd: Boolean;
+    FLiteralOnly: Boolean;
     /// Horspool skip table of FLiteral.
     FLiteralSkip: array[0..255] of IntegerRAL;
-    FLiteralOnly: Boolean;
-    FLiteralEnd: Boolean;
     FNames: array of StringRAL;
     FOptions: TRALRegexOptions;
     FPattern: StringRAL;
@@ -238,34 +238,36 @@ type
     going straight to the regex. }
   TParser = class
   private
-    FNodes: array of TNode;
-    FNodeCount: IntegerRAL;
-    FPos: IntegerRAL;
-    FLen: IntegerRAL;
-    FText: RawByteString;
-    FOwner: TRALRegex;
     FCaps: IntegerRAL;
-    procedure Error(const AMessage: string);
-    function NewNode(AKind: TNodeKind): IntegerRAL;
+    FLen: IntegerRAL;
+    FNodeCount: IntegerRAL;
+    FNodes: array of TNode;
+    FOwner: TRALRegex;
+    FPos: IntegerRAL;
+    FText: RawByteString;
+
     procedure AddChild(ANode, AChild: IntegerRAL);
-    function Peek: Cardinal;
-    function PeekAt(AOffset: IntegerRAL): Byte;
-    function Next: Cardinal;
     function AtEnd: Boolean;
-    function ParseAlternate(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
-    function ParseConcat(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
-    function ParseRepeat(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
-    function ParseAtom(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
-    function ParseClass(var AFlags: TFlags): IntegerRAL;
-    function ParseEscapeInClass(var ARanges: TList; out ARune: Cardinal): Boolean;
-    function ParseNumber(out AValue: IntegerRAL): Boolean;
-    function ParseHex: Cardinal;
-    function LiteralNode(ARune: Cardinal; const AFlags: TFlags): IntegerRAL;
     function ClassNode(const ARanges: array of TRALRegexRange; ANegated: Boolean;
       const AFlags: TFlags): IntegerRAL;
+    procedure Error(const AMessage: string);
+    function LiteralNode(ARune: Cardinal; const AFlags: TFlags): IntegerRAL;
+    function NewNode(AKind: TNodeKind): IntegerRAL;
+    function Next: Cardinal;
+    function ParseAlternate(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
+    function ParseAtom(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
+    function ParseClass(var AFlags: TFlags): IntegerRAL;
+    function ParseConcat(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
+    function ParseEscapeInClass(var ARanges: TList; out ARune: Cardinal): Boolean;
+    function ParseHex: Cardinal;
+    function ParseNumber(out AValue: IntegerRAL): Boolean;
+    function ParseRepeat(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
+    function Peek: Cardinal;
+    function PeekAt(AOffset: IntegerRAL): Byte;
     function PerlClassNode(ALetter: Cardinal; const AFlags: TFlags): IntegerRAL;
   public
     constructor Create(AOwner: TRALRegex; const AText: RawByteString);
+
     function Parse(const AFlags: TFlags): IntegerRAL;
   end;
 
@@ -1297,11 +1299,12 @@ end;
 type
   TCompiler = class
   private
-    FParser: TParser;
     FOwner: TRALRegex;
+    FParser: TParser;
+
     procedure Emit(AOp: TRALRegexOp; ARune: Cardinal; AX, AY: IntegerRAL);
-    procedure Patch(APC: IntegerRAL; AX, AY: IntegerRAL);
     procedure Gen(ANode: IntegerRAL);
+    procedure Patch(APC: IntegerRAL; AX, AY: IntegerRAL);
   public
     constructor Create(AOwner: TRALRegex; AParser: TParser);
   end;

@@ -23,6 +23,7 @@ type
   ERALException = class(Exception)
   private
     FErrorCode: Integer;
+
     /// Stores the code and prefixes Message when the code is nonzero.
     procedure InitializeErrorCode(AErrorCode: Integer);
   public
@@ -41,6 +42,7 @@ type
     /// Formats a custom message and assigns the explicit code.
     constructor CreateFmt(AErrorCode: Integer; const Msg: string;
       const Args: array of const); overload;
+
     /// Language-independent error identifier; zero means unspecified.
     property ErrorCode: Integer read FErrorCode;
   end;

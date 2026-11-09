@@ -22,22 +22,25 @@ type
     either. }
   TRALCronExpression = class
   private
-    FFields: array[TRALCronField] of TRALCronSet;
     FAnyDay: boolean;
     FAnyWeekDay: boolean;
+    FFields: array[TRALCronField] of TRALCronSet;
     FReboot: boolean;
     FText: string;
-    procedure ParseField(AField: TRALCronField; const AText: string);
+
     function DayMatches(ATime: TDateTime): boolean;
+    procedure ParseField(AField: TRALCronField; const AText: string);
   public
     /// Parses AText; raises ERALException when it is not valid.
     constructor Create(const AText: string);
+
     /// True when AText is a valid expression.
     class function IsValid(const AText: string): boolean;
-    /// The first time after AFrom (to the second) that matches; 0 for none (or @reboot).
-    function NextAfter(AFrom: TDateTime): TDateTime;
     /// True when ATime (to the second) matches.
     function Matches(ATime: TDateTime): boolean;
+    /// The first time after AFrom (to the second) that matches; 0 for none (or @reboot).
+    function NextAfter(AFrom: TDateTime): TDateTime;
+
     /// @reboot: runs once, when the scheduler starts.
     property Reboot: boolean read FReboot;
     property Text: string read FText;
@@ -63,12 +66,13 @@ type
     FLastRun: TDateTime;
     FName: string;
     FNextRun: TDateTime;
+    FOnExecute: TRALOnJobExecute;
     FRunCount: IntegerRAL;
     FRunning: IntegerRAL;
     FRunOnStart: boolean;
-    FOnExecute: TRALOnJobExecute;
-    procedure SetCron(const AValue: string);
+
     function GetStopping: boolean;
+    procedure SetCron(const AValue: string);
   protected
     function GetDisplayName: string; override;
     /// Computes NextRun after AFrom.
@@ -80,12 +84,12 @@ type
     /// Runs the job now on the calling thread (outside the schedule).
     procedure Execute;
 
-    /// When the last run started (0 = never).
-    property LastRun: TDateTime read FLastRun;
     /// The message of the last failure ('' = none).
     property LastError: string read FLastError;
     /// When the last failure happened.
     property LastErrorTime: TDateTime read FLastErrorTime;
+    /// When the last run started (0 = never).
+    property LastRun: TDateTime read FLastRun;
     /// When the job runs next (0 = not planned).
     property NextRun: TDateTime read FNextRun;
     /// How many runs started.
@@ -103,9 +107,9 @@ type
     /// Milliseconds between the start of runs (no Cron).
     property Interval: IntegerRAL read FInterval write FInterval default 60000;
     property Name: string read FName write FName;
+    property OnExecute: TRALOnJobExecute read FOnExecute write FOnExecute;
     /// Also runs when the scheduler starts.
     property RunOnStart: boolean read FRunOnStart write FRunOnStart default False;
-    property OnExecute: TRALOnJobExecute read FOnExecute write FOnExecute;
   end;
 
   /// The jobs of a TRALScheduler.
@@ -113,10 +117,11 @@ type
   private
     function GetItem(AIndex: IntegerRAL): TRALScheduledJob;
   public
-    function AddJob(const AName, ACron: string; AOnExecute: TRALOnJobExecute): TRALScheduledJob;
     function AddInterval(const AName: string; AInterval: IntegerRAL;
       AOnExecute: TRALOnJobExecute): TRALScheduledJob;
+    function AddJob(const AName, ACron: string; AOnExecute: TRALOnJobExecute): TRALScheduledJob;
     function Find(const AName: string): TRALScheduledJob;
+
     property Items[AIndex: IntegerRAL]: TRALScheduledJob read GetItem; default;
   end;
 
@@ -129,34 +134,35 @@ type
     FActive: boolean;
     FJobs: TRALScheduledJobs;
     FLock: TCriticalSection;
+    FOnError: TRALOnJobError;
     FRuns: TList;
     FStopping: boolean;
     FThread: TRALSchedulerThread;
     FWake: TEvent;
-    FOnError: TRALOnJobError;
+
     procedure SetActive(const AValue: boolean);
     procedure SetJobs(const AValue: TRALScheduledJobs);
   protected
-    /// Starts the runs that are due at ANow; the earliest next run (0 = none).
-    function Tick(ANow: TDateTime): TDateTime;
-    procedure StartRun(AJob: TRALScheduledJob);
-    procedure RunFinished(AJob: TRALScheduledJob; AError: Exception);
-    /// Frees the runs that ended.
-    procedure Reap(AWait: boolean);
     procedure Loaded; override;
     function Phases: TRALPluginPhases; override;
+    /// Frees the runs that ended.
+    procedure Reap(AWait: boolean);
+    procedure RunFinished(AJob: TRALScheduledJob; AError: Exception);
     procedure ServerActivating; override;
     procedure ServerDeactivating; override;
+    procedure StartRun(AJob: TRALScheduledJob);
+    /// Starts the runs that are due at ANow; the earliest next run (0 = none).
+    function Tick(ANow: TDateTime): TDateTime;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    procedure Start;
-    /// Stops planning and waits for the runs going on.
-    procedure Stop;
     { A health check (TRALOnHealthCheck shape): unhealthy when a job's last
       run failed; the output lists each job's next run and last error. }
     procedure HealthCheck(ACheck: TRALHealthCheck; var AHealthy: boolean; var AOutput: StringRAL);
+    procedure Start;
+    /// Stops planning and waits for the runs going on.
+    procedure Stop;
   published
     /// Runs without a server (a linked server starts and stops it instead).
     property Active: boolean read FActive write SetActive default False;

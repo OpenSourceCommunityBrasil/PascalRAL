@@ -81,6 +81,7 @@ type
   public
     /// AMessage, with the system error ACode.
     constructor CreateCode(ACode: IntegerRAL; const AMessage: string);
+
     /// The system's error number (errno, or the WSA code on Windows).
     property Code: IntegerRAL read FCode;
   end;
@@ -107,10 +108,6 @@ type
     { Accepts a waiting connection of a listening socket; nil when none is
       waiting. The new socket is non-blocking with the TCP options set }
     function Accept: TRALSocket;
-    { Binds to AAddress (empty is every address) and APort, and listens.
-      AFamily mifAny opens IPv6 with IPv4 mapped where the system allows it }
-    procedure Listen(const AAddress: StringRAL; APort: IntegerRAL;
-      AFamily: TRALIPFamily = mifIPv4; ABacklog: IntegerRAL = 128);
     /// Closes the socket; safe to call twice.
     procedure Close;
     { Connects to AHost:APort within ATimeout milliseconds. The name is
@@ -125,19 +122,27 @@ type
       is done, and PendingError then says whether it worked. Raises when the
       system refuses it on the spot }
     procedure ConnectStart(const AAddress: TRALSocketAddress);
-    { The error a connect left on the socket (SO_ERROR, cleared by reading
-      it): 0 when none. While ConnectStart is in progress, 0 too }
-    function PendingError: IntegerRAL;
+    /// Lets a UDP socket send to a broadcast address (gateway discovery).
+    procedure EnableBroadcast;
+    { Binds to AAddress (empty is every address) and APort, and listens.
+      AFamily mifAny opens IPv6 with IPv4 mapped where the system allows it }
+    procedure Listen(const AAddress: StringRAL; APort: IntegerRAL;
+      AFamily: TRALIPFamily = mifIPv4; ABacklog: IntegerRAL = 128);
+    /// The port the socket is bound to (a listener on port 0 gets one from the system).
+    function LocalPort: IntegerRAL;
     /// Opens a UDP socket bound to APort (0: any) on AAddress (empty: every address).
     procedure OpenUDP(const AAddress: StringRAL; APort: IntegerRAL;
       AFamily: TRALIPFamily = mifIPv4);
+    { As Receive, but what is read stays waiting for the next Receive (a look
+      at the first bytes of a connection, as a ClientHello) }
+    function Peek(var ABuffer; ACount: IntegerRAL): IntegerRAL;
+    { The error a connect left on the socket (SO_ERROR, cleared by reading
+      it): 0 when none. While ConnectStart is in progress, 0 too }
+    function PendingError: IntegerRAL;
     { Reads what is there, up to ACount bytes, without waiting: bytes read, 0
       when the other side closed, RALSocketWouldBlock when there is nothing yet.
       Raises on an error }
     function Receive(var ABuffer; ACount: IntegerRAL): IntegerRAL;
-    { As Receive, but what is read stays waiting for the next Receive (a look
-      at the first bytes of a connection, as a ClientHello) }
-    function Peek(var ABuffer; ACount: IntegerRAL): IntegerRAL;
     { Reads one datagram into ABuffer (up to ACount bytes) and who sent it;
       RALSocketWouldBlock when none is waiting }
     function ReceiveFrom(var ABuffer; ACount: IntegerRAL; out AFrom: TRALSocketAddress): IntegerRAL;
@@ -148,13 +153,9 @@ type
     procedure SendTo(const ABuffer; ACount: IntegerRAL; const ATo: TRALSocketAddress);
     /// Ends the sending side (FIN), keeping the socket open to read.
     procedure ShutdownSend;
-    /// Lets a UDP socket send to a broadcast address (gateway discovery).
-    procedure EnableBroadcast;
     { Waits up to ATimeout milliseconds (-1: no limit) for AEvents
       (RALPollIn, RALPollOut); the events that came, 0 on timeout }
     function WaitFor(AEvents: Word; ATimeout: IntegerRAL): Word;
-    /// The port the socket is bound to (a listener on port 0 gets one from the system).
-    function LocalPort: IntegerRAL;
 
     /// The socket is open.
     property Active: boolean read GetActive;
@@ -175,24 +176,24 @@ type
   protected
     function GetSocket: TRALSocket; virtual;
   public
-    { Bytes read (up to ACount), 0 when the connection closed, or
-      RALSocketWouldBlock when nothing is there yet }
-    function Read(var ABuffer; ACount: IntegerRAL): IntegerRAL; virtual; abstract;
-    { Bytes taken (up to ACount, maybe 0 when the layer below is full), or
-      RALSocketWouldBlock }
-    function Write(const ABuffer; ACount: IntegerRAL): IntegerRAL; virtual; abstract;
-    /// True when bytes are already buffered in the layer, so Read will not need the socket.
-    function HasBuffered: boolean; virtual;
-    /// Events the layer needs from the socket to make progress (TLS may need to write to read).
-    function WantedEvents: Word; virtual;
+    /// Closes the layer (a TLS close_notify, a WebSocket close) and the socket.
+    procedure Close; virtual;
     { Writes what a layer queued and did not get out yet; True when nothing
       is left. Never waits }
     function Flush: boolean; virtual;
-    /// Closes the layer (a TLS close_notify, a WebSocket close) and the socket.
-    procedure Close; virtual;
+    /// True when bytes are already buffered in the layer, so Read will not need the socket.
+    function HasBuffered: boolean; virtual;
+    { Bytes read (up to ACount), 0 when the connection closed, or
+      RALSocketWouldBlock when nothing is there yet }
+    function Read(var ABuffer; ACount: IntegerRAL): IntegerRAL; virtual; abstract;
     { Reads up to ACount bytes, waiting up to ATimeout milliseconds for the
       first of them: bytes read, 0 when closed, RALSocketWouldBlock on timeout }
     function ReadWait(var ABuffer; ACount, ATimeout: IntegerRAL): IntegerRAL;
+    /// Events the layer needs from the socket to make progress (TLS may need to write to read).
+    function WantedEvents: Word; virtual;
+    { Bytes taken (up to ACount, maybe 0 when the layer below is full), or
+      RALSocketWouldBlock }
+    function Write(const ABuffer; ACount: IntegerRAL): IntegerRAL; virtual; abstract;
     { Writes all ACount bytes. AStallTimeout is how long it may go without
       progress, not the whole time: a slow link that keeps moving is never cut.
       Raises when it stalls that long or the connection breaks }
@@ -210,6 +211,7 @@ type
     /// Channel over ASocket; AOwnsSocket frees it with the channel.
     constructor Create(ASocket: TRALSocket; AOwnsSocket: boolean = True);
     destructor Destroy; override;
+
     procedure Close; override;
     function Read(var ABuffer; ACount: IntegerRAL): IntegerRAL; override;
     function Write(const ABuffer; ACount: IntegerRAL): IntegerRAL; override;
@@ -226,7 +228,9 @@ type
     /// Layer over AInner; AOwnsInner frees it with this one.
     constructor Create(AInner: TRALChannel; AOwnsInner: boolean = True);
     destructor Destroy; override;
+
     procedure Close; override;
+
     /// The channel below.
     property Inner: TRALChannel read FInner;
   end;

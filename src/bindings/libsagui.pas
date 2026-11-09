@@ -725,6 +725,7 @@ type
     FSender: TObject;
   public
     constructor Create(AEvent: TNotifyEvent; ASender: TObject);
+
     property Event: TNotifyEvent read FEvent;
     property Sender: TObject read FSender;
   end;
@@ -741,10 +742,11 @@ type
   public
     constructor Create(ACS: TCriticalSection); virtual;
     destructor Destroy; override;
+
     procedure Add(AEvent: TNotifyEvent; ASender: TObject); virtual;
-    procedure Remove(AEvent: TNotifyEvent); virtual;
-    procedure Clear; virtual;
     procedure Call; virtual;
+    procedure Clear; virtual;
+    procedure Remove(AEvent: TNotifyEvent); virtual;
   end;
 
   { SgLib }

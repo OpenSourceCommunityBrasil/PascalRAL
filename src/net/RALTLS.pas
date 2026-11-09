@@ -52,6 +52,7 @@ type
     FServerName: StringRAL;
   public
     constructor Create;
+
     procedure Assign(ASource: TPersistent); override;
   published
     { ALPN protocols offered, separated by commas; empty offers none (cloud
@@ -106,21 +107,6 @@ type
     constructor Create(ARole: TRALTLSRole; ADatagram: boolean = False);
     destructor Destroy; override;
 
-    /// Trusts the CA certificates in AFile (PEM) besides the system's.
-    procedure LoadCAFile(const AFile: StringRAL);
-    /// Trusts the system's CA certificates (the Windows root store included).
-    procedure LoadSystemCAs;
-    /// Lowest version accepted.
-    procedure SetMinVersion(AVersion: TRALTLSVersion);
-    { Certificate (with its chain) and key, from files; APassword opens an
-      encrypted key }
-    procedure UseCertificateFiles(const ACertFile, AKeyFile, APassword: StringRAL);
-    /// Certificate (with its chain) and key, from PEM text.
-    procedure UseCertificatePEM(const ACertPEM, AKeyPEM: StringRAL);
-    { Server: ask the client for a certificate (mutual TLS); ARequire refuses
-      the handshake without one. ACAFile is the CA the client certificates
-      must come from }
-    procedure RequestClientCertificate(ARequire: boolean; const ACAFile: StringRAL);
     { Server: another identity on the same listener, handed to clients that ask
       for AServerName in SNI ('*.example.com' covers one level below it). The
       certificate of UseCertificateFiles/UseCertificatePEM stays the one for
@@ -131,8 +117,23 @@ type
     procedure AddCertificatePEM(const AServerName, ACertPEM, AKeyPEM: StringRAL);
     /// Server: the context that answers AServerName in SNI; nil for the default.
     function ContextFor(const AServerName: StringRAL): TRALTLSContext;
+    /// Trusts the CA certificates in AFile (PEM) besides the system's.
+    procedure LoadCAFile(const AFile: StringRAL);
+    /// Trusts the system's CA certificates (the Windows root store included).
+    procedure LoadSystemCAs;
+    { Server: ask the client for a certificate (mutual TLS); ARequire refuses
+      the handshake without one. ACAFile is the CA the client certificates
+      must come from }
+    procedure RequestClientCertificate(ARequire: boolean; const ACAFile: StringRAL);
     /// Server: names given to AddCertificate, one per line.
     function ServerNames: StringRAL;
+    /// Lowest version accepted.
+    procedure SetMinVersion(AVersion: TRALTLSVersion);
+    { Certificate (with its chain) and key, from files; APassword opens an
+      encrypted key }
+    procedure UseCertificateFiles(const ACertFile, AKeyFile, APassword: StringRAL);
+    /// Certificate (with its chain) and key, from PEM text.
+    procedure UseCertificatePEM(const ACertPEM, AKeyPEM: StringRAL);
 
     { ALPN: the client offers these protocols (comma separated); the server
       picks the first of its own it is offered, or none. A context made by
@@ -169,20 +170,23 @@ type
       AOwnsInner: boolean = True);
     destructor Destroy; override;
 
+    { Client, for an event loop: sets AServerName (SNI and the name checked, as
+      Handshake does) and the session to resume; HandshakeStep then advances }
+    procedure BeginHandshake(const AServerName: StringRAL);
+    procedure Close; override;
     { Client handshake with AServerName in SNI and as the name the
       certificate must carry (an address literal is checked as such, without
       SNI), within ATimeout milliseconds }
     procedure Handshake(const AServerName: StringRAL; ATimeout: IntegerRAL);
-    { Client, for an event loop: sets AServerName (SNI and the name checked, as
-      Handshake does) and the session to resume; HandshakeStep then advances }
-    procedure BeginHandshake(const AServerName: StringRAL);
     { One step of the handshake (the server's, or the client's after
       BeginHandshake): True when it finished; False when it needs the socket
       again (WantedEvents says for what). Raises when it failed }
     function HandshakeStep: boolean;
+    function HasBuffered: boolean; override;
     { The server certificate as TRALClient describes it, with Trusted = the
       chain verified and the name matched, and Error saying why not }
     function PeerCertificate: TRALCertInfo;
+    function Read(var ABuffer; ACount: IntegerRAL): IntegerRAL; override;
     /// The protocol ALPN settled on, or empty.
     function SelectedALPN: StringRAL;
     /// Server: the name the client asked for in SNI, or empty.
@@ -191,10 +195,6 @@ type
     function SessionReused: boolean;
     /// The TLS version in use ('TLSv1.3').
     function VersionName: StringRAL;
-
-    procedure Close; override;
-    function HasBuffered: boolean; override;
-    function Read(var ABuffer; ACount: IntegerRAL): IntegerRAL; override;
     function WantedEvents: Word; override;
     function Write(const ABuffer; ACount: IntegerRAL): IntegerRAL; override;
 
@@ -216,11 +216,11 @@ type
     FLock: TCriticalSection;
     FMaxEntries: IntegerRAL;
   protected
+    /// Sets on ASSL the session kept under AKey; False when there is none.
+    function Apply(const AKey: StringRAL; ASSL: Pointer): boolean;
     { Keeps ASession (an SSL_SESSION, owned from now on) under AKey, replacing
       the one there }
     procedure Put(const AKey: StringRAL; ASession: Pointer);
-    /// Sets on ASSL the session kept under AKey; False when there is none.
-    function Apply(const AKey: StringRAL; ASSL: Pointer): boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -286,6 +286,8 @@ type
     { Takes a datagram from the peer: handshake records advance the handshake,
       application records come back in APlain (one datagram of the protocol each) }
     procedure Feed(const ADatagram: TBytes; APlain: TList);
+    /// The peer's certificate, as for TLS.
+    function PeerCertificate: TRALCertInfo;
     /// The datagram for one packet of the application, encrypted.
     function Seal(const APlain: TBytes): TBytes;
     /// What is waiting to go to the peer (handshake, alerts); nil when nothing.
@@ -293,8 +295,6 @@ type
     { Lets DTLS resend a handshake flight that got no answer (call it now and
       then while not Done) }
     procedure Tick;
-    /// The peer's certificate, as for TLS.
-    function PeerCertificate: TRALCertInfo;
 
     /// The handshake is over.
     property Done: boolean read FDone;
@@ -379,9 +379,10 @@ type
   TRALTLSLibrary = class
   private
     FCandidates: TStringList;
-    FProcs: TList;
     FLibrary: IRALDynLibs;
     FLibraryName: string;
+    FProcs: TList;
+
     function GetLibraryHandle: NativeUInt;
   protected
     procedure AddLibrary(const AName: string);
@@ -391,6 +392,7 @@ type
   public
     constructor Create; virtual;
     destructor Destroy; override;
+
     property LibraryHandle: NativeUInt read GetLibraryHandle;
     property LibraryName: string read FLibraryName;
   end;

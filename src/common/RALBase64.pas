@@ -40,14 +40,6 @@ type
     class function DecodeAsBytes(AValue: TStream): TBytes; overload;
     class function DecodeAsStream(AValue: TStream): TStream; overload;
     class function DecodeAsStream(AValue: StringRAL): TStream; overload;
-    class function Encode(const AValue: StringRAL; ABinary : boolean = false): StringRAL; overload;
-    class function Encode(AValue: TBytes): StringRAL; overload;
-    class function Encode(AValue: TStream): StringRAL; overload;
-    class function EncodeAsBytes(const AValue: StringRAL): TBytes; overload;
-    class function EncodeAsBytes(AValue: TStream): TBytes; overload;
-    class function EncodeAsStream(AValue: TStream): TStream; overload;
-    class function FromBase64Url(const AValue: StringRAL): StringRAL;
-    class function ToBase64Url(const AValue: StringRAL): StringRAL;
     /// ALength characters of base64 or base64url at AInput, padded or not,
     /// straight into a string of the decoded bytes: one allocation, where
     /// Decode(FromBase64Url(...)) went through two replaced strings, two
@@ -56,12 +48,19 @@ type
     class function DecodeBuffer(AInput: PByte; ALength: IntegerRAL): StringRAL;
     /// The same, for a whole text
     class function DecodeText(const AValue: StringRAL): StringRAL;
+    class function Encode(const AValue: StringRAL; ABinary : boolean = false): StringRAL; overload;
+    class function Encode(AValue: TBytes): StringRAL; overload;
+    class function Encode(AValue: TStream): StringRAL; overload;
+    class function EncodeAsBytes(const AValue: StringRAL): TBytes; overload;
+    class function EncodeAsBytes(AValue: TStream): TBytes; overload;
+    class function EncodeAsStream(AValue: TStream): TStream; overload;
     /// ALength bytes at AData as base64url without padding (RFC 7515 2) - what
     /// ToBase64Url(Encode(...)) gives - in one allocation
     class function EncodeUrl(AData: PByte; ALength: IntegerRAL): StringRAL;
-
-    class function GetSizeEncode(ASize: Int64RAL): Int64RAL;
+    class function FromBase64Url(const AValue: StringRAL): StringRAL;
     class function GetSizeDecode(ASize: Int64RAL): Int64RAL;
+    class function GetSizeEncode(ASize: Int64RAL): Int64RAL;
+    class function ToBase64Url(const AValue: StringRAL): StringRAL;
   end;
 
 implementation

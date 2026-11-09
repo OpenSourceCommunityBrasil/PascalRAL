@@ -21,6 +21,12 @@ type
   { BSON roots are documents. Canonical mode preserves BSON numeric types. }
   TRALBSON = class
   public
+    class function Encode(
+      Document: TRALJSON;
+      InterpretExtendedJSON: Boolean = True;
+      MaxDocumentSize: Integer = 0;
+      MaxDepth: Integer = 0
+    ): TBytes; static;
     class function Parse(
       const Bytes: TBytes;
       Canonical: Boolean = True;
@@ -35,12 +41,6 @@ type
       MaxDepth: Integer = 0;
       UnwrapRootElement: Boolean = True
     ): TRALJSON; overload; static;
-    class function Encode(
-      Document: TRALJSON;
-      InterpretExtendedJSON: Boolean = True;
-      MaxDocumentSize: Integer = 0;
-      MaxDepth: Integer = 0
-    ): TBytes; static;
     class procedure SaveToStream(
       Document: TRALJSON;
       Stream: TStream;
@@ -58,19 +58,20 @@ uses
 type
   TRALBSONReader = class
   private
-    FStream: TStream;
-    FPosition: Int64;
     FCanonical: Boolean;
-    FMaxDocumentSize: Integer;
     FMaxDepth: Integer;
+    FMaxDocumentSize: Integer;
+    FPosition: Int64;
+    FStream: TStream;
+
+    function Read32(Limit: Int64): Cardinal;
+    function Read64(Limit: Int64): UInt64;
+    function ReadByte(Limit: Int64): Byte;
     procedure ReadRaw(
       var Buffer;
       Count: Integer;
       Limit: Int64
     );
-    function ReadByte(Limit: Int64): Byte;
-    function Read32(Limit: Int64): Cardinal;
-    function Read64(Limit: Int64): UInt64;
     function ReadSigned32(Limit: Int64): Integer;
     function ReadSigned64(Limit: Int64): Int64;
     function ReadText(
@@ -89,6 +90,7 @@ type
       MaxSize: Integer;
       MaxDepth: Integer
     );
+
     function ReadDocument(
       IsArray: Boolean;
       Limit: Int64;
@@ -98,27 +100,28 @@ type
 
   TRALBSONWriter = class
   private
-    FStream: TMemoryStream;
     FExtended: Boolean;
-    FMaxDocumentSize: Integer;
     FMaxDepth: Integer;
+    FMaxDocumentSize: Integer;
+    FStream: TMemoryStream;
+
+    procedure Write32(Value: Cardinal);
+    procedure Write64(Value: UInt64);
+    procedure WriteByte(Value: Byte);
+    procedure WriteElement(
+      const Name: StringRAL;
+      Value: TRALJSON;
+      Depth: Integer
+    );
     procedure WriteRaw(
       const Buffer;
       Count: Integer
     );
-    procedure WriteByte(Value: Byte);
-    procedure Write32(Value: Cardinal);
-    procedure Write64(Value: UInt64);
     procedure WriteSigned32(Value: Integer);
     procedure WriteSigned64(Value: Int64);
     procedure WriteText(
       const Value: StringRAL;
       CString: Boolean
-    );
-    procedure WriteElement(
-      const Name: StringRAL;
-      Value: TRALJSON;
-      Depth: Integer
     );
   public
     constructor Create(
@@ -127,11 +130,13 @@ type
       MaxDepth: Integer
     );
     destructor Destroy; override;
+
     procedure WriteDocument(
       Value: TRALJSON;
       Depth: Integer
     );
     procedure WriteRoot(Document: TRALJSON);
+
     property Stream: TMemoryStream read FStream;
   end;
 

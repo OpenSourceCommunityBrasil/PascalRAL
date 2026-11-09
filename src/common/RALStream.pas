@@ -16,6 +16,7 @@ type
   TRALBinaryWriter = class
   private
     FStream: TStream;
+
     /// Refuses a size prefix that announces more than the stream still holds
     procedure CheckSize(ASize: UInt64RAL);
     /// Reads exactly ACount bytes or raises - see there
@@ -27,43 +28,42 @@ type
   public
     constructor Create(const AStream: TStream);
 
-    procedure WriteShortint(AValue: Shortint);
-    procedure WriteByte(AValue: Byte);
-    procedure WriteSmallint(AValue: Smallint);
-    procedure WriteWord(AValue: Word);
-    procedure WriteInteger(AValue: IntegerRAL);
-    procedure WriteLongWord(AValue: LongWord);
-    procedure WriteInt64(AValue: Int64RAL);
-    procedure WriteQWord(AValue: UInt64);
-    procedure WriteBoolean(AValue: Boolean);
-    procedure WriteFloat(AValue: Double);
-    procedure WriteDateTime(AValue: TDateTime);
-    procedure WriteStream(AValue: TStream);
-    procedure WriteBytes(AValue: TBytes);
-    procedure WriteString(AValue: StringRAL);
-    procedure WriteChar(AValue: CharRAL);
-    procedure WriteBytesDirect(AValue: TBytes);
-
-    function ReadShortint: Shortint;
+    function ReadBoolean: Boolean;
     function ReadByte: Byte;
+    function ReadBytes: TBytes;
+    function ReadBytesDirect(ALength: integer): TBytes;
+    function ReadChar: CharRAL;
+    function ReadDateTime: TDateTime;
     /// A byte that becomes an enum whose last member is AHigh, refused with
     /// emStorageInvalidBinary past it: cast first, a case over the value took
     /// a member's branch on Delphi Win32 and jumped out of its table on FPC
     function ReadEnum(AHigh: Byte): Byte;
-    function ReadSmallint: Smallint;
-    function ReadWord: Word;
+    function ReadFloat: Double;
+    function ReadInt64: Int64RAL;
     function ReadInteger: IntegerRAL;
     function ReadLongWord: LongWord;
-    function ReadInt64: Int64RAL;
     function ReadQWord: UInt64;
-    function ReadBoolean: Boolean;
-    function ReadFloat: Double;
-    function ReadDateTime: TDateTime;
+    function ReadShortint: Shortint;
+    function ReadSmallint: Smallint;
     procedure ReadStream(AStream: TStream);
-    function ReadBytes: TBytes;
     function ReadString: StringRAL;
-    function ReadChar: CharRAL;
-    function ReadBytesDirect(ALength: integer): TBytes;
+    function ReadWord: Word;
+    procedure WriteBoolean(AValue: Boolean);
+    procedure WriteByte(AValue: Byte);
+    procedure WriteBytes(AValue: TBytes);
+    procedure WriteBytesDirect(AValue: TBytes);
+    procedure WriteChar(AValue: CharRAL);
+    procedure WriteDateTime(AValue: TDateTime);
+    procedure WriteFloat(AValue: Double);
+    procedure WriteInt64(AValue: Int64RAL);
+    procedure WriteInteger(AValue: IntegerRAL);
+    procedure WriteLongWord(AValue: LongWord);
+    procedure WriteQWord(AValue: UInt64);
+    procedure WriteShortint(AValue: Shortint);
+    procedure WriteSmallint(AValue: Smallint);
+    procedure WriteStream(AValue: TStream);
+    procedure WriteString(AValue: StringRAL);
+    procedure WriteWord(AValue: Word);
   end;
 
   /// The capacity argument of TMemoryStream.Realloc, which changed type
@@ -94,10 +94,9 @@ type
     constructor Create(ABytes: TBytes); overload;
 
     function DataString: StringRAL;
-
     procedure WriteBytes(ABytes: TBytes);
-    procedure WriteString(AString: StringRAL);
     procedure WriteStream(AStream: TStream);
+    procedure WriteString(AString: StringRAL);
   end;
 
   { How a stream reaches the body decoder (TRALParams.DecodeBody), and so what
@@ -123,8 +122,9 @@ type
   TRALMemoryView = class(TCustomMemoryStream)
   public
     constructor Create(APointer: Pointer; ASize: Int64RAL);
-    function Write(const Buffer; Count: Longint): Longint; override;
+
     procedure SetSize(const NewSize: Int64); override;
+    function Write(const Buffer; Count: Longint): Longint; override;
   end;
 
   { TRALStringView }
@@ -138,6 +138,7 @@ type
     FText: RawByteString;
   public
     constructor Create(const AText: RawByteString);
+
     property Text: RawByteString read FText;
   end;
 
@@ -149,21 +150,22 @@ type
     TRALMemoryView when the parent is contiguous memory }
   TRALStreamSlice = class(TStream)
   private
-    FParent: TStream;
-    FStart: Int64RAL;
-    FSize: Int64RAL;
-    FPos: Int64RAL;
     FOwnsParent: boolean;
+    FParent: TStream;
+    FPos: Int64RAL;
+    FSize: Int64RAL;
+    FStart: Int64RAL;
   protected
     function GetSize: Int64; override;
   public
     constructor Create(AParent: TStream; AStart, ASize: Int64RAL;
       AOwnsParent: boolean = False);
     destructor Destroy; override;
+
     function Read(var Buffer; Count: Longint): Longint; override;
-    function Write(const Buffer; Count: Longint): Longint; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
     procedure SetSize(const NewSize: Int64); override;
+    function Write(const Buffer; Count: Longint): Longint; override;
   end;
 
   { TRALChunkedStream }
@@ -182,10 +184,11 @@ type
   private
     FBlocks: TList;
     FBlockSize: IntegerRAL;
-    FSize: Int64RAL;
     FPos: Int64RAL;
-    FReleaseOnRead: boolean;
     FReleased: IntegerRAL;
+    FReleaseOnRead: boolean;
+    FSize: Int64RAL;
+
     function Block(AIndex: IntegerRAL): PByte;
     procedure ReleaseBefore(APosition: Int64RAL);
   protected
@@ -193,10 +196,11 @@ type
   public
     constructor Create(ABlockSize: IntegerRAL = 0);
     destructor Destroy; override;
+
     function Read(var Buffer; Count: Longint): Longint; override;
-    function Write(const Buffer; Count: Longint): Longint; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
     procedure SetSize(const NewSize: Int64); override;
+    function Write(const Buffer; Count: Longint): Longint; override;
 
     property BlockSize: IntegerRAL read FBlockSize;
     { Every block that the reading position has left behind is freed. For a
@@ -218,6 +222,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     property FileName: string read FFileName;
   end;
 
@@ -235,21 +240,24 @@ type
   private
     FInner: TStream;
     FSpoolAbove: Int64RAL;
+
     procedure Promote(ANeeded: Int64RAL);
   protected
     function GetSize: Int64; override;
   public
     constructor Create(AExpectedSize: Int64RAL = -1; ASpoolAbove: Int64RAL = 0);
     destructor Destroy; override;
-    function Read(var Buffer; Count: Longint): Longint; override;
-    function Write(const Buffer; Count: Longint): Longint; override;
-    function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
-    procedure SetSize(const NewSize: Int64); override;
+
     { Hands over the storage in use (TMemoryStream, TRALChunkedStream or
       TRALTempFileStream) and leaves this one empty: once a body is written,
       the param keeps the real storage, so a small body is still a plain
       TMemoryStream to whoever reads Content }
     function Detach: TStream;
+    function Read(var Buffer; Count: Longint): Longint; override;
+    function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
+    procedure SetSize(const NewSize: Int64); override;
+    function Write(const Buffer; Count: Longint): Longint; override;
+
     /// The storage in use right now
     property Inner: TStream read FInner;
   end;
@@ -262,21 +270,22 @@ type
     handed with AOwned }
   TRALConcatStream = class(TStream)
   private
-    FParts: TList;
     FOwned: TList;
-    FSize: Int64RAL;
+    FParts: TList;
     FPos: Int64RAL;
+    FSize: Int64RAL;
   protected
     function GetSize: Int64; override;
   public
     constructor Create;
     destructor Destroy; override;
+
     procedure Add(AStream: TStream; AOwned: boolean); overload;
     procedure Add(const AText: RawByteString); overload;
     function Read(var Buffer; Count: Longint): Longint; override;
-    function Write(const Buffer; Count: Longint): Longint; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
     procedure SetSize(const NewSize: Int64); override;
+    function Write(const Buffer; Count: Longint): Longint; override;
   end;
 
   { TRALFileStream }
@@ -288,17 +297,18 @@ type
   /// opened. Read-only: Write writes nothing
   TRALFileStream = class(TStream)
   private
-    FFile: TFileStream;
-    FFileName: string;
-    FOffset: Int64;
     { the window as asked for, -1 to the end of the file, and as it is once
       the file is open }
     FAsked: Int64;
     FCount: Int64;
-    FPosition: Int64;
+    FFile: TFileStream;
+    FFileName: string;
     { where the file handle stands, so a sequential read seeks nothing; -1
       when unknown }
     FFilePos: Int64;
+    FOffset: Int64;
+    FPosition: Int64;
+
     procedure NeedFile;
   protected
     function GetSize: Int64; override;
@@ -306,14 +316,16 @@ type
     constructor Create(const AFileName: string; AOffset: Int64 = 0;
       ACount: Int64 = -1; AOpenNow: boolean = False);
     destructor Destroy; override;
+
+    /// The whole file, not a window of it
+    function IsWholeFile: boolean;
     function Read(var Buffer; Count: Longint): Longint; override;
-    function Write(const Buffer; Count: Longint): Longint; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
     /// Another stream over the same file and window, not open yet - what a
     /// param keeps when it hands this one over to be sent
     function Twin: TRALFileStream;
-    /// The whole file, not a window of it
-    function IsWholeFile: boolean;
+    function Write(const Buffer; Count: Longint): Longint; override;
+
     property FileName: string read FFileName;
   end;
 
@@ -326,15 +338,16 @@ type
   /// holds it. Write writes nothing
   TRALBufferStream = class(TCustomMemoryStream)
   private
-    FText: StringRAL;
     FKeeper: IInterface;
+    FText: StringRAL;
   public
     /// Over AText, which is not copied: the stream keeps a reference to it
     constructor Create(const AText: StringRAL); overload;
     /// Over AStream, which it TAKES: it is freed with the last stream sharing it
     constructor Create(AStream: TCustomMemoryStream); overload;
-    function Write(const Buffer; Count: Longint): Longint; override;
+
     function Twin: TRALBufferStream;
+    function Write(const Buffer; Count: Longint): Longint; override;
   end;
 
 var

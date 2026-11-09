@@ -157,14 +157,14 @@ type
     /// Stops the timer.
     procedure StopTimer;
 
-    /// Longest wait of a poll, in ms, when nothing happens.
-    property PollSlice: IntegerRAL read FPollSlice write FPollSlice;
-    /// Interval of OnTimer, in ms.
-    property TimerInterval: IntegerRAL read FTimerInterval write FTimerInterval;
     /// A connection was accepted, on the accepting thread.
     property OnAccept: TRALSocketLoopAccept read FOnAccept write FOnAccept;
     /// The timer ticked, on the timer thread; an exception there is ignored.
     property OnTimer: TNotifyEvent read FOnTimer write FOnTimer;
+    /// Longest wait of a poll, in ms, when nothing happens.
+    property PollSlice: IntegerRAL read FPollSlice write FPollSlice;
+    /// Interval of OnTimer, in ms.
+    property TimerInterval: IntegerRAL read FTimerInterval write FTimerInterval;
   end;
 
 implementation

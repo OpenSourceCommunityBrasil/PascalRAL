@@ -17,16 +17,16 @@ type
 
   TRALJSONFormatOptions = class(TPersistent)
   private
+    FCustomDateTimeFormat: StringRAL;
     FDateTimeFormat: TRALDateTimeFormat;
     FDateTimeIsUTC: boolean;
-    FCustomDateTimeFormat: StringRAL;
   protected
     procedure AssignTo(ADest: TPersistent); override;
   public
     constructor Create;
 
-    procedure SavePropsToStream(AWriter: TRALBinaryWriter);
     procedure LoadPropsFromStream(AWriter: TRALBinaryWriter);
+    procedure SavePropsToStream(AWriter: TRALBinaryWriter);
   published
     property CustomDateTimeFormat: StringRAL read FCustomDateTimeFormat write FCustomDateTimeFormat;
     property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
@@ -47,29 +47,29 @@ type
     destructor Destroy; override;
   protected
     function JSONFormatDateTime(AValue: TDateTime): StringRAL;
+    /// Puts AValue into the field at AIndex, by that field's RAL type -
+    /// what both readers do for each value of a record
+    procedure ReadFieldValue(AIndex: IntegerRAL; AValue: TRALJSONValue);
     function StringToJSONString(AValue: StringRAL): StringRAL;
     function WriteBlob(AValue: TStream): StringRAL;
     function WriteBoolean(AValue: Boolean): StringRAL;
+    /// One ASCII byte straight into the stream: the separators and brackets
+    procedure WriteCharToStream(AStream: TStream; AValue: Byte);
     function WriteDateTime(AValue: TDateTime): StringRAL;
-    function WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL): StringRAL;
-    function WriteFieldFloat(AFieldName: StringRAL; AValue: Double): StringRAL;
     /// A decimal of the RAW format: a JSON number with every digit, so whoever
     /// reads it from outside still finds the number it always found
     function WriteFieldBCD(AFieldName: StringRAL; const AValue: TBcd): StringRAL;
-    function WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean): StringRAL;
-    function WriteFieldString(AFieldName: StringRAL; AValue: StringRAL): StringRAL;
     function WriteFieldBlob(AFieldName: StringRAL; AValue: TStream): StringRAL;
+    function WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean): StringRAL;
     function WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime): StringRAL;
+    function WriteFieldFloat(AFieldName: StringRAL; AValue: Double): StringRAL;
+    function WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL): StringRAL;
     function WriteFieldNull(AFieldName: StringRAL): StringRAL;
+    function WriteFieldString(AFieldName: StringRAL; AValue: StringRAL): StringRAL;
     function WriteFloat(AValue: Double): StringRAL;
     function WriteInt64(AValue: Int64RAL): StringRAL;
     function WriteString(AValue: StringRAL): StringRAL;
     procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
-    /// One ASCII byte straight into the stream: the separators and brackets
-    procedure WriteCharToStream(AStream: TStream; AValue: Byte);
-    /// Puts AValue into the field at AIndex, by that field's RAL type -
-    /// what both readers do for each value of a record
-    procedure ReadFieldValue(AIndex: IntegerRAL; AValue: TRALJSONValue);
   published
     property FormatOptions: TRALJSONFormatOptions read FFormatOptions
       write FFormatOptions;
@@ -84,44 +84,42 @@ type
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
     procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
   public
+    function DataSetToJSON(ADataset: TDataSet): StringRAL;
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
-    function DataSetToJSON(ADataset: TDataSet): StringRAL;
   end;
 
   { TRALStorageJSON_DBWare }
 
   TRALStorageJSON_DBWare = class(TRALStorageJSON)
   protected
-    procedure WriteFields(ADataset: TDataSet; AStream: TStream);
-    procedure WriteHeaders(ADataset: TDataSet; AStream: TStream);
-    procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
-
     procedure ReadFields(ADataset: TDataSet; AJSON: TRALJSONObject);
     function ReadHeaders(AJSON: TRALJSONObject): Boolean;
     procedure ReadRecords(ADataset: TDataSet; AJSON: TRALJSONObject);
+    procedure WriteFields(ADataset: TDataSet; AStream: TStream);
+    procedure WriteHeaders(ADataset: TDataSet; AStream: TStream);
+    procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
   public
-    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
   end;
 
   { TRALStorageJSONLink }
 
   TRALStorageJSONLink = class(TRALStorageLink)
   private
-    FJSONType: TRALJSONType;
     FFormatOptions: TRALJSONFormatOptions;
+    FJSONType: TRALJSONType;
   protected
     function GetContentType: StringRAL; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    procedure SavePropsToStream(AWriter: TRALBinaryWriter); override;
-    procedure LoadPropsFromStream(AWriter: TRALBinaryWriter); override;
-
     function Clone: TRALStorageLink; override;
     function GetStorage: TRALStorage; override;
+    procedure LoadPropsFromStream(AWriter: TRALBinaryWriter); override;
+    procedure SavePropsToStream(AWriter: TRALBinaryWriter); override;
   published
     property FormatOptions: TRALJSONFormatOptions read FFormatOptions write FFormatOptions;
     property JSONType: TRALJSONType read FJSONType write FJSONType;

@@ -32,17 +32,18 @@ type
   private
     FDescription: string;
     FDisplayName: string;
+    FOnLog: TGetStrProc;
+    FOnReload: TNotifyEvent;
+    FOnStart: TNotifyEvent;
+    FOnStop: TNotifyEvent;
+    FReloadAsked: boolean;
     FServer: TRALServer;
     FServiceName: string;
     FShutdownTimeout: IntegerRAL;
     FStartArgs: string;
     FStopEvent: TEvent;
     FUnitDir: string;
-    FOnLog: TGetStrProc;
-    FOnReload: TNotifyEvent;
-    FOnStart: TNotifyEvent;
-    FOnStop: TNotifyEvent;
-    FReloadAsked: boolean;
+
     procedure SetServer(const AValue: TRALServer);
   protected
     procedure Log(const AText: string);
@@ -57,27 +58,35 @@ type
 
     /// The command of the command line (first argument).
     class function CommandOf(const AArg: string): TRALServiceCommand;
+    /// Installs the service (Windows) or writes the systemd unit (Linux).
+    function Install: boolean;
+    /// Asks the running host to stop (as the service manager or a signal does).
+    procedure RequestStop;
     { Does what the command line asks and returns True; False when the program
       was not started by the service manager and got no command (a VCL or LCL
       program then opens its window). On Linux, no command is the daemon. }
     function Run: boolean;
     { Runs in the foreground until Ctrl+C (SIGINT/SIGTERM on Linux). }
     procedure RunConsole;
-    /// Installs the service (Windows) or writes the systemd unit (Linux).
-    function Install: boolean;
-    /// Removes the service or the unit.
-    function Uninstall: boolean;
     /// Asks the system to start the service.
     function StartService: boolean;
     /// Asks the system to stop the service.
     function StopService: boolean;
-    /// Asks the running host to stop (as the service manager or a signal does).
-    procedure RequestStop;
+    /// Removes the service or the unit.
+    function Uninstall: boolean;
   published
     /// Text of the service in the system's list.
     property Description: string read FDescription write FDescription;
     /// Name shown by the service manager ('' = ServiceName).
     property DisplayName: string read FDisplayName write FDisplayName;
+    /// Lines about what the host does (installed, started, stopping...).
+    property OnLog: TGetStrProc read FOnLog write FOnLog;
+    /// SIGHUP on Linux, "paramchange" on Windows: reload the configuration.
+    property OnReload: TNotifyEvent read FOnReload write FOnReload;
+    /// The server is up.
+    property OnStart: TNotifyEvent read FOnStart write FOnStart;
+    /// The server stopped.
+    property OnStop: TNotifyEvent read FOnStop write FOnStop;
     /// The server the host starts and stops.
     property Server: TRALServer read FServer write SetServer;
     /// Name of the service or the systemd unit.
@@ -88,14 +97,6 @@ type
     property StartArgs: string read FStartArgs write FStartArgs;
     /// Linux: folder of the unit file; empty = /etc/systemd/system.
     property UnitDir: string read FUnitDir write FUnitDir;
-    /// Lines about what the host does (installed, started, stopping...).
-    property OnLog: TGetStrProc read FOnLog write FOnLog;
-    /// SIGHUP on Linux, "paramchange" on Windows: reload the configuration.
-    property OnReload: TNotifyEvent read FOnReload write FOnReload;
-    /// The server is up.
-    property OnStart: TNotifyEvent read FOnStart write FOnStart;
-    /// The server stopped.
-    property OnStop: TNotifyEvent read FOnStop write FOnStop;
   end;
 
 /// Sends a systemd notification ('READY=1', 'STOPPING=1', 'WATCHDOG=1'); False outside systemd.

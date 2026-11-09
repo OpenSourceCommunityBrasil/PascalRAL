@@ -34,21 +34,24 @@ type
   { Owns the library handle. Bound procedures are valid until this object is freed. }
   TRALDynLibs = class(TInterfacedObject, IRALDynLibs)
   private
-    FHandle: NativeUInt;
     FFilename: string;
+    FHandle: NativeUInt;
+
     function GetFilename: string;
     function GetHandle: NativeUInt;
   public
     constructor Create(const Filename: string);
     destructor Destroy; override;
-    function TryBind(
-      var Target;
-      const Symbol: AnsiString
-    ): Boolean;
+
     procedure Bind(
       var Target;
       const Symbol: AnsiString
     );
+    function TryBind(
+      var Target;
+      const Symbol: AnsiString
+    ): Boolean;
+
     property Filename: string read FFilename;
     property Handle: NativeUInt read FHandle;
   end;

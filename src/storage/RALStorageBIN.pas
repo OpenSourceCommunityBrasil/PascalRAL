@@ -14,51 +14,48 @@ type
 
   TRALStorageBIN = class(TRALStorage)
   protected
+    function ReadBoolean(AStream: TStream): Boolean;
+    function ReadByte(AStream: TStream): Byte;
+    function ReadDateTime(AStream: TStream): TDateTime;
+    /// Reads exactly ACount bytes or raises - every Read* goes through it
+    procedure ReadExact(AStream: TStream; var ABuffer; ACount: IntegerRAL);
+    procedure ReadFields(ADataset: TDataSet; AStream: TStream);
+    function ReadFloat(AStream: TStream): Double;
+    // read
+    function ReadHeader(AStream: TStream): boolean;
+    function ReadInt64(AStream: TStream): Int64RAL;
+    function ReadInteger(AStream: TStream): Integer;
+    function ReadLongWord(AStream: TStream): LongWord;
+    /// Reads what WriteMemo writes into AField, which may be nil
+    procedure ReadMemo(AStream: TStream; AField: TField);
+    procedure ReadRecords(ADataset: TDataSet; AStream: TStream);
+    function ReadShortint(AStream: TStream): Shortint;
+    function ReadSmallint(AStream: TStream): Smallint;
+    function ReadStream(AStream: TStream): TStream;
+    function ReadString(AStream: TStream): StringRAL;
+    function ReadWord(AStream: TStream): Word;
+    procedure WriteBoolean(AStream: TStream; AValue: Boolean);
+    procedure WriteByte(AStream: TStream; AValue: Byte);
+    procedure WriteDateTime(AStream: TStream; AValue: TDateTime);
+    procedure WriteFields(ADataset: TDataSet; AStream: TStream);
+    procedure WriteFloat(AStream: TStream; AValue: Double);
     // write
     procedure WriteHeader(AStream: TStream);
-    procedure WriteFields(ADataset: TDataSet; AStream: TStream);
-    procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
-
-    procedure WriteString(AStream: TStream; AValue: StringRAL);
-    procedure WriteShortint(AStream: TStream; AValue: Shortint);
-    procedure WriteByte(AStream: TStream; AValue: Byte);
-    procedure WriteLongWord(AStream: TStream; AValue: LongWord);
-    procedure WriteSmallint(AStream: TStream; AValue: Smallint);
-    procedure WriteWord(AStream: TStream; AValue: Word);
-    procedure WriteInteger(AStream: TStream; AValue: Integer);
     procedure WriteInt64(AStream: TStream; AValue: Int64RAL);
-    procedure WriteBoolean(AStream: TStream; AValue: Boolean);
-    procedure WriteFloat(AStream: TStream; AValue: Double);
-    procedure WriteDateTime(AStream: TStream; AValue: TDateTime);
-    procedure WriteStream(AStream: TStream; AValue: TStream);
+    procedure WriteInteger(AStream: TStream; AValue: Integer);
+    procedure WriteLongWord(AStream: TStream; AValue: LongWord);
     /// The text of a memo, as UTF-16LE in the layout WriteStream gives a
     /// stream - never the field's own bytes (see the implementation)
     procedure WriteMemo(AStream: TStream; AField: TField);
-
-    // read
-    function ReadHeader(AStream: TStream): boolean;
-    procedure ReadFields(ADataset: TDataSet; AStream: TStream);
-    procedure ReadRecords(ADataset: TDataSet; AStream: TStream);
-
-    /// Reads exactly ACount bytes or raises - every Read* goes through it
-    procedure ReadExact(AStream: TStream; var ABuffer; ACount: IntegerRAL);
-    function ReadString(AStream: TStream): StringRAL;
-    function ReadShortint(AStream: TStream): Shortint;
-    function ReadByte(AStream: TStream): Byte;
-    function ReadLongWord(AStream: TStream): LongWord;
-    function ReadSmallint(AStream: TStream): Smallint;
-    function ReadWord(AStream: TStream): Word;
-    function ReadInteger(AStream: TStream): Integer;
-    function ReadInt64(AStream: TStream): Int64RAL;
-    function ReadBoolean(AStream: TStream): Boolean;
-    function ReadFloat(AStream: TStream): Double;
-    function ReadDateTime(AStream: TStream): TDateTime;
-    function ReadStream(AStream: TStream): TStream;
-    /// Reads what WriteMemo writes into AField, which may be nil
-    procedure ReadMemo(AStream: TStream; AField: TField);
+    procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
+    procedure WriteShortint(AStream: TStream; AValue: Shortint);
+    procedure WriteSmallint(AStream: TStream; AValue: Smallint);
+    procedure WriteStream(AStream: TStream; AValue: TStream);
+    procedure WriteString(AStream: TStream; AValue: StringRAL);
+    procedure WriteWord(AStream: TStream; AValue: Word);
   public
-    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
   end;
 
   { TRALStorageBINLink }

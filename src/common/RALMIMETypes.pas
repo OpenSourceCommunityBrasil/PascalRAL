@@ -179,7 +179,7 @@ type
 
   TRALMIMEType = class
   private
-    FInternalMIMEList: TStringList;
+    FExtCount: IntegerRAL;
     { extension -> type by hash, for GetMIMEType - which runs for every file
       served. The binary search over the list cut the name out of an entry and
       lowercased it at every probe, two strings each, twenty per lookup; and
@@ -189,17 +189,16 @@ type
       slots a power of two, kept at most half full }
     FExtKeys: TRALMIMEStrings;
     FExtTypes: TRALMIMEStrings;
-    FExtCount: IntegerRAL;
-    function ExtSlot(const AExt: StringRAL; out AFound: boolean): IntegerRAL;
-    procedure ExtAdd(const AExt, AType: StringRAL);
-
     class var FInstance: TRALMIMEType;
-  protected
-    procedure SetDefaultTypes;
-    function GetSystemTypes: boolean;
+    FInternalMIMEList: TStringList;
 
+    procedure ExtAdd(const AExt, AType: StringRAL);
+    function ExtSlot(const AExt: StringRAL; out AFound: boolean): IntegerRAL;
+  protected
+    function GetSystemTypes: boolean;
     // busca binaria
     function IndexOfExt(AExt: StringRAL): IntegerRAL;
+    procedure SetDefaultTypes;
 
     {$IF DEFINED(RALApple) or DEFINED(RALAppleFPC)}
       function GetMimeTypeMACOs(AExtension: string): string;
@@ -209,12 +208,10 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    function AddMIMEType(AExt, AType : StringRAL) : boolean;
     class function GetInstance: TRALMIMEType; static;
-
     function GetMIMEContentExt(const AContentType: StringRAL): StringRAL;
     function GetMIMEType(const AFileName: StringRAL): StringRAL;
-
-    function AddMIMEType(AExt, AType : StringRAL) : boolean;
     {$IFDEF RALDEBUG}
     function GetInternalList: StringRAL;
     {$ENDIF}

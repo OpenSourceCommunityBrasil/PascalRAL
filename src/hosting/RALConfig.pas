@@ -27,61 +27,60 @@ type
     FFile: TStringList;
     FFileAge: TDateTime;
     FFileName: string;
+    FOnChange: TNotifyEvent;
     FReloadableProperties: TStrings;
     FUseCommandLine: boolean;
     FUseEnvironment: boolean;
-    FOnChange: TNotifyEvent;
+
     procedure SetReloadableProperties(const AValue: TStrings);
   protected
     /// Applies the keys under APrefix to AObject; AOnlyReloadable leaves the rest.
     procedure ApplyTo(AObject: TPersistent; const APrefix: string; AOnlyReloadable: boolean);
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure ReadCommandLine;
-    procedure ReadFile;
     /// The value of the key in the environment ('' and False when absent).
     function ReadEnvironment(const AKey: string; out AValue: string): boolean;
+    procedure ReadFile;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    { Applies the keys under APrefix ('Server' -> Server.Port...) to the
+      published properties of AObject and its sub-objects, and remembers it
+      for Reload. An empty prefix uses the bare property names. }
+    procedure Bind(AObject: TPersistent; const APrefix: string);
     /// The environment variable of a key: Server.Port -> RAL_SERVER__PORT.
     function EnvName(const AKey: string): string;
+    /// The value of the key, or ADefault.
+    function Get(const AKey: string; const ADefault: string = ''): string;
+    function GetBool(const AKey: string; ADefault: boolean = False): boolean;
+    function GetFloat(const AKey: string; ADefault: Double = 0): Double;
+    function GetInt(const AKey: string; ADefault: Int64 = 0): Int64;
+    /// The keys known from the defaults, the file and the command line.
+    procedure GetKeys(AList: TStrings);
+    /// True when some source has the key.
+    function Has(const AKey: string): boolean;
     /// Reads the file and the command line again (the environment is read per key).
     procedure Load;
-    /// Fills AList with name=value pairs from a JSON text (nested objects are dotted).
-    class procedure ParseJSON(const AText: string; AList: TStrings);
-    /// Fills AList from INI text: [Server] Port=1 is Server.Port=1.
-    class procedure ParseINI(const AText: string; AList: TStrings);
     /// Fills AList from .env text: SERVER__PORT=1 is SERVER.PORT=1.
     procedure ParseDotEnv(const AText: string; AList: TStrings);
+    /// Fills AList from INI text: [Server] Port=1 is Server.Port=1.
+    class procedure ParseINI(const AText: string; AList: TStrings);
+    /// Fills AList with name=value pairs from a JSON text (nested objects are dotted).
+    class procedure ParseJSON(const AText: string; AList: TStrings);
     { Loads again and applies to the bound objects the keys of
       ReloadableProperties (all when the list is empty); True when a value
       changed. OnChange fires then. }
     function Reload: boolean;
     /// Reload when the file changed on disk since the last read.
     function ReloadIfChanged: boolean;
-
-    /// True when some source has the key.
-    function Has(const AKey: string): boolean;
-    /// The value of the key, or ADefault.
-    function Get(const AKey: string; const ADefault: string = ''): string;
-    function GetInt(const AKey: string; ADefault: Int64 = 0): Int64;
-    function GetBool(const AKey: string; ADefault: boolean = False): boolean;
-    function GetFloat(const AKey: string; ADefault: Double = 0): Double;
-    /// Which source gave the key's value.
-    function SourceOf(const AKey: string): TRALConfigSource;
-    /// A default, below every source.
-    procedure SetDefault(const AKey, AValue: string);
-    /// The keys known from the defaults, the file and the command line.
-    procedure GetKeys(AList: TStrings);
     { The value as a log may show it: keys with Password, Secret, Token or Key
       in the name come out as '***'. }
     function SafeValue(const AKey: string): string;
-
-    { Applies the keys under APrefix ('Server' -> Server.Port...) to the
-      published properties of AObject and its sub-objects, and remembers it
-      for Reload. An empty prefix uses the bare property names. }
-    procedure Bind(AObject: TPersistent; const APrefix: string);
+    /// A default, below every source.
+    procedure SetDefault(const AKey, AValue: string);
+    /// Which source gave the key's value.
+    function SourceOf(const AKey: string): TRALConfigSource;
     /// Forgets the binding of AObject.
     procedure Unbind(AObject: TPersistent);
   published
@@ -90,14 +89,14 @@ type
     { The file: .json, .ini or .env (by extension). --config=<file> on the
       command line replaces it. }
     property FileName: string read FFileName write FFileName;
+    /// Reload changed something.
+    property OnChange: TNotifyEvent read FOnChange write FOnChange;
     /// Keys that Reload applies (Server.MaxConnections); empty = all.
     property ReloadableProperties: TStrings read FReloadableProperties write SetReloadableProperties;
     /// Read --Key=Value arguments.
     property UseCommandLine: boolean read FUseCommandLine write FUseCommandLine default True;
     /// Read the environment variables.
     property UseEnvironment: boolean read FUseEnvironment write FUseEnvironment default True;
-    /// Reload changed something.
-    property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
 
 /// True when a key names a secret (Password, Secret, Token, Key, Pwd).

@@ -13,14 +13,13 @@ type
 
   TRALStorageBSON = class(TRALStorage)
   protected
-    procedure WriteFields(ADataset : TDataSet; ADocument : TRALJSONObject);
-    procedure WriteRecords(ADataset : TDataSet; ADocument : TRALJSONObject);
-
     procedure ReadFields(ADataset : TDataSet; ADocument : TRALJSONObject);
     procedure ReadRecords(ADataset : TDataSet; ADocument : TRALJSONObject);
+    procedure WriteFields(ADataset : TDataSet; ADocument : TRALJSONObject);
+    procedure WriteRecords(ADataset : TDataSet; ADocument : TRALJSONObject);
   public
-    procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
+    procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
   end;
 
   { TRALStorageBSONLink }

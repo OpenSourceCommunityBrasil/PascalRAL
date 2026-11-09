@@ -39,6 +39,7 @@ type
   public
     /// AMessage, with ACloseCode (RALWSClose*; 0 for a failed handshake).
     constructor CreateClose(ACloseCode: Word; const AMessage: string);
+
     /// The close code the failure calls for; 0 for a failed handshake.
     property CloseCode: Word read FCloseCode;
   end;
@@ -65,17 +66,17 @@ type
     FPayload: TBytes;
     FPayloadHead: IntegerRAL;
     FPayloadTail: IntegerRAL;
-    FRole: TRALWSRole;
     FPeerProtocols: StringRAL;
     FProtocol: StringRAL;
     FRequestHeaders: TStringList;
+    FRole: TRALWSRole;
 
     procedure AppendIn(const ABuffer; ACount: IntegerRAL);
     procedure AppendPayload(AData: PByte; ACount: IntegerRAL);
-    procedure FlushOut;
     function Fill: IntegerRAL;
-    procedure QueueFrame(AOpcode: Byte; AData: PByte; ACount: IntegerRAL);
+    procedure FlushOut;
     function ParseFrames: boolean;
+    procedure QueueFrame(AOpcode: Byte; AData: PByte; ACount: IntegerRAL);
     function ServerHandshakeParse: boolean;
   public
     /// WebSocket over AInner in ARole.
@@ -83,26 +84,25 @@ type
       AOwnsInner: boolean = True);
     destructor Destroy; override;
 
+    procedure Close; override;
+    function Flush: boolean; override;
     { Client handshake: GET APath, asking for Protocol when set, to AHost (sent in
       Host; with APort when it is not the default), within ATimeout ms.
       AHeaders are added to the request (name: value lines) }
     procedure Handshake(const AHost: StringRAL; APort: IntegerRAL; const APath: StringRAL;
       ASecure: boolean; ATimeout: IntegerRAL; AHeaders: TStrings = nil);
+    function HasBuffered: boolean; override;
+    /// True while frames wait to be written.
+    function HasPendingWrite: boolean;
+    function Read(var ABuffer; ACount: IntegerRAL): IntegerRAL; override;
+    /// Sends a close frame with ACode, once.
+    procedure SendClose(ACode: Word);
     { One step of the server handshake; True when it finished (the 101 was
       queued). Raises when the request is not a WebSocket one for APath offering
       Protocol (when set); a 400 or 404 is sent first }
     function ServerHandshakeStep(const APath: StringRAL): boolean;
-    /// Sends a close frame with ACode, once.
-    procedure SendClose(ACode: Word);
-
-    procedure Close; override;
-    function HasBuffered: boolean; override;
-    function Read(var ABuffer; ACount: IntegerRAL): IntegerRAL; override;
     function WantedEvents: Word; override;
     function Write(const ABuffer; ACount: IntegerRAL): IntegerRAL; override;
-    /// True while frames wait to be written.
-    function HasPendingWrite: boolean;
-    function Flush: boolean; override;
 
     /// The handshake is over.
     property HandshakeDone: boolean read FHandshakeDone;

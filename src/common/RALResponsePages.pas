@@ -11,19 +11,18 @@ type
 
   TRALResponsePage = class(TCollectionItem)
   private
-    FStatusCode: IntegerRAL;
     FPage: TStrings;
+    FStatusCode: IntegerRAL;
   protected
-    function GetDisplayName: string; override;
-
-    procedure SetPage(const AValue: TStrings);
     procedure AssignTo(Dest: TPersistent); override;
+    function GetDisplayName: string; override;
+    procedure SetPage(const AValue: TStrings);
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
   published
-    property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
     property Page: TStrings read FPage write SetPage;
+    property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
   end;
 
   { TRALResponsePages }
@@ -34,10 +33,10 @@ type
   public
     constructor Create(AOwner: TPersistent);
 
-    procedure CreatePage(AStatusCode: IntegerRAL; AHTMLPage: StringRAL = '');
     procedure CreateDefaultPages;
-
+    procedure CreatePage(AStatusCode: IntegerRAL; AHTMLPage: StringRAL = '');
     class function GetHTTPResponsePage(AStatusCode: IntegerRAL): StringRAL;
+
     property HTMLPage[AStatusCode: IntegerRAL] : StringRAL read GetHTMLPage;
   end;
 

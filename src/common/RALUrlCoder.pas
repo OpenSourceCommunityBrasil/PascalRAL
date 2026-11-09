@@ -12,10 +12,10 @@ type
   { TRALHTTPCoder }
 
   TRALHTTPCoder = class
-    class function DecodeURL(const AUrl: StringRAL): StringRAL;
-    class function EncodeURL(const AUrl: StringRAL): StringRAL;
     class function DecodeHTML(const AHtml: StringRAL): StringRAL;
+    class function DecodeURL(const AUrl: StringRAL): StringRAL;
     class function EncodeHTML(const AHtml: StringRAL): StringRAL;
+    class function EncodeURL(const AUrl: StringRAL): StringRAL;
   end;
 
 implementation

@@ -30,23 +30,24 @@ type
     FHandle: THandle;
     {$ENDIF}
     FRequestLevel: TRALSystemLogLevel;
+
     procedure SetIdent(const AValue: string);
     procedure SetLogPlugin(const AValue: TRALLogPlugin);
   protected
+    procedure CloseLog;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure OpenLog;
-    procedure CloseLog;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
     /// Writes AText at ALevel; lines below Level are dropped.
     procedure Write(ALevel: TRALSystemLogLevel; const AText: string);
-    /// Writes AText at the Level (a TGetStrProc: the service host's OnLog).
-    procedure WriteText(const AText: string);
     /// The TRALOnLogLine of a log plugin: a 5xx is an error, a 4xx a warning.
     procedure WriteRequestLine(Sender: TObject; ARequest: TRALRequest;
       const ALine: StringRAL);
+    /// Writes AText at the Level (a TGetStrProc: the service host's OnLog).
+    procedure WriteText(const AText: string);
   published
     /// The program's name in syslog, the source in the Event Log.
     property Ident: string read FIdent write SetIdent;

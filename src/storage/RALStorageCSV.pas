@@ -28,16 +28,16 @@ type
   public
     constructor Create;
 
-    procedure SavePropsToStream(AWriter: TRALBinaryWriter);
     procedure LoadPropsFromStream(AWriter: TRALBinaryWriter);
+    procedure SavePropsToStream(AWriter: TRALBinaryWriter);
   published
     property BoolFalseStr: StringRAL read FBoolFalseStr write FBoolFalseStr;
     property BoolTrueStr: StringRAL read FBoolTrueStr write FBoolTrueStr;
-    property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
-    property DecimalSeparator: CharRAL read FDecimalSeparator write FDecimalSeparator;
     property ColumnSeparator: CharRAL read FColumnSeparator write FColumnSeparator;
     property CustomDateFormat: StringRAL read FCustomDateFormat write FCustomDateFormat;
     property CustomTimeFormat: StringRAL read FCustomTimeFormat write FCustomTimeFormat;
+    property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
+    property DecimalSeparator: CharRAL read FDecimalSeparator write FDecimalSeparator;
     property ThousandSeparator: CharRAL read FThousandSeparator write FThousandSeparator;
   end;
 
@@ -51,22 +51,21 @@ type
     function CSVFormatBoolean(AValue: Boolean): StringRAL;
     function CSVFormatDateTime(AValue: TDateTime): StringRAL;
     function CSVFormatFloat(AValue: Double): StringRAL;
-    function CSVFormatStream(AValue: TStream): StringRAL;
     /// a memo quoted whole, line breaks included
     function CSVFormatMemo(AValue: StringRAL): StringRAL;
-    function CSVFormatString(AValue: StringRAL): StringRAL;
     /// format settings built from FormatOptions on top of the machine defaults
     function CSVFormatSettings: TFormatSettings;
+    function CSVFormatStream(AValue: TStream): StringRAL;
+    function CSVFormatString(AValue: StringRAL): StringRAL;
     function CSVIsQuoted(const AValue: StringRAL): boolean;
+    function CSVParseDateTime(const AValue: StringRAL; var ADate: TDateTime): boolean;
     /// strips the outer quotes of a value that came quoted
     function CSVUnquote(const AValue: StringRAL): StringRAL;
-    function CSVParseDateTime(const AValue: StringRAL; var ADate: TDateTime): boolean;
     procedure ReadFields(ADataset: TDataSet; AStream: TStream);
     function ReadLine(AStream: TStream): TStringList;
     procedure ReadRecords(ADataset: TDataSet; AStream: TStream);
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
     procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
-
     procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
   public
     constructor Create;
@@ -91,11 +90,10 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    procedure SavePropsToStream(AWriter: TRALBinaryWriter); override;
-    procedure LoadPropsFromStream(AWriter: TRALBinaryWriter); override;
-
     function Clone: TRALStorageLink; override;
     function GetStorage: TRALStorage; override;
+    procedure LoadPropsFromStream(AWriter: TRALBinaryWriter); override;
+    procedure SavePropsToStream(AWriter: TRALBinaryWriter); override;
   published
     property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
     property UseUTF8BOM: boolean read FUseUTF8BOM write FUseUTF8BOM;
