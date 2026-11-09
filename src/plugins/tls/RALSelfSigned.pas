@@ -80,6 +80,7 @@ type
   public
     constructor Create(AOwner: TRALSelfSignedPlugin);
     destructor Destroy; override;
+
     /// asks the thread to end, without waiting
     procedure Stop;
     /// wakes it now, to check at once
@@ -91,39 +92,52 @@ type
   TRALSelfSignedPlugin = class(TRALPlugin)
   private
     FAutoRenew: boolean;
+    FCertificate: TRALX509Certificate;
     FCheckInterval: IntegerRAL;
     FCommonName: StringRAL;
     FFileName: StringRAL;
     FFolder: StringRAL;
     FHostNames: TStrings;
+    FKey: TRALRSAKey;
     FKeyBits: IntegerRAL;
+    FLastError: string;
+    FLock: TCriticalSection;
+    FOnCertificateCreated: TRALSelfSignedCertEvent;
+    FOnCertificateRenewed: TRALSelfSignedRenewEvent;
+    FOnError: TRALSelfSignedErrorEvent;
+    FOwnFiles: boolean;
     FPfxPassword: StringRAL;
     FRenewBeforeDays: IntegerRAL;
-    FValidDays: IntegerRAL;
-
-    FLock: TCriticalSection;
-    FCertificate: TRALX509Certificate;
-    FKey: TRALRSAKey;
-    FState: TRALSelfSignedState;
-    FWatcher: TRALSelfSignedWatcher;
     { set while this plugin restarts its own server: the stop and start it
       causes are its own, and must not stop the watcher or provision again }
     FRestarting: boolean;
+    { the password of the PFX of this run, when PfxPassword is empty: the PEM
+      files are the lasting copy, the PFX is made again at every start }
+    FRunPassword: StringRAL;
+    FState: TRALSelfSignedState;
     { where the certificate in use is written when it is renewed }
     FTargetCert: string;
     FTargetKey: string;
     FTargetPfx: string;
     FTargetPfxPassword: StringRAL;
-    FOwnFiles: boolean;
-    { the password of the PFX of this run, when PfxPassword is empty: the PEM
-      files are the lasting copy, the PFX is made again at every start }
-    FRunPassword: StringRAL;
-    FLastError: string;
+    FValidDays: IntegerRAL;
+    FWatcher: TRALSelfSignedWatcher;
 
-    FOnCertificateCreated: TRALSelfSignedCertEvent;
-    FOnCertificateRenewed: TRALSelfSignedRenewEvent;
-    FOnError: TRALSelfSignedErrorEvent;
-
+    /// takes AKey and ACert as the ones in use (frees the previous)
+    procedure Adopt(AKey: TRALRSAKey; ACert: TRALX509Certificate);
+    /// hands the certificate in use to the engine; restarts the server when
+    /// the engine says it has to
+    procedure Apply;
+    function BaseName: string;
+    /// renews when due (the watcher calls it)
+    procedure CheckRenewal;
+    procedure DoRenew;
+    function EffectiveCommonName(AHosts: TStrings): StringRAL;
+    function EffectivePfxPassword: StringRAL;
+    /// the host names of a new certificate: HostNames, or the defaults
+    procedure FillHostNames(AList: TStrings);
+    /// the certificate in use in every form the engines take
+    procedure FillTLS(out ATLS: TRALTLSCertificate);
     function GetCertificateFile: string;
     function GetFingerprint: StringRAL;
     function GetFingerprintSHA1: StringRAL;
@@ -131,66 +145,37 @@ type
     function GetNotBefore: TDateTime;
     function GetPfxFile: string;
     function GetPrivateKeyFile: string;
-    procedure SetCheckInterval(AValue: IntegerRAL);
-    procedure SetHostNames(AValue: TStrings);
-    procedure SetKeyBits(AValue: IntegerRAL);
-    procedure SetValidDays(AValue: IntegerRAL);
-
-    function ServerOf: TRALServer;
-    function BaseName: string;
     /// whether ACert is the one in this plugin's own files
     function IsOwnCertificate(ACert: TRALX509Certificate): boolean;
-    function EffectivePfxPassword: StringRAL;
-    /// the host names of a new certificate: HostNames, or the defaults
-    procedure FillHostNames(AList: TStrings);
-    function EffectiveCommonName(AHosts: TStrings): StringRAL;
     /// a new key and certificate; ACN and AHosts empty = the properties
     procedure MakeCertificate(const ACN: StringRAL; AHosts: TStrings;
       out AKey: TRALRSAKey; out ACert: TRALX509Certificate);
-    /// takes AKey and ACert as the ones in use (frees the previous)
-    procedure Adopt(AKey: TRALRSAKey; ACert: TRALX509Certificate);
-    /// writes the certificate in use to the target files and the PFX
-    procedure SaveTarget;
-    /// the certificate in use in every form the engines take
-    procedure FillTLS(out ATLS: TRALTLSCertificate);
-    /// the plugin's own files in Folder: loaded when good, made otherwise
-    procedure UseOwnFiles(AForceNew: boolean);
+    /// decides, makes and hands the certificate to the engine
+    procedure Provision;
     /// reads what the engine was given; nil when it cannot be read. AMissing
     /// says the engine names files that do not exist
     function ReadEngineCertificate(const ATLS: TRALTLSCertificate;
       out AMissing: boolean): TRALX509Certificate;
-    /// decides, makes and hands the certificate to the engine
-    procedure Provision;
-    /// hands the certificate in use to the engine; restarts the server when
-    /// the engine says it has to
-    procedure Apply;
-    /// renews when due (the watcher calls it)
-    procedure CheckRenewal;
-    procedure DoRenew;
+    procedure ReportError(AError: Exception);
+    /// writes the certificate in use to the target files and the PFX
+    procedure SaveTarget;
+    function ServerOf: TRALServer;
+    procedure SetCheckInterval(AValue: IntegerRAL);
+    procedure SetHostNames(AValue: TStrings);
+    procedure SetKeyBits(AValue: IntegerRAL);
+    procedure SetValidDays(AValue: IntegerRAL);
     procedure StartWatcher;
     procedure StopWatcher;
-    procedure ReportError(AError: Exception);
+    /// the plugin's own files in Folder: loaded when good, made otherwise
+    procedure UseOwnFiles(AForceNew: boolean);
   protected
     procedure Loaded; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    procedure ServerActivating; override;
-    procedure ServerDeactivating; override;
-
-    /// Makes a new key and certificate from the properties and saves them in
-    /// Folder, whatever is there. On a running server it takes over at once
-    procedure Generate;
-    /// The certificate in Folder when it is good (key matches, names match,
-    /// not due); a new one otherwise
-    procedure LoadOrGenerate;
-    /// A new certificate now, with the names of the one in use. On a running
-    /// server the engine takes it without stopping
-    procedure Renew;
-    /// Whether the certificate in use expires within RenewBeforeDays (or is
-    /// expired); True when there is none
-    function NeedsRenewal: boolean;
+    /// The certificate in use, as PEM
+    function CertificatePEM: StringRAL;
     /// Writes the fingerprints to AFileName, one Name=Value per line: SHA256
     /// (colon separated), SHA1, Pin (the value for TRALClient.SSL.Pins),
     /// Subject, NotBefore and NotAfter (UTC, ISO 8601). Empty = Folder, with
@@ -198,27 +183,39 @@ type
     procedure ExportFingerprint(const AFileName: string = '');
     /// The fingerprint as text with ASeparator between the bytes ('AB:CD:...')
     function FingerprintText(const ASeparator: StringRAL = ':'): StringRAL;
-    /// The certificate in use, as PEM
-    function CertificatePEM: StringRAL;
+    /// Makes a new key and certificate from the properties and saves them in
+    /// Folder, whatever is there. On a running server it takes over at once
+    procedure Generate;
+    /// The certificate in Folder when it is good (key matches, names match,
+    /// not due); a new one otherwise
+    procedure LoadOrGenerate;
+    /// Whether the certificate in use expires within RenewBeforeDays (or is
+    /// expired); True when there is none
+    function NeedsRenewal: boolean;
+    /// A new certificate now, with the names of the one in use. On a running
+    /// server the engine takes it without stopping
+    procedure Renew;
+    procedure ServerActivating; override;
+    procedure ServerDeactivating; override;
 
     /// The certificate in use; nil before any. Belongs to the plugin
     property Certificate: TRALX509Certificate read FCertificate;
     /// Files of the certificate in use: the plugin's own, or the ones the
     /// engine had when the plugin renewed a certificate of the application
     property CertificateFile: string read GetCertificateFile;
-    property PrivateKeyFile: string read GetPrivateKeyFile;
-    property PfxFile: string read GetPfxFile;
     /// SHA-256 of the certificate in use, uppercase hex with no separator -
     /// the format of TRALClient.SSL.Pins and of TRALCertInfo.Fingerprint
     property Fingerprint: StringRAL read GetFingerprint;
     /// SHA-1, the thumbprint of Windows (store, netsh)
     property FingerprintSHA1: StringRAL read GetFingerprintSHA1;
-    /// validity of the certificate in use, UTC
-    property NotBefore: TDateTime read GetNotBefore;
-    property NotAfter: TDateTime read GetNotAfter;
-    property State: TRALSelfSignedState read FState;
     /// the message of the last failure, empty when there was none
     property LastError: string read FLastError;
+    property NotAfter: TDateTime read GetNotAfter;
+    /// validity of the certificate in use, UTC
+    property NotBefore: TDateTime read GetNotBefore;
+    property PfxFile: string read GetPfxFile;
+    property PrivateKeyFile: string read GetPrivateKeyFile;
+    property State: TRALSelfSignedState read FState;
   published
     /// Renew while the server runs, ahead of the expiry
     property AutoRenew: boolean read FAutoRenew write FAutoRenew default True;
@@ -237,14 +234,6 @@ type
     property HostNames: TStrings read FHostNames write SetHostNames;
     /// Size of the RSA key; 2048 is what every client accepts
     property KeyBits: IntegerRAL read FKeyBits write SetKeyBits default RALRSADefaultBits;
-    /// Password of the PFX; empty = a random one for each run (the PFX is
-    /// made again from the PEM files at every start)
-    property PfxPassword: StringRAL read FPfxPassword write FPfxPassword;
-    /// Renew this many days before the expiry
-    property RenewBeforeDays: IntegerRAL read FRenewBeforeDays write FRenewBeforeDays default 30;
-    /// Validity of a new certificate, in days
-    property ValidDays: IntegerRAL read FValidDays write SetValidDays default 365;
-
     /// A certificate was made where there was none. Fires on the thread that
     /// made it: the server's starting thread, or the watcher
     property OnCertificateCreated: TRALSelfSignedCertEvent read FOnCertificateCreated
@@ -256,6 +245,13 @@ type
     /// Something failed. While starting the exception also goes up and keeps
     /// the server stopped; in the watcher only this event hears it
     property OnError: TRALSelfSignedErrorEvent read FOnError write FOnError;
+    /// Password of the PFX; empty = a random one for each run (the PFX is
+    /// made again from the PEM files at every start)
+    property PfxPassword: StringRAL read FPfxPassword write FPfxPassword;
+    /// Renew this many days before the expiry
+    property RenewBeforeDays: IntegerRAL read FRenewBeforeDays write FRenewBeforeDays default 30;
+    /// Validity of a new certificate, in days
+    property ValidDays: IntegerRAL read FValidDays write SetValidDays default 365;
   end;
 
 /// Where TRALSelfSignedPlugin keeps its files by default: %LOCALAPPDATA%\PascalRAL\

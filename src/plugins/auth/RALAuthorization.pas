@@ -26,10 +26,10 @@ type
   private
     FClaims: TStrings;
     FName: StringRAL;
+    FOnEvaluate: TRALOnEvaluatePolicy;
     FRequireAllRoles: boolean;
     FRoles: StringRAL;
     FScopes: StringRAL;
-    FOnEvaluate: TRALOnEvaluatePolicy;
 
     procedure SetClaims(const AValue: TStrings);
   protected
@@ -46,14 +46,14 @@ type
     property Claims: TStrings read FClaims write SetClaims;
     /// Name routes and groups give in Policy.
     property Name: StringRAL read FName write FName;
+    /// Fired last, with the verdict of the rules above; may change it.
+    property OnEvaluate: TRALOnEvaluatePolicy read FOnEvaluate write FOnEvaluate;
     /// With Roles, every role is needed, not just one.
     property RequireAllRoles: boolean read FRequireAllRoles write FRequireAllRoles default False;
     /// Roles (separated by commas) of which the identity needs one, or all.
     property Roles: StringRAL read FRoles write FRoles;
     /// Scopes (separated by blanks or commas) the scope claim must have, all of them.
     property Scopes: StringRAL read FScopes write FScopes;
-    /// Fired last, with the verdict of the rules above; may change it.
-    property OnEvaluate: TRALOnEvaluatePolicy read FOnEvaluate write FOnEvaluate;
   end;
 
   /// The policies of a TRALAuthorizationPlugin.
@@ -80,6 +80,7 @@ type
   TRALAuthorizationPlugin = class(TRALPlugin)
   private
     FPolicies: TRALAuthPolicies;
+
     procedure SetPolicies(const AValue: TRALAuthPolicies);
   protected
     function Phases: TRALPluginPhases; override;

@@ -112,17 +112,18 @@ type
   TRALJWTKeys = class(TOwnedCollection)
   private
     FLock: TCriticalSection;
+
     function GetKey(AIndex: IntegerRAL): TRALJWTKeyItem;
   public
     constructor Create(AOwner: TPersistent);
     destructor Destroy; override;
 
-    /// Adds an HMAC key.
-    function AddSecret(const AKeyID, ASecret: StringRAL;
-      AAlgorithm: TRALJWTAlgorithm = tjaHSHA256): TRALJWTKeyItem;
     /// Adds an RS*/ES* key from its private key in PEM.
     function AddPrivateKey(const AKeyID, APEM: StringRAL;
       AAlgorithm: TRALJWTAlgorithm = tjaRS256): TRALJWTKeyItem;
+    /// Adds an HMAC key.
+    function AddSecret(const AKeyID, ASecret: StringRAL;
+      AAlgorithm: TRALJWTAlgorithm = tjaHSHA256): TRALJWTKeyItem;
     /// The key named AKeyID (exact), not retired; nil when there is none.
     function Find(const AKeyID: StringRAL): TRALJWTKeyItem;
     /// The public keys of the RS*/ES* keys not retired, as a JWK set (RFC 7517).
@@ -137,28 +138,30 @@ type
   /// BasicAuth for client components
   TRALClientBasicAuth = class(TRALAuthClient)
   private
-    FUserName: StringRAL;
     FPassword: StringRAL;
+    FUserName: StringRAL;
   public
     constructor Create(AOwner: TComponent); overload; override;
     constructor Create(AOwner: TComponent; const AUser: StringRAL;
                        const APassword: StringRAL); overload;
+
     function IsAuthenticated: boolean; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
   published
-    property UserName: StringRAL read FUserName write FUserName;
     property Password: StringRAL read FPassword write FPassword;
+    property UserName: StringRAL read FUserName write FUserName;
   end;
 
   /// BasicAuth for Server components
   TRALServerBasicAuth = class(TRALAuthServer)
   private
     FAuthDialog: boolean;
-    FPassword: StringRAL;
-    FUserName: StringRAL;
-    FPasswords: TRALPasswordList;
     FOnGetRoles: TRALOnGetRoles;
     FOnValidate: TRALOnValidate;
+    FPassword: StringRAL;
+    FPasswords: TRALPasswordList;
+    FUserName: StringRAL;
+
     procedure SetPasswords(const AValue: TRALPasswordList);
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -166,19 +169,20 @@ type
     constructor Create(AOwner: TComponent); overload; override;
     constructor Create(AOwner: TComponent; const AUser: StringRAL;
                        const APassword: StringRAL); overload;
+
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
     property AuthDialog: boolean read FAuthDialog write FAuthDialog;
+    { Fired after the user was accepted, to fill the roles of ARequest.Identity
+      (route Roles, policies); the name and scheme are already there. }
+    property OnGetRoles: TRALOnGetRoles read FOnGetRoles write FOnGetRoles;
+    property OnValidate: TRALOnValidate read FOnValidate write FOnValidate;
     property Password: StringRAL read FPassword write FPassword;
     { Users and password hashes (Argon2id, bcrypt...) checked when OnValidate is
       not assigned; UserName and Password still accept their one user. }
     property Passwords: TRALPasswordList read FPasswords write SetPasswords;
     property UserName: StringRAL read FUserName write FUserName;
-    { Fired after the user was accepted, to fill the roles of ARequest.Identity
-      (route Roles, policies); the name and scheme are already there. }
-    property OnGetRoles: TRALOnGetRoles read FOnGetRoles write FOnGetRoles;
-    property OnValidate: TRALOnValidate read FOnValidate write FOnValidate;
   end;
 
   /// JWT Authenticator for Client components
@@ -189,12 +193,18 @@ type
     FRoute: StringRAL;
     FToken: StringRAL;
   protected
+    procedure SetPayload(const AValue: TRALJWTParams);
     procedure SetRoute(const AValue: StringRAL);
     procedure SetToken(const AValue: StringRAL);
-    procedure SetPayload(const AValue: TRALJWTParams);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
+    /// Reads one claim of the token currently held, under the lock.
+    /// This is the thread-safe way in: the raw Payload below is an object this
+    /// class rewrites whenever a token arrives, so reading it while another
+    /// thread refreshes the token walks its lists mid-swap.
+    function GetClaim(const AKey: StringRAL): StringRAL;
     /// A 401: the token is dropped, and the request goes again with a new one
     function HandleChallenge(ARequest: TRALRequest; AResponse: TRALResponse): boolean; override;
     function IsAuthenticated: boolean; override;
@@ -202,14 +212,9 @@ type
     function Prepare(ATransport: TRALAuthTransport; AVars: TStringList;
       AResponse: TRALResponse): IntegerRAL; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
-
-    /// Reads one claim of the token currently held, under the lock.
-    /// This is the thread-safe way in: the raw Payload below is an object this
-    /// class rewrites whenever a token arrives, so reading it while another
-    /// thread refreshes the token walks its lists mid-swap.
-    function GetClaim(const AKey: StringRAL): StringRAL;
   published
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
+    property OnBeforeGetToken;
     /// The decoded claims of the current token. Held between requests and
     /// REPLACED on every SetToken, so anything reading it from another thread
     /// has to hold Lock for as long as it uses what it read - or call GetClaim,
@@ -217,7 +222,6 @@ type
     property Payload: TRALJWTParams read FPayload write SetPayload;
     property Route: StringRAL read FRoute write SetRoute;
     property Token: StringRAL read FToken write SetToken;
-    property OnBeforeGetToken;
   end;
 
   { TRALServerJWTAuth }
@@ -226,50 +230,51 @@ type
   TRALServerJWTAuth = class(TRALAuthServer)
   private
     FAlgorithm: TRALJWTAlgorithm;
-    FCollectionAuth: TOwnedCollection;
     FAuthToken: TRALBaseRoute;
+    FCollectionAuth: TOwnedCollection;
     FCookieSameSite: TRALCookieSiteScope;
     FExpSecs: IntegerRAL;
     FJSONKey: StringRAL;
     FJWKSRoute: TRALBaseRoute;
     FKeys: TRALJWTKeys;
-    FPublishJWKS: boolean;
-    FRevocationStore: TRALKeyValueStore;
-    FRolesClaim: StringRAL;
-    FSignSecretKey: StringRAL;
     FOnGetToken: TRALOnTokenJWT;
     FOnGetTokenGen: TRALOnTokenJWTGen;
     FOnRenewToken: TRALOnTokenJWT;
     FOnRenewTokenGen: TRALOnTokenJWTGen;
     FOnValidate: TRALOnTokenJWT;
     FOnValidateGen: TRALOnTokenJWTGen;
+    FPublishJWKS: boolean;
+    FRevocationStore: TRALKeyValueStore;
+    FRolesClaim: StringRAL;
+    FSignSecretKey: StringRAL;
     FUseCookie: Boolean;
-    { the work of RenewToken; with a request, OnRenewToken is consulted }
-    function RenewTokenFor(ARequest: TRALRequest; AResponse: TRALResponse;
-      const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
-    { False, with the 500 already answered, when SignSecretKey is empty }
-    function HasSecretKey(AResponse: TRALResponse): boolean;
-    { OnGetToken or OnGetTokenGen is assigned }
-    function CanIssue: boolean;
-    { the token route logs in (OnGetToken) rather than renews - see BeforeValidate }
-    function LogsIn(ARequest: TRALRequest): boolean;
-    { a first token from OnGetToken; '' when it refused }
-    function IssueToken(ARequest: TRALRequest; AResponse: TRALResponse;
-      var AJSONParams: StringRAL): StringRAL;
-    procedure SetUseCookie(AValue: Boolean);
-    procedure SetKeys(const AValue: TRALJWTKeys);
-    procedure SetRevocationStore(const AValue: TRALKeyValueStore);
-    { Sets algorithm and key of AJWT for signing: the Signer of Keys, else
-      Algorithm and SignSecretKey. False when Keys has no active key }
-    function PrepareSigner(AJWT: TRALJWT): boolean;
-    { Reads AToken into AJWT and checks it: signature (with the key its kid
-      names, when there are Keys), dates and revocation. AReason says why not }
-    function CheckToken(AJWT: TRALJWT; const AToken: StringRAL;
-      out AReason: StringRAL): boolean;
+
     { RFC 6750 3: tells a client WHY it got the 401 - no credentials at all
       (AError empty) or a token that was refused, and what was wrong with it }
     procedure AnswerChallenge(AResponse: TRALResponse; const AError,
       ADescription: StringRAL);
+    { OnGetToken or OnGetTokenGen is assigned }
+    function CanIssue: boolean;
+    { Reads AToken into AJWT and checks it: signature (with the key its kid
+      names, when there are Keys), dates and revocation. AReason says why not }
+    function CheckToken(AJWT: TRALJWT; const AToken: StringRAL;
+      out AReason: StringRAL): boolean;
+    { False, with the 500 already answered, when SignSecretKey is empty }
+    function HasSecretKey(AResponse: TRALResponse): boolean;
+    { a first token from OnGetToken; '' when it refused }
+    function IssueToken(ARequest: TRALRequest; AResponse: TRALResponse;
+      var AJSONParams: StringRAL): StringRAL;
+    { the token route logs in (OnGetToken) rather than renews - see BeforeValidate }
+    function LogsIn(ARequest: TRALRequest): boolean;
+    { Sets algorithm and key of AJWT for signing: the Signer of Keys, else
+      Algorithm and SignSecretKey. False when Keys has no active key }
+    function PrepareSigner(AJWT: TRALJWT): boolean;
+    { the work of RenewToken; with a request, OnRenewToken is consulted }
+    function RenewTokenFor(ARequest: TRALRequest; AResponse: TRALResponse;
+      const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
+    procedure SetKeys(const AValue: TRALJWTKeys);
+    procedure SetRevocationStore(const AValue: TRALKeyValueStore);
+    procedure SetUseCookie(AValue: Boolean);
   protected
     function GetAuthRoute: TRALBaseRoute; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -278,13 +283,21 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+      AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); override;
-    /// The token route, or the JWKS route when PublishJWKS is on.
-    function ResolveRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; override;
+    /// The raltoken cookie, when no Authorization header came
+    procedure DecodeWithoutHeader(ARequest: TRALRequest); override;
+    function GetToken(var AJSONParams: StringRAL): StringRAL;
     { Whether the claims AParams (of a valid token) were revoked: their jti, or
       every token of their sub issued up to RevokeAllFor. False without a
       RevocationStore. }
     function IsRevoked(AParams: TRALJWTParams): boolean;
+    /// A new token with the claims of AToken and a new expiration; '' when
+    /// AToken is not valid. Called directly it does not fire OnRenewToken
+    function RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
+    /// The token route, or the JWKS route when PublishJWKS is on.
+    function ResolveRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; override;
     { Revokes AToken (a valid token of this server, with a jti) until it would
       expire; False when it is not valid or has no jti. Needs RevocationStore. }
     function Revoke(const AToken: StringRAL): boolean;
@@ -293,16 +306,9 @@ type
     procedure RevokeAllFor(const ASubject: StringRAL; ABefore: TDateTime = 0);
     /// Revokes the token whose jti is AId until AExpires (0 = forever). Needs RevocationStore.
     procedure RevokeId(const AId: StringRAL; AExpires: TDateTime = 0);
-    /// The raltoken cookie, when no Authorization header came
-    procedure DecodeWithoutHeader(ARequest: TRALRequest); override;
-    function GetToken(var AJSONParams: StringRAL): StringRAL;
-    /// A new token with the claims of AToken and a new expiration; '' when
-    /// AToken is not valid. Called directly it does not fire OnRenewToken
-    function RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
-    function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
-      AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
+
     property OnGetTokenGen: TRALOnTokenJWTGen read FOnGetTokenGen write FOnGetTokenGen;
     /// OnRenewToken for a plain procedure
     property OnRenewTokenGen: TRALOnTokenJWTGen read FOnRenewTokenGen
@@ -323,6 +329,15 @@ type
     { Signing keys with kid, for key rotation and RS*/ES*; empty = Algorithm
       and SignSecretKey, as always. }
     property Keys: TRALJWTKeys read FKeys write SetKeys;
+    property OnGetToken: TRALOnTokenJWT read FOnGetToken write FOnGetToken;
+    /// Fired when a valid token is posted to AuthRoute to be renewed, with its
+    /// claims in AParams - already checked, and with the new expiration set.
+    /// Change any claim there (permissions read again from the database, say),
+    /// or set AResult to False to refuse the renewal (the client gets 401 and
+    /// has to ask for a first token again). Unassigned, the claims are copied
+    /// as they were, which is what renewing always did
+    property OnRenewToken: TRALOnTokenJWT read FOnRenewToken write FOnRenewToken;
+    property OnValidate: TRALOnTokenJWT read FOnValidate write FOnValidate;
     { Answers GET /.well-known/jwks.json with the public keys of Keys (RS*/ES*),
       for clients and other servers that verify the tokens. }
     property PublishJWKS: boolean read FPublishJWKS write FPublishJWKS default False;
@@ -335,16 +350,6 @@ type
     property RolesClaim: StringRAL read FRolesClaim write FRolesClaim;
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
     property UseCookie: Boolean read FUseCookie write SetUseCookie;
-
-    property OnGetToken: TRALOnTokenJWT read FOnGetToken write FOnGetToken;
-    /// Fired when a valid token is posted to AuthRoute to be renewed, with its
-    /// claims in AParams - already checked, and with the new expiration set.
-    /// Change any claim there (permissions read again from the database, say),
-    /// or set AResult to False to refuse the renewal (the client gets 401 and
-    /// has to ask for a first token again). Unassigned, the claims are copied
-    /// as they were, which is what renewing always did
-    property OnRenewToken: TRALOnTokenJWT read FOnRenewToken write FOnRenewToken;
-    property OnValidate: TRALOnTokenJWT read FOnValidate write FOnValidate;
   end;
 
 /// Same as RALAuthBase.RALAddChallenge.

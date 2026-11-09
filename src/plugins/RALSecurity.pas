@@ -52,6 +52,7 @@ type
   private
     FIPList: TStringList;
     FLookup: TRALStringListSafe;
+
     procedure IPListChanged(Sender: TObject);
     procedure SetIPList(AValue: TStringList);
   protected
@@ -59,6 +60,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// Whether AClientIP is in the list. Free when the list is empty
     function Contains(const AClientIP: StringRAL): boolean;
   published
@@ -101,6 +103,7 @@ type
     FExpirationTime: IntegerRAL;
     FLastPrune: Cardinal;
     FMaxTry: IntegerRAL;
+
     function GetBlockedCount: IntegerRAL;
   protected
     class function DefaultPriority: IntegerRAL; override;
@@ -108,6 +111,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// ppAuthResult: an accepted secret clears the count, a refused one
     /// counts. The verdict of the request is left as the authenticator gave
     /// it: a 403 stays 403 - it used to turn into 401 below MaxTry
@@ -156,6 +160,7 @@ type
     FFlood: array[0..FloodStripes - 1] of TRALStringListSafe;
     FInterval: IntegerRAL;
     FLastPrune: Cardinal;
+
     function GetFloodCount: IntegerRAL;
     /// The list that keeps AClientIP
     function StripeOf(const AClientIP: StringRAL): TRALStringListSafe;
@@ -165,6 +170,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// Records a request of AClientIP; True when it came too soon
     function CheckFlood(const AClientIP: StringRAL): boolean;
     /// The record of AClientIP, or nil

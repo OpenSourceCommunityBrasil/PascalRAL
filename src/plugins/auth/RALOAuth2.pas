@@ -58,6 +58,7 @@ type
     RedirectURI: StringRAL;
     Scope: StringRAL;
     Subject: StringRAL;
+
     function Clone: TRALOAuth2Ticket;
   end;
 
@@ -71,11 +72,13 @@ type
     FLock: TCriticalSection;
     FRefresh: TStringList;
     FRevoked: TStringList;
+
     procedure Prune;
     function Take(AList: TStringList; const AKey: StringRAL): TRALOAuth2Ticket;
   public
     constructor Create; virtual;
     destructor Destroy; override;
+
     /// Whether the access token with this jti was revoked
     function IsRevoked(const AJTI: StringRAL): boolean; virtual;
     /// A copy of the ticket of a refresh token still valid, or nil. The caller
@@ -138,27 +141,28 @@ type
     FKeyText: StringRAL;
     FLock: TCriticalSection;
     FMetadataRoute: TRALRoute;
-    FPrivateKey: TStrings;
-    FRedirectURIs: TStrings;
-    FRefreshTokenLifetime: IntegerRAL;
-    FRemoteKeys: TRALJWKSet;
-    FRemoteKeysAt: TDateTime;
-    FRetired: TList;
-    FRevokeRoute: TRALRoute;
-    FRoutes: TRALRoutes;
-    FRouteScopes: TStrings;
-    FSignSecretKey: StringRAL;
-    FStore: TRALOAuth2Store;
-    FRevocationStore: TRALKeyValueStore;
-    FRolesClaim: StringRAL;
-    FTokenRoute: TRALRoute;
-    FValidation: TRALOAuth2Validation;
     FOnAuthorize: TRALOnOAuth2Authorize;
     FOnClaims: TRALOnOAuth2Claims;
     FOnValidateClient: TRALOnOAuth2Client;
     FOnValidateRedirect: TRALOnOAuth2Redirect;
     FOnValidateScope: TRALOnOAuth2Scope;
     FOnValidateToken: TRALOnOAuth2Token;
+    FPrivateKey: TStrings;
+    FRedirectURIs: TStrings;
+    FRefreshTokenLifetime: IntegerRAL;
+    FRemoteKeys: TRALJWKSet;
+    FRemoteKeysAt: TDateTime;
+    FRetired: TList;
+    FRevocationStore: TRALKeyValueStore;
+    FRevokeRoute: TRALRoute;
+    FRolesClaim: StringRAL;
+    FRoutes: TRALRoutes;
+    FRouteScopes: TStrings;
+    FSignSecretKey: StringRAL;
+    FStore: TRALOAuth2Store;
+    FTokenRoute: TRALRoute;
+    FValidation: TRALOAuth2Validation;
+
     procedure AnswerAuthorize(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure AnswerError(AResponse: TRALResponse; AStatus: IntegerRAL;
       const AError, ADescription: StringRAL; ABasicChallenge: boolean = False);
@@ -180,17 +184,17 @@ type
       var AScope: StringRAL): boolean;
     function Fetch(const AURL: StringRAL; AFields: TStrings; const AUser,
       APassword: StringRAL; out AStatus: IntegerRAL): StringRAL;
+    function GetPath(AIndex: IntegerRAL): StringRAL;
     function Introspect(const AToken: StringRAL; AClaims: TRALJWTParams;
       out AReason: StringRAL): boolean;
     function RemoteKey(const AKeyID: StringRAL): TRALJWSKey;
     function RequiredScope(ARequest: TRALRequest): StringRAL;
     procedure SetPath(AIndex: IntegerRAL; const AValue: StringRAL);
-    function GetPath(AIndex: IntegerRAL): StringRAL;
     procedure SetPrivateKey(AValue: TStrings);
     procedure SetRedirectURIs(AValue: TStrings);
+    procedure SetRevocationStore(const AValue: TRALKeyValueStore);
     procedure SetRouteScopes(AValue: TStrings);
     procedure SetStore(AValue: TRALOAuth2Store);
-    procedure SetRevocationStore(const AValue: TRALKeyValueStore);
     function SigningKey: TRALJWSKey;
     /// Whether the token id AJTI was revoked, in Store or in RevocationStore.
     function TokenRevoked(const AJTI: StringRAL): boolean;
@@ -202,6 +206,12 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
+    /// The token endpoint checks the client's secret: a refusal there
+    /// (invalid_client, 401) is a guess, a token issued is proof. A bearer
+    /// refused elsewhere is not - nobody guesses a token
+    function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+      AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
     /// Answers the plugin's own routes (token, authorize, introspection...)
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); override;
     /// Checks an access token as the resource server does - signature,
@@ -218,11 +228,6 @@ type
     /// The resource server: the bearer token of the request, and the scope of
     /// its route
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
-    /// The token endpoint checks the client's secret: a refusal there
-    /// (invalid_client, 401) is a guess, a token issued is proof. A bearer
-    /// refused elsewhere is not - nobody guesses a token
-    function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
-      AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
 
     /// Where codes, refresh tokens and revocations are kept. In memory by
     /// default; an object assigned here becomes the plugin's and is freed with it
@@ -273,31 +278,6 @@ type
     /// kid of the tokens issued; empty takes the key's thumbprint (RS*/ES*)
     property KeyID: StringRAL read FKeyID write FKeyID;
     property MetadataPath: StringRAL index 4 read GetPath write SetPath;
-    /// The private key in PEM, for Algorithm RS*/ES*
-    property PrivateKey: TStrings read FPrivateKey write SetPrivateKey;
-    /// "client_id=redirect_uri" lines allowed when OnValidateRedirect is not
-    /// assigned
-    property RedirectURIs: TStrings read FRedirectURIs write SetRedirectURIs;
-    /// Seconds a refresh token is good for; zero issues none
-    property RefreshTokenLifetime: IntegerRAL read FRefreshTokenLifetime
-      write FRefreshTokenLifetime default 1209600;
-    property RevokePath: StringRAL index 5 read GetPath write SetPath;
-    /// "route=scope1 scope2" lines: the scopes a token needs for a route (its
-    /// full route, as declared: /users/:id)
-    property RouteScopes: TStrings read FRouteScopes write SetRouteScopes;
-    { Revoked token ids are also kept here (keys 'jwt.jti:<jti>', the same as
-      TRALServerJWTAuth), so servers sharing one store refuse a token revoked
-      on any of them. Unlinked, Store alone keeps them. }
-    property RevocationStore: TRALKeyValueStore read FRevocationStore write SetRevocationStore;
-    { Claims (separated by commas) the roles of ARequest.Identity are read from;
-      the scope is one of them by default, so a policy can ask for a scope. }
-    property RolesClaim: StringRAL read FRolesClaim write FRolesClaim;
-    /// The HMAC key of Algorithm HS*
-    property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
-    property TokenPath: StringRAL index 0 read GetPath write SetPath;
-    property Validation: TRALOAuth2Validation read FValidation write FValidation
-      default ovLocal;
-
     /// Login and consent of the authorization_code flow. Unassigned, every
     /// authorization is denied
     property OnAuthorize: TRALOnOAuth2Authorize read FOnAuthorize write FOnAuthorize;
@@ -315,6 +295,30 @@ type
     /// A last say over a token already checked, with its claims
     property OnValidateToken: TRALOnOAuth2Token read FOnValidateToken
       write FOnValidateToken;
+    /// The private key in PEM, for Algorithm RS*/ES*
+    property PrivateKey: TStrings read FPrivateKey write SetPrivateKey;
+    /// "client_id=redirect_uri" lines allowed when OnValidateRedirect is not
+    /// assigned
+    property RedirectURIs: TStrings read FRedirectURIs write SetRedirectURIs;
+    /// Seconds a refresh token is good for; zero issues none
+    property RefreshTokenLifetime: IntegerRAL read FRefreshTokenLifetime
+      write FRefreshTokenLifetime default 1209600;
+    { Revoked token ids are also kept here (keys 'jwt.jti:<jti>', the same as
+      TRALServerJWTAuth), so servers sharing one store refuse a token revoked
+      on any of them. Unlinked, Store alone keeps them. }
+    property RevocationStore: TRALKeyValueStore read FRevocationStore write SetRevocationStore;
+    property RevokePath: StringRAL index 5 read GetPath write SetPath;
+    { Claims (separated by commas) the roles of ARequest.Identity are read from;
+      the scope is one of them by default, so a policy can ask for a scope. }
+    property RolesClaim: StringRAL read FRolesClaim write FRolesClaim;
+    /// "route=scope1 scope2" lines: the scopes a token needs for a route (its
+    /// full route, as declared: /users/:id)
+    property RouteScopes: TStrings read FRouteScopes write SetRouteScopes;
+    /// The HMAC key of Algorithm HS*
+    property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
+    property TokenPath: StringRAL index 0 read GetPath write SetPath;
+    property Validation: TRALOAuth2Validation read FValidation write FValidation
+      default ovLocal;
   end;
 
   { TRALClientOAuth2 }
@@ -338,25 +342,27 @@ type
     FScope: StringRAL;
     FTokenScope: StringRAL;
     FTokenURL: StringRAL;
+
     function GetAccessToken: StringRAL;
     function GetRefreshToken: StringRAL;
-    procedure SetRefreshToken(const AValue: StringRAL);
     { posts AFields to TokenURL; True with the tokens taken, False with the
       provider's refusal in AError (ARefused) or a transport failure (the
       result code) }
     function RequestToken(ATransport: TRALAuthTransport; AFields: TStrings;
       AResponse: TRALResponse; out AError: StringRAL): IntegerRAL;
+    procedure SetRefreshToken(const AValue: StringRAL);
   protected
-    { A token answer was taken (AJson, the provider's object): a subclass reads
-      what else came with it - the id_token of OpenID Connect }
-    procedure TokenReceived(AJson: TRALJSONObject); virtual;
     { Takes the tokens of a token answer obtained outside a request (the device
       flow): AJson is the provider's object. False, with AError, when it holds
       no access token }
     function TakeTokenAnswer(AJson: TRALJSONObject; AStatus: IntegerRAL;
       out AError: StringRAL): boolean;
+    { A token answer was taken (AJson, the provider's object): a subclass reads
+      what else came with it - the id_token of OpenID Connect }
+    procedure TokenReceived(AJson: TRALJSONObject); virtual;
   public
     constructor Create(AOwner: TComponent); override;
+
     /// The URL to send the user to (a browser), with a new state and PKCE
     /// verifier kept here. AState is what the answer must bring back
     function AuthorizationURL(const AAuthorizeURL, ARedirectURI: StringRAL;
@@ -372,10 +378,10 @@ type
     /// SetAuthorizationCode, or client_credentials
     function Prepare(ATransport: TRALAuthTransport; AVars: TStringList;
       AResponse: TRALResponse): IntegerRAL; override;
+    procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
     /// The code the redirect brought, with its state; the next request
     /// exchanges it. Raises when the state is not the one sent
     procedure SetAuthorizationCode(const ACode, AState: StringRAL);
-    procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
 
     property AccessToken: StringRAL read GetAccessToken;
     /// When the access token expires (local time); zero when the provider
@@ -416,6 +422,7 @@ type
     FRoute: TRALRoute;
     FServer: TRALServer;
     FState: StringRAL;
+
     procedure Reply(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SetServer(AValue: TRALServer);
   protected
@@ -423,6 +430,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// http://127.0.0.1:<Server.Port><Path>
     function RedirectURI: StringRAL;
     /// Starts Server, waits up to ATimeout ms for the browser, stops it. The

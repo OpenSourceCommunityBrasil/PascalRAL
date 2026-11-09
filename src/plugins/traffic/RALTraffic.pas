@@ -45,6 +45,7 @@ type
     FPath: StringRAL;
     FPattern: TRALRouteSegments;
     FWindow: IntegerRAL;
+
     procedure SetPath(const AValue: StringRAL);
   protected
     procedure AssignTo(Dest: TPersistent); override;
@@ -115,6 +116,8 @@ type
     property KeyHeader: StringRAL read FKeyHeader write FKeyHeader;
     /// Requests per Window for a client.
     property Limit: IntegerRAL read FLimit write FLimit default 100;
+    /// Gives the client key of a request, instead of Key.
+    property OnGetKey: TRALOnRateLimitKey read FOnGetKey write FOnGetKey;
     /// Prefix of the keys in Store, to tell plugins sharing one store apart.
     property Prefix: StringRAL read FPrefix write FPrefix;
     /// Limits for some paths.
@@ -123,8 +126,6 @@ type
     property Store: TRALKeyValueStore read FStore write SetStore;
     /// Milliseconds of the window.
     property Window: IntegerRAL read FWindow write FWindow default 60000;
-    /// Gives the client key of a request, instead of Key.
-    property OnGetKey: TRALOnRateLimitKey read FOnGetKey write FOnGetKey;
   end;
 
   { Answers a request that arrived over plain HTTP with a redirect to HTTPS: 301

@@ -25,6 +25,7 @@ type
   private
     FMaxRequestSize: Int64RAL;
     FSpoolAbove: Int64RAL;
+
     procedure SetMaxRequestSize(const AValue: Int64RAL);
     procedure SetSpoolAbove(const AValue: Int64RAL);
   protected
@@ -60,6 +61,7 @@ type
     FCompressType: TRALCompressType;
     FSkipCompressedTypes: boolean;
     FSkipContentTypes: TStrings;
+
     procedure SetSkipContentTypes(const AValue: TStrings);
   protected
     class function DefaultPriority: IntegerRAL; override;
@@ -67,6 +69,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// ppProcess: how the response will be compressed
     procedure ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse;
       var AHandled: boolean); override;
@@ -74,11 +77,6 @@ type
     /// for a client that refuses every encoding the server has
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
-    /// A fixed compression for every response, which the client cannot opt out
-    /// of. ctNone (the default) follows the client's Accept-Encoding, limited
-    /// to what is registered
-    property CompressType: TRALCompressType read FCompressType write FCompressType
-      default ctNone;
     { Compresses streamed responses (Send) too, with gzip or deflate flushed at
       every piece. Before turning it on: small pieces can grow (~5 bytes each);
       each open stream holds ~30 KB of compressor; a proxy or antivirus that
@@ -86,6 +84,11 @@ type
       mixed with text an attacker controls leaks through the sizes (BREACH) }
     property CompressStreams: boolean read FCompressStreams write FCompressStreams
       default False;
+    /// A fixed compression for every response, which the client cannot opt out
+    /// of. ctNone (the default) follows the client's Accept-Encoding, limited
+    /// to what is registered
+    property CompressType: TRALCompressType read FCompressType write FCompressType
+      default ctNone;
     { A response whose type is already compressed - images (not SVG), audio,
       video, zip, gzip, 7z, rar, pdf, fonts - goes out as it is, with no
       Content-Encoding: compressing it again costs CPU and a buffer the size

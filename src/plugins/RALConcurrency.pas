@@ -59,16 +59,17 @@ type
   /// one frees it
   TRALConcurrencyGate = class
   private
-    FFreed: TEvent;
-    FLock: TCriticalSection;
     FClosed: boolean;
+    FFreed: TEvent;
     FInUse: IntegerRAL;
     FLimit: IntegerRAL;
+    FLock: TCriticalSection;
     FPeak: IntegerRAL;
     FQueued: IntegerRAL;
     FReferences: IntegerRAL;
     FRejected: Int64RAL;
     FServed: Int64RAL;
+
     /// Drops one reference, the lock taken; True when it was the last
     function DropLocked: boolean;
     function GetInUse: IntegerRAL;
@@ -80,6 +81,7 @@ type
   public
     constructor Create(ALimit: IntegerRAL);
     destructor Destroy; override;
+
     /// The plugin is going away: the waiting requests go on without a slot,
     /// and the gate frees itself when the last slot comes back
     procedure Close;
@@ -114,6 +116,7 @@ type
     FMaxQueueWait: IntegerRAL;
     FMaxStreams: IntegerRAL;
     FRetryAfter: IntegerRAL;
+
     function GetInUse: IntegerRAL;
     function GetLimit: IntegerRAL;
     function GetPeak: IntegerRAL;
@@ -129,6 +132,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// The number of slots MaxConcurrent = 0 stands for: two per logical
     /// processor of the machine
     class function AutomaticLimit: IntegerRAL;

@@ -43,14 +43,14 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    { The key of the issuer named AKeyID, from its JWK set (fetched again for an
+      unknown kid, at most once a minute); nil when there is none. }
+    function Key(const AKeyID, AEngine: StringRAL): TRALJWSKey;
     { Reads the discovery document of AIssuer (or AURL when given) unless it was
       read less than ACacheMinutes ago; False when it could not be read. }
     function Load(const AIssuer, AURL, AEngine: StringRAL; ACacheMinutes: IntegerRAL): boolean;
     /// Fills the endpoints from a discovery document.
     procedure LoadFromJSON(const AJSON: StringRAL);
-    { The key of the issuer named AKeyID, from its JWK set (fetched again for an
-      unknown kid, at most once a minute); nil when there is none. }
-    function Key(const AKeyID, AEngine: StringRAL): TRALJWSKey;
 
     /// authorization_endpoint.
     property AuthorizationEndpoint: StringRAL read FAuthorizationEndpoint write FAuthorizationEndpoint;
@@ -104,6 +104,8 @@ type
     FIssuer: StringRAL;
     FLoginRoute: TRALRoute;
     FLogoutRoute: TRALRoute;
+    FOnError: TRALOnOIDCError;
+    FOnLogin: TRALOnOIDCLogin;
     FOwnStore: TRALMemoryStore;
     FPostLoginRedirect: StringRAL;
     FPostLogoutRedirect: StringRAL;
@@ -114,8 +116,6 @@ type
     FScope: StringRAL;
     FSession: TRALServerJWTAuth;
     FStore: TRALKeyValueStore;
-    FOnError: TRALOnOIDCError;
-    FOnLogin: TRALOnOIDCLogin;
 
     procedure AnswerCallback(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure AnswerLogin(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -172,6 +172,10 @@ type
     property LoginPath: StringRAL index 0 read GetPath write SetPath;
     /// Path that logs out.
     property LogoutPath: StringRAL index 2 read GetPath write SetPath;
+    /// The login failed.
+    property OnError: TRALOnOIDCError read FOnError write FOnError;
+    /// A user logged in; may refuse or change the page to go to.
+    property OnLogin: TRALOnOIDCLogin read FOnLogin write FOnLogin;
     /// Where the browser goes after the login when it brought no return.
     property PostLoginRedirect: StringRAL read FPostLoginRedirect write FPostLoginRedirect;
     /// Where the provider sends the browser after the logout (absolute URL); empty = none.
@@ -190,10 +194,6 @@ type
     property Session: TRALServerJWTAuth read FSession write SetSession;
     /// Where state, nonce and PKCE wait for the answer; empty = in memory (one server).
     property Store: TRALKeyValueStore read FStore write SetStore;
-    /// The login failed.
-    property OnError: TRALOnOIDCError read FOnError write FOnError;
-    /// A user logged in; may refuse or change the page to go to.
-    property OnLogin: TRALOnOIDCLogin read FOnLogin write FOnLogin;
   end;
 
   { The answer of a device authorization (RFC 8628): show UserCode and

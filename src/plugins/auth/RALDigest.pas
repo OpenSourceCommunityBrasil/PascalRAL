@@ -40,6 +40,8 @@ type
     FAlgorithms: TRALDigestAlgorithms;
     FLock: TCriticalSection;
     FNonceLifetime: IntegerRAL;
+    FOnGetCredential: TRALOnDigestCredential;
+    FOnGetRoles: TRALOnGetRoles;
     FOpaque: StringRAL;
     FPassword: StringRAL;
     FRealm: StringRAL;
@@ -49,8 +51,7 @@ type
     FUsed: TStringList;
     FUserHash: boolean;
     FUserName: StringRAL;
-    FOnGetCredential: TRALOnDigestCredential;
-    FOnGetRoles: TRALOnGetRoles;
+
     { True when the nonce is one of ours; AStale when it is, but too old }
     function CheckNonce(const ANonce: StringRAL; out AStale: boolean): boolean;
     { True when ANC is above the last one seen for ANonce; records it }
@@ -65,12 +66,13 @@ type
     constructor Create(AOwner: TComponent; const AUser: StringRAL;
       const APassword: StringRAL); overload;
     destructor Destroy; override;
-    /// Validation process of the authentication is made here
-    procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
+
     /// The base rule, except a stale nonce: the credentials were right, only
     /// the nonce was old, and that is no guess
     function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
       AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
+    /// Validation process of the authentication is made here
+    procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
     /// The hashes offered, one challenge each: SHA-512-256, SHA-256, MD5 in
     /// that order of preference
@@ -79,6 +81,11 @@ type
     /// Seconds a nonce is good for; after it the client is told stale=true
     property NonceLifetime: IntegerRAL read FNonceLifetime write FNonceLifetime
       default 300;
+    property OnGetCredential: TRALOnDigestCredential read FOnGetCredential
+      write FOnGetCredential;
+    { Fired after the user was accepted, to fill the roles of ARequest.Identity
+      (route Roles, policies); the name and scheme are already there. }
+    property OnGetRoles: TRALOnGetRoles read FOnGetRoles write FOnGetRoles;
     /// Single-user shortcut, as in TRALServerBasicAuth; OnGetCredential takes
     /// precedence
     property Password: StringRAL read FPassword write FPassword;
@@ -92,11 +99,6 @@ type
     /// Asks the client to send H(user:realm) instead of the user name
     property UserHash: boolean read FUserHash write FUserHash default False;
     property UserName: StringRAL read FUserName write FUserName;
-    property OnGetCredential: TRALOnDigestCredential read FOnGetCredential
-      write FOnGetCredential;
-    { Fired after the user was accepted, to fill the roles of ARequest.Identity
-      (route Roles, policies); the name and scheme are already there. }
-    property OnGetRoles: TRALOnGetRoles read FOnGetRoles write FOnGetRoles;
   end;
 
   { TRALClientDigest }
@@ -105,6 +107,7 @@ type
   TRALClientDigest = class(TRALAuthClient)
   private
     FDigest: TRALDigest;
+
     function GetDigestParams: TRALDigestParams;
     function GetPassword: StringRAL;
     function GetUserName: StringRAL;
@@ -115,6 +118,7 @@ type
     constructor Create(AOwner: TComponent; const AUser: StringRAL;
       const APassword: StringRAL); overload;
     destructor Destroy; override;
+
     /// Takes the nonce of the 401: the strongest Digest challenge this class
     /// can answer. False when there is none, or when the same nonce came
     /// back without stale=true - the credentials are wrong, and sending them

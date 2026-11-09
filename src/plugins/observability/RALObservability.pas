@@ -72,6 +72,7 @@ type
     FSnapshots: TStringList;
     FStream: TFileStream;
     FStreamDay: IntegerRAL;
+
     /// Opens (or rotates) the file for a line written now.
     procedure OpenFile;
     /// Moves name.log to name.1.log and so on, keeping MaxFiles.
@@ -154,12 +155,12 @@ type
     property MaxFiles: IntegerRAL read GetMaxFiles write SetMaxFiles default 7;
     /// Bytes from which the file rotates; 0 = no limit.
     property MaxFileSize: Int64RAL read GetMaxFileSize write SetMaxFileSize;
+    /// Fired for each line, on the thread that served the request.
+    property OnLog: TRALOnLogLine read GetOnLog write SetOnLog;
     /// Headers written as '***'.
     property RedactHeaders: TStrings read FRedactHeaders write SetRedactHeaders;
     /// Rotates the file when the day changes.
     property RotateDaily: boolean read GetRotateDaily write SetRotateDaily default False;
-    /// Fired for each line, on the thread that served the request.
-    property OnLog: TRALOnLogLine read GetOnLog write SetOnLog;
   end;
 
   /// A finished span of TRALTracePlugin.
@@ -216,9 +217,9 @@ type
   private
     FCollector: TRALTraceCollector;
     FExportEngine: StringRAL;
+    FExporter: TThread;
     FExportInterval: IntegerRAL;
     FExportURL: StringRAL;
-    FExporter: TThread;
     FServiceName: StringRAL;
 
     function GetOnSpan: TRALOnTraceSpan;
@@ -244,10 +245,10 @@ type
     { OTLP/HTTP endpoint of a collector ('http://collector:4318/v1/traces');
       empty = no export (OnSpan only). }
     property ExportURL: StringRAL read FExportURL write SetExportURL;
-    /// service.name of the exported spans.
-    property ServiceName: StringRAL read FServiceName write FServiceName;
     /// Fired for each finished server span, on the thread that served the request.
     property OnSpan: TRALOnTraceSpan read GetOnSpan write SetOnSpan;
+    /// service.name of the exported spans.
+    property ServiceName: StringRAL read FServiceName write FServiceName;
   end;
 
   { The numbers of a TRALMetricsPlugin, counted by reference like TRALLogSink:
@@ -307,10 +308,10 @@ type
     function ResolveRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; override;
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
-    /// Path of the metrics.
-    property Path: StringRAL read FPath write SetPath;
     /// Adds lines of the application's own metrics.
     property OnCollect: TRALOnMetricsCollect read FOnCollect write FOnCollect;
+    /// Path of the metrics.
+    property Path: StringRAL read FPath write SetPath;
   end;
 
   TRALHealthCheck = class;

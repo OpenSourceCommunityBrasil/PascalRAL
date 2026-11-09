@@ -29,6 +29,7 @@ type
     FAllowHeadersText: TRALSnapshots;
     FAllowOrigin: StringRAL;
     FMaxAge: IntegerRAL;
+
     procedure AllowHeadersChanged(Sender: TObject);
   protected
     procedure AssignTo(Dest: TPersistent); override;
@@ -37,6 +38,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     procedure AddAllowHeader(AValue: StringRAL);
     function GetAllowHeaders: StringRAL;
     /// The Access-Control-Allow-Origin to answer a request coming from
@@ -70,6 +72,7 @@ type
   TRALCORSPlugin = class(TRALPlugin)
   private
     FOptions: TRALCORSOptions;
+
     procedure SetOptions(AValue: TRALCORSOptions);
   protected
     class function DefaultPriority: IntegerRAL; override;
@@ -77,6 +80,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// Writes the CORS headers for a route that allows AAllowMethods
     procedure AnswerCORS(const AAllowMethods: StringRAL; ARequest: TRALRequest;
       AResponse: TRALResponse);

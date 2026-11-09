@@ -28,9 +28,9 @@ type
     without a lock (the ranges are replaced whole) }
   TRALIPRanges = class
   private
+    FBits: array of IntegerRAL;
     FLock: TCriticalSection;
     FRanges: array of TRALIPBytes;
-    FBits: array of IntegerRAL;
 
     procedure AddRange(const ABytes: TRALIPBytes; ABits: IntegerRAL);
   public

@@ -24,6 +24,7 @@ type
     FPath: StringRAL;
     FPattern: TRALRouteSegments;
     FTTL: IntegerRAL;
+
     procedure SetPath(const AValue: StringRAL);
   protected
     procedure AssignTo(Dest: TPersistent); override;
@@ -63,10 +64,10 @@ type
     FVaryHeaders: TStrings;
 
     function ActiveStore: TRALKeyValueStore;
-    /// The cached route ARequest falls under, or nil.
-    function CacheRouteOf(ARequest: TRALRequest): TRALCacheRoute;
     /// Whether ARequest may be served from and kept in the cache.
     function Cacheable(ARequest: TRALRequest): boolean;
+    /// The cached route ARequest falls under, or nil.
+    function CacheRouteOf(ARequest: TRALRequest): TRALCacheRoute;
     /// Key of ARequest in the store.
     function KeyOf(ARequest: TRALRequest): StringRAL;
     /// Keeps the answer, sets the ETag, turns it into a 304 (AContext: what the request carried).
