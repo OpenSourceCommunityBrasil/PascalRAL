@@ -223,31 +223,30 @@ type
     FActive: boolean;
     /// Requests between ValidateRequest and Finish.
     FActiveRequests: Integer;
-    /// Port was 0: the one listened on was chosen, and goes back to 0 on stop.
-    FAutoPort: boolean;
-    FOnShutdown: TRALOnShutdown;
-    FShutdownRetryAfter: IntegerRAL;
-    FShuttingDown: boolean;
     FApiVersioning: TRALApiVersioning;
     FAuthentication: TRALAuthServer;
+    /// Port was 0: the one listened on was chosen, and goes back to 0 on stop.
+    FAutoPort: boolean;
     /// Internal module of the server's own routes and of its status page.
     FBaseModule: TRALModuleRoutes;
     FCookieLife: IntegerRAL;
-    FEngine: StringRAL;
     FDeveloperIPs: TStrings;
     FDeveloperMode: boolean;
+    FEngine: StringRAL;
     FErrorFormat: TRALErrorFormat;
     FExceptionMap: TRALExceptionMap;
     FHideErrorDetails: boolean;
     FIPConfig: TRALIPConfig;
-    FOnFormatError: TRALOnFormatError;
-    FOnGetStackTrace: TRALOnGetStackTrace;
     /// Modules linked to the server.
     FListSubModules: TList;
     FOnClientBlock: TRALOnClientBlock;
+    FOnFormatError: TRALOnFormatError;
+    FOnGetStackTrace: TRALOnGetStackTrace;
     FOnRequest: TRALOnReply;
     FOnResponse: TRALOnReply;
     FOnServerError: TRALOnServerError;
+    FOnShutdown: TRALOnShutdown;
+    FOnStreamClosed: TRALOnStreamClosed;
     FPathBase: StringRAL;
     FPort: IntegerRAL;
     FRaiseError: boolean;
@@ -256,18 +255,19 @@ type
     FServerStatus: TStringList;
     FSessionTimeout: IntegerRAL;
     FShowServerStatus: boolean;
+    FShutdownRetryAfter: IntegerRAL;
+    FShuttingDown: boolean;
     /// TLS settings, created by the engine (CreateRALSSL).
     FSSL: TRALSSL;
     /// Active as read from a form, applied by Loaded.
     FStreamedActive: boolean;
-    FOnStreamClosed: TRALOnStreamClosed;
     FStreamKeepAlive: IntegerRAL;
     FStreamLimit: IntegerRAL;
     FStreamMaxPending: IntegerRAL;
     /// The open streams, not held by reference: each leaves the list as it closes.
     FStreams: TList;
-    FStreamsLock: TCriticalSection;
     FStreamSendTimeout: IntegerRAL;
+    FStreamsLock: TCriticalSection;
 
     /// First module of the modules loop: -1, the internal module, when it has work.
     function FirstModule: IntegerRAL;
@@ -285,8 +285,10 @@ type
     function CreateRALSSL: TRALSSL; virtual;
     /// Unlinks a module from the server.
     procedure DelSubRoute(ASubRoute: TRALModuleRoutes);
+    function GetBoundPort: IntegerRAL;
     /// TLS settings of the server, for the engines.
     function GetDefaultSSL: TRALSSL;
+    function GetRouteGroups: TRALRouteGroups;
     function GetSubModule(AIndex: IntegerRAL): TRALModuleRoutes;
     /// True when the engine can listen on IPv6.
     function IPv6IsImplemented: boolean; virtual;
@@ -297,22 +299,20 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure PluginError(AError: Exception); override;
     procedure PluginRemoved(APlugin: TRALServerPlugin); override;
-    /// Starts or stops the server; plugins and modules hear it before the engine opens.
-    procedure SetActive(const AValue: boolean); virtual;
     /// A request handed by ValidateRequest is done (its finish handler).
     procedure RequestFinished(ARequest: TRALRequest);
-    function GetBoundPort: IntegerRAL;
+    /// Starts or stops the server; plugins and modules hear it before the engine opens.
+    procedure SetActive(const AValue: boolean); virtual;
+    procedure SetApiVersioning(const AValue: TRALApiVersioning);
     procedure SetAuthentication(const AValue: TRALAuthServer);
+    procedure SetDeveloperIPs(const AValue: TStrings);
     /// Sets Engine, the name of the engine.
     procedure SetEngine(const AValue: StringRAL);
-    procedure SetDeveloperIPs(const AValue: TStrings);
     procedure SetExceptionMap(const AValue: TRALExceptionMap);
     procedure SetIPConfig(const AValue: TRALIPConfig);
+    procedure SetPathBase(const AValue: StringRAL);
     procedure SetPort(const AValue: IntegerRAL); virtual;
     procedure SetResponsePages(const AValue: TRALResponsePages);
-    function GetRouteGroups: TRALRouteGroups;
-    procedure SetApiVersioning(const AValue: TRALApiVersioning);
-    procedure SetPathBase(const AValue: StringRAL);
     procedure SetRouteGroups(const AValue: TRALRouteGroups);
     procedure SetRoutes(const AValue: TRALRoutes);
     procedure SetServerStatus(AValue: TStringList);
@@ -334,44 +334,33 @@ type
     procedure CloseStreams(AReason: TRALStreamCloseReason = srServerStopped);
     /// Number of linked modules.
     function CountSubModules: IntegerRAL;
+    { Adds a route whose body is read into ABodyClass and handed to AReplyProc
+      (RALModuleObjectsPackage); returns it. }
+    function CreateObjectRoute(const ARoute, ABodyClass: StringRAL;
+      AReplyProc: TRALOnReplyObject; const ADescription: StringRAL = ''): TRALRoute;
     /// A new request of this server; the caller frees it.
     function CreateRequest: TRALRequest;
     /// A new response of this server, with status 200; the caller frees it.
     function CreateResponse: TRALResponse;
-    { ENGINE API: the writer that puts a stream on the connection of ARequest,
-      built from AResponse.EngineContext at the commit; nil keeps the pieces and
-      sends them when the handler returns. Each live engine overrides it }
-    function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; virtual;
     /// Adds a route with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
     /// Adds a route with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReplyGen;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
-    { Adds a route whose body is read into ABodyClass and handed to AReplyProc
-      (RALModuleObjectsPackage); returns it. }
-    function CreateObjectRoute(const ARoute, ABodyClass: StringRAL;
-      AReplyProc: TRALOnReplyObject; const ADescription: StringRAL = ''): TRALRoute;
+    { ENGINE API: the writer that puts a stream on the connection of ARequest,
+      built from AResponse.EngineContext at the commit; nil keeps the pieces and
+      sends them when the handler returns. Each live engine overrides it }
+    function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; virtual;
     { Fills Request.Authorization from the Authorization header, or from where a
       scheme keeps it otherwise (the raltoken cookie); engines call it. }
     procedure DecodeAuth(AResult: TRALRequest);
     /// Fills Request.Authorization from the value of an Authorization header.
     procedure DecodeAuthValue(AResult: TRALRequest; const AValue: StringRAL);
-    { Answers an error RAL itself produces, in the body ErrorFormat says (or
-      OnFormatError's). AException is the one a 500 answers for, else nil; with
-      DeveloperMode and the request from DeveloperIPs, its class, message and stack
-      go in the answer (an HTML page for a browser). }
-    procedure FormatError(ARequest: TRALRequest; AResponse: TRALResponse;
-      AStatusCode: IntegerRAL; const ADetail: StringRAL; AException: Exception);
-    /// Whether an error answered without a body is formatted (efProblemJSON or OnFormatError).
-    function FormatsErrors: boolean;
     /// Text a 500 answers for AException, generic with HideErrorDetails.
     function ErrorText(AException: Exception): StringRAL;
-    { IP address clients reach the server at: the bound address, or the machine's
-      own for the default bind; '' for rimIPv6 while IPv6 is off. }
-    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; virtual;
-    /// Certificate the engine is set up with; False when there is none.
-    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; virtual;
+    /// What every answer gets at the end: the version headers, the PathBase on Location.
+    procedure FinishAnswer(ARequest: TRALRequest; AResponse: TRALResponse);
     { ENGINE API: called when the handler returned. False when the response did
       not go out as a live stream (send it as always). True when it did: the
       request is finished (a concurrency slot goes back) and the stream ends, or,
@@ -381,44 +370,52 @@ type
       returns }
     function FinishStream(ARequest: TRALRequest; AResponse: TRALResponse;
       AWait: boolean = True): boolean;
+    { Answers an error RAL itself produces, in the body ErrorFormat says (or
+      OnFormatError's). AException is the one a 500 answers for, else nil; with
+      DeveloperMode and the request from DeveloperIPs, its class, message and stack
+      go in the answer (an HTML page for a browser). }
+    procedure FormatError(ARequest: TRALRequest; AResponse: TRALResponse;
+      AStatusCode: IntegerRAL; const ADetail: StringRAL; AException: Exception);
+    /// Whether an error answered without a body is formatted (efProblemJSON or OnFormatError).
+    function FormatsErrors: boolean;
+    { IP address clients reach the server at: the bound address, or the machine's
+      own for the default bind; '' for rimIPv6 while IPv6 is off. }
+    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; virtual;
+    /// Certificate the engine is set up with; False when there is none.
+    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; virtual;
     /// True when an authentication plugin is linked.
     function HasAuthentication: boolean;
     { ENGINE API: fires OnResponse; TRALServer.ProcessCommands and the commit of a
       stream call it, once per response }
     procedure NotifyResponse(ARequest: TRALRequest; AResponse: TRALResponse);
-    /// What every answer gets at the end: the version headers, the PathBase on Location.
-    procedure FinishAnswer(ARequest: TRALRequest; AResponse: TRALResponse);
     /// Number of streams open now.
     function OpenStreamCount: IntegerRAL;
     /// Answers a request: the plugins loop, then the modules loop, else 404.
     procedure ProcessCommands(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// ENGINE API: keeps AStream in the list of open streams until it closes.
+    procedure RegisterStream(AStream: TRALResponseStream);
     { Sets the engine up with ACertificate and turns SSL on; on a running server
       the certificate is swapped under the listener. }
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; virtual;
-    /// ENGINE API: keeps AStream in the list of open streams until it closes.
-    procedure RegisterStream(AStream: TRALResponseStream);
-    /// True when SSL is enabled.
-    function SSLEnabled: boolean;
-    { True when the engine sends the pieces of TRALResponse.Send as they come;
-      False keeps them and sends the body whole when the handler returns }
-    class function SupportsLiveStream: boolean; virtual;
     /// Starts the server.
     { Stops the server gracefully: new requests get 503 with Connection: close and
       Retry-After, the running ones are waited for up to ATimeout milliseconds,
       the open streams are closed, then Active goes False. True when every
       request finished in time. }
     function Shutdown(ATimeout: IntegerRAL = 30000): boolean;
+    /// True when SSL is enabled.
+    function SSLEnabled: boolean;
     procedure Start;
     /// Stops the server.
     procedure Stop;
+    { True when the engine sends the pieces of TRALResponse.Send as they come;
+      False keeps them and sends the body whole when the handler returns }
+    class function SupportsLiveStream: boolean; virtual;
     /// How the engine takes a certificate; tpNone when TLS is not its own.
     function TLSProvisioning: TRALTLSProvisioning; virtual;
     /// Runs the ppValidate plugins before the body is decoded; 501 for an unknown method.
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
 
-    { Most streams open at once; 0 is no limit. TRALConcurrencyPlugin.MaxStreams
-      sets it }
-    property StreamLimit: IntegerRAL read FStreamLimit write FStreamLimit;
     /// Requests being answered now (between ValidateRequest and Finish).
     property ActiveRequests: Integer read FActiveRequests;
     { The port listened on: Port, or the one the system gave when Port is 0
@@ -426,34 +423,43 @@ type
     property BoundPort: IntegerRAL read GetBoundPort;
     /// True while Shutdown waits: new requests are refused, /health/ready is 503.
     property IsShuttingDown: boolean read FShuttingDown;
+    { Most streams open at once; 0 is no limit. TRALConcurrencyPlugin.MaxStreams
+      sets it }
+    property StreamLimit: IntegerRAL read FStreamLimit write FStreamLimit;
     /// Linked module at AIndex, or nil.
     property SubModule[AIndex: IntegerRAL]: TRALModuleRoutes read GetSubModule;
   published
     /// Starts and stops the server; read from a form, it is applied by Loaded.
     property Active: boolean read FActive write WriteActive;
+    /// Versions of the API: where a request says its version, the default, the deprecated ones.
+    property ApiVersioning: TRALApiVersioning read FApiVersioning write SetApiVersioning;
     /// Authentication plugin set up at design time; more can be added with AddPlugin.
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
     /// Minutes a cookie the server sends lasts in the browser.
     property CookieLife: integer read FCookieLife write FCookieLife;
-    /// Name and version of the engine.
-    property Engine: StringRAL read FEngine;
-    /// A 500 says only 'Internal Server Error'; OnServerError still gets the exception.
-    property HideErrorDetails: boolean read FHideErrorDetails write FHideErrorDetails
-      default False;
     /// Addresses that DeveloperMode shows the exception to, one per line.
     property DeveloperIPs: TStrings read FDeveloperIPs write SetDeveloperIPs;
     { The class, message and stack of an exception go in the 500 a request from
       DeveloperIPs gets (an HTML page when it accepts HTML), even with
       HideErrorDetails; for development only. }
     property DeveloperMode: boolean read FDeveloperMode write FDeveloperMode default False;
+    /// Name and version of the engine.
+    property Engine: StringRAL read FEngine;
     /// Body of the errors RAL answers itself: text (as always) or problem details.
     property ErrorFormat: TRALErrorFormat read FErrorFormat write FErrorFormat default efText;
     /// Exception classes and the status, type and title they answer.
     property ExceptionMap: TRALExceptionMap read FExceptionMap write SetExceptionMap;
+    /// A 500 says only 'Internal Server Error'; OnServerError still gets the exception.
+    property HideErrorDetails: boolean read FHideErrorDetails write FHideErrorDetails
+      default False;
     /// Addresses the server listens on.
     property IPConfig: TRALIPConfig read FIPConfig write SetIPConfig;
     /// Fired when a plugin blocks an address.
     property OnClientBlock: TRALOnClientBlock read FOnClientBlock write FOnClientBlock;
+    /// Fired for every error RAL answers itself, to give it another body.
+    property OnFormatError: TRALOnFormatError read FOnFormatError write FOnFormatError;
+    /// Gives DeveloperMode the stack of an exception.
+    property OnGetStackTrace: TRALOnGetStackTrace read FOnGetStackTrace write FOnGetStackTrace;
     /// Fired for every request, after its route is looked up and before the plugins.
     property OnRequest: TRALOnReply read FOnRequest write FOnRequest;
     /// Fired for every request once it is answered, before the answer is sent.
@@ -462,13 +468,6 @@ type
     property OnServerError: TRALOnServerError read FOnServerError write FOnServerError;
     /// Fired as Shutdown goes.
     property OnShutdown: TRALOnShutdown read FOnShutdown write FOnShutdown;
-    /// Seconds of the Retry-After the requests refused during Shutdown get.
-    property ShutdownRetryAfter: IntegerRAL read FShutdownRetryAfter
-      write FShutdownRetryAfter default 5;
-    /// Fired for every error RAL answers itself, to give it another body.
-    property OnFormatError: TRALOnFormatError read FOnFormatError write FOnFormatError;
-    /// Gives DeveloperMode the stack of an exception.
-    property OnGetStackTrace: TRALOnGetStackTrace read FOnGetStackTrace write FOnGetStackTrace;
     /// Fired once when a streamed response closes, with why.
     property OnStreamClosed: TRALOnStreamClosed read FOnStreamClosed write FOnStreamClosed;
     /// Port to listen on.
@@ -481,8 +480,6 @@ type
     property RaiseError: boolean read FRaiseError write FRaiseError default false;
     /// HTML page answered with each error status.
     property ResponsePages: TRALResponsePages read FResponsePages write SetResponsePages;
-    /// Versions of the API: where a request says its version, the default, the deprecated ones.
-    property ApiVersioning: TRALApiVersioning read FApiVersioning write SetApiVersioning;
     /// Groups of the server's routes: path prefix, events, authentication.
     property RouteGroups: TRALRouteGroups read GetRouteGroups write SetRouteGroups;
     /// Routes of the server.
@@ -494,6 +491,9 @@ type
     property SessionTimeout: IntegerRAL read FSessionTimeout write SetSessionTimeout default 30000;
     /// Answers '/' with ServerStatus when no route takes it.
     property ShowServerStatus: boolean read FShowServerStatus write FShowServerStatus;
+    /// Seconds of the Retry-After the requests refused during Shutdown get.
+    property ShutdownRetryAfter: IntegerRAL read FShutdownRetryAfter
+      write FShutdownRetryAfter default 5;
     { Milliseconds between the ': ping' comments of a quiet detached SSE stream,
       which also find a client that left; 0 sends none }
     property StreamKeepAlive: IntegerRAL read FStreamKeepAlive write FStreamKeepAlive
@@ -633,6 +633,7 @@ type
     /// Runs a route of the module (core handler or context).
     procedure ExecuteRoute(ARoute: TRALRoute; ARequest: TRALRequest;
       AResponse: TRALResponse); virtual;
+    function GetRouteGroups: TRALRouteGroups;
     /// An exception of a route of the module; True when the module answered it.
     function HandleException(ARequest: TRALRequest; AResponse: TRALResponse;
       AException: Exception): boolean; virtual;
@@ -654,7 +655,6 @@ type
       still run, and an exception goes to OnServerError. }
     procedure ServerDeactivating; virtual;
     procedure SetDomain(const AValue: StringRAL); virtual;
-    function GetRouteGroups: TRALRouteGroups;
     procedure SetRouteGroups(const AValue: TRALRouteGroups);
     procedure SetRoutes(const AValue: TRALRoutes);
     procedure SetServer(AValue: TRALServer); virtual;
@@ -670,16 +670,16 @@ type
     procedure BeforeExecute(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
     /// Route of the module that answers ARequest, or nil; fires OnBeforeAnswer.
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; virtual;
+    { Adds a route of RouteClass whose body is read into ABodyClass and handed to
+      AReplyProc (RALModuleObjectsPackage); returns it. }
+    function CreateObjectRoute(const ARoute, ABodyClass: StringRAL;
+      AReplyProc: TRALOnReplyObject; const ADescription: StringRAL = ''): TRALRoute;
     /// Adds a route of RouteClass with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReply;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
     /// Adds a route of RouteClass with the handler AReplyProc and returns it.
     function CreateRoute(const ARoute: StringRAL; AReplyProc: TRALOnReplyGen;
                          const ADescription: StringRAL = ''): TRALRoute; overload;
-    { Adds a route of RouteClass whose body is read into ABodyClass and handed to
-      AReplyProc (RALModuleObjectsPackage); returns it. }
-    function CreateObjectRoute(const ARoute, ABodyClass: StringRAL;
-      AReplyProc: TRALOnReplyObject; const ADescription: StringRAL = ''): TRALRoute;
     { Content type the module answers in, set on the response before the preflight,
       the 405 or the route runs; empty keeps the response's own (JSON). }
     function DefaultContentType: StringRAL; virtual;

@@ -61,6 +61,7 @@ type
     function GetRule(AIndex: IntegerRAL): TRALValidationRule;
   public
     constructor Create(AOwner: TPersistent);
+
     /// Adds a rule; returns it.
     function AddRule(const AField: StringRAL; ARule: TRALValidationKind;
       const AValue: StringRAL = ''; const AMessage: StringRAL = ''): TRALValidationRule;
@@ -244,15 +245,15 @@ type
     FOnReplyGen: TRALOnReplyGen;
     FOnReplyObject: TRALOnReplyObject;
     FOutputParams: TRALRouteParams;
-    FResponseClass: StringRAL;
     FPolicy: StringRAL;
     FRequireAllRoles: boolean;
+    FResponseClass: StringRAL;
     FRoles: StringRAL;
     FRoute: StringRAL;
-    /// Segments of FFullRoute, matched against each request.
-    FSegments: TRALRouteSegments;
     /// Kind of each of FSegments.
     FSegKinds: TRALRouteSegmentKinds;
+    /// Segments of FFullRoute, matched against each request.
+    FSegments: TRALRouteSegments;
     /// Segments a path must have: the literals and the required params.
     FSegRequired: IntegerRAL;
     /// Whether the last segment is a wildcard.
@@ -267,7 +268,6 @@ type
     function GetDisplayName: string; override;
     function IsOutputParamsStored: Boolean;
     function IsValidationRulesStored: Boolean;
-    procedure SetValidationRules(const AValue: TRALValidationRules);
     procedure SetAllowedMethods(const AValue: TRALMethods);
     procedure SetAllowURIParams(const AValue: boolean);
     procedure SetCollection(Value: TCollection); override;
@@ -279,6 +279,7 @@ type
     procedure SetRoute(AValue: StringRAL);
     procedure SetSkipAuthMethods(const AValue: TRALMethods);
     procedure SetURIParams(const AValue: TRALRouteParams);
+    procedure SetValidationRules(const AValue: TRALValidationRules);
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
@@ -294,11 +295,13 @@ type
     function GetAllowMethods: StringRAL;
     /// Path of the route with the domain of its module.
     function GetFullRoute: StringRAL;
+    function GetNamePath: string; override;
     /// The group the route is in, or nil.
     function GetRouteGroup: TRALRouteGroup;
-    function GetNamePath: string; override;
     /// True when OnReply or OnReplyGen is assigned.
     function HasCoreHandler: boolean;
+    /// Sets Group; returns the route.
+    function InGroup(const AGroup: StringRAL): TRALBaseRoute;
     /// True when the route takes AMethod; amUNKNOWN never.
     function IsMethodAllowed(const AMethod: TRALMethod): boolean;
     /// True when AMethod skips authentication on this route.
@@ -310,20 +313,18 @@ type
     function RequiredRoles(out ARoles: StringRAL; out AAll: boolean): boolean;
     /// Sets Roles (and RequireAllRoles with AAll); returns the route.
     function RequireRoles(const ARoles: StringRAL; AAll: boolean = False): TRALBaseRoute;
-    /// Sets Group; returns the route.
-    function InGroup(const AGroup: StringRAL): TRALBaseRoute;
     /// Sets SkipAuthMethods; returns the route.
     function SkipAuth(AMethods: TRALMethods): TRALBaseRoute;
     /// Rebuilds the full route and its segments; called when route or domain change.
     procedure UpdateSegments;
 
-    /// Kind of each segment of the full route.
-    property SegmentKinds: TRALRouteSegmentKinds read FSegKinds;
-
     /// Methods the route takes; amALL takes every method.
     property AllowedMethods: TRALMethods read FAllowedMethods write SetAllowedMethods;
     /// The route also answers paths longer than its own, as ral_uriparam1, 2...
     property AllowURIParams: Boolean read FAllowURIParams write SetAllowURIParams;
+    { Name of the class (RALRegisterObjectClass or RegisterClass) the body is read
+      into for OnReplyObject, and the request schema in the API documentation. }
+    property BodyClass: StringRAL read FBodyClass write FBodyClass;
     /// Marks the route as a callback in the API documentation.
     property Callback: boolean read FCallback write FCallback;
     /// Name of the group of the route (TRALRouteGroups); empty = none.
@@ -342,24 +343,20 @@ type
     { Handler that receives the body as an object of BodyClass, read by the
       Content-Type and validated (ValidationRules); needs RALModuleObjectsPackage. }
     property OnReplyObject: TRALOnReplyObject read FOnReplyObject write FOnReplyObject;
-    { Name of the class (RALRegisterObjectClass or RegisterClass) the body is read
-      into for OnReplyObject, and the request schema in the API documentation. }
-    property BodyClass: StringRAL read FBodyClass write FBodyClass;
-    /// Name of the class the route answers with, for the API documentation.
-    property ResponseClass: StringRAL read FResponseClass write FResponseClass;
-    /// Rules the body must pass (RALModuleObjectsPackage); a failure is 422.
-    property ValidationRules: TRALValidationRules read FValidationRules
-      write SetValidationRules stored IsValidationRulesStored;
     { Name of the authorization policy (TRALAuthorizationPlugin) the identity must
       pass; empty = the group's, or none. A route that names one is refused (403)
       when no plugin judges it. }
     property Policy: StringRAL read FPolicy write FPolicy;
     /// With Roles, the identity must have every role listed, not just one.
     property RequireAllRoles: boolean read FRequireAllRoles write FRequireAllRoles default False;
+    /// Name of the class the route answers with, for the API documentation.
+    property ResponseClass: StringRAL read FResponseClass write FResponseClass;
     { Roles (separated by commas) the authenticated identity needs: one of them,
       or all with RequireAllRoles; a missing role is 403, never 401. Empty = the
       group's, or any authenticated user. Judged only where an authenticator runs. }
     property Roles: StringRAL read FRoles write FRoles;
+    /// Kind of each segment of the full route.
+    property SegmentKinds: TRALRouteSegmentKinds read FSegKinds;
     /// Methods that skip authentication on this route; amALL skips all.
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write SetSkipAuthMethods;
     { The handler answers with TRALResponse.Send. Not a permission - Send works on
@@ -369,6 +366,9 @@ type
     property Streaming: boolean read FStreaming write FStreaming default False;
     /// The ':name' params of the path, in order.
     property URIParams: TRALRouteParams read FURIParams write SetURIParams;
+    /// Rules the body must pass (RALModuleObjectsPackage); a failure is 422.
+    property ValidationRules: TRALValidationRules read FValidationRules
+      write SetValidationRules stored IsValidationRulesStored;
     { API versions the route answers ('1,2'; a leading 'v' is ignored); empty =
       the group's, or any. Another route of the same path may answer the others. }
     property Versions: StringRAL read FVersions write FVersions;
@@ -408,12 +408,12 @@ type
     property OutputParams;
     property Policy;
     property RequireAllRoles;
+    property ResponseClass;
     property Roles;
     property Route;
     property SkipAuthMethods;
     property Streaming;
     property URIParams;
-    property ResponseClass;
     property ValidationRules;
     property Versions;
   end;
@@ -1595,6 +1595,7 @@ type
     Keys: array of StringRAL;
     Param: TRALRouteNode;
     Prefix: TIntegerRALArray;
+
     destructor Destroy; override;
   end;
 

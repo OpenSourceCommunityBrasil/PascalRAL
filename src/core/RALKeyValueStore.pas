@@ -71,10 +71,10 @@ type
     FShards: array[0..15] of TStringList;
     FWrites: array[0..15] of IntegerRAL;
 
-    /// Shard of AKey.
-    function ShardOf(const AKey: StringRAL): IntegerRAL;
     /// Entry of AKey in shard AShard, nil when missing or expired (which it removes).
     function Live(AShard: IntegerRAL; const AKey: StringRAL; ANow: Int64RAL): TRALStoreEntry;
+    /// Shard of AKey.
+    function ShardOf(const AKey: StringRAL): IntegerRAL;
     /// Counts a write in AShard and prunes it when PruneEvery is reached.
     procedure Wrote(AShard: IntegerRAL; ANow: Int64RAL);
   protected
@@ -112,6 +112,7 @@ type
 
     /// File of AKey (its bytes in hexadecimal, so any key is a valid name).
     function FileOf(const AKey: StringRAL): string;
+    function GetFolder: string;
     /// Takes the lock of AKey, waiting up to LockTimeout; raises when it cannot.
     function Lock(const AKey: StringRAL): THandleStream;
     /// The entry of AKey: False when missing or expired.
@@ -119,7 +120,6 @@ type
       out AExpires: Int64RAL): boolean;
     /// Writes the entry of AKey.
     procedure WriteEntry(const AFile: string; const AValue: RawByteString; AExpires: Int64RAL);
-    function GetFolder: string;
   protected
     function NowMs: Int64RAL; override;
   public

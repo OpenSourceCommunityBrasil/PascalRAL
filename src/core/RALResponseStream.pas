@@ -59,12 +59,12 @@ type
     function Alive: boolean; virtual;
     /// Sends what WriteRaw buffered, when the engine buffers.
     procedure Flush; virtual;
-    { The status line and the headers of AResponse (a TRALResponse); Chunked says
-      whether the body goes chunked or delimited by the end of the connection }
-    procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); virtual; abstract;
     { The end of the body. AAborted is a failure: the connection closes without the
       last chunk, the sign HTTP has for a truncated body }
     procedure WriteEnd(AAborted: boolean); virtual;
+    { The status line and the headers of AResponse (a TRALResponse); Chunked says
+      whether the body goes chunked or delimited by the end of the connection }
+    procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); virtual; abstract;
     /// Writes ASize bytes as they are; False when the connection failed.
     function WriteRaw(const ABuffer; ASize: IntegerRAL): boolean; virtual; abstract;
 

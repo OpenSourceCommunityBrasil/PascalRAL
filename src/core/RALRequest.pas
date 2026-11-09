@@ -80,10 +80,10 @@ type
 
     /// Adds every role of AText, separated by commas or blanks; repeated ones are kept once.
     procedure AddRoles(const AText: StringRAL);
-    /// Forgets everything: no name, no role, no claim.
-    procedure Clear;
     /// The value of the claim AName, or ''.
     function Claim(const AName: StringRAL): StringRAL;
+    /// Forgets everything: no name, no role, no claim.
+    procedure Clear;
     /// Whether the identity has the role ARole (case-insensitive).
     function HasRole(const ARole: StringRAL): boolean;
     { Whether the identity has any role of ARoles (a list separated by commas),
@@ -113,19 +113,10 @@ type
   /// A request: method, route, query, headers, body, credentials and client data.
   TRALRequest = class(TRALHTTPHeaderInfo)
   private
-    FBytesSent: Int64RAL;
-    FResponseStatus: IntegerRAL;
-    FStartTick: Int64RAL;
-    FTraceId: StringRAL;
     FApiVersion: StringRAL;
-    /// The path FPathRaw and FPathTrimmed were split from.
-    FPathKey: StringRAL;
-    /// The path split as it came, for the route lookup.
-    FPathRaw: TRALPathSegments;
-    /// The path split and each segment trimmed.
-    FPathTrimmed: TRALPathSegments;
     /// Credentials; created on first read.
     FAuthorization: TRALAuthorization;
+    FBytesSent: Int64RAL;
     FClientInfo: TRALClientInfo;
     FContentSize: Int64RAL;
     /// The first two finish handlers, kept in the request itself.
@@ -133,17 +124,26 @@ type
     /// Number of finish handlers.
     FFinishCount: IntegerRAL;
     FFinished: boolean;
-    FIdentity: TRALIdentity;
     /// Finish handlers past the first two.
     FFinishMore: array of TRALOnRequestFinish;
     FHost: StringRAL;
     FHttpVersion: StringRAL;
+    FIdentity: TRALIdentity;
     FMethod: TRALMethod;
+    /// The path FPathRaw and FPathTrimmed were split from.
+    FPathKey: StringRAL;
+    /// The path split as it came, for the route lookup.
+    FPathRaw: TRALPathSegments;
+    /// The path split and each segment trimmed.
+    FPathTrimmed: TRALPathSegments;
     FQuery: StringRAL;
     FResolvedRoute: TObject;
+    FResponseStatus: IntegerRAL;
     FRouteData: TObject;
     FRouteOwner: TObject;
     FRouteResolved: boolean;
+    FStartTick: Int64RAL;
+    FTraceId: StringRAL;
     FTrusted: boolean;
 
     function GetAuthorization: TRALAuthorization;
@@ -192,6 +192,8 @@ type
     function GetRequestEncStream(const AEncode: boolean = true): TStream; virtual; abstract;
     /// The body as text; on a client, encoded for the wire when AEncode.
     function GetRequestEncText(const AEncode: boolean = true): StringRAL; virtual; abstract;
+    /// True when an Identity was created (an authenticator filled it).
+    function HasIdentity: boolean;
     /// Keeps the path APath split as ARaw and ATrimmed, for the next route lookup.
     procedure SetPathSegments(const APath: StringRAL; const ARaw, ATrimmed: TRALPathSegments);
     /// Records the route that answers the request, and its owner; called once.
@@ -201,27 +203,25 @@ type
     function TryGetPathSegments(const APath: StringRAL; out ARaw,
       ATrimmed: TRALPathSegments): boolean;
 
-    { Bytes of the response body that went out, known when the finish handlers
-      run; -1 for a streamed response (Send), still going. }
-    property BytesSent: Int64RAL read FBytesSent write FBytesSent;
-    /// Status of the response, known when the finish handlers run; 0 before.
-    property ResponseStatus: IntegerRAL read FResponseStatus write FResponseStatus;
-    /// RALTickMicro when the server took the request (ValidateRequest); 0 on a client.
-    property StartTick: Int64RAL read FStartTick write FStartTick;
-    { Trace id of the request (W3C trace context, set by a tracing plugin), used by
-      the log and the error body; empty without one. }
-    property TraceId: StringRAL read FTraceId write FTraceId;
     { Version of the API the request asked for (TRALServer.ApiVersioning), or the
       default one; empty when the server does not version its API. }
     property ApiVersion: StringRAL read FApiVersion write FApiVersion;
+    { Bytes of the response body that went out, known when the finish handlers
+      run; -1 for a streamed response (Send), still going. }
+    property BytesSent: Int64RAL read FBytesSent write FBytesSent;
     /// True once Finish ran.
     property Finished: boolean read FFinished;
+    { Who the request is, filled by the authenticator that accepted it; created
+      on first read, empty when nobody authenticated the request. }
+    property Identity: TRALIdentity read GetIdentity;
     /// The body: on a server the one that arrived, decoded; on a client the one to send.
     property RequestStream: TStream read GetRequestStream write SetRequestStream;
     /// The body as text.
     property RequestText: StringRAL read GetRequestText write SetRequestText;
     /// Route (a TRALRoute) that answers the request, or nil; valid once RouteResolved.
     property ResolvedRoute: TObject read FResolvedRoute;
+    /// Status of the response, known when the finish handlers run; 0 before.
+    property ResponseStatus: IntegerRAL read FResponseStatus write FResponseStatus;
     /// The answering route as a collection item (a TRALBaseRoute), or nil.
     property Route: TCollectionItem read GetRoute write SetRoute;
     /// What the answering module keeps for its handler; owned by the request.
@@ -230,15 +230,15 @@ type
     property RouteOwner: TObject read FRouteOwner;
     /// True once the route was looked up.
     property RouteResolved: boolean read FRouteResolved;
+    /// RALTickMicro when the server took the request (ValidateRequest); 0 on a client.
+    property StartTick: Int64RAL read FStartTick write FStartTick;
+    { Trace id of the request (W3C trace context, set by a tracing plugin), used by
+      the log and the error body; empty without one. }
+    property TraceId: StringRAL read FTraceId write FTraceId;
     /// Set by the white list: the protections after it leave the request alone.
     property Trusted: boolean read FTrusted write FTrusted;
     /// Full URL of the request: scheme, host and path.
     property URL: StringRAL read GetURL;
-    { Who the request is, filled by the authenticator that accepted it; created
-      on first read, empty when nobody authenticated the request. }
-    property Identity: TRALIdentity read GetIdentity;
-    /// True when an Identity was created (an authenticator filled it).
-    function HasIdentity: boolean;
   published
     /// Credentials of the request; created on first read.
     property Authorization: TRALAuthorization read GetAuthorization write SetAuthorization;

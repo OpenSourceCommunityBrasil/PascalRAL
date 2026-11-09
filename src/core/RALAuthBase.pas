@@ -24,6 +24,7 @@ type
     procedure SetAuthType(AType: TRALAuthTypes);
   public
     constructor Create(AOwner: TComponent); override;
+
     property AuthType: TRALAuthTypes read FAuthType;
   end;
 
@@ -67,6 +68,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// The server answered 401 (AResponse, with its WWW-Authenticate) to
     /// ARequest, as it was sent. The authenticator drops or updates what it
     /// holds and says whether the request is worth sending once more. Called
@@ -75,6 +77,11 @@ type
     /// Whether the scheme has what it needs to authenticate a request - a
     /// token, a nonce. When it has not and AutoGetToken is on, Prepare runs
     function IsAuthenticated: boolean; virtual;
+    /// Serialises everything that reads or writes the authenticator's own state.
+    /// Reentrant, like the critical section behind it: the client holds it
+    /// around the whole token fetch, and the SetToken that ends the fetch takes
+    /// it again on the same thread.
+    procedure Lock;
     /// Obtains what the scheme needs before a request (a token), through
     /// ATransport. AVars holds the method and url of the request. Returns 0,
     /// or the ErrorCode of a failure already written to AResponse. Called
@@ -83,12 +90,6 @@ type
       AResponse: TRALResponse): IntegerRAL; virtual;
     /// Writes the Authorization of the request (AParams) - every request
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); virtual; abstract;
-
-    /// Serialises everything that reads or writes the authenticator's own state.
-    /// Reentrant, like the critical section behind it: the client holds it
-    /// around the whole token fetch, and the SetToken that ends the fetch takes
-    /// it again on the same thread.
-    procedure Lock;
     procedure Unlock;
 
     property OnBeforeGetToken: TRALOnBeforeGetToken read FOnBeforeGetToken
@@ -116,30 +117,34 @@ type
     FAuthType: TRALAuthTypes;
   protected
     class function DefaultPriority: IntegerRAL; override;
-    function Phases: TRALPluginPhases; override;
     function GetAuthRoute: TRALBaseRoute; virtual;
+    function Phases: TRALPluginPhases; override;
     procedure SetAuthRoute(ARoute : TRALBaseRoute); virtual;
     procedure SetAuthType(AType: TRALAuthTypes);
   public
     constructor Create(AOwner: TComponent); override;
+
     { Answers a request the server refused (AResult arUnauthorized or arForbidden)
       in a form of this scheme, a SOAP fault for instance, and returns True; False
       (the default) leaves the plain 401 or 403. Every authenticator of the server
       is asked, in linking order, until one answers. }
     function AnswerRefusal(ARequest: TRALRequest; AResponse: TRALResponse;
       AResult: TRALAuthResult): boolean; virtual;
-    procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
-    function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
-    /// Main method of authenticator, all validations must be done here
-    procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); virtual; abstract;
-    /// Credentials that did not come in an Authorization header - the JWT
-    /// raltoken cookie. TRALServer.DecodeAuth calls it when the header is absent
-    procedure DecodeWithoutHeader(ARequest: TRALRequest); virtual;
-
+    /// What a request this scheme already answered (AResult) means to the
+    /// brute-force protection - see TRALServerPlugin.AttemptOf. The base rule:
+    /// credentials of this scheme that were checked count, refused (401) as a
+    /// guess and accepted as proof; the scheme's own routes say nothing
+    function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
+      AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
     { the plugin side of the same work }
     /// ppAuthenticate: Validate, read as a verdict
     function Authenticate(ARequest: TRALRequest; AResponse: TRALResponse;
       ARoute: TRALRoute): TRALAuthResult; override;
+    procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); virtual;
+    function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
+    /// Credentials that did not come in an Authorization header - the JWT
+    /// raltoken cookie. TRALServer.DecodeAuth calls it when the header is absent
+    procedure DecodeWithoutHeader(ARequest: TRALRequest); virtual;
     /// ppProcess: answers the plugin's own route, and 401/403 for a request
     /// that does not pass. Only the first authenticator of the server asks for
     /// the verdict: Host.Authenticate already hears all of them
@@ -147,12 +152,8 @@ type
       var AHandled: boolean); override;
     /// ppResolveRoute: the plugin's own route, when it is the one requested
     function ResolveRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; override;
-    /// What a request this scheme already answered (AResult) means to the
-    /// brute-force protection - see TRALServerPlugin.AttemptOf. The base rule:
-    /// credentials of this scheme that were checked count, refused (401) as a
-    /// guess and accepted as proof; the scheme's own routes say nothing
-    function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
-      AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
+    /// Main method of authenticator, all validations must be done here
+    procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); virtual; abstract;
 
     property AuthRoute: TRALBaseRoute read GetAuthRoute write SetAuthRoute;
     property AuthType: TRALAuthTypes read FAuthType;

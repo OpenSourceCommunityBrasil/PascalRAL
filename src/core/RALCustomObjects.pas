@@ -41,29 +41,30 @@ type
   /// Base class of REQUEST and RESPONSE classes
   TRALHTTPHeaderInfo = class
   private
-    FParent: TObject;
     FAcceptEncoding: StringRAL;
     FAcceptEncription: StringRAL;
-    FContentDisposition: StringRAL;
-    FContentDispositionInline: Boolean;
-    FContentEncoding: StringRAL;
-    FContentEncription: StringRAL;
-    FContentType: StringRAL;
-    FCriptoKey: StringRAL;
-    FProtocolVersion: TRALHTTPVersion;
-    FParams: TRALParams;
+    FAcceptGen: IntegerRAL;
     { what AcceptCompress and ContentCompress answered last, for which text and
       under which set of registered compressors: a request reads each several
       times, and the header only changes when somebody writes it. The text is
       compared by reference - kept here, it cannot be freed and its address
       taken by another string - so a hit costs two comparisons }
     FAcceptKey: StringRAL;
-    FAcceptGen: IntegerRAL;
     FAcceptValue: TRALCompressType;
-    FContentKey: StringRAL;
+    FContentDisposition: StringRAL;
+    FContentDispositionInline: Boolean;
+    FContentEncoding: StringRAL;
+    FContentEncription: StringRAL;
     FContentGen: IntegerRAL;
+    FContentKey: StringRAL;
+    FContentType: StringRAL;
     FContentValue: TRALCompressType;
+    FCriptoKey: StringRAL;
+    FParams: TRALParams;
+    FParent: TObject;
+    FProtocolVersion: TRALHTTPVersion;
   protected
+    procedure ApplyCripto(AKey: boolean);
     /// Grabs the kind of compression that will be accepted on the traffic
     function GetAcceptCompress: TRALCompressType;
     /// Grabs the kind of criptography that will be accepted on the traffic
@@ -72,7 +73,6 @@ type
     function GetContentCompress: TRALCompressType;
     /// Grabs the kind of criptography that will be used on the traffic
     function GetContentCripto: TRALCriptoType;
-    procedure ApplyCripto(AKey: boolean);
     function GetParams: TRALParams;
     function GetProtocol: StringRAL;
     procedure SetContentCompress(const AValue: TRALCompressType);
@@ -91,6 +91,49 @@ type
     constructor Create(AOwner : TObject); virtual;
     destructor Destroy; override;
 
+    function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
+    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; overload; virtual; deprecated 'use AddCookie(ACookie:TRALCookie) instead';
+    function AddCookie(const ACookie: TRALCookie):TRALHTTPHeaderInfo; overload; virtual;
+    function AddCookies(ACookies: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddField(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
+    function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
+    function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    /// The body of the request or the response, when it is ONE value - raw text,
+    /// JSON, a file (the param named 'ral_body'). A body the engine already split
+    /// into params is not here: form fields (x-www-form-urlencoded) and the parts
+    /// of a multipart are rpkFIELD/rpkBODY params, read them with ParamByName,
+    /// and Params.AssignParamsUrl(rpkFIELD) gives the form back as text. For such
+    /// a body this answers nil - Body.AsString is still safe and gives ''
+    function Body: TRALParam;
+    procedure Clear; virtual;
+    procedure Clone(ASource: TRALHTTPHeaderInfo);
+    function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
+    function GetCookie(const AName: StringRAL): StringRAL; virtual; deprecated 'use GetRALCookie(AName): TRALCookie instead';
+    function GetField(const AName: StringRAL): StringRAL; virtual;
+    function GetHeader(const AName: StringRAL): StringRAL; virtual;
+    function GetQuery(const AName: StringRAL): StringRAL; virtual;
+    /// The cookie of that name, received (Name and Value; the attributes of a
+    /// Set-Cookie stay with the browser) or set with AddCookie(TRALCookie) on
+    /// this response (the whole record). An empty record when there is none.
+    function GetRALCookie(const AName: StringRAL): TRALCookie; virtual;
+    function HasValidAcceptEncoding: boolean;
+    function HasValidContentEncoding: boolean;
+    /// True for the media types a charset parameter applies to (text/*, JSON, XML, JavaScript, forms)
+    class function IsTextualType(const AContentType: StringRAL): boolean;
+    /// The param with this name, of ANY kind - query string, header, cookie, form
+    /// field - and the first one added when there are several: the query string
+    /// and the headers come in before any authentication event runs, so a value
+    /// added later with AddParam does not override one the client sent under the
+    /// same name (use Params.ReplaceParam for that, or Params.GetKind to ask for
+    /// one kind). A JSON body is not split into params unless the server has
+    /// JSONBodyToParams on; read it from Body otherwise
+    function ParamByName(const AParamName: StringRAL): TRALParam;
+    /// fills the body with the String AContent
+    procedure SetBody(AContent: StringRAL); overload; virtual;
+    /// fills the body with the Stream AContent
+    procedure SetBody(AContent: TStream); overload; virtual;
     { ENGINE API, receiving: the body as it came off the wire, compressed and/or
       encrypted as ContentEncoding/ContentEncription say - so those must be
       filled first; the key is the one already in Params.CriptoOptions (the
@@ -117,51 +160,6 @@ type
     { TakeWireStream as a string, for the engines that send one (mORMot2): a
       lone text body with no transform is the handler's own string }
     function TakeWireString: RawByteString; virtual;
-
-    /// True for the media types a charset parameter applies to (text/*, JSON, XML, JavaScript, forms)
-    class function IsTextualType(const AContentType: StringRAL): boolean;
-
-    function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
-    function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; overload; virtual; deprecated 'use AddCookie(ACookie:TRALCookie) instead';
-    function AddCookie(const ACookie: TRALCookie):TRALHTTPHeaderInfo; overload; virtual;
-    function AddCookies(ACookies: StringRAL): TRALHTTPHeaderInfo; virtual;
-    function AddField(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
-    function AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
-    function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
-    function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
-    function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
-    /// The body of the request or the response, when it is ONE value - raw text,
-    /// JSON, a file (the param named 'ral_body'). A body the engine already split
-    /// into params is not here: form fields (x-www-form-urlencoded) and the parts
-    /// of a multipart are rpkFIELD/rpkBODY params, read them with ParamByName,
-    /// and Params.AssignParamsUrl(rpkFIELD) gives the form back as text. For such
-    /// a body this answers nil - Body.AsString is still safe and gives ''
-    function Body: TRALParam;
-    procedure Clear; virtual;
-    procedure Clone(ASource: TRALHTTPHeaderInfo);
-    function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
-    function GetCookie(const AName: StringRAL): StringRAL; virtual; deprecated 'use GetRALCookie(AName): TRALCookie instead';
-    /// The cookie of that name, received (Name and Value; the attributes of a
-    /// Set-Cookie stay with the browser) or set with AddCookie(TRALCookie) on
-    /// this response (the whole record). An empty record when there is none.
-    function GetRALCookie(const AName: StringRAL): TRALCookie; virtual;
-    function GetField(const AName: StringRAL): StringRAL; virtual;
-    function GetHeader(const AName: StringRAL): StringRAL; virtual;
-    function GetQuery(const AName: StringRAL): StringRAL; virtual;
-    function HasValidAcceptEncoding: boolean;
-    function HasValidContentEncoding: boolean;
-    /// The param with this name, of ANY kind - query string, header, cookie, form
-    /// field - and the first one added when there are several: the query string
-    /// and the headers come in before any authentication event runs, so a value
-    /// added later with AddParam does not override one the client sent under the
-    /// same name (use Params.ReplaceParam for that, or Params.GetKind to ask for
-    /// one kind). A JSON body is not split into params unless the server has
-    /// JSONBodyToParams on; read it from Body otherwise
-    function ParamByName(const AParamName: StringRAL): TRALParam;
-    /// fills the body with the String AContent
-    procedure SetBody(AContent: StringRAL); overload; virtual;
-    /// fills the body with the Stream AContent
-    procedure SetBody(AContent: TStream); overload; virtual;
   published
     property AcceptCompress: TRALCompressType read GetAcceptCompress;
     property AcceptCripto: TRALCriptoType read GetAcceptCripto;
@@ -169,11 +167,22 @@ type
     property AcceptEncription: StringRAL read FAcceptEncription write FAcceptEncription;
     property ContentCompress: TRALCompressType read GetContentCompress write SetContentCompress;
     property ContentCripto: TRALCriptoType read GetContentCripto write SetContentCripto;
+    property ContentDisposition: StringRAL read FContentDisposition write SetContentDisposition;
+    property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
     property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
     property ContentEncription: StringRAL read FContentEncription write FContentEncription;
     property ContentType: StringRAL read FContentType write SetContentType;
-    property ContentDisposition: StringRAL read FContentDisposition write SetContentDisposition;
     property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
+    property Params: TRALParams read GetParams;
+    property Parent: TObject read FParent;
+    /// The SAME fact as ProtocolVersion, spelled the way the wire spells it -
+    /// '1.0', '1.1', '2.0', or '' when the transport could not tell.
+    ///
+    /// There is ONE field behind the two, on purpose: an engine that fills
+    /// either one has filled both, and they can never disagree. Writing text
+    /// a version cannot be parsed out of leaves rhvDefault, so Protocol reads
+    /// back as '' - it is not a free-text field.
+    property Protocol: StringRAL read GetProtocol write SetProtocol stored False;
     /// Which HTTP version carried this message, as the transport REPORTS it -
     /// never what was asked for, since ALPN settles that during the TLS
     /// handshake. A transport that cannot tell leaves rhvDefault.
@@ -184,17 +193,6 @@ type
     /// the driver, while a client on Windows has to guess from the status
     /// line - and an HTTP/2 response does not have one, so it under-reports.
     property ProtocolVersion: TRALHTTPVersion read FProtocolVersion write FProtocolVersion;
-    /// The SAME fact as ProtocolVersion, spelled the way the wire spells it -
-    /// '1.0', '1.1', '2.0', or '' when the transport could not tell.
-    ///
-    /// There is ONE field behind the two, on purpose: an engine that fills
-    /// either one has filled both, and they can never disagree. Writing text
-    /// a version cannot be parsed out of leaves rhvDefault, so Protocol reads
-    /// back as '' - it is not a free-text field.
-    property Protocol: StringRAL read GetProtocol write SetProtocol stored False;
-    property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
-    property Params: TRALParams read GetParams;
-    property Parent: TObject read FParent;
   end;
 
 implementation

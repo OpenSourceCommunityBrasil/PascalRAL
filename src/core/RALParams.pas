@@ -262,8 +262,6 @@ type
     FNextParam: IntegerRAL;
     /// Header block kept as text until something needs the list.
     FPending: StringRAL;
-    /// The Set-Cookie lines received, whole; nil until one arrives.
-    FSetCookieLines: TStringList;
     /// Number of lines of the pending block.
     FPendingCount: IntegerRAL;
     /// Kind of the params of the pending block.
@@ -274,6 +272,8 @@ type
     FPendingSeq: Cardinal;
     /// Creation order of the next param.
     FSeqNext: Cardinal;
+    /// The Set-Cookie lines received, whole; nil until one arrives.
+    FSetCookieLines: TStringList;
     FSkipCompressedTypes: Boolean;
     FSkipCompressTypes: TStrings;
     FSpoolAbove: Int64RAL;

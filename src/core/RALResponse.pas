@@ -21,10 +21,11 @@ type
 
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
-    /// The wire handlers, run once by RunWireHandlers.
-    FWireHandlers: TRALOnResponseWireList;
     /// Stream handed out by BodyStream while it is the body.
     FBodyStream: TStream;
+    FChannel: TRALResponseStream;
+    /// Holds the channel by reference, so it outlives nobody's interest in it.
+    FChannelRef: IRALResponseStream;
     FCommitted: boolean;
     FContentEncoded: boolean;
     FDetached: boolean;
@@ -36,12 +37,11 @@ type
     FGuarded: boolean;
     FResponseNotified: boolean;
     FStatusCode: IntegerRAL;
-    FChannel: TRALResponseStream;
-    /// Holds the channel by reference, so it outlives nobody's interest in it.
-    FChannelRef: IRALResponseStream;
     FStreamCompress: TRALCompressType;
     FStreamRequest: TObject;
     FTransportError: TRALTransportError;
+    /// The wire handlers, run once by RunWireHandlers.
+    FWireHandlers: TRALOnResponseWireList;
 
     /// Raises ERALResponseCommitted when the response is committed and guarded.
     procedure CheckNotCommitted;
@@ -72,6 +72,9 @@ type
     function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALResponse; reintroduce; overload;
     /// Adds a header; returns the response.
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALResponse; reintroduce;
+    { AHandler runs once, before the engine takes the body; in order of addition.
+      A plugin adds one in its ppProcess phase to see the answer the module gave. }
+    procedure AddWireHandler(AHandler: TRALOnResponseWire);
     /// Answers AStatusCode with the text AMessage, of AContentType.
     procedure Answer(AStatusCode: IntegerRAL; const AMessage: StringRAL;
                      const AContentType: StringRAL = rctAPPLICATIONJSON); overload;
@@ -85,21 +88,18 @@ type
     { Answers AStatusCode, with the server's page for it when there is one (or the
       problem details of TRALServer.ErrorFormat, for a status of 400 or above). }
     procedure Answer(AStatusCode: IntegerRAL); overload;
-    { AHandler runs once, before the engine takes the body; in order of addition.
-      A plugin adds one in its ppProcess phase to see the answer the module gave. }
-    procedure AddWireHandler(AHandler: TRALOnResponseWire);
-    /// Answers AStatusCode with the server's status page (ResponsePages), as text.
-    procedure AnswerPage(AStatusCode: IntegerRAL);
+    /// Answers with the file AFileName, inline unless DispositionInline is False.
+    procedure Answer(const AFileName: StringRAL; const DispositionInline: boolean = true); overload;
     { An error RAL itself answers (a plugin, the server): ADetail as text, or the
       body TRALServer.ErrorFormat chooses; without ADetail, the status page. }
     procedure AnswerError(AStatusCode: IntegerRAL; const ADetail: StringRAL = '');
+    /// Answers AStatusCode with the server's status page (ResponsePages), as text.
+    procedure AnswerPage(AStatusCode: IntegerRAL);
     { Answers AStatusCode as RFC 9457 problem details (application/problem+json),
       whatever ErrorFormat is: type (about:blank when empty), title (the reason
       phrase when empty), status, detail, instance (the path) and traceId. }
     procedure AnswerProblem(AStatusCode: IntegerRAL; const ADetail: StringRAL = '';
       const AType: StringRAL = ''; const ATitle: StringRAL = '');
-    /// Answers with the file AFileName, inline unless DispositionInline is False.
-    procedure Answer(const AFileName: StringRAL; const DispositionInline: boolean = true); overload;
     { Commits the response without a body piece yet: status and headers go out now
       (an SSE stream shows up at once). With no content type chosen, a stream begun
       here is text/event-stream }
@@ -111,6 +111,8 @@ type
     function BodyStream: TStream;
     /// Empties the response and restores its defaults.
     procedure Clear; override;
+    /// The best answer the engine can give on whether the client is still there.
+    function Connected: boolean;
     { Keeps the stream open after the handler returns, for another thread to send
       on (an MCP GET, a notification feed); commits first. Raises on an engine that
       does not stream live (TRALServer.SupportsLiveStream) }
@@ -151,8 +153,8 @@ type
 
     /// True once Send, SendEvent, BeginStream or Detach committed the response.
     property Committed: boolean read FCommitted;
-    /// The best answer the engine can give on whether the client is still there.
-    function Connected: boolean;
+    /// The body is already coded as ContentEncoding says, and is not compressed again.
+    property ContentEncoded: boolean read FContentEncoded write FContentEncoded;
     /// True once Detach kept the stream past the handler.
     property Detached: boolean read FDetached;
     { ENGINE API: what the engine needs to build its stream writer (its connection,
@@ -160,20 +162,17 @@ type
     property EngineContext: TObject read FEngineContext write FEngineContext;
     /// True when the stream was begun as text/event-stream.
     property EventStream: boolean read FEventStream;
-    /// The channel of a live stream; nil before the commit or when it is kept in memory.
-    property Stream: TRALResponseStream read FChannel;
-    /// The request this response answers, set by TRALServer.ProcessCommands.
-    property StreamRequest: TObject read FStreamRequest write FStreamRequest;
-    { How a streamed response is compressed: set by TRALCompressPlugin when
-      CompressStreams is on (gzip and deflate only); ctNone sends it as it is }
-    property StreamCompress: TRALCompressType read FStreamCompress write FStreamCompress;
-
-    /// The body is already coded as ContentEncoding says, and is not compressed again.
-    property ContentEncoded: boolean read FContentEncoded write FContentEncoded;
     /// The body, decoded: on a server a copy the caller frees, on a client the one kept.
     property ResponseStream: TStream read GetResponseStream write SetResponseStream;
     /// The body, decoded, as text.
     property ResponseText: StringRAL read GetResponseText write SetResponseText;
+    /// The channel of a live stream; nil before the commit or when it is kept in memory.
+    property Stream: TRALResponseStream read FChannel;
+    { How a streamed response is compressed: set by TRALCompressPlugin when
+      CompressStreams is on (gzip and deflate only); ctNone sends it as it is }
+    property StreamCompress: TRALCompressType read FStreamCompress write FStreamCompress;
+    /// The request this response answers, set by TRALServer.ProcessCommands.
+    property StreamRequest: TObject read FStreamRequest write FStreamRequest;
   published
     /// Error of the transport on a client, 0 when an HTTP response arrived.
     property ErrorCode: IntegerRAL read FErrorCode write FErrorCode;

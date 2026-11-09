@@ -138,8 +138,14 @@ type
   private
     /// Lets the authenticator send requests of its own through this engine.
     FAuthTransport: TRALAuthTransport;
+    /// OnReceiveData of this call only (TRALClient.Get with a handler).
+    FCallOnData: TRALOnReceiveData;
+    /// OnServerEvent of this call only.
+    FCallOnEvent: TRALOnServerEvent;
     /// Engine generation of the client when this engine was built.
     FGeneration: IntegerRAL;
+    /// ReadStreamHead filed the headers of this attempt's answer.
+    FHeadRead: boolean;
     /// Host of the attempt in progress.
     FHost: StringRAL;
     FIndexUrl: IntegerRAL;
@@ -156,16 +162,10 @@ type
     FPolicyVerify: TRALSSLVerify;
     /// Port of the attempt in progress.
     FPort: IntegerRAL;
-    /// OnReceiveData of this call only (TRALClient.Get with a handler).
-    FCallOnData: TRALOnReceiveData;
-    /// OnServerEvent of this call only.
-    FCallOnEvent: TRALOnServerEvent;
     /// A stream handler cancelled the attempt in progress.
     FStreamCancelled: boolean;
     /// The attempt in progress handed a piece over: it is not sent again.
     FStreamDelivered: boolean;
-    /// ReadStreamHead filed the headers of this attempt's answer.
-    FHeadRead: boolean;
 
     { Hands an answer read whole to the stream handlers: what an engine that
       cannot read in pieces does at the end, so the application code is the
@@ -184,18 +184,11 @@ type
       events around SendUrl; raises when the request failed. }
     procedure BeforeSendUrl(ARoute: StringRAL; ARequest: TRALRequest;
                             AResponse: TRALResponse; AMethod: TRALMethod);
-    /// One round of BeforeSendUrl: every BaseURL once, and the 401 resend.
-    procedure SendAttempts(ARoute: StringRAL; ARequest: TRALRequest;
-                           AResponse: TRALResponse; AMethod: TRALMethod);
     /// True when a failed attempt may go to the next BaseURL.
     function CanSwitchURL(AMethod: TRALMethod;
                           AError: TRALTransportError): boolean; virtual;
     /// True when a pin or OnValidateServerCert asks the engine to check certificates.
     function CertCheckWanted: boolean;
-    { True when ReadStreamHead already filed the headers of this attempt's
-      answer (at the first piece of a body read in pieces): the end of the
-      call must not file them again }
-    function HeadRead: boolean;
     { Signature of the certificate policy (Verify, Pins, OnValidateServerCert);
       a connection is shared only between clients with the same one. }
     function CertPolicyKey: StringRAL; virtual;
@@ -207,6 +200,10 @@ type
                     AIndexUrl: IntegerRAL = -1): StringRAL;
     /// True when a line of SSL.Pins applies to the host being called.
     function HasPinForHost: boolean;
+    { True when ReadStreamHead already filed the headers of this attempt's
+      answer (at the first piece of a body read in pieces): the end of the
+      call must not file them again }
+    function HeadRead: boolean;
     /// Locks the client's cookie jar.
     procedure LockCookieJar;
     /// A new, empty cookie jar of the engine's library; nil when it keeps none.
@@ -223,6 +220,9 @@ type
     /// Whether a pin applies to the host, and whether AFingerprint is one of them.
     procedure ResolvePin(const AFingerprint: StringRAL;
                          out AApplies, AMatches: boolean);
+    /// One round of BeforeSendUrl: every BaseURL once, and the 401 resend.
+    procedure SendAttempts(ARoute: StringRAL; ARequest: TRALRequest;
+                           AResponse: TRALResponse; AMethod: TRALMethod);
     /// Fills a response that got no HTTP answer, the same way on every engine.
     procedure SetTransportError(AResponse: TRALResponse;
                                 AError: TRALTransportError; ACode: IntegerRAL;
@@ -262,14 +262,14 @@ type
     class function SupportsCertPin: boolean; virtual;
     /// True when the engine can speak HTTP/2; else HTTPVersion rhv2 raises.
     class function SupportsHTTP2: boolean; virtual;
-    { Whether the engine sends AMethod; every engine sends the classic ones,
-      QUERY only those that take any method name. A method it does not send
-      raises before connecting. }
-    class function SupportsMethod(AMethod: TRALMethod): boolean; virtual;
     /// True when the engine carries HTTP; False on the QUIC engines.
     class function SupportsHTTPVersion: boolean; virtual;
     /// True when the engine honours KeepAliveInterval.
     class function SupportsKeepAliveInterval: boolean; virtual;
+    { Whether the engine sends AMethod; every engine sends the classic ones,
+      QUERY only those that take any method name. A method it does not send
+      raises before connecting. }
+    class function SupportsMethod(AMethod: TRALMethod): boolean; virtual;
     /// True when the engine honours ShareConnection.
     class function SupportsSharedConnection: boolean; virtual;
   published
@@ -306,10 +306,10 @@ type
     FPosition: Int64RAL;
     FResponse: TRALResponse;
 
-    /// Hands a decoded piece over: to the reader of events or to OnReceiveData.
-    procedure Deliver(const ABuffer; ASize: IntegerRAL);
     /// Fails the reading when a handler cancelled.
     procedure Cancel;
+    /// Hands a decoded piece over: to the reader of events or to OnReceiveData.
+    procedure Deliver(const ABuffer; ASize: IntegerRAL);
     procedure ParserEvent(ASender: TObject; const AEvent: TRALSSEEvent;
                           var ACancel: boolean);
     /// Reads the head of the answer and decides what the body is.
@@ -333,10 +333,9 @@ type
     function Read(var Buffer; Count: Longint): Longint; override;
     /// Answers how much was written: the libraries ask, none moves back.
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
-    function Write(const Buffer; Count: Longint): Longint; override;
-
     /// True once the body was handed over in pieces.
     function Streamed: boolean;
+    function Write(const Buffer; Count: Longint): Longint; override;
   end;
 
 
@@ -517,6 +516,7 @@ type
     FAcceptEncoding: StringRAL;
     FAuthentication: TRALAuthClient;
     FBaseURL: TStrings;
+    FCircuitBreaker: TRALClientCircuitBreaker;
     FCompressType: TRALCompressType;
     FConnectTimeout: IntegerRAL;
     /// Cookie jar shared by the engines of the client.
@@ -564,10 +564,9 @@ type
     /// ThreadToken of the thread that created the client.
     FRequestThread: Int64RAL;
     FRequestTimeout: IntegerRAL;
+    FRetry: TRALClientRetry;
     FShareConnection: boolean;
     FSkipCompressedTypes: boolean;
-    FRetry: TRALClientRetry;
-    FCircuitBreaker: TRALClientCircuitBreaker;
     FSkipCompressTypes: TStrings;
     FSpoolAbove: Int64RAL;
     FSSL: TRALClientSSL;
@@ -686,16 +685,16 @@ type
     /// Sends a POST whose event stream goes to AOnEvent event by event - see Get.
     procedure Post(ARoute: StringRAL; AOnEvent: TRALOnServerEvent;
                    var AResponse: TRALResponse); overload;
-    /// Sends a QUERY (a GET with a body) and returns the response, which the caller frees.
-    procedure Query(ARoute: StringRAL; var AResponse : TRALResponse); overload;
-    /// Sends a QUERY and hands the answer to AOnResponse.
-    procedure Query(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
-                    AExecBehavior : TRALExecBehavior = ebSingleThread); overload;
     /// Sends a PUT and returns the response, which the caller frees.
     procedure Put(ARoute: StringRAL; var AResponse : TRALResponse); overload;
     /// Sends a PUT and hands the answer to AOnResponse.
     procedure Put(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
                   AExecBehavior: TRALExecBehavior = ebSingleThread); overload;
+    /// Sends a QUERY (a GET with a body) and returns the response, which the caller frees.
+    procedure Query(ARoute: StringRAL; var AResponse : TRALResponse); overload;
+    /// Sends a QUERY and hands the answer to AOnResponse.
+    procedure Query(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
+                    AExecBehavior : TRALExecBehavior = ebSingleThread); overload;
     { Waits for the request threads still running, without calling them back,
       for at most ConnectTimeout + RequestTimeout. }
     procedure WaitPendingRequests;
@@ -711,6 +710,8 @@ type
     property Authentication: TRALAuthClient read FAuthentication write SetAuthentication;
     /// Server addresses, the next one tried on a transport failure.
     property BaseURL: TStrings read FBaseURL write SetBaseURL;
+    /// Opens a circuit for a server that keeps failing.
+    property CircuitBreaker: TRALClientCircuitBreaker read FCircuitBreaker write SetCircuitBreaker;
     /// Compression of the request bodies.
     property CompressType: TRALCompressType read FCompressType write FCompressType;
     /// Milliseconds to connect.
@@ -767,14 +768,12 @@ type
                                                 write SetPoolConnection;
     /// Milliseconds to wait for an answer.
     property RequestTimeout: IntegerRAL read FRequestTimeout write SetRequestTimeout default DEFAULTREQUESTTIMEOUT;
+    /// Sends a failed request again, with a growing wait.
+    property Retry: TRALClientRetry read FRetry write SetRetry;
     { Shares the transport, and its connection, with the clients aimed at the
       same host with the same settings, on engines with SupportsSharedConnection. }
     property ShareConnection: boolean read FShareConnection
                                       write FShareConnection default True;
-    /// Opens a circuit for a server that keeps failing.
-    property CircuitBreaker: TRALClientCircuitBreaker read FCircuitBreaker write SetCircuitBreaker;
-    /// Sends a failed request again, with a growing wait.
-    property Retry: TRALClientRetry read FRetry write SetRetry;
     /// Sends already compressed types (images, archives, pdf) uncompressed.
     property SkipCompressedTypes: boolean read FSkipCompressedTypes
       write FSkipCompressedTypes default True;
