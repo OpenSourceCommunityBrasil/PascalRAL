@@ -17,7 +17,7 @@ type
     FURL: StringRAL;
   protected
     procedure AssignTo(Dest: TPersistent); override;
-  published
+  public
     constructor Create;
   published
     /// License name.
