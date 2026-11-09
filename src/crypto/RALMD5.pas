@@ -23,8 +23,8 @@ type
   protected
     procedure Compress; override;
     function Finalize: TBytes; override;
-    function GetBufLength: IntegerRAL; override;
     function GetBuffer(AIndex: IntegerRAL) : Pointer; override;
+    function GetBufLength: IntegerRAL; override;
     procedure Initialize; override;
     // returns the left rotation of one value by the other
     function LRot32(AValue1, AValue2: Cardinal): Cardinal;

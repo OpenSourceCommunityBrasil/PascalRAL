@@ -28,8 +28,8 @@ type
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
     procedure SetFormat(AValue: TRALCompressType); override;
   public
-    class function CompressTypes : TRALCompressTypes; override;
     class function BestCompressFromClass(ATypes : TRALCompressTypes) : TRALCompressType; override;
+    class function CompressTypes : TRALCompressTypes; override;
     { gzip, zlib and deflate in pieces, on FPC and Delphi XE2 or later (nil
       before XE2, whose ZLib has no inflateInit2/deflateInit2) }
     class function CreateStreamDecoder(AFormat: TRALCompressType): TRALStreamCoder; override;
@@ -415,14 +415,14 @@ type
   { gzip, zlib or deflate decompressed in pieces, as they arrive }
   TRALZLibStreamDecoder = class(TRALStreamCoder)
   private
-    FFormat: TRALCompressType;
-    FZ: z_stream;
-    FStarted: boolean;
     FEnded: boolean;
+    FFormat: TRALCompressType;
     { the first bytes, held until the framing is known: the zlib header test of
       a deflate body, and on FPC the whole gzip header }
     FHead: RawByteString;
+    FStarted: boolean;
     FWritten: Int64RAL;
+    FZ: z_stream;
     {$IFDEF FPC}
     FCRC32: TRALCRC32;
     { the gzip trailer, read after the end of the deflate stream }
@@ -451,6 +451,7 @@ type
     FCRC32: TRALCRC32;
     FHeaderSent: boolean;
     FSize: LongWord;
+
     procedure SendHeader(AOutput: TStream);
     {$ENDIF}
     procedure DeflatePiece(ABuffer: Pointer; ASize: IntegerRAL; AFlush: Integer; AOutput: TStream);

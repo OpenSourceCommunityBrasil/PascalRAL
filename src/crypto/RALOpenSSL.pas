@@ -70,10 +70,12 @@ type
     FHandle: Pointer;
     FLibrary: TRALOpenSSL;
     FPrivate: Boolean;
+
     /// Takes ownership of the key and the pinned library snapshot.
     constructor Create(ALibrary: TRALOpenSSL; AHandle: Pointer; APrivate: Boolean);
   public
     destructor Destroy; override;
+
     /// Returns the public key as a DER SubjectPublicKeyInfo.
     function PublicKeyDER: TBytes;
     /// Signs UTF-8 bytes; a public-only key raises ecJWSNoPrivateKey.
@@ -81,6 +83,7 @@ type
     /// Returns False for a signature that does not match the input and key.
     function Verify(const AInput: StringRAL; const ASignature: TBytes;
       ADigest: TRALOpenSSLDigest): Boolean;
+
     /// Whether this object holds a private key.
     property IsPrivate: Boolean read FPrivate;
   end;
@@ -90,214 +93,45 @@ type
   protected class var
     FOperationLock: TCriticalSection;
   protected
-    FStateLock: TMultiReadExclusiveWriteSynchronizer;
-    Lib: IRALDynLibs;
-    FVersionNumber: Cardinal;
-    FVersionText: string;
-    FLibraryFilename: string;
-    OpenSSL_version_num: function: TRALOpenSSLVersionWord; cdecl;
-    OpenSSL_version: function(Kind: Integer): PAnsiChar; cdecl;
-    EVP_PKEY_CTX_new_id: function(
-      ID: Integer;
-      E: Pointer
-    ): Pointer; cdecl;
-    EVP_PKEY_CTX_free: procedure(P: Pointer); cdecl;
-    EVP_PKEY_keygen_init: function(P: Pointer): Integer; cdecl;
-    EVP_PKEY_CTX_set_rsa_keygen_bits: function(
-      P: Pointer;
-      Bits: Integer
-    ): Integer; cdecl;
-    EVP_PKEY_CTX_ctrl: function(
-      Ctx: Pointer;
-      KeyType: Integer;
-      Operation: Integer;
-      Command: Integer;
-      Value: Integer;
-      Data: Pointer
-    ): Integer; cdecl;
-    EVP_PKEY_keygen: function(
-      P: Pointer;
-      var Key: Pointer
-    ): Integer; cdecl;
-    EVP_PKEY_free: procedure(P: Pointer); cdecl;
-    BIO_new: function(Method: Pointer): Pointer; cdecl;
-    BIO_s_mem: function: Pointer; cdecl;
-    BIO_new_mem_buf: function(
-      Buffer: Pointer;
-      Size: Integer
-    ): Pointer; cdecl;
-    BIO_free: function(P: Pointer): Integer; cdecl;
-    BIO_read: function(
-      P: Pointer;
-      Buffer: Pointer;
-      Size: Integer
-    ): Integer; cdecl;
-    PEM_write_bio_PrivateKey: function(
-      Bio: Pointer;
-      Key: Pointer;
-      Cipher: Pointer;
-      KStr: Pointer;
-      KLen: Integer;
-      CB: Pointer;
-      U: Pointer
-    ): Integer; cdecl;
-    PEM_read_bio_PrivateKey: function(
-      Bio: Pointer;
-      Key: Pointer;
-      CB: Pointer;
-      U: Pointer
-    ): Pointer; cdecl;
-    EVP_PKEY_get_bn_param: function(
-      Key: Pointer;
-      Name: PAnsiChar;
-      var BN: Pointer
-    ): Integer; cdecl;
-    EVP_PKEY_get0_RSA: function(Key: Pointer): Pointer; cdecl;
-    RSA_get0_key: procedure(
-      RSA: Pointer;
-      N: PPointer;
-      E: PPointer;
-      D: PPointer
-    ); cdecl;
-    EVP_PKEY_get1_RSA: function(Key: Pointer): Pointer; cdecl;
-    i2d_RSAPublicKey: function(RSA: Pointer; Buffer: PPointer): Integer; cdecl;
-    RSA_free: procedure(RSA: Pointer); cdecl;
-    BN_num_bits: function(BN: Pointer): Integer; cdecl;
-    BN_bn2bin: function(
-      BN: Pointer;
-      Buffer: Pointer
-    ): Integer; cdecl;
-    BN_free: procedure(BN: Pointer); cdecl;
-    EVP_MD_CTX_new: function: Pointer; cdecl;
-    EVP_MD_CTX_free: procedure(P: Pointer); cdecl;
-    EVP_sha256: function: Pointer; cdecl;
-    /// Optional SHA-384 implementation used by asymmetric signatures.
-    EVP_sha384: function: Pointer; cdecl;
-    /// Optional SHA-512 implementation used by asymmetric signatures.
-    EVP_sha512: function: Pointer; cdecl;
-    /// Optional public-key decoder for a DER SubjectPublicKeyInfo.
-    d2i_PUBKEY: function(Key: PPointer; Buffer: PPointer;
-      Size: {$IFDEF RALWindows}LongInt{$ELSE}NativeInt{$ENDIF}): Pointer; cdecl;
-    /// Optional public-key encoder for a DER SubjectPublicKeyInfo.
-    i2d_PUBKEY: function(Key: Pointer; Buffer: PPointer): Integer; cdecl;
-    /// Optional reader for an unencrypted public key in PEM.
-    PEM_read_bio_PUBKEY: function(Bio: Pointer; Key: Pointer;
-      CB: Pointer; User: Pointer): Pointer; cdecl;
-    /// Initializes a digest verification operation.
-    EVP_DigestVerifyInit: function(Ctx: Pointer; PCtx: Pointer; Kind: Pointer;
-      Engine: Pointer; Key: Pointer): Integer; cdecl;
-    /// Adds bytes to a digest verification operation.
-    EVP_DigestVerifyUpdate: function(Ctx: Pointer; Data: Pointer;
-      Size: NativeUInt): Integer; cdecl;
-    /// Checks the signature of the bytes passed to verification.
-    EVP_DigestVerifyFinal: function(Ctx: Pointer; Sig: Pointer;
-      Size: NativeUInt): Integer; cdecl;
-    EVP_Digest: function(
-      Data: Pointer;
-      Size: NativeUInt;
-      MD: Pointer;
-      var MDSize: Cardinal;
-      Kind: Pointer;
-      Engine: Pointer
-    ): Integer; cdecl;
-    EVP_DigestSignInit: function(
-      Ctx: Pointer;
-      PCtx: Pointer;
-      Kind: Pointer;
-      Engine: Pointer;
-      Key: Pointer
-    ): Integer; cdecl;
-    EVP_DigestSignUpdate: function(
-      Ctx: Pointer;
-      Data: Pointer;
-      Size: NativeUInt
-    ): Integer; cdecl;
-    EVP_DigestSignFinal: function(
-      Ctx: Pointer;
-      Sig: Pointer;
-      var Size: NativeUInt
-    ): Integer; cdecl;
-    X509_REQ_new: function: Pointer; cdecl;
-    X509_REQ_free: procedure(P: Pointer); cdecl;
-    X509_REQ_set_version: function(
-      P: Pointer;
-      Version: {$IFDEF RALWindows}LongInt{$ELSE}NativeInt{$ENDIF}
-    ): Integer; cdecl;
-    X509_REQ_set_pubkey: function(
-      Req: Pointer;
-      Key: Pointer
-    ): Integer; cdecl;
-    X509_REQ_sign: function(
-      Req: Pointer;
-      Key: Pointer;
-      MD: Pointer
-    ): Integer; cdecl;
-    X509_REQ_add_extensions: function(
-      Req: Pointer;
-      Extensions: Pointer
-    ): Integer; cdecl;
-    X509V3_EXT_conf_nid: function(
-      Conf: Pointer;
-      Ctx: Pointer;
-      NID: Integer;
-      Value: PAnsiChar
-    ): Pointer; cdecl;
-    X509_EXTENSION_free: procedure(P: Pointer); cdecl;
-    OPENSSL_sk_new_null: function: Pointer; cdecl;
-    OPENSSL_sk_push: function(
-      Stack: Pointer;
-      Value: Pointer
-    ): Integer; cdecl;
-    OPENSSL_sk_free: procedure(P: Pointer); cdecl;
-    i2d_X509_REQ: function(
-      Req: Pointer;
-      Buffer: PPointer
-    ): Integer; cdecl;
-    PEM_read_bio_X509: function(
-      Bio: Pointer;
-      Cert: Pointer;
-      CB: Pointer;
-      U: Pointer
-    ): Pointer; cdecl;
-    X509_free: procedure(P: Pointer); cdecl;
-    X509_get0_notAfter: function(P: Pointer): Pointer; cdecl;
-    X509_get0_notBefore: function(P: Pointer): Pointer; cdecl;
-    i2d_X509: function(Cert: Pointer; Buffer: PPointer): Integer; cdecl;
-    ASN1_TIME_new: function: Pointer; cdecl;
-    ASN1_TIME_free: procedure(Value: Pointer); cdecl;
-    ASN1_TIME_set_string: function(Value: Pointer; Text: PAnsiChar): Integer; cdecl;
-    X509_check_private_key: function(
-      Cert: Pointer;
-      Key: Pointer
-    ): Integer; cdecl;
-    X509_check_host: function(
-      Cert: Pointer;
-      Name: PAnsiChar;
-      Size: NativeUInt;
-      Flags: Cardinal;
-      Peer: Pointer
-    ): Integer; cdecl;
     ASN1_TIME_diff: function(
       var Days: Integer;
       var Seconds: Integer;
       FromTime: Pointer;
       ToTime: Pointer
     ): Integer; cdecl;
-    EVP_EncryptInit_ex: function(
-      Ctx: PEVP_CIPHER_CTX;
-      Cipher: Pointer;
-      Engine: Pointer;
-      Key: PByte;
-      IV: PByte
+    ASN1_TIME_free: procedure(Value: Pointer); cdecl;
+    ASN1_TIME_new: function: Pointer; cdecl;
+    ASN1_TIME_set_string: function(Value: Pointer; Text: PAnsiChar): Integer; cdecl;
+    BIO_free: function(P: Pointer): Integer; cdecl;
+    BIO_new: function(Method: Pointer): Pointer; cdecl;
+    BIO_new_mem_buf: function(
+      Buffer: Pointer;
+      Size: Integer
+    ): Pointer; cdecl;
+    BIO_read: function(
+      P: Pointer;
+      Buffer: Pointer;
+      Size: Integer
     ): Integer; cdecl;
-    EVP_EncryptUpdate: function(
-      Ctx: PEVP_CIPHER_CTX;
-      OutBuffer: PByte;
-      OutLength: PInteger;
-      InBuffer: PByte;
-      InLength: Integer
+    BIO_s_mem: function: Pointer; cdecl;
+    BN_bn2bin: function(
+      BN: Pointer;
+      Buffer: Pointer
     ): Integer; cdecl;
-    EVP_EncryptFinal_ex: function(
+    BN_free: procedure(BN: Pointer); cdecl;
+    BN_num_bits: function(BN: Pointer): Integer; cdecl;
+    /// Optional public-key decoder for a DER SubjectPublicKeyInfo.
+    d2i_PUBKEY: function(Key: PPointer; Buffer: PPointer;
+      Size: {$IFDEF RALWindows}LongInt{$ELSE}NativeInt{$ENDIF}): Pointer; cdecl;
+    EVP_aes_128_cbc: function: Pointer; cdecl;
+    EVP_aes_128_ecb: function: Pointer; cdecl;
+    EVP_aes_192_cbc: function: Pointer; cdecl;
+    EVP_aes_192_ecb: function: Pointer; cdecl;
+    EVP_aes_256_cbc: function: Pointer; cdecl;
+    EVP_aes_256_ecb: function: Pointer; cdecl;
+    EVP_CIPHER_CTX_free: procedure(Ctx: PEVP_CIPHER_CTX); cdecl;
+    EVP_CIPHER_CTX_new: function: PEVP_CIPHER_CTX; cdecl;
+    EVP_DecryptFinal_ex: function(
       Ctx: PEVP_CIPHER_CTX;
       OutBuffer: PByte;
       OutLength: PInteger
@@ -316,46 +150,219 @@ type
       InBuffer: PByte;
       InLength: Integer
     ): Integer; cdecl;
-    EVP_DecryptFinal_ex: function(
+    EVP_Digest: function(
+      Data: Pointer;
+      Size: NativeUInt;
+      MD: Pointer;
+      var MDSize: Cardinal;
+      Kind: Pointer;
+      Engine: Pointer
+    ): Integer; cdecl;
+    EVP_DigestSignFinal: function(
+      Ctx: Pointer;
+      Sig: Pointer;
+      var Size: NativeUInt
+    ): Integer; cdecl;
+    EVP_DigestSignInit: function(
+      Ctx: Pointer;
+      PCtx: Pointer;
+      Kind: Pointer;
+      Engine: Pointer;
+      Key: Pointer
+    ): Integer; cdecl;
+    EVP_DigestSignUpdate: function(
+      Ctx: Pointer;
+      Data: Pointer;
+      Size: NativeUInt
+    ): Integer; cdecl;
+    /// Checks the signature of the bytes passed to verification.
+    EVP_DigestVerifyFinal: function(Ctx: Pointer; Sig: Pointer;
+      Size: NativeUInt): Integer; cdecl;
+    /// Initializes a digest verification operation.
+    EVP_DigestVerifyInit: function(Ctx: Pointer; PCtx: Pointer; Kind: Pointer;
+      Engine: Pointer; Key: Pointer): Integer; cdecl;
+    /// Adds bytes to a digest verification operation.
+    EVP_DigestVerifyUpdate: function(Ctx: Pointer; Data: Pointer;
+      Size: NativeUInt): Integer; cdecl;
+    EVP_EncryptFinal_ex: function(
       Ctx: PEVP_CIPHER_CTX;
       OutBuffer: PByte;
       OutLength: PInteger
     ): Integer; cdecl;
-    EVP_CIPHER_CTX_new: function: PEVP_CIPHER_CTX; cdecl;
-    EVP_CIPHER_CTX_free: procedure(Ctx: PEVP_CIPHER_CTX); cdecl;
-    EVP_aes_128_cbc: function: Pointer; cdecl;
-    EVP_aes_192_cbc: function: Pointer; cdecl;
-    EVP_aes_256_cbc: function: Pointer; cdecl;
-    EVP_aes_128_ecb: function: Pointer; cdecl;
-    EVP_aes_192_ecb: function: Pointer; cdecl;
-    EVP_aes_256_ecb: function: Pointer; cdecl;
+    EVP_EncryptInit_ex: function(
+      Ctx: PEVP_CIPHER_CTX;
+      Cipher: Pointer;
+      Engine: Pointer;
+      Key: PByte;
+      IV: PByte
+    ): Integer; cdecl;
+    EVP_EncryptUpdate: function(
+      Ctx: PEVP_CIPHER_CTX;
+      OutBuffer: PByte;
+      OutLength: PInteger;
+      InBuffer: PByte;
+      InLength: Integer
+    ): Integer; cdecl;
+    EVP_MD_CTX_free: procedure(P: Pointer); cdecl;
+    EVP_MD_CTX_new: function: Pointer; cdecl;
+    EVP_PKEY_CTX_ctrl: function(
+      Ctx: Pointer;
+      KeyType: Integer;
+      Operation: Integer;
+      Command: Integer;
+      Value: Integer;
+      Data: Pointer
+    ): Integer; cdecl;
+    EVP_PKEY_CTX_free: procedure(P: Pointer); cdecl;
+    EVP_PKEY_CTX_new_id: function(
+      ID: Integer;
+      E: Pointer
+    ): Pointer; cdecl;
+    EVP_PKEY_CTX_set_rsa_keygen_bits: function(
+      P: Pointer;
+      Bits: Integer
+    ): Integer; cdecl;
+    EVP_PKEY_free: procedure(P: Pointer); cdecl;
+    EVP_PKEY_get0_RSA: function(Key: Pointer): Pointer; cdecl;
+    EVP_PKEY_get1_RSA: function(Key: Pointer): Pointer; cdecl;
+    EVP_PKEY_get_bn_param: function(
+      Key: Pointer;
+      Name: PAnsiChar;
+      var BN: Pointer
+    ): Integer; cdecl;
+    EVP_PKEY_keygen: function(
+      P: Pointer;
+      var Key: Pointer
+    ): Integer; cdecl;
+    EVP_PKEY_keygen_init: function(P: Pointer): Integer; cdecl;
+    EVP_sha256: function: Pointer; cdecl;
+    /// Optional SHA-384 implementation used by asymmetric signatures.
+    EVP_sha384: function: Pointer; cdecl;
+    /// Optional SHA-512 implementation used by asymmetric signatures.
+    EVP_sha512: function: Pointer; cdecl;
     { Optional exports. Check Assigned before calling; callbacks are never installed automatically. }
     FGetLockingCallback: function: Pointer; cdecl;
+    FLibraryFilename: string;
     FSetLockingCallback: procedure(Callback: Pointer); cdecl;
+    FStateLock: TMultiReadExclusiveWriteSynchronizer;
+    FVersionNumber: Cardinal;
+    FVersionText: string;
+    /// Optional public-key encoder for a DER SubjectPublicKeyInfo.
+    i2d_PUBKEY: function(Key: Pointer; Buffer: PPointer): Integer; cdecl;
+    i2d_RSAPublicKey: function(RSA: Pointer; Buffer: PPointer): Integer; cdecl;
+    i2d_X509: function(Cert: Pointer; Buffer: PPointer): Integer; cdecl;
+    i2d_X509_REQ: function(
+      Req: Pointer;
+      Buffer: PPointer
+    ): Integer; cdecl;
+    Lib: IRALDynLibs;
+    OPENSSL_sk_free: procedure(P: Pointer); cdecl;
+    OPENSSL_sk_new_null: function: Pointer; cdecl;
+    OPENSSL_sk_push: function(
+      Stack: Pointer;
+      Value: Pointer
+    ): Integer; cdecl;
+    OpenSSL_version: function(Kind: Integer): PAnsiChar; cdecl;
+    OpenSSL_version_num: function: TRALOpenSSLVersionWord; cdecl;
+    PEM_read_bio_PrivateKey: function(
+      Bio: Pointer;
+      Key: Pointer;
+      CB: Pointer;
+      U: Pointer
+    ): Pointer; cdecl;
+    /// Optional reader for an unencrypted public key in PEM.
+    PEM_read_bio_PUBKEY: function(Bio: Pointer; Key: Pointer;
+      CB: Pointer; User: Pointer): Pointer; cdecl;
+    PEM_read_bio_X509: function(
+      Bio: Pointer;
+      Cert: Pointer;
+      CB: Pointer;
+      U: Pointer
+    ): Pointer; cdecl;
+    PEM_write_bio_PrivateKey: function(
+      Bio: Pointer;
+      Key: Pointer;
+      Cipher: Pointer;
+      KStr: Pointer;
+      KLen: Integer;
+      CB: Pointer;
+      U: Pointer
+    ): Integer; cdecl;
+    RSA_free: procedure(RSA: Pointer); cdecl;
+    RSA_get0_key: procedure(
+      RSA: Pointer;
+      N: PPointer;
+      E: PPointer;
+      D: PPointer
+    ); cdecl;
+    X509_check_host: function(
+      Cert: Pointer;
+      Name: PAnsiChar;
+      Size: NativeUInt;
+      Flags: Cardinal;
+      Peer: Pointer
+    ): Integer; cdecl;
+    X509_check_private_key: function(
+      Cert: Pointer;
+      Key: Pointer
+    ): Integer; cdecl;
+    X509_EXTENSION_free: procedure(P: Pointer); cdecl;
+    X509_free: procedure(P: Pointer); cdecl;
+    X509_get0_notAfter: function(P: Pointer): Pointer; cdecl;
+    X509_get0_notBefore: function(P: Pointer): Pointer; cdecl;
+    X509_REQ_add_extensions: function(
+      Req: Pointer;
+      Extensions: Pointer
+    ): Integer; cdecl;
+    X509_REQ_free: procedure(P: Pointer); cdecl;
+    X509_REQ_new: function: Pointer; cdecl;
+    X509_REQ_set_pubkey: function(
+      Req: Pointer;
+      Key: Pointer
+    ): Integer; cdecl;
+    X509_REQ_set_version: function(
+      P: Pointer;
+      Version: {$IFDEF RALWindows}LongInt{$ELSE}NativeInt{$ENDIF}
+    ): Integer; cdecl;
+    X509_REQ_sign: function(
+      Req: Pointer;
+      Key: Pointer;
+      MD: Pointer
+    ): Integer; cdecl;
+    X509V3_EXT_conf_nid: function(
+      Conf: Pointer;
+      Ctx: Pointer;
+      NID: Integer;
+      Value: PAnsiChar
+    ): Pointer; cdecl;
+
     constructor CreateEmpty(Internal: Boolean);
-    procedure SetLibraryFilename(const Value: string);
+
     procedure AdoptBindings(Candidate: TRALOpenSSLLibrary);
-    function GetLoaded: Boolean;
-    function GetLibraryFilename: string;
-    function GetVersionText: string;
-    function GetVersionNumber: Cardinal;
     procedure BeginOperation;
     procedure EndOperation;
-    function GetSupportsLockingCallbacks: Boolean;
-    procedure LoadBindings(const LibraryHandle: IRALDynLibs);
+    function GetLibraryFilename: string;
     function GetLibraryHandle: NativeUInt;
+    function GetLoaded: Boolean;
+    function GetSupportsLockingCallbacks: Boolean;
+    function GetVersionNumber: Cardinal;
+    function GetVersionText: string;
+    procedure LoadBindings(const LibraryHandle: IRALDynLibs);
+    procedure SetLibraryFilename(const Value: string);
   public
     constructor Create;
     destructor Destroy; override;
+
     class function FindLibrary: string; static;
     function GetLockingCallback: Pointer;
     procedure SetLockingCallback(Callback: Pointer);
-    property SupportsLockingCallbacks: Boolean read GetSupportsLockingCallbacks;
+
     property LibraryFilename: string read GetLibraryFilename write SetLibraryFilename;
+    property LibraryHandle: NativeUInt read GetLibraryHandle;
     property Loaded: Boolean read GetLoaded;
+    property SupportsLockingCallbacks: Boolean read GetSupportsLockingCallbacks;
     property VersionNumber: Cardinal read GetVersionNumber;
     property VersionText: string read GetVersionText;
-    property LibraryHandle: NativeUInt read GetLibraryHandle;
   end;
 
   { High-level cryptography and certificate helpers. }
@@ -363,19 +370,9 @@ type
   private class var
     FInstance: TRALOpenSSL;
   private
-    /// Returns the selected hash implementation while an operation is active.
-    function DigestMethod(ADigest: TRALOpenSSLDigest): Pointer;
-    /// Imports PEM or DER into a key that pins the current library bindings.
-    function ImportKey(const AData: RawByteString; APrivate, APEM: Boolean): TRALOpenSSLKey;
-    /// Tests the optional bindings while the library read lock is held.
-    function JWSBindingsAvailable: Boolean;
-    procedure CryptAESStream(
-      Source: TStream;
-      Destination: TStream;
-      const Key: TBytes;
-      const IV: TBytes;
-      Mode: TRALOpenSSLAESMode;
-      Encrypting: Boolean
+    procedure Check(
+      Value: Integer;
+      const Operation: string
     );
     function CryptAESBytes(
       const Input: TBytes;
@@ -384,38 +381,54 @@ type
       Mode: TRALOpenSSLAESMode;
       Encrypting: Boolean
     ): TBytes;
-    function LoadKey(const PEM: RawByteString): Pointer;
-    function LegacyRSAParameter(
-      Key: Pointer;
-      const Name: AnsiString
-    ): RawByteString;
+    procedure CryptAESStream(
+      Source: TStream;
+      Destination: TStream;
+      const Key: TBytes;
+      const IV: TBytes;
+      Mode: TRALOpenSSLAESMode;
+      Encrypting: Boolean
+    );
+    /// Returns the selected hash implementation while an operation is active.
+    function DigestMethod(ADigest: TRALOpenSSLDigest): Pointer;
+    /// Imports PEM or DER into a key that pins the current library bindings.
+    function ImportKey(const AData: RawByteString; APrivate, APEM: Boolean): TRALOpenSSLKey;
+    /// Tests the optional bindings while the library read lock is held.
+    function JWSBindingsAvailable: Boolean;
     function LegacyCertificateTime(
       Cert: Pointer;
       AfterTime: Boolean
     ): Pointer;
-    procedure Check(
-      Value: Integer;
-      const Operation: string
-    );
+    function LegacyRSAParameter(
+      Key: Pointer;
+      const Name: AnsiString
+    ): RawByteString;
+    function LoadKey(const PEM: RawByteString): Pointer;
     class procedure ReleaseInstance; static;
   public
-    { Borrowed singleton, released at unit finalization. Do not call Free on it. }
-    class function GetInstance: TRALOpenSSL; static;
-    /// Imports an unencrypted private PEM key; the caller frees the returned key.
-    function LoadPrivateKeyPEM(const APEM: StringRAL): TRALOpenSSLKey;
-    /// Imports a DER SubjectPublicKeyInfo; the caller frees the returned key.
-    function LoadPublicKeyDER(const ADER: TBytes): TRALOpenSSLKey;
-    /// Imports a public PEM key; the caller frees the returned key.
-    function LoadPublicKeyPEM(const APEM: StringRAL): TRALOpenSSLKey;
-    /// Whether OpenSSL 1.1.1 or later and the asymmetric bindings are available.
-    function SupportsJWS: Boolean;
-    function EncryptAES(
+    function CertificateDays(
+      const PEM: RawByteString;
+      const Key: RawByteString;
+      Domains: TStrings
+    ): Double;
+    function CSR(
+      const Key: RawByteString;
+      Domains: TStrings
+    ): RawByteString;
+    function DecryptAES(
       const Input: TBytes;
       const Key: TBytes;
       const IV: TBytes;
       Mode: TRALOpenSSLAESMode = aesCBC
     ): TBytes;
-    function DecryptAES(
+    procedure DecryptAESStream(
+      Source: TStream;
+      Destination: TStream;
+      const Key: TBytes;
+      const IV: TBytes;
+      Mode: TRALOpenSSLAESMode = aesCBC
+    );
+    function EncryptAES(
       const Input: TBytes;
       const Key: TBytes;
       const IV: TBytes;
@@ -428,29 +441,23 @@ type
       const IV: TBytes;
       Mode: TRALOpenSSLAESMode = aesCBC
     );
-    procedure DecryptAESStream(
-      Source: TStream;
-      Destination: TStream;
-      const Key: TBytes;
-      const IV: TBytes;
-      Mode: TRALOpenSSLAESMode = aesCBC
-    );
     function GenerateKey: RawByteString;
+    { Borrowed singleton, released at unit finalization. Do not call Free on it. }
+    class function GetInstance: TRALOpenSSL; static;
     function JWK(const Key: RawByteString): string;
+    /// Imports an unencrypted private PEM key; the caller frees the returned key.
+    function LoadPrivateKeyPEM(const APEM: StringRAL): TRALOpenSSLKey;
+    /// Imports a DER SubjectPublicKeyInfo; the caller frees the returned key.
+    function LoadPublicKeyDER(const ADER: TBytes): TRALOpenSSLKey;
+    /// Imports a public PEM key; the caller frees the returned key.
+    function LoadPublicKeyPEM(const APEM: StringRAL): TRALOpenSSLKey;
     function SHA256(const Bytes: RawByteString): RawByteString;
     function Sign(
       const Key: RawByteString;
       const Bytes: RawByteString
     ): RawByteString;
-    function CSR(
-      const Key: RawByteString;
-      Domains: TStrings
-    ): RawByteString;
-    function CertificateDays(
-      const PEM: RawByteString;
-      const Key: RawByteString;
-      Domains: TStrings
-    ): Double;
+    /// Whether OpenSSL 1.1.1 or later and the asymmetric bindings are available.
+    function SupportsJWS: Boolean;
   end;
 
 implementation

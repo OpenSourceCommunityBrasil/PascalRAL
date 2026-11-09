@@ -63,14 +63,14 @@ type
     constructor Create(AAlg: TRALSCRAMAlg; const AUserName, APassword: StringRAL;
       const AClientNonce: StringRAL = '');
 
-    /// The client-first message, with the gs2 header ('n,,n=user,r=nonce').
-    function ClientFirst: StringRAL;
-    { The client-final message (with the proof) answering AServerFirst; raises
-      when the server sent an error, or a nonce that does not extend ours }
-    function ClientFinal(const AServerFirst: StringRAL): StringRAL;
     { True when AServerFinal proves the server knows the password; raises with
       the server's error ('e=...') }
     function CheckServerFinal(const AServerFinal: StringRAL): boolean;
+    { The client-final message (with the proof) answering AServerFirst; raises
+      when the server sent an error, or a nonce that does not extend ours }
+    function ClientFinal(const AServerFirst: StringRAL): StringRAL;
+    /// The client-first message, with the gs2 header ('n,,n=user,r=nonce').
+    function ClientFirst: StringRAL;
 
     /// Hash of the mechanism.
     property Alg: TRALSCRAMAlg read FAlg;
@@ -101,6 +101,7 @@ type
       makes a random one (a fixed one is only for the RFC test vectors) }
     constructor Create(AAlg: TRALSCRAMAlg; ALookup: TRALSCRAMLookup;
       const AServerNonce: StringRAL = '');
+
     { Answers the client's AMessage: the server-first message after the
       client-first, the server-final after the client-final. Raises
       ERALSCRAMError on a malformed message; a wrong password sets Done, leaves

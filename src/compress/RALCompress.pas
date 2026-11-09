@@ -41,33 +41,32 @@ type
     procedure InitDeCompress(AInStream, AOutStream: TStream); virtual; abstract;
     procedure SetFormat(AValue: TRALCompressType); virtual;
   public
+    class function BestCompressFromClass(ATypes : TRALCompressTypes) : TRALCompressType; virtual;
+    function Compress(AStream: TStream): TStream; overload;
+    function Compress(const AString: StringRAL): StringRAL; overload;
+    procedure CompressFile(AInFile, AOutFile: StringRAL);
     { AInStream, from its start, compressed into AOutStream, where AOutStream
       is: nothing but a working buffer of DEFAULTBUFFERSTREAMSIZE in between.
       What EncodeBody uses, writing straight into the body that goes out }
     procedure CompressTo(AInStream, AOutStream: TStream);
-    /// The inverse of CompressTo: AInStream, from its start, into AOutStream
-    procedure DecompressTo(AInStream, AOutStream: TStream);
-    function Compress(AStream: TStream): TStream; overload;
-    function Compress(const AString: StringRAL): StringRAL; overload;
-    procedure CompressFile(AInFile, AOutFile: StringRAL);
-    function Decompress(AStream: TStream): TStream; overload;
-    function Decompress(const AString: StringRAL): StringRAL; overload;
-    procedure DecompressFile(AInFile, AOutFile: StringRAL);
-
     class function CompressToString(ACompress: TRALCompressType): StringRAL;
-    class function StringToCompress(const AStr: StringRAL): TRALCompressType;
-    /// The coding of a name as RALSplitCoding hands it back - lowercase, no
-    /// parameters - for a caller that already split the entry
-    class function NameToCompress(const AName: StringRAL): TRALCompressType;
-    class function GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
     class function CompressTypes : TRALCompressTypes; virtual; abstract;
-    class function BestCompressFromClass(ATypes : TRALCompressTypes) : TRALCompressType; virtual;
     { A decompressor of AFormat that takes the body in pieces, or nil when this
       class has none (the base answers nil): the body is then decompressed whole }
     class function CreateStreamDecoder(AFormat: TRALCompressType): TRALStreamCoder; virtual;
     { A compressor of AFormat whose every Update sends out all it was given (a
       flush per piece), or nil when this class has none (the base answers nil) }
     class function CreateStreamEncoder(AFormat: TRALCompressType): TRALStreamCoder; virtual;
+    function Decompress(AStream: TStream): TStream; overload;
+    function Decompress(const AString: StringRAL): StringRAL; overload;
+    procedure DecompressFile(AInFile, AOutFile: StringRAL);
+    /// The inverse of CompressTo: AInStream, from its start, into AOutStream
+    procedure DecompressTo(AInStream, AOutStream: TStream);
+    class function GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
+    /// The coding of a name as RALSplitCoding hands it back - lowercase, no
+    /// parameters - for a caller that already split the entry
+    class function NameToCompress(const AName: StringRAL): TRALCompressType;
+    class function StringToCompress(const AStr: StringRAL): TRALCompressType;
   published
     property Format: TRALCompressType read FFormat write SetFormat;
   end;

@@ -44,38 +44,49 @@ type
 
   TRALRSAKey = class
   private
-    FN: TRALBigNum;
-    FE: TRALBigNum;
     FD: TRALBigNum;
-    FP: TRALBigNum;
-    FQ: TRALBigNum;
     FDP: TRALBigNum;
     FDQ: TRALBigNum;
+    FE: TRALBigNum;
+    FN: TRALBigNum;
+    FP: TRALBigNum;
+    FQ: TRALBigNum;
     FQInv: TRALBigNum;
+
+    procedure CheckKey;
     function GetBits: IntegerRAL;
     function GetIsPrivate: boolean;
     /// the private operation, by the CRT
     function PrivateOp(const AValue: TRALBigNum): TRALBigNum;
-    procedure CheckKey;
   public
-    /// a new key of ABits bits (at least 1024) and public exponent AExponent
-    class function Generate(ABits: IntegerRAL = RALRSADefaultBits;
-      AExponent: Cardinal = RALRSADefaultExponent): TRALRSAKey;
+    class function FromFile(const AFileName: string): TRALRSAKey;
+    /// the first key of the text: 'PRIVATE KEY', 'RSA PRIVATE KEY', 'PUBLIC KEY'
+    /// or 'RSA PUBLIC KEY'. 'ENCRYPTED PRIVATE KEY' raises: this unit does not
+    /// decrypt keys
+    class function FromPEM(const APEM: StringRAL): TRALRSAKey;
     /// RSAPrivateKey (PKCS#1)
     class function FromPKCS1(const ADER: TBytes): TRALRSAKey;
     /// PrivateKeyInfo (PKCS#8, not encrypted)
     class function FromPKCS8(const ADER: TBytes): TRALRSAKey;
     /// SubjectPublicKeyInfo: a key with no private part
     class function FromPublicKeyInfo(const ADER: TBytes): TRALRSAKey;
-    /// the first key of the text: 'PRIVATE KEY', 'RSA PRIVATE KEY', 'PUBLIC KEY'
-    /// or 'RSA PUBLIC KEY'. 'ENCRYPTED PRIVATE KEY' raises: this unit does not
-    /// decrypt keys
-    class function FromPEM(const APEM: StringRAL): TRALRSAKey;
-    class function FromFile(const AFileName: string): TRALRSAKey;
-
+    /// a new key of ABits bits (at least 1024) and public exponent AExponent
+    class function Generate(ABits: IntegerRAL = RALRSADefaultBits;
+      AExponent: Cardinal = RALRSADefaultExponent): TRALRSAKey;
+    /// 'PRIVATE KEY' (PKCS#8, what OpenSSL 3 writes) or, with APKCS1,
+    /// 'RSA PRIVATE KEY'
+    function PrivateKeyPEM(APKCS1: boolean = False): StringRAL;
+    /// RSAPrivateKey (PKCS#1)
+    function PrivateKeyPKCS1: TBytes;
+    /// PrivateKeyInfo (PKCS#8)
+    function PrivateKeyPKCS8: TBytes;
+    /// SubjectPublicKeyInfo, the public key of a certificate
+    function PublicKeyInfo: TBytes;
+    function PublicKeyPEM: StringRAL;
+    /// RSAPublicKey (PKCS#1)
+    function PublicKeyPKCS1: TBytes;
     /// the same public key (n and e)
     function SamePublicKey(AOther: TRALRSAKey): boolean;
-
     /// PKCS#1 v1.5 signature of the SHA-256 of AData
     function Sign(const AData: TBytes): TBytes;
     /// PKCS#1 v1.5 signature of a SHA-256 digest
@@ -86,26 +97,13 @@ type
     /// certificate signed with SHA-1, SHA-384 or SHA-512 needs
     function VerifyDigestInfo(const ADigestInfo, ASignature: TBytes): boolean;
 
-    /// RSAPublicKey (PKCS#1)
-    function PublicKeyPKCS1: TBytes;
-    /// SubjectPublicKeyInfo, the public key of a certificate
-    function PublicKeyInfo: TBytes;
-    /// RSAPrivateKey (PKCS#1)
-    function PrivateKeyPKCS1: TBytes;
-    /// PrivateKeyInfo (PKCS#8)
-    function PrivateKeyPKCS8: TBytes;
-    /// 'PRIVATE KEY' (PKCS#8, what OpenSSL 3 writes) or, with APKCS1,
-    /// 'RSA PRIVATE KEY'
-    function PrivateKeyPEM(APKCS1: boolean = False): StringRAL;
-    function PublicKeyPEM: StringRAL;
-
-    property N: TRALBigNum read FN;
-    property E: TRALBigNum read FE;
+    property Bits: IntegerRAL read GetBits;
     property D: TRALBigNum read FD;
+    property E: TRALBigNum read FE;
+    property IsPrivate: boolean read GetIsPrivate;
+    property N: TRALBigNum read FN;
     property P: TRALBigNum read FP;
     property Q: TRALBigNum read FQ;
-    property Bits: IntegerRAL read GetBits;
-    property IsPrivate: boolean read GetIsPrivate;
   end;
 
 /// SHA-256 of AData

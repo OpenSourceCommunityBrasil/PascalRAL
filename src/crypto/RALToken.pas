@@ -50,6 +50,7 @@ type
     procedure SetAsJSON(const AValue: StringRAL);
   public
     constructor Create;
+
     procedure createKeyID;
 
     /// False when the alg of a token read is none this class knows: such a
@@ -82,12 +83,13 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     /// Sets a custom claim; one already there with the same key is replaced
     procedure AddClaim(const AKey: StringRAL; const AValue: StringRAL);
     procedure Clear;
-    procedure createNewId;
     /// Adds every custom claim to AList as name=value lines (the registered ones are fields).
     procedure CopyClaimsTo(AList: TStrings);
+    procedure createNewId;
     procedure DelClaim(const AKey: StringRAL);
     function GetClaim(const AKey: StringRAL): StringRAL;
     /// Whether the aud claim names AAudience - aud may be one string or a
@@ -114,12 +116,13 @@ type
     FLeeway: IntegerRAL;
     FPayload: TRALJWTParams;
     FSignature: StringRAL;
-    FSignKey: TRALJWSKey;
-    FSignSecretKey: StringRAL;
     { the header and the payload as the token carried them, joined by their
       dot - what the signature was computed over }
     FSigningInput: StringRAL;
+    FSignKey: TRALJWSKey;
+    FSignSecretKey: StringRAL;
     FToken: StringRAL;
+
     procedure SetHeader(const AValue: TRALJWTHeader);
     procedure SetPayload(const AValue: TRALJWTParams);
   protected
@@ -132,14 +135,15 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     /// The alg name of AAlgorithm ('HS256', 'RS256', 'ES256'...)
     class function AlgorithmName(AAlgorithm: TRALJWTAlgorithm): StringRAL;
+    /// Whether the signature of the token read is good, dates aside
+    function IsValidSignature: boolean;
     /// Checks the token: the algorithm is the one this instance is set to (a
     /// token cannot choose it), the signature is over the token's own bytes,
     /// and exp/nbf hold, give or take Leeway
     function IsValidToken(const AValue: StringRAL = ''): boolean;
-    /// Whether the signature of the token read is good, dates aside
-    function IsValidSignature: boolean;
   published
     { both copy what they are given (RALAssignOwned): the objects are the
       token's own, and freed with it }
@@ -210,6 +214,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     /// 'MD5', 'SHA-256', 'SHA-512-256', with '-sess' when ASess
     class function AlgorithmName(AAlgorithm: TRALDigestAlgorithm;
       ASess: boolean = False): StringRAL;

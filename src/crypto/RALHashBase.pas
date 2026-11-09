@@ -16,11 +16,12 @@ type
   TRALHashBase = class
   private
     FFinalized: boolean;
+    FHMACOuter: TBytes;
     FIndex: IntegerRAL;
     FInitialized: boolean;
     FLenBit: UInt64RAL;
     FOutputType: TRALHashOutputType;
-    FHMACOuter: TBytes;
+
     /// the key padded to the block, for HMACBegin
     function HMACKey(const AKey: TBytes): TBytes;
   protected
@@ -60,12 +61,19 @@ type
     procedure UpdateBuffer(AValue: TBytes); overload; virtual;
   public
     constructor Create(AOutputType: TRALHashOutputType = rhotHex);
+
+    /// Returns a stream hash from a stream
+    function HashAsStream(AValue: TStream): TStream;
     /// Returns a string hash from a string
     function HashAsString(const AValue: StringRAL): StringRAL; overload; virtual;
     /// Returns a string hash from a stream
     function HashAsString(AValue: TStream): StringRAL; overload; virtual;
-    /// Returns a stream hash from a stream
-    function HashAsStream(AValue: TStream): TStream;
+    { Incremental hash, for data that arrives in pieces and is never held whole:
+      HashBegin, HashUpdate as many times as needed, HashEnd. The same digest
+      as HashAsStream of all the pieces together }
+    procedure HashBegin;
+    function HashEnd: TBytes;
+    procedure HashUpdate(AData: Pointer; ALength: IntegerRAL);
     /// Raw HMAC digest with a binary key. Public because a binary key must
     /// not pass through StringRAL: StringToBytesUTF8 rewrites bytes that are
     /// not valid UTF-8, and a derived key is full of those
@@ -76,21 +84,13 @@ type
     function HMACAsString(AValue: TStream; const AKey: StringRAL): StringRAL; overload; virtual;
     /// Returns a string of a HMAC generated given an Array of bytes
     function HMACAsString(AValue: TBytes; const AKey: StringRAL): StringRAL; overload; virtual;
-
-    { Incremental hash, for data that arrives in pieces and is never held whole:
-      HashBegin, HashUpdate as many times as needed, HashEnd. The same digest
-      as HashAsStream of all the pieces together }
-    procedure HashBegin;
-    procedure HashUpdate(AData: Pointer; ALength: IntegerRAL);
-    function HashEnd: TBytes;
-
     { Incremental HMAC: HMACBegin with the key, HMACUpdate per piece, HMACEnd.
       The same digest as HMACAsDigest of all the pieces together. The AES
       signs its ciphertext this way, while writing it, instead of reading the
       whole message back }
     procedure HMACBegin(const AKey: TBytes);
-    procedure HMACUpdate(AData: Pointer; ALength: IntegerRAL);
     function HMACEnd: TBytes;
+    procedure HMACUpdate(AData: Pointer; ALength: IntegerRAL);
   published
     /// Identifies the formatting of the hash
     property OutputType: TRALHashOutputType read FOutputType write FOutputType;

@@ -71,6 +71,7 @@ type
   TRALPasswordHasher = class(TRALComponent)
   private
     FOptions: TRALPasswordOptions;
+
     procedure SetOptions(const AValue: TRALPasswordOptions);
   public
     constructor Create(AOwner: TComponent); override;
@@ -105,10 +106,10 @@ type
     FFileAge: Integer;
     FFileName: string;
     FLock: TCriticalSection;
-    FOptions: TRALPasswordOptions;
-    FUsers: TStrings;
     FOnGetHash: TRALOnGetPasswordHash;
     FOnRehash: TRALOnPasswordRehash;
+    FOptions: TRALPasswordOptions;
+    FUsers: TStrings;
 
     /// Reloads FileName when it changed on disk.
     procedure CheckFile;
@@ -121,10 +122,10 @@ type
 
     /// The stored hash of AUserName, '' when unknown.
     function HashOf(const AUserName: StringRAL): StringRAL;
-    /// Stores a new hash of APassword for AUserName (in Users; Save writes the file).
-    procedure SetPassword(const AUserName, APassword: StringRAL);
     /// Writes Users to FileName.
     procedure Save;
+    /// Stores a new hash of APassword for AUserName (in Users; Save writes the file).
+    procedure SetPassword(const AUserName, APassword: StringRAL);
     { Whether APassword is the password of AUserName. An unknown user costs the
       same as a wrong password. On success with a weak hash, OnRehash gets a
       new one (and Users is updated). }
@@ -133,14 +134,14 @@ type
     { File of 'user:hash' lines (htpasswd -B writes them); read when it changes.
       A relative name is taken from the executable's folder. }
     property FileName: string read FFileName write SetFileName;
-    /// How SetPassword and the rehash make new hashes.
-    property Options: TRALPasswordOptions read FOptions write SetOptions;
-    /// Users and hashes, one 'user:hash' (or 'user=hash') per line.
-    property Users: TStrings read FUsers write SetUsers;
     /// Asked for the hash of a user not in Users.
     property OnGetHash: TRALOnGetPasswordHash read FOnGetHash write FOnGetHash;
     /// A user logged in with a weak hash: store ANewHash.
     property OnRehash: TRALOnPasswordRehash read FOnRehash write FOnRehash;
+    /// How SetPassword and the rehash make new hashes.
+    property Options: TRALPasswordOptions read FOptions write SetOptions;
+    /// Users and hashes, one 'user:hash' (or 'user=hash') per line.
+    property Users: TStrings read FUsers write SetUsers;
   end;
 
 /// A new hash of APassword with the defaults (Argon2id, OWASP parameters).

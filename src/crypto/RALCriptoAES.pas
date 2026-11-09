@@ -34,13 +34,12 @@ type
   TRALCriptoAESCipher = class
   private
     FInput: PByte;
-    FOutput: PByte;
-    FWordKeys: PCardinal;
-
     FInputLen: IntegerRAL;
+    FOutput: PByte;
     FOutputLen: IntegerRAL;
-    FWordKeysLen: IntegerRAL;
     FPrev: array [0 .. 15] of Byte;
+    FWordKeys: PCardinal;
+    FWordKeysLen: IntegerRAL;
   protected
     /// Decrypt cipher
     procedure DecMixColumns(AInput, AOutput: PByte);
@@ -48,22 +47,21 @@ type
     /// Encrypt cipher
     procedure EncMixColumns(AInput, AOutput: PByte);
     procedure EncSubShiftRows(AInput, AOutput: PByte);
-
     /// Encrypt and Decrypt
     procedure RoundKey(AInput, AOutput: PByte; AKey: PCardinal);
     /// XORs a block in place with the previous ciphertext block (the chain)
     procedure XorPrev(ABlock: PByte);
   public
+    procedure DecryptAES;
+    procedure EncryptAES;
     /// starts the chain: the IV of the message
     procedure SetIV(const AIV: TBytes);
-    procedure EncryptAES;
-    procedure DecryptAES;
 
     property Input: PByte read FInput write FInput;
-    property Output: PByte read FOutput write FOutput;
-    property WordKeys: PCardinal read FWordKeys write FWordKeys;
     property InputLen: IntegerRAL read FInputLen write FInputLen;
+    property Output: PByte read FOutput write FOutput;
     property OutputLen: IntegerRAL read FOutputLen write FOutputLen;
+    property WordKeys: PCardinal read FWordKeys write FWordKeys;
     property WordKeysLen: IntegerRAL read FWordKeysLen write FWordKeysLen;
   end;
 
@@ -74,71 +72,68 @@ type
   private
     FAESType: TRALAESType;
     FWordKeys: array of Cardinal; // UInt32;
+
     { the bytes the cipher and the MAC are keyed from: the text key's own, or
       what RALCriptoKeyDerivation stretches out of it }
     function KeyBytes: TBytes;
   protected
     function CheckKey: boolean;
-    /// a cipher positioned on this key, ready for SetIV
-    function CreateCipher(AForDecrypt: boolean): TRALCriptoAESCipher;
-    /// the HMAC key, derived from the cipher key
-    function MacKey: TBytes;
-    /// HMAC-SHA256 of a whole stream under MacKey
-    function Mac(AData: TStream): TBytes;
     { The MAC over AStream[AStart, AEnd) - IV and ciphertext - read in pieces,
       compared in constant time with the 32 bytes at AEnd. Raises when they
       differ; nothing is decrypted before this says yes }
     procedure CheckMac(AStream: TStream; AStart, AEnd: Int64RAL);
+    /// a cipher positioned on this key, ready for SetIV
+    function CreateCipher(AForDecrypt: boolean): TRALCriptoAESCipher;
     { AStream[AStart, AEnd) holds IV and ciphertext: decrypts it, handing each
       piece of plaintext to AOutput at AWriteAt (-1 = where AOutput is), and
       answers the plaintext size. Shared by DecryptTo and DecryptInPlace }
     function DecryptRange(AStream: TStream; AStart, AEnd: Int64RAL;
       AOutput: TStream; AWriteAt: Int64RAL): Int64RAL;
-
+    class procedure GenerateRCON;
+    class procedure GenerateSBox;
+    class procedure InitializeAES;
     /// Cypher Encrypt and Decrypt
     procedure KeyExpansion;
+    /// HMAC-SHA256 of a whole stream under MacKey
+    function Mac(AData: TStream): TBytes;
+    /// the HMAC key, derived from the cipher key
+    function MacKey: TBytes;
+    class function Multi(AMult: integer; AByte: byte): byte;
+    class function Multi02(AValue: byte): byte;
     /// Key expansion
     function RotWord(AInt: Cardinal): Cardinal;
     procedure SetAESType(AValue: TRALAESType);
     procedure SetKey(const AValue: StringRAL); override;
     function SubWord(AInt: Cardinal): Cardinal;
     function WordToBytes(AInt: Cardinal): TBytes;
-
-    class function Multi02(AValue: byte): byte;
-    class function Multi(AMult: integer; AByte: byte): byte;
-    class procedure GenerateSBox;
-    class procedure GenerateRCON;
-    class procedure InitializeAES;
   public
     constructor Create;
 
     function AESKeys(AIndex: integer): TBytes;
     function CountKeys: integer;
     function DecryptAsStream(AValue: TStream): TStream; override;
+    { In place: the plaintext overwrites the ciphertext of AStream, which holds
+      IV, ciphertext and MAC from AStart. Answers the plaintext size; the
+      plaintext is at AStart + 16 - read it through RALStreamSlice. For a stream
+      nobody else reads afterwards }
+    function DecryptInPlace(AStream: TStream; AStart: Int64RAL = 0): Int64RAL;
+    /// The plaintext of the whole AInput (IV, ciphertext, MAC), written to
+    /// AOutput. An empty AInput is an empty body, not an error
+    procedure DecryptTo(AInput, AOutput: TStream);
     function EncryptAsStream(AValue: TStream): TStream; override;
-    function KeysToList: TStringList;
-
+    { In place: AStream holds, from AStart, 16 bytes reserved for the IV and
+      then the plaintext; on return it holds IV, ciphertext and MAC there. The
+      padding and the MAC make it grow by up to 48 bytes }
+    procedure EncryptInPlace(AStream: TStream; AStart: Int64RAL = 0);
     { The four ways the body goes through the cipher (.agents/
       PLANO_STREAM_UNICO.md, D6). All of them work with two buffers of
       DEFAULTBUFFERSTREAMSIZE and sign with an incremental HMAC, so none of
       them holds a second copy of the message; the wire format is the one
       EncryptAsStream always wrote: IV (16), ciphertext with PKCS#7 padding,
       HMAC-SHA256 (32) over IV and ciphertext. }
-
     /// IV, ciphertext and MAC of the whole AInput, written to AOutput
     procedure EncryptTo(AInput, AOutput: TStream);
-    { In place: AStream holds, from AStart, 16 bytes reserved for the IV and
-      then the plaintext; on return it holds IV, ciphertext and MAC there. The
-      padding and the MAC make it grow by up to 48 bytes }
-    procedure EncryptInPlace(AStream: TStream; AStart: Int64RAL = 0);
-    /// The plaintext of the whole AInput (IV, ciphertext, MAC), written to
-    /// AOutput. An empty AInput is an empty body, not an error
-    procedure DecryptTo(AInput, AOutput: TStream);
-    { In place: the plaintext overwrites the ciphertext of AStream, which holds
-      IV, ciphertext and MAC from AStart. Answers the plaintext size; the
-      plaintext is at AStart + 16 - read it through RALStreamSlice. For a stream
-      nobody else reads afterwards }
-    function DecryptInPlace(AStream: TStream; AStart: Int64RAL = 0): Int64RAL;
+    function KeysToList: TStringList;
   published
     property AESType: TRALAESType read FAESType write SetAESType;
   end;

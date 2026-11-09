@@ -57,71 +57,72 @@ type
   /// A certificate read from DER or PEM. Dates are UTC
   TRALX509Certificate = class
   private
-    FDER: TBytes;
-    FTBS: TBytes;
-    FSignatureOID: StringRAL;
-    FSignature: TBytes;
-    FSerial: TBytes;
-    FIssuerDER: TBytes;
-    FSubjectDER: TBytes;
-    FIssuer: StringRAL;
-    FSubject: StringRAL;
+    FAuthorityKeyId: TBytes;
     FCommonName: StringRAL;
-    FNotBefore: TDateTime;
-    FNotAfter: TDateTime;
-    FPublicKeyInfo: TBytes;
-    FPublicKeyOID: StringRAL;
+    FDER: TBytes;
     FHostNames: TStringList;
     FIsCA: boolean;
+    FIssuer: StringRAL;
+    FIssuerDER: TBytes;
+    FNotAfter: TDateTime;
+    FNotBefore: TDateTime;
+    FPublicKeyInfo: TBytes;
+    FPublicKeyOID: StringRAL;
+    FSerial: TBytes;
+    FSignature: TBytes;
+    FSignatureOID: StringRAL;
+    FSubject: StringRAL;
+    FSubjectDER: TBytes;
     FSubjectKeyId: TBytes;
-    FAuthorityKeyId: TBytes;
+    FTBS: TBytes;
+
+    function GetHostNames: TStrings;
     procedure Parse;
     procedure ParseExtensions(const AData: TBytes; const AExts: TRALASN1Element);
-    function GetHostNames: TStrings;
   public
     constructor Create(const ADER: TBytes);
     destructor Destroy; override;
-    /// the first certificate of a PEM text (a chain file starts with the leaf)
-    class function FromPEM(const APEM: StringRAL): TRALX509Certificate;
+
+    /// SHA-1 of the DER, the "thumbprint" of Windows (certificate store, netsh)
+    function FingerprintSHA1: StringRAL;
+    /// SHA-256 of the DER, uppercase hex without separators - the format of
+    /// TRALCertInfo.Fingerprint and of SSL.Pins
+    function FingerprintSHA256: StringRAL;
     /// PEM or DER, told apart by the content
     class function FromFile(const AFileName: string): TRALX509Certificate;
-
-    function ToPEM: StringRAL;
+    /// the first certificate of a PEM text (a chain file starts with the leaf)
+    class function FromPEM(const APEM: StringRAL): TRALX509Certificate;
     /// issuer and subject are the same name
     function IsSelfIssued: boolean;
     /// self-issued and signed by its own key. For an RSA key the signature is
     /// checked; for another key type (EC) the key identifiers decide
     function IsSelfSigned: boolean;
-    /// whether AIssuerKey produced the signature (RSA with SHA-1/256/384/512)
-    function VerifySignature(AIssuerKey: TRALRSAKey): boolean;
-    /// the RSA public key, a new object the caller frees; nil when not RSA
-    function PublicKey: TRALRSAKey;
-    /// whether AKey is the key of this certificate
-    function MatchesKey(AKey: TRALRSAKey): boolean;
     /// NotBefore <= AWhenUTC <= NotAfter
     function IsValidAt(AWhenUTC: TDateTime): boolean;
-    /// SHA-256 of the DER, uppercase hex without separators - the format of
-    /// TRALCertInfo.Fingerprint and of SSL.Pins
-    function FingerprintSHA256: StringRAL;
-    /// SHA-1 of the DER, the "thumbprint" of Windows (certificate store, netsh)
-    function FingerprintSHA1: StringRAL;
+    /// whether AKey is the key of this certificate
+    function MatchesKey(AKey: TRALRSAKey): boolean;
+    /// the RSA public key, a new object the caller frees; nil when not RSA
+    function PublicKey: TRALRSAKey;
+    function ToPEM: StringRAL;
+    /// whether AIssuerKey produced the signature (RSA with SHA-1/256/384/512)
+    function VerifySignature(AIssuerKey: TRALRSAKey): boolean;
 
-    property DER: TBytes read FDER;
-    property SerialNumber: TBytes read FSerial;
-    property SignatureAlgorithm: StringRAL read FSignatureOID;
-    /// 'CN=..., O=...' in the order of the certificate
-    property Issuer: StringRAL read FIssuer;
-    property Subject: StringRAL read FSubject;
+    property AuthorityKeyId: TBytes read FAuthorityKeyId;
     property CommonName: StringRAL read FCommonName;
-    property NotBefore: TDateTime read FNotBefore;
-    property NotAfter: TDateTime read FNotAfter;
-    property PublicKeyInfo: TBytes read FPublicKeyInfo;
-    property PublicKeyAlgorithm: StringRAL read FPublicKeyOID;
+    property DER: TBytes read FDER;
     /// subjectAltName: DNS names as they are, IP addresses as text
     property HostNames: TStrings read GetHostNames;
     property IsCA: boolean read FIsCA;
+    /// 'CN=..., O=...' in the order of the certificate
+    property Issuer: StringRAL read FIssuer;
+    property NotAfter: TDateTime read FNotAfter;
+    property NotBefore: TDateTime read FNotBefore;
+    property PublicKeyAlgorithm: StringRAL read FPublicKeyOID;
+    property PublicKeyInfo: TBytes read FPublicKeyInfo;
+    property SerialNumber: TBytes read FSerial;
+    property SignatureAlgorithm: StringRAL read FSignatureOID;
+    property Subject: StringRAL read FSubject;
     property SubjectKeyId: TBytes read FSubjectKeyId;
-    property AuthorityKeyId: TBytes read FAuthorityKeyId;
   end;
 
 /// Builds a certificate for ASubjectKey and returns its DER. AHostNames go to

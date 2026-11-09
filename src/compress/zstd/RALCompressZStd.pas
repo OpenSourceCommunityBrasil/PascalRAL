@@ -20,8 +20,8 @@ type
     procedure InitDeCompress(AInStream, AOutStream: TStream); override;
     procedure SetFormat(AValue: TRALCompressType); override;
   public
-    class function CompressTypes : TRALCompressTypes; override;
     class function BestCompressFromClass(ATypes : TRALCompressTypes) : TRALCompressType; override;
+    class function CompressTypes : TRALCompressTypes; override;
   end;
 
 implementation

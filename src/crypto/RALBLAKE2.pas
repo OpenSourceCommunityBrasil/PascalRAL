@@ -44,6 +44,10 @@ type
 
     /// Ends the message and returns its digest; Init before reusing the object.
     function Final: TBytes;
+    /// The digest of AData, AOutLen bytes, keyed with AKey when given.
+    class function Hash(const AData: TBytes; AOutLen: IntegerRAL = 64): TBytes; overload;
+    /// The keyed digest of AData.
+    class function Hash(const AData: TBytes; AOutLen: IntegerRAL; const AKey: TBytes): TBytes; overload;
     /// Starts a new message: AOutLen bytes (1..64), AKey of up to 64 bytes or empty.
     procedure Init(AOutLen: IntegerRAL; const AKey: TBytes);
     /// Adds ALength bytes at AData to the message.
@@ -52,11 +56,6 @@ type
     procedure Update(const AData: TBytes); overload;
     /// Adds the 4 bytes of AValue, little-endian (Argon2's LE32).
     procedure UpdateLE32(AValue: Cardinal);
-
-    /// The digest of AData, AOutLen bytes, keyed with AKey when given.
-    class function Hash(const AData: TBytes; AOutLen: IntegerRAL = 64): TBytes; overload;
-    /// The keyed digest of AData.
-    class function Hash(const AData: TBytes; AOutLen: IntegerRAL; const AKey: TBytes): TBytes; overload;
   end;
 
 /// The 64-bit word at AData, little-endian.

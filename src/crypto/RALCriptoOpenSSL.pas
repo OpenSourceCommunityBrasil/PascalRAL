@@ -23,6 +23,7 @@ type
   private
     FAESType : TRALCriptoOpenSSLTypes;
     FIV : StringRAL;
+
     function CryptAsStream(AValue: TStream; Encrypting: Boolean): TStream;
   protected
     function CanCript : boolean; override;
@@ -32,8 +33,8 @@ type
     function DecryptAsStream(AValue: TStream): TStream; override;
     function EncryptAsStream(AValue: TStream): TStream; override;
   published
-    property IV: StringRAL read FIV write FIV;
     property AESType: TRALCriptoOpenSSLTypes read FAESType write FAESType;
+    property IV: StringRAL read FIV write FIV;
   end;
 
 implementation

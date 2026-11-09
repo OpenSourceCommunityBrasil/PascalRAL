@@ -22,16 +22,16 @@ type
     request body goes through. crNone is a pass-through on both. }
   TRALHashes = class
   private
-    class function CreateCipher(const AKey: StringRAL; AAlgorithm: TRALCriptoType): TRALCriptoAES;
     class function CopyOf(AInput: TStream): TStream;
+    class function CreateCipher(const AKey: StringRAL; AAlgorithm: TRALCriptoType): TRALCriptoAES;
   public
-    class function GetHash(AText, AKey: StringRAL; AHashType: THashType): StringRAL;
-    class function Encrypt(AText, AKey: StringRAL; AAlgorithm: TRALCriptoType): StringRAL; overload;
-    class function Encrypt(AInput: TStream; AKey: StringRAL; AAlgorithm: TRALCriptoType): TStream; overload;
     class function Decrypt(AText, AKey: StringRAL; AAlgorithm: TRALCriptoType): StringRAL; overload;
     class function Decrypt(AInput: TStream; AKey: StringRAL; AAlgorithm: TRALCriptoType): TStream; overload;
-    class function toBase64(AText: StringRAL): StringRAL;
+    class function Encrypt(AText, AKey: StringRAL; AAlgorithm: TRALCriptoType): StringRAL; overload;
+    class function Encrypt(AInput: TStream; AKey: StringRAL; AAlgorithm: TRALCriptoType): TStream; overload;
     class function fromBase64(AText: StringRAL): StringRAL;
+    class function GetHash(AText, AKey: StringRAL; AHashType: THashType): StringRAL;
+    class function toBase64(AText: StringRAL): StringRAL;
   end;
 
 implementation

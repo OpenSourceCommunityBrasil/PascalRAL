@@ -45,6 +45,7 @@ type
     FPrivate: boolean;
     FX: TBytes;
     FY: TBytes;
+
     procedure Clear;
     function CurveSize: IntegerRAL;
     procedure ReadPublicKey;
@@ -52,6 +53,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     /// The public JWK of this key, with KeyID as kid, "use":"sig" and AAlg as
     /// alg when given
     function AsJWK(const AAlg: StringRAL = ''): StringRAL;
@@ -85,11 +87,13 @@ type
   TRALJWKSet = class
   private
     FKeys: TList;
+
     function GetCount: IntegerRAL;
     function GetKey(AIndex: IntegerRAL): TRALJWSKey;
   public
     constructor Create;
     destructor Destroy; override;
+
     procedure Clear;
     /// The key with this kid; with AKeyID empty, the only key of the set
     function Find(const AKeyID: StringRAL): TRALJWSKey;

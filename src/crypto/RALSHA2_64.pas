@@ -18,9 +18,9 @@ type
     FVersion: TRALSHA64Versions;
   protected
     procedure Compress; override;
+    function Finalize: TBytes; override;
     function GetBuffer(AIndex: IntegerRAL): Pointer; override;
     function GetBufLength: IntegerRAL; override;
-    function Finalize: TBytes; override;
     procedure Initialize; override;
     procedure SetVersion(const Value: TRALSHA64Versions);
     /// returns swaps bits of a value

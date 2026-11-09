@@ -17,15 +17,12 @@ type
     FHash: array[0..4] of cardinal;
     FHashSize: byte;
   protected
-    function Swap(AValue: cardinal): cardinal;
-
-    function GetBufLength: IntegerRAL; override;
-    function GetBuffer(AIndex: IntegerRAL): Pointer; override;
-
     procedure Compress; override;
-    procedure Initialize; override;
-
     function Finalize: TBytes; override;
+    function GetBuffer(AIndex: IntegerRAL): Pointer; override;
+    function GetBufLength: IntegerRAL; override;
+    procedure Initialize; override;
+    function Swap(AValue: cardinal): cardinal;
   public
     constructor Create;
   end;

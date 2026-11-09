@@ -32,14 +32,14 @@ type
   /// Base class for all crypto functions
   TRALCripto = class
   private
-    FKey: StringRAL;
     FIntputType : TRALCriptoInOutType;
+    FKey: StringRAL;
     FOutputType : TRALCriptoInOutType;
   protected
-    procedure SetKey(const AValue: StringRAL); virtual;
-    function CanCript : boolean; virtual;
     function BeforeDecrypt(AValue: TStream): TStream;
     function BeforeEncrypt(AValue: TStream): TStream;
+    function CanCript : boolean; virtual;
+    procedure SetKey(const AValue: StringRAL); virtual;
   public
     constructor Create;
 
@@ -58,9 +58,9 @@ type
     function EncryptAsBytes(AValue: TStream): TBytes; overload;
     function EncryptAsStream(AValue: TStream): TStream; virtual; abstract;
   published
+    property IntputType: TRALCriptoInOutType read FIntputType write FIntputType;
     property Key: StringRAL read FKey write SetKey;
     property OutputType: TRALCriptoInOutType read FOutputType write FOutputType;
-    property IntputType: TRALCriptoInOutType read FIntputType write FIntputType;
   end;
 
 implementation

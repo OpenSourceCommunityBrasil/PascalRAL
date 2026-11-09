@@ -9,21 +9,18 @@ uses
 type
   TRALCRC32 = class(TRALHashBase)
   private
-    FCRC32 : LongWord;
     FBuffer: array[0..63] of Byte;
+    FCRC32 : LongWord;
   protected
-    function GetBufLength: IntegerRAL; override;
+    procedure Compress; override;
+    function Finalize: TBytes; override;
     function GetBuffer(AIndex: IntegerRAL) : Pointer; override;
-
-    // update crc32 hash
-    procedure UpdateCRC32(AOctet: Byte);
+    function GetBufLength: IntegerRAL; override;
     // calculate hash crc32 of content
     procedure HashCRC32(AIndex : integer);
-
     procedure Initialize; override;
-    procedure Compress; override;
-
-    function Finalize: TBytes; override;
+    // update crc32 hash
+    procedure UpdateCRC32(AOctet: Byte);
   public
     constructor Create;
   end;
