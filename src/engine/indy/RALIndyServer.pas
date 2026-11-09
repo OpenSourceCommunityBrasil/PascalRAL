@@ -25,6 +25,7 @@ type
   TRALIndySSL = class(TRALSSL)
   private
     FSSLOptions: TIdSSLOptionsRAL;
+
     procedure SetSSLOptions(const AValue: TIdSSLOptionsRAL);
   public
     constructor Create;
@@ -44,9 +45,11 @@ type
   TRALIdServerIOHandlerSSL = class(TIdServerIOHandlerSSLOpenSSL)
   private
     FRetired: TList;
+
     procedure FreeRetired;
   public
     destructor Destroy; override;
+
     /// A new context with these files, then published. Raises, and keeps the
     /// current one, when OpenSSL refuses them
     procedure ReplaceCertificate(const ACertFile, AKeyFile: string);
@@ -57,14 +60,18 @@ type
 
   TRALIndyServer = class(TRALServer)
   private
-    FHttp: TIdHTTPServer;
     FHandlerSSL: TRALIdServerIOHandlerSSL;
+    FHttp: TIdHTTPServer;
   protected
     function CreateRALSSL: TRALSSL; override;
-    function IPv6IsImplemented: Boolean; override;
+    { The status, headers and cookies of AResponse into Indy's response, after
+      TakeWireStream said what was done to the body }
+    procedure FillHeaders(AResponse: TRALResponse; AResponseInfo: TIdHTTPResponseInfo;
+      AKeepAlive: boolean);
     function GetListenQueue: IntegerRAL;
     function GetMaxConnections: IntegerRAL;
     function GetSSL: TRALIndySSL;
+    function IPv6IsImplemented: Boolean; override;
     procedure QuerySSLPort(APort: TIdPort; var VUseSSL: Boolean);
     procedure SetActive(const AValue: Boolean); override;
     procedure SetListenQueue(const AValue: IntegerRAL);
@@ -72,11 +79,6 @@ type
     procedure SetPort(const AValue: IntegerRAL); override;
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetSSL(const AValue: TRALIndySSL);
-
-    { The status, headers and cookies of AResponse into Indy's response, after
-      TakeWireStream said what was done to the body }
-    procedure FillHeaders(AResponse: TRALResponse; AResponseInfo: TIdHTTPResponseInfo;
-      AKeepAlive: boolean);
     procedure OnCommandProcess(AContext: TIdContext; ARequestInfo: TIdHTTPRequestInfo;
       AResponseInfo: TIdHTTPResponseInfo);
     { Where Indy writes the body it receives. Left to Indy (a TMemoryStream)
@@ -91,14 +93,15 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     { The writer of a stream: headers by Indy with Transfer-Encoding: chunked (no
       Content-Length), the pieces on the connection's IOHandler; the connection is
       kept alive after the last chunk }
     function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
-    class function SupportsLiveStream: boolean; override;
-    function TLSProvisioning: TRALTLSProvisioning; override;
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
+    class function SupportsLiveStream: boolean; override;
+    function TLSProvisioning: TRALTLSProvisioning; override;
   published
     property ListenQueue: IntegerRAL read GetListenQueue write SetListenQueue;
     /// Ceiling on how many connections may be open AT THE SAME TIME, the same
@@ -129,6 +132,7 @@ type
     FContext: TRALIndyStreamContext;
   public
     constructor Create(AContext: TRALIndyStreamContext);
+
     function Alive: boolean; override;
     procedure WriteEnd(AAborted: boolean); override;
     procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); override;

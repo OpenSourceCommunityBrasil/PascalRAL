@@ -32,19 +32,20 @@ type
     function GetFileName(AIndex: Integer) : string;
     procedure SetFileName(AIndex: Integer; AValue : string);
   published
-    property KeyPassword;
+    property CertCAFile: string Index 4 read GetFileName write SetFileName;
+    property CertificateFile: string Index 0 read GetFileName write SetFileName;
     property CipherList;
     Property HostName;
-    property CertificateFile: string Index 0 read GetFileName write SetFileName;
-    property TrustCertificateFile: string Index 1 read GetFileName write SetFileName;
-    property PrivateKeyFile: string Index 2 read GetFileName write SetFileName;
+    property KeyPassword;
     property PFXFile: string Index 3 read GetFileName write SetFileName;
-    property CertCAFile: string Index 4 read GetFileName write SetFileName;
+    property PrivateKeyFile: string Index 2 read GetFileName write SetFileName;
+    property TrustCertificateFile: string Index 1 read GetFileName write SetFileName;
   end;
 
   TRALfpHTTPSSL = class(TRALSSL)
   private
     FSSLOptions: TRALfpHTTPCertData;
+
     procedure SetSSLOptions(const AValue: TRALfpHTTPCertData);
   public
     constructor Create;
@@ -79,16 +80,17 @@ type
 
   TRALfpHttpServerCore = class(TFPHttpServer)
   private
+    FActive: TList;
     FCertLock: TCriticalSection;
+    FIdle: Integer;
     { the pool: connections accepted and not taken yet, the ones being
       handled, how many workers wait for one and how many are alive }
     FPoolLock: TCriticalSection;
-    FWake: TEvent;
     FQueue: TList;
-    FActive: TList;
-    FIdle: Integer;
-    FWorkers: Integer;
     FStopping: Boolean;
+    FWake: TEvent;
+    FWorkers: Integer;
+
     /// Closes the socket of every connection queued or being handled.
     procedure CloseConnections;
     procedure ConnectionDone(AConnection: TFPHTTPConnection);
@@ -101,12 +103,12 @@ type
       WorkerIdleTimeout for nothing or the server is stopping }
     function TakeConnection: TFPHTTPConnection;
   protected
+    { turns Nagle off on the accepted socket - see the implementation }
+    function CreateConnection(Data: TSocketStream): TFPHTTPConnection; override;
     { every TLS connection copies CertificateData into a socket handler of its
       own (CreateSSLSocketHandler): under the lock, so a certificate replaced
       meanwhile is copied whole, never half }
     function GetSocketHandler(const AUseSSL: Boolean): TSocketHandler; override;
-    { turns Nagle off on the accepted socket - see the implementation }
-    function CreateConnection(Data: TSocketStream): TFPHTTPConnection; override;
   {$IFDEF RALFPHTTPHANDLER}
     /// Answers the handler that gives every connection to the pool.
     function CreateConnectionHandler: TFPHTTPServerConnectionHandler; override;
@@ -118,77 +120,71 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     { the ceiling on open connections, 0 for none, where fcl-web applies it
       itself instead of asking OnAllowConnect }
     procedure ApplyMaxConnections(AValue: Integer);
+    { the certificate of the connections accepted from now on: fcl-web builds
+      an OpenSSL context per connection from CertificateData, so replacing it
+      is the whole swap, with the server running }
+    procedure ReplaceCertificateData(ASource: TCertificateData);
     { waits until every connection has been handled and every worker has
       ended. Past ATimeoutMs it closes the sockets still open (a client that
       connected and never sent a request would otherwise hold a worker
       forever) and waits again }
     procedure WaitHandlers(ATimeoutMs: Integer);
-    { the certificate of the connections accepted from now on: fcl-web builds
-      an OpenSSL context per connection from CertificateData, so replacing it
-      is the whole swap, with the server running }
-    procedure ReplaceCertificateData(ASource: TCertificateData);
   end;
 
   { TRALfpHttpServerThread }
 
   TRALfpHttpServerThread = class(TThread)
   private
-    FParent: TRALfpHttpServer;
     FHttp: TRALfpHttpServerCore;
+    FListenError: string;
     { set once the port listens (or failed to): Active := True waits for it,
       so a client connecting right after finds the port open }
     FListening: TEvent;
-    FListenError: string;
+    FParent: TRALfpHttpServer;
     FUserIdleTimeout: Integer;
+
     { the accept loop runs its first round with a 1 ms idle timeout: the idle
       call (or the first connection asked about) says the socket listens, and
       puts the timeout back to the configured one }
     procedure ListenConfirmed(Sender: TObject);
     procedure OnAcceptIdle(Sender: TObject);
   protected
-    function GetActive: boolean;
-    procedure SetActive(AValue: boolean);
-
-    function GetQueueSize: Word;
-    procedure SetQueueSize(const AValue: Word);
-
-    function GetURLServer: StringRAL;
-    { one bounded GET to the server itself: fcl-web's accept loop only
-      notices it was stopped when a connection arrives }
-    procedure WakeUpAccept;
-
-    function GetPort: IntegerRAL;
-    procedure SetPort(AValue: IntegerRAL);
-
-    function GetSessionTimeout: IntegerRAL;
-    procedure SetSessionTimeout(const AValue: IntegerRAL);
-
     procedure DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult: TRALRequest);
+    procedure Execute; override;
     { The status, headers and cookies of AResponse into fcl-web's response, after
       TakeWireStream said what was done to the body }
     procedure FillHeaders(ARequest: TRALRequest; AResponse: TRALResponse;
       AHttpResponse: TFPHTTPConnectionResponse);
-
-    procedure OnCommandProcess(Sender: TObject; var ARequest: TFPHTTPConnectionRequest;
-                               var AResponse: TFPHTTPConnectionResponse);
-
+    function GetActive: boolean;
+    function GetPort: IntegerRAL;
+    function GetQueueSize: Word;
+    function GetSessionTimeout: IntegerRAL;
+    function GetURLServer: StringRAL;
+    procedure SetActive(AValue: boolean);
+    procedure SetPort(AValue: IntegerRAL);
+    procedure SetQueueSize(const AValue: Word);
+    procedure SetSessionTimeout(const AValue: IntegerRAL);
+    procedure TerminatedSet; override;
+    { one bounded GET to the server itself: fcl-web's accept loop only
+      notices it was stopped when a connection arrives }
+    procedure WakeUpAccept;
     { fcl-web asks before it accepts, which is where a connection ceiling has
       to be answered - see TRALfpHttpServer.MaxConnections }
     procedure OnAllowConnect(Sender: TObject; ASocket: Longint; var AAllow: Boolean);
-
-    procedure Execute; override;
-    procedure TerminatedSet; override;
+    procedure OnCommandProcess(Sender: TObject; var ARequest: TFPHTTPConnectionRequest;
+                               var AResponse: TFPHTTPConnectionResponse);
   public
     constructor Create(AOwner: TRALfpHttpServer);
     destructor Destroy; override;
   published
     property Active: boolean read GetActive write SetActive;
     property Port: IntegerRAL read GetPort write SetPort;
-    property SessionTimeout: IntegerRAL read GetSessionTimeout write SetSessionTimeout;
     property QueueSize: Word read GetQueueSize write SetQueueSize;
+    property SessionTimeout: IntegerRAL read GetSessionTimeout write SetSessionTimeout;
   end;
 
   TRALfpHttpServer = class(TRALServer)
@@ -196,18 +192,15 @@ type
     FHttpThread: TRALfpHttpServerThread;
     FMaxConnections: IntegerRAL;
   protected
-    procedure SetMaxConnections(const AValue: IntegerRAL);
-    procedure SetActive(const AValue: boolean); override;
-    procedure SetPort(const AValue: IntegerRAL); override;
-
-    function GetSSL: TRALfpHTTPSSL;
-    procedure SetSSL(const AValue: TRALfpHTTPSSL);
-
-    function GetQueueSize: Word;
-    procedure SetQueueSize(const AValue: Word);
-
-    procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     function CreateRALSSL: TRALSSL; override;
+    function GetQueueSize: Word;
+    function GetSSL: TRALfpHTTPSSL;
+    procedure SetActive(const AValue: boolean); override;
+    procedure SetMaxConnections(const AValue: IntegerRAL);
+    procedure SetPort(const AValue: IntegerRAL); override;
+    procedure SetQueueSize(const AValue: Word);
+    procedure SetSessionTimeout(const AValue: IntegerRAL); override;
+    procedure SetSSL(const AValue: TRALfpHTTPSSL);
   public
     { The writer of a stream: headers by fcl-web, without Content-Length, then the
       body straight on the socket, chunked on HTTP/1.1 }
@@ -217,9 +210,10 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function TLSProvisioning: TRALTLSProvisioning; override;
+
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
+    function TLSProvisioning: TRALTLSProvisioning; override;
   published
     /// Ceiling on how many connections may be open AT THE SAME TIME, the same
     /// knob TRALIndyServer, TRALSaguiServer and TRALSynopseServer publish under
@@ -266,6 +260,7 @@ type
     FContext: TRALfpHttpStreamContext;
   public
     constructor Create(AContext: TRALfpHttpStreamContext);
+
     function Alive: boolean; override;
     procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); override;
     function WriteRaw(const ABuffer; ASize: IntegerRAL): boolean; override;

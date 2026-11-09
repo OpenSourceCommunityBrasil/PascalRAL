@@ -34,13 +34,14 @@ type
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
-    /// The address of the web server that started the program, as it tells
-    /// it (SERVER_ADDR, or LOCAL_ADDR on IIS); the machine's otherwise
-    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
+
     { The writer of a stream: the headers by fcl-web, then the body on stdout
       as it comes. The web server in front frames it (and may hold it: IIS
       buffers CGI) }
     function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
+    /// The address of the web server that started the program, as it tells
+    /// it (SERVER_ADDR, or LOCAL_ADDR on IIS); the machine's otherwise
+    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
     class function SupportsLiveStream: boolean; override;
   end;
 
@@ -65,6 +66,7 @@ type
   public
     constructor Create(AContext: TRALCGIStreamContext);
     destructor Destroy; override;
+
     procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); override;
     function WriteRaw(const ABuffer; ASize: IntegerRAL): boolean; override;
   end;

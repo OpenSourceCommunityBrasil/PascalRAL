@@ -59,9 +59,9 @@ type
   /// the handle is closed, when the library promises no further event.
   TRALMsQuicConn = class
   public
-    Server: TRALMsQuicServer;
     ClientIP: StringRAL;
     ClientPort: IntegerRAL;
+    Server: TRALMsQuicServer;
   end;
 
   { TRALMsQuicStream }
@@ -77,10 +77,6 @@ type
   /// from under a StreamSend.
   TRALMsQuicStream = class
   public
-    Server: TRALMsQuicServer;
-    Received: TMemoryStream;
-    Stream: HQUIC;
-    RefCount: Integer;
     ClientIP: StringRAL;
     ClientPort: IntegerRAL;
     /// which CONNECTION this stream belongs to - see TRALClientInfo.ConnectionID.
@@ -91,8 +87,14 @@ type
     /// the peer sent more than MaxRequestSize: the rest was dropped as it
     /// arrived and the answer is a 413, without the body ever being held
     Oversized: boolean;
+    Received: TMemoryStream;
+    RefCount: Integer;
+    Server: TRALMsQuicServer;
+    Stream: HQUIC;
+
     constructor Create(AServer: TRALMsQuicServer);
     destructor Destroy; override;
+
     procedure AddRef;
     procedure Release;
   end;
@@ -165,25 +167,23 @@ type
 
   TRALMsQuicServer = class(TRALServer)
   private
-    FRegistration: HQUIC;
-    FConfiguration: HQUIC;
-    { configurations a certificate swap replaced: the listener callback may
-      have read one of them a moment before, so they are closed with the
-      registration, never while it runs }
-    FRetiredConfigurations: array of HQUIC;
-    FListener: HQUIC;
     FAlpn: AnsiString;
     FAlpnBuffer: QUIC_BUFFER;
-    FIdleTimeoutMs: IntegerRAL;
-    FLibPath: TFileName;
-    FMaxStreamsPerConnection: IntegerRAL;
+    FConfiguration: HQUIC;
     FConnections: IntegerRAL;
-    FRequests: IntegerRAL;
-    FMaxAckDelayMs: IntegerRAL;
+    FIdleTimeoutMs: IntegerRAL;
     FKeepAliveMs: IntegerRAL;
+    FLibPath: TFileName;
+    FListener: HQUIC;
+    FMaxAckDelayMs: IntegerRAL;
+    FMaxStreamsPerConnection: IntegerRAL;
     FMigration: boolean;
     FPacing: boolean;
     FPoolCount: IntegerRAL;
+    FPoolRunning: boolean;
+    FQHead, FQTail, FQCount: IntegerRAL;
+    FQLock: TCriticalSection;
+    FQSignal: TEvent;
     { The dispatch pool. MsQuic gives a request to one of ITS worker threads,
       and that thread cannot move another packet until the callback returns -
       so running the RAL pipeline there caps the whole server at however many
@@ -193,51 +193,61 @@ type
       binds a connection to one partition. The pipeline therefore runs here
       instead, and the MsQuic thread only queues. }
     FQueue: TRALMsQuicWorkArray;
-    FQHead, FQTail, FQCount: IntegerRAL;
     { how many workers are parked on FQSignal. Enqueue only pays for a kernel
       signal when somebody is actually asleep, and a worker with others parked
       takes one item instead of a batch, so they get to run too. }
     FQWaiters: IntegerRAL;
-    FQLock: TCriticalSection;
-    FQSignal: TEvent;
+    FRegistration: HQUIC;
+    FRequests: IntegerRAL;
+    { configurations a certificate swap replaced: the listener callback may
+      have read one of them a moment before, so they are closed with the
+      registration, never while it runs }
+    FRetiredConfigurations: array of HQUIC;
     FWorkers: array of TRALMsQuicWorker;
-    FPoolRunning: boolean;
-    procedure StartPool;
-    procedure StopPool;
-    procedure FreePool;
-    procedure Enqueue(ACtx: TRALMsQuicStream);
-    function Dequeue(var AWork: TRALMsQuicWorkArray): IntegerRAL;
-    procedure RunWork(const AWork: TRALMsQuicWork);
+
     procedure CloseServerHandles;
-    procedure OpenConfiguration;
+    function Dequeue(var AWork: TRALMsQuicWorkArray): IntegerRAL;
+    procedure Enqueue(ACtx: TRALMsQuicStream);
+    procedure FreePool;
+    function GetAlpn: StringRAL;
+    function GetSSL: TRALMsQuicSSL;
     /// A configuration with the settings of this server and the certificate
     /// SSL points at; closed again when the credential does not load
     function NewConfiguration: HQUIC;
-    function GetSSL: TRALMsQuicSSL;
+    procedure OpenConfiguration;
+    procedure RunWork(const AWork: TRALMsQuicWork);
     procedure SetAlpn(const AValue: StringRAL);
-    function GetAlpn: StringRAL;
     procedure SetMaxStreamsPerConnection(const AValue: IntegerRAL);
     procedure SetPoolCount(const AValue: IntegerRAL);
     procedure SetSSL(const AValue: TRALMsQuicSSL);
+    procedure StartPool;
+    procedure StopPool;
   protected
     function CreateRALSSL: TRALSSL; override;
-    function IPv6IsImplemented: boolean; override;
-    procedure SetActive(const AValue: boolean); override;
-    procedure SetPort(const AValue: IntegerRAL); override;
     /// Builds the answer bytes for one request frame. Public to the unit's
     /// callbacks only; it is where ValidateRequest and ProcessCommands run.
     function HandleFrame(ARequest: PByte; ASize: IntegerRAL;
                          const AClientIP: StringRAL; AClientPort: IntegerRAL;
                          AConnID: Int64RAL; AOversized: boolean): TBytes;
+    function IPv6IsImplemented: boolean; override;
+    procedure SetActive(const AValue: boolean); override;
+    procedure SetPort(const AValue: IntegerRAL); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function TLSProvisioning: TRALTLSProvisioning; override;
+
+    /// MsQuic reads nothing of IPConfig: its listener serves both families on
+    /// every interface, so this is the machine's address in either family,
+    /// whatever the bind and IPv6Enabled say. A running listener is asked what
+    /// it really bound - see the base
+    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     { on a running server the certificate goes into a configuration of its own,
       which the listener hands to every connection accepted from then on; the
       connections already open keep the one they got }
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
+    function TLSProvisioning: TRALTLSProvisioning; override;
+
     /// How many connections this listener has accepted since it was last
     /// activated, and how many requests came in on them. The RATIO is the
     /// only direct proof that a client is multiplexing: many requests over
@@ -245,11 +255,6 @@ type
     /// counting is the way to know instead of assuming.
     property ConnectionCount: IntegerRAL read FConnections;
     property RequestCount: IntegerRAL read FRequests;
-    /// MsQuic reads nothing of IPConfig: its listener serves both families on
-    /// every interface, so this is the machine's address in either family,
-    /// whatever the bind and IPv6Enabled say. A running listener is asked what
-    /// it really bound - see the base
-    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
   published
     /// ALPN both ends must agree on. A server and a client with different
     /// values never complete a handshake, which is the point: it keeps two
@@ -261,24 +266,9 @@ type
     /// of the two peers' values; the RAL client starts from the same one.
     property IdleTimeout: IntegerRAL read FIdleTimeoutMs write FIdleTimeoutMs
       default RALQUICIDLETIMEOUT;
-    /// Where to load msquic from. Empty means the platform default name, found
-    /// through the usual search path - on Android, the library deployed to
-    /// library\lib\<abi>\, which is the application's own folder.
-    property LibPath: TFileName read FLibPath write FLibPath;
-    /// How many requests one client may have in flight on a single connection.
-    /// This is the ceiling on multiplexing, and it is what the peer is told
-    /// during the handshake. QUIC carries it in 16 bits: 1 to 65535.
-    property MaxStreamsPerConnection: IntegerRAL read FMaxStreamsPerConnection
-      write SetMaxStreamsPerConnection default 1024;
-    /// How long QUIC may sit on an acknowledgement, in milliseconds. The
-    /// protocol default is 25, which suits bulk transfer and punishes
-    /// request/response - see the note in OpenConfiguration.
-    property MaxAckDelay: IntegerRAL read FMaxAckDelayMs write FMaxAckDelayMs
-      default 25;
     { How often, in milliseconds, to send a QUIC PING on a connection that has
       gone quiet. Zero - the default - sends nothing and leaves the connection
       to IdleTimeout.
-
       It is not the same question as IdleTimeout. That one decides when a
       silent connection is given up on; this one decides whether the
       connection is allowed to be silent at all, which is what keeps a NAT or
@@ -286,9 +276,22 @@ type
       to say. }
     property KeepAliveInterval: IntegerRAL read FKeepAliveMs write FKeepAliveMs
       default 0;
+    /// Where to load msquic from. Empty means the platform default name, found
+    /// through the usual search path - on Android, the library deployed to
+    /// library\lib\<abi>\, which is the application's own folder.
+    property LibPath: TFileName read FLibPath write FLibPath;
+    /// How long QUIC may sit on an acknowledgement, in milliseconds. The
+    /// protocol default is 25, which suits bulk transfer and punishes
+    /// request/response - see the note in OpenConfiguration.
+    property MaxAckDelay: IntegerRAL read FMaxAckDelayMs write FMaxAckDelayMs
+      default 25;
+    /// How many requests one client may have in flight on a single connection.
+    /// This is the ceiling on multiplexing, and it is what the peer is told
+    /// during the handshake. QUIC carries it in 16 bits: 1 to 65535.
+    property MaxStreamsPerConnection: IntegerRAL read FMaxStreamsPerConnection
+      write SetMaxStreamsPerConnection default 1024;
     { Whether a peer may keep this connection while its address changes -
       a handset walking from Wi-Fi to mobile data, or a NAT rebinding it.
-
       QUIC identifies a connection by a Connection ID rather than by the
       address pair, so the streams carry on where TCP would have to handshake
       again. On by default, which is also MsQuic's default; turn it off only
@@ -299,7 +302,6 @@ type
     /// OpenConfiguration; turn it on for a server that ships large bodies.
     property Pacing: boolean read FPacing write FPacing default False;
     { How many threads answer requests - see StartPool for the measurements.
-
       ONE is the default and is right for a route that only computes: the
       transport hands a request over for about 18 us of CPU, a single thread
       answers them as fast as they arrive, and a second one measured flat to

@@ -26,47 +26,47 @@ type
 
   TRALnetHTTPClientHTTP = class(TRALClientHTTP)
   private
+    { the request being sent, for the redirect handlers: the next hop's Cookie
+      header is rebuilt from its params and the client's jar }
+    FCurrent: TRALRequest;
     { this engine's own transport, used when it is not sharing }
     FHttp: TNetHTTPClient;
+    { what FSharedKey was built from - a TRALnetHTTPSetup, see the
+      implementation - so a call to the same place with the same settings does
+      not build the key again }
+    FSetupAuthority: StringRAL;
+    FSetupConnect: IntegerRAL;
+    FSetupKeepAlive: IntegerRAL;
+    FSetupNoDowngrade: boolean;
+    FSetupPolicy: StringRAL;
+    FSetupRedirects: IntegerRAL;
+    FSetupRequest: IntegerRAL;
+    FSetupUserAgent: StringRAL;
+    FSetupVersion: TRALHTTPVersion;
     { the borrowed one, and the key it was asked for - '' when there is none.
       The key is also how the holder is found again: the connection cap is
       state of the shared TRANSPORT, not of one client - see PoolMatchCap }
     FShared: TNetHTTPClient;
     FSharedKey: StringRAL;
-    { what FSharedKey was built from - a TRALnetHTTPSetup, see the
-      implementation - so a call to the same place with the same settings does
-      not build the key again }
-    FSetupAuthority: StringRAL;
-    FSetupUserAgent: StringRAL;
-    FSetupConnect: IntegerRAL;
-    FSetupRequest: IntegerRAL;
-    FSetupRedirects: IntegerRAL;
-    FSetupVersion: TRALHTTPVersion;
-    FSetupKeepAlive: IntegerRAL;
-    FSetupPolicy: StringRAL;
-    FSetupNoDowngrade: boolean;
-    { the request being sent, for the redirect handlers: the next hop's Cookie
-      header is rebuilt from its params and the client's jar }
-    FCurrent: TRALRequest;
 
-    /// what the client's jar holds for AURL, as a Cookie value
-    function JarCookiesFor(const AURL: TURI): StringRAL;
-    /// keeps ACookies - an answer's - in the client's jar
-    procedure StoreCookies(ACookies: TCookies; const AURL: TURI);
+    /// Whether this call may run over a transport shared with other clients:
+    /// ShareConnection, and no say over the certificate - see the body for
+    /// why the RTL rules that out.
+    function CanShare: boolean;
     /// a redirect is about to be followed: keeps the cookies the 3xx set and
     /// rewrites ARequest's Cookie header for where it is going
     procedure FollowCookies(const ARequest: IHTTPRequest;
                             const AResponse: IHTTPResponse);
+    /// what the client's jar holds for AURL, as a Cookie value
+    function JarCookiesFor(const AURL: TURI): StringRAL;
+    /// keeps ACookies - an answer's - in the client's jar
+    procedure StoreCookies(ACookies: TCookies; const AURL: TURI);
     procedure ValidateCert(const Sender: TObject; const ARequest: TURLRequest;
                            const Certificate: TCertificate; var Accepted: boolean);
     /// Whether this client wants a say over the server certificate. With no
     /// pin, no event and Verify left alone, the RTL keeps the behaviour it
     /// always had and does not even go fetch the certificate to show it.
     function WantsCertHandler: boolean;
-    /// Whether this call may run over a transport shared with other clients:
-    /// ShareConnection, and no say over the certificate - see the body for
-    /// why the RTL rules that out.
-    function CanShare: boolean;
     {$IFDEF RALNETHTTP_REDIRECTEVENT}
     /// Refuses a redirect that would take a TLS call to plain http. Installed
     /// only where TLS is required (SSL.Required or a pin), and stateless, so
@@ -74,51 +74,49 @@ type
     class procedure KeepOnTLS(const Sender: TObject; const ARequest: IHTTPRequest;
                               const AResponse: IHTTPResponse; ARedirections: Integer;
                               var AAllow: Boolean);
-    /// The cookies of a redirect, on a shared transport: the engine is the one
-    /// sending on this thread - see vSendingEngine
-    class procedure SharedRedirect(const Sender: TObject; const ARequest: IHTTPRequest;
-                                   const AResponse: IHTTPResponse; ARedirections: Integer;
-                                   var AAllow: Boolean);
     /// The same on the own transport, where the engine is Self, after the
     /// KeepOnTLS check when TLS is required
     procedure OwnRedirect(const Sender: TObject; const ARequest: IHTTPRequest;
                           const AResponse: IHTTPResponse; ARedirections: Integer;
                           var AAllow: Boolean);
+    /// The cookies of a redirect, on a shared transport: the engine is the one
+    /// sending on this thread - see vSendingEngine
+    class procedure SharedRedirect(const Sender: TObject; const ARequest: IHTTPRequest;
+                                   const AResponse: IHTTPResponse; ARedirections: Integer;
+                                   var AAllow: Boolean);
     {$ENDIF}
   protected
+    procedure DropShared;
+    class function NewCookieJar: TObject; override;
     /// Picks the transport for this call, borrowing or giving back as the
     /// settings require, and returns it already configured.
     function PickTransport(const AURL: StringRAL): TNetHTTPClient;
-    procedure DropShared;
-    class function NewCookieJar: TObject; override;
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
 
+    class function EngineName : StringRAL; override;
+    class function EngineVersion : StringRAL; override;
+    /// 5000 ms on Windows: the smallest value WinHTTP will take
+    class function MinKeepAliveInterval: IntegerRAL; override;
+    class function PackageDependency : StringRAL; override;
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
                       AMethod: TRALMethod); override;
-
-    class function EngineName : StringRAL; override;
-    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
-    class function EngineVersion : StringRAL; override;
-    class function PackageDependency : StringRAL; override;
-
     /// True on Windows, where the server certificate fingerprint is reachable
     /// - see ServerCertFingerprint. It stays False on every other platform,
     /// and SSL.Pins then refuses on the first request instead of quietly
     /// checking something weaker.
     class function SupportsCertPin: boolean; override;
     class function SupportsHTTP2: boolean; override;
+    /// True on Windows - see SetHttp2KeepAlive and the body below
+    class function SupportsKeepAliveInterval: boolean; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     /// True: WinHTTP (and every other library the RTL puts under this engine)
     /// keeps a connection pool of its own, so one shared transport still opens
     /// as many sockets as the traffic needs - and multiplexes onto one under
     /// HTTP/2. Sharing costs nothing in parallelism here, which is exactly what
     /// is not true of the one-socket-per-object engines.
     class function SupportsSharedConnection: boolean; override;
-    /// True on Windows - see SetHttp2KeepAlive and the body below
-    class function SupportsKeepAliveInterval: boolean; override;
-    /// 5000 ms on Windows: the smallest value WinHTTP will take
-    class function MinKeepAliveInterval: IntegerRAL; override;
   end;
 
 implementation
@@ -202,6 +200,7 @@ type
     {$ENDIF}
     constructor Create;
     destructor Destroy; override;
+
     { Caps this transport at one connection, which is what turns h2 into
       multiplexing. Called before the first request, from PoolAcquire. }
     procedure CapConnections;

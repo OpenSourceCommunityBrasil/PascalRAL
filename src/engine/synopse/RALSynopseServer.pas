@@ -85,15 +85,7 @@ type
 
   TRALSynopseServer = class(TRALServer)
   private
-    { THttpServerGeneric, and not THttpServerSocketGeneric: http.sys is a
-      sibling branch of the tree, and what the three modes have in common lives
-      in the wider ancestor - OnRequest, OnSendFile, ServerName, Shutdown. What
-      only the socket ones have is guarded by "is" further down. }
-    FHttp: THttpServerGeneric;
-    FHttpSysDomain: StringRAL;
-    FMaxConnections: IntegerRAL;
     { WHAT mORMot2 ITSELF CALLS "NO CEILING".
-
       The async loop rejects when the count goes ABOVE Async.MaxConnections, so
       writing 0 there does not say "no ceiling": it says "refuse everything",
       since any count is greater than zero. mORMot2 solves it with a huge
@@ -101,6 +93,13 @@ type
       here, rather than copied. Copying would leave two sources for one number,
       and ours would age in silence the day it changed its own. }
     FAsyncNoCeiling: IntegerRAL;
+    { THttpServerGeneric, and not THttpServerSocketGeneric: http.sys is a
+      sibling branch of the tree, and what the three modes have in common lives
+      in the wider ancestor - OnRequest, OnSendFile, ServerName, Shutdown. What
+      only the socket ones have is guarded by "is" further down. }
+    FHttp: THttpServerGeneric;
+    FHttpSysDomain: StringRAL;
+    FMaxConnections: IntegerRAL;
     FMaxKeepAliveConnections: IntegerRAL;
     FMode: TRALSynopseMode;
     FPoolCount: IntegerRAL;
@@ -110,51 +109,53 @@ type
       so they live until the server object is gone }
     FRetiredTls: array of INetTls;
     FRetiredTlsContexts: array of PNetTlsContext;
+
     procedure ReleaseRetiredTls;
     { a new context loaded from SSL, then published where every connection
       accepted from now on reads its certificate (Sock.TLS.AcceptCert) - the
       threads and the async modes alike, SChannel and OpenSSL alike }
     procedure ReplaceSocketCertificate;
   protected
-    function CreateRALSSL: TRALSSL; override;
-    function GetSSL: TRALSynopseSSL;
-    function IPv6IsImplemented: boolean; override;
-    procedure SetActive(const AValue: boolean); override;
-    procedure SetPort(const AValue: IntegerRAL); override;
-    procedure SetMaxConnections(const AValue: IntegerRAL);
-    procedure SetMode(const AValue: TRALSynopseMode);
-    procedure SetPoolCount(const AValue: IntegerRAL);
-    procedure SetQueueSize(const AValue: IntegerRAL);
-    procedure SetSSL(const AValue: TRALSynopseSSL);
     /// Hands MaxConnections to whichever server object this mode created, if
     /// that object has anywhere to put it - see the property.
     procedure ApplyMaxConnections;
+    function CreateRALSSL: TRALSSL; override;
     { The headers of AResponse into mORMot2's request, after TakeWireStream said
       what was done to the body }
     procedure FillHeaders(AResponse: TRALResponse; AContext: THttpServerRequestAbstract);
+    function GetSSL: TRALSynopseSSL;
+    function IPv6IsImplemented: boolean; override;
+    procedure SetActive(const AValue: boolean); override;
+    procedure SetMaxConnections(const AValue: IntegerRAL);
+    procedure SetMode(const AValue: TRALSynopseMode);
+    procedure SetPoolCount(const AValue: IntegerRAL);
+    procedure SetPort(const AValue: IntegerRAL); override;
+    procedure SetQueueSize(const AValue: IntegerRAL);
+    procedure SetSSL(const AValue: TRALSynopseSSL);
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
     procedure OnHttpTerminate(ASender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    /// Three of the properties below belong to one mode each - see the base
-    function IsPropertyRelevant(const AName: StringRAL): boolean; override;
-    /// tpPFXFile in the socket modes (one file that SChannel and OpenSSL both
-    /// read), tpWindowsStore in smHttpSys
-    function TLSProvisioning: TRALTLSProvisioning; override;
-    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
-    { smHttpSys: imports the PFX into LocalMachine\My and binds it to the port,
-      which needs administrator rights like netsh does - and like netsh, it
-      takes effect on the next handshake with the server running }
-    function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
-    /// smHttpSys reads HttpSysDomain too: 'localhost' is the loopback, an
-    /// address literal is that address - see the base
-    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
+
     { The writer of a stream: mORMot2's chunked response, in smThreads with a
       mORMot2 that has it (BeginChunkedResponse); smAsync and smHttpSys keep the
       pieces and send them when the handler returns }
     function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
+    /// smHttpSys reads HttpSysDomain too: 'localhost' is the loopback, an
+    /// address literal is that address - see the base
+    function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
+    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
+    /// Three of the properties below belong to one mode each - see the base
+    function IsPropertyRelevant(const AName: StringRAL): boolean; override;
+    { smHttpSys: imports the PFX into LocalMachine\My and binds it to the port,
+      which needs administrator rights like netsh does - and like netsh, it
+      takes effect on the next handshake with the server running }
+    function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
     class function SupportsLiveStream: boolean; override;
+    /// tpPFXFile in the socket modes (one file that SChannel and OpenSSL both
+    /// read), tpWindowsStore in smHttpSys
+    function TLSProvisioning: TRALTLSProvisioning; override;
   published
     /// smHttpSys only: which host part of the URL to listen on, and it has to
     /// be the SAME text the reservation used. http.sys matches prefixes
@@ -224,10 +225,10 @@ type
   { one connection of TRALAsyncHttpServer }
   TRALAsyncConnection = class(THttpAsyncServerConnection)
   protected
+    function AfterWrite: TPollAsyncSocketOnReadWrite; override;
     { what a request starts with, where THttpRequestContext.Reset leaves it
       otherwise }
     procedure ResetRequestDefaults;
-    function AfterWrite: TPollAsyncSocketOnReadWrite; override;
   public
     procedure Recycle(const aRemoteIP: TNetAddr); override;
   end;
@@ -697,6 +698,7 @@ type
     FContext: TRALSynopseStreamContext;
   public
     constructor Create(AContext: TRALSynopseStreamContext);
+
     function Alive: boolean; override;
     procedure WriteEnd(AAborted: boolean); override;
     procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); override;

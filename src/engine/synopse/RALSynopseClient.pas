@@ -36,15 +36,6 @@ type
 
   TRALSynopseClientHTTP = class(TRALClientHTTP)
   private
-    { the socket outlives one SendUrl: opening a TCP connection (and a TLS
-      handshake) per request was the whole cost of small calls. Kept while
-      the client asks for KeepAlive and the next URL points at the same
-      scheme://host:port; dropped after any transport error }
-    FHttp: THttpClientSocket;
-    FServer: StringRAL;
-    { handed to OpenUri, so it has to outlive the call - and it is read at
-      connection time, which is when the socket is opened, not per request }
-    FTLS: TNetTlsContext;
     { the last certificate EachPeerVerify saw, and whether it saw any.
       OpenSSL walks the chain from the root down, so the last one is the
       server's - and mORMot's callback, unlike Indy's, does not say at which
@@ -54,12 +45,21 @@ type
     FCertSeen: boolean;
     { whether EVERY call of this handshake said ok - see EachPeerVerify }
     FChainOk: boolean;
+    { the socket outlives one SendUrl: opening a TCP connection (and a TLS
+      handshake) per request was the whole cost of small calls. Kept while
+      the client asks for KeepAlive and the next URL points at the same
+      scheme://host:port; dropped after any transport error }
+    FHttp: THttpClientSocket;
+    FServer: StringRAL;
+    { handed to OpenUri, so it has to outlive the call - and it is read at
+      connection time, which is when the socket is opened, not per request }
+    FTLS: TNetTlsContext;
 
+    function DoRedirect(Sender: THttpClientSocket;
+                        var Context: THttpClientRequest): boolean;
     procedure DropSocket;
     function EachPeerVerify(ASocket: TNetSocket; AContext: PNetTlsContext;
                             AWasOk: boolean; ATLS, APeer: pointer): boolean;
-    function DoRedirect(Sender: THttpClientSocket;
-                        var Context: THttpClientRequest): boolean;
   protected
     { The head mORMot2 read, which it has before the first piece of the body:
       the status from its status line }
@@ -67,15 +67,13 @@ type
   public
     destructor Destroy; override;
 
-    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
-                      AMethod: TRALMethod); override;
-
     class function EngineName: StringRAL; override;
-    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
-
+    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
+                      AMethod: TRALMethod); override;
     class function SupportsCertPin: boolean; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
   end;
 
 implementation

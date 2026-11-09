@@ -11,12 +11,14 @@ type
   TRALWebBrokerServer = class(TRALServer)
   private
     FExtraHeaders: TStrings;
+
     procedure SetExtraHeaders(const AValue: TStrings);
   protected
     procedure SetActive(const AValue: boolean); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// Answers an fcl-web request (Apache's, or any TRequest).
     procedure HandleWebRequest(ARequest: TRequest; AResponse: TResponse);
   published

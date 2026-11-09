@@ -19,25 +19,25 @@ type
 
   TRALIndyClientHTTP = class(TRALClientHTTP)
   private
-    FHttp: TIdHTTP;
-    FHandlerSSL: TIdSSLIOHandlerSocketOpenSSL;
     { True when it was OUR validation that refused the certificate: from the
       outside the failure is indistinguishable from the one OpenSSL raises }
     FCertRefused: boolean;
     { the request being sent, for the redirect handler: the next hop's Cookie
       header is rebuilt from its params and the jar }
     FCurrent: TRALRequest;
+    FHandlerSSL: TIdSSLIOHandlerSocketOpenSSL;
+    FHttp: TIdHTTP;
     /// The Accept TIdHTTP was created with, sent when the request names none
     FIndyAccept: string;
 
+    procedure DoHeadersAvailable(Sender: TObject; AHeaders: TIdHeaderList;
+                                 var VContinue: boolean);
+    procedure DoRedirect(Sender: TObject; var dest: string; var NumRedirect: Integer;
+                         var Handled: boolean; var VMethod: TIdHTTPMethod);
     /// what the client's jar holds for AURI, as a Cookie value
     function JarCookiesFor(AURI: TIdURI): StringRAL;
     /// where a redirect to ADest lands, from the hop FHttp is on
     function RedirectURI(const ADest: string): TIdURI;
-    procedure DoHeadersAvailable(Sender: TObject; AHeaders: TIdHeaderList;
-                                 var VContinue: boolean);
-    function VerifyPeer(ACertificate: TIdX509; AOk: boolean;
-                        ADepth, AError: Integer): boolean;
     { TIdHTTP answers every 401 itself (DoOnAuthorization, with or without
       hoInProcessAuth), creates an authenticator of its own - its Digest only
       knows MD5 - and keeps it on the reused TIdHTTP, where its Authorization
@@ -45,8 +45,8 @@ type
       refused here }
     procedure SelectAuthorization(Sender: TObject;
       var AuthenticationClass: TIdAuthenticationClass; AuthInfo: TIdHeaderList);
-    procedure DoRedirect(Sender: TObject; var dest: string; var NumRedirect: Integer;
-                         var Handled: boolean; var VMethod: TIdHTTPMethod);
+    function VerifyPeer(ACertificate: TIdX509; AOk: boolean;
+                        ADepth, AError: Integer): boolean;
   protected
     class function NewCookieJar: TObject; override;
     /// The head TIdHTTP parsed, which it has before the first piece of the body.
@@ -55,15 +55,13 @@ type
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
 
-    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
-                      AMethod: TRALMethod); override;
-
     class function EngineName : StringRAL; override;
-    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     class function EngineVersion : StringRAL; override;
     class function PackageDependency : StringRAL; override;
-
+    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
+                      AMethod: TRALMethod); override;
     class function SupportsCertPin: boolean; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
   end;
 
 implementation

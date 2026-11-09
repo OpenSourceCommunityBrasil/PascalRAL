@@ -49,12 +49,12 @@ type
     constructor Create(AServer: TRALFastCGIServer; ASocket: TRALSocket);
     destructor Destroy; override;
 
+    /// Writes END_REQUEST with the application status.
+    function WriteEnd(ARequestId: Word; AAppStatus: Integer): boolean;
     /// Writes one record of AType for ARequestId (empty content allowed).
     function WriteRecord(AType: Byte; ARequestId: Word; const AData; ASize: IntegerRAL): boolean;
     /// Writes ASize bytes as as many STDOUT records as needed.
     function WriteStdout(ARequestId: Word; const AData; ASize: IntegerRAL): boolean;
-    /// Writes END_REQUEST with the application status.
-    function WriteEnd(ARequestId: Word; AAppStatus: Integer): boolean;
   end;
 
   { The listener: accepts the web server's connections and gives each a
@@ -67,6 +67,7 @@ type
     FListener: TRALSocket;
     FMaxConnections: IntegerRAL;
     FReadTimeout: IntegerRAL;
+
     procedure ConnectionDone(AConnection: TRALFastCGIConnection);
   protected
     function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
@@ -92,10 +93,10 @@ type
   TRALFastCGIContext = class
   public
     Connection: TRALFastCGIConnection;
-    RequestId: Word;
-    Server: TRALFastCGIServer;
     Ended: boolean;
     HeadSent: boolean;
+    RequestId: Word;
+    Server: TRALFastCGIServer;
   end;
 
   TRALFastCGIStreamWriter = class(TRALStreamWriter)
@@ -103,6 +104,7 @@ type
     FContext: TRALFastCGIContext;
   public
     constructor Create(AContext: TRALFastCGIContext);
+
     function Alive: boolean; override;
     procedure WriteEnd(AAborted: boolean); override;
     procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); override;

@@ -14,12 +14,14 @@ type
   TRALWebBrokerServer = class(TRALServer)
   private
     FExtraHeaders: TStrings;
+
     procedure SetExtraHeaders(const AValue: TStrings);
   protected
     procedure SetActive(const AValue: boolean); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     { Answers a WebBroker request; the web module calls it for every request
       (and so can an application's own TWebModule, in an action) }
     procedure HandleWebRequest(ARequest: TWebRequest; AResponse: TWebResponse);

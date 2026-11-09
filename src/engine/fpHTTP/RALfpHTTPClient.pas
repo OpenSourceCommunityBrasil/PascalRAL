@@ -17,9 +17,9 @@ type
     server's "Connection: close" honoured (HasConnectionClose) }
   TRALfpHttpClientCore = class(TFPHTTPClient)
   protected
+    function HasConnectionClose: Boolean; override;
     function ReadResponse(Stream: TStream; const AllowedResponseCodes: array of Integer;
                           HeadersOnly: Boolean = False): Boolean; override;
-    function HasConnectionClose: Boolean; override;
   public
     { True while a socket is open, i.e. while the next request will reuse it;
       fphttpclient keeps Connected protected }
@@ -35,19 +35,6 @@ type
 
   TRALfpHttpClientHTTP = class(TRALClientHTTP)
   private
-    FHttp: TRALfpHttpClientCore;
-    { True when the previous request finished and left the socket open, so this
-      one is reusing it. fphttpclient reports "could not read the socket" the
-      same way for a read timeout and for a kept-alive connection the server
-      had already closed, and only this tells them apart: on a reused socket
-      the request was never processed and may be sent again. }
-    FSocketReused: boolean;
-    { the Cookie value of the request being sent - see DoRedirect }
-    FCookieText: StringRAL;
-    { the socket fphttpclient connected last, recorded by the socket handlers
-      this engine hands it (fphttpclient keeps its own private): what
-      SocketIdle asks before a kept connection is used again }
-    FSocketHandle: LongInt;
     { scheme://host:port the kept socket was opened to. fphttpclient never
       checks it: with KeepConnection on it writes any URL to the socket it
       has, so a client handed to another address, or left connected by a
@@ -55,26 +42,37 @@ type
     FAuthority: String;
     { True when it was our validation that refused the certificate - see VerifyCert }
     FCertRefused: boolean;
+    { the Cookie value of the request being sent - see DoRedirect }
+    FCookieText: StringRAL;
+    FHttp: TRALfpHttpClientCore;
+    { the socket fphttpclient connected last, recorded by the socket handlers
+      this engine hands it (fphttpclient keeps its own private): what
+      SocketIdle asks before a kept connection is used again }
+    FSocketHandle: LongInt;
+    { True when the previous request finished and left the socket open, so this
+      one is reusing it. fphttpclient reports "could not read the socket" the
+      same way for a read timeout and for a kept-alive connection the server
+      had already closed, and only this tells them apart: on a reused socket
+      the request was never processed and may be sent again. }
+    FSocketReused: boolean;
 
-    procedure VerifyCert(Sender: TObject; var Allow: boolean);
     procedure DoRedirect(Sender: TObject; const ASrc: String; var ADest: String);
+    procedure VerifyCert(Sender: TObject; var Allow: boolean);
   protected
-    procedure OnGetSocketHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
     /// The head fphttpclient read, which it has before the first piece of the body.
     procedure ReadStreamHead(AResponse: TRALResponse); override;
+    procedure OnGetSocketHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
   public
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
 
-    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
-                      AMethod: TRALMethod); override;
-
     class function EngineName: StringRAL; override;
-    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
-
+    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
+                      AMethod: TRALMethod); override;
     class function SupportsCertPin: boolean; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
   end;
 
 implementation
@@ -116,6 +114,7 @@ type
   public
     { the engine that asked for it: told which socket was connected }
     Engine: TRALfpHttpClientHTTP;
+
     function Connect: boolean; override;
   end;
 
@@ -126,6 +125,7 @@ type
     procedure SetSocket(const AStream: TSocketStream); override;
   public
     Engine: TRALfpHttpClientHTTP;
+
     function Connect: boolean; override;
   end;
 

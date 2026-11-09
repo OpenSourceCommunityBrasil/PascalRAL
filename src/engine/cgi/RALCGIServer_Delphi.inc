@@ -22,6 +22,7 @@ type
   public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
+
     /// The address of the web server that started the program, as it tells
     /// it (SERVER_ADDR, or LOCAL_ADDR on IIS); the machine's otherwise
     function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;

@@ -50,27 +50,25 @@ type
   private
     FHandle: Psg_httpsrv;
     FLibPath: TFileName;
-    FPoolCount: IntegerRAL;
     FMaxConnections: IntegerRAL;
+    FPoolCount: IntegerRAL;
     FThreadPerConnection: boolean;
+
     class procedure DoClientConnectionCallback(Acls: Pcvoid; const Aclient: Pcvoid;
       Aclosed: Pcbool); cdecl; static;
     class procedure DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar); cdecl; static;
-    class procedure DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq; Ares: Psg_httpres);
-      cdecl; static;
+    /// libmicrohttpd is done with a stream (sent or the client left).
+    class procedure DoQueueFree(Acls: Pcvoid); cdecl; static;
     { libmicrohttpd pulls a stream's pieces here, as they come; it blocks the
       connection's thread until there is something, or the end }
     class function DoQueueRead(Acls: Pcvoid; Aoffset: cuint64_t; Abuf: Pcchar;
       Asize: csize_t): cssize_t; cdecl; static;
-    /// libmicrohttpd is done with a stream (sent or the client left).
-    class procedure DoQueueFree(Acls: Pcvoid); cdecl; static;
-    { The headers of AResponse into libsagui's response, after TakeWireStream
-      said what was done to the body }
-    class procedure FillHeaders(AServer: TRALSaguiServer; AResponse: TRALResponse;
-      Ares: Psg_httpres);
+    class procedure DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq; Ares: Psg_httpres);
+      cdecl; static;
+    class procedure DoStreamFree(Acls: Pcvoid); cdecl; static;
     class function DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t; Abuf: Pcchar;
       Asize: csize_t): cssize_t; cdecl; static;
-    class procedure DoStreamFree(Acls: Pcvoid); cdecl; static;
+    class procedure DoUploadFree(Ahandle: Pcvoid); cdecl; static;
     { Uploads backed by a TMemoryStream instead of the library's default, which
       writes every part to a temporary file. TRALSaguiUploadMap.AppendToParams
       already casts the upload handle to TStream - these callbacks are what
@@ -78,46 +76,51 @@ type
     class function DoUploadNew(Acls: Pcvoid; Ahandle: PPcvoid; const Adir: Pcchar;
       const Afield: Pcchar; const Aname: Pcchar; const Amime: Pcchar;
       const Aencoding: Pcchar): cint; cdecl; static;
-    class function DoUploadWrite(Ahandle: Pcvoid; Aoffset: cuint64_t;
-      const Abuf: Pcchar; Asize: csize_t): cssize_t; cdecl; static;
-    class procedure DoUploadFree(Ahandle: Pcvoid); cdecl; static;
     class function DoUploadSave(Ahandle: Pcvoid; Aoverwritten: cbool): cint;
       cdecl; static;
     class function DoUploadSaveAs(Ahandle: Pcvoid; const Apath: Pcchar;
       Aoverwritten: cbool): cint; cdecl; static;
+    class function DoUploadWrite(Ahandle: Pcvoid; Aoffset: cuint64_t;
+      const Abuf: Pcchar; Asize: csize_t): cssize_t; cdecl; static;
+    { The headers of AResponse into libsagui's response, after TakeWireStream
+      said what was done to the body }
+    class procedure FillHeaders(AServer: TRALSaguiServer; AResponse: TRALResponse;
+      Ares: Psg_httpres);
     class function GetSaguiIP(AReq: Psg_httpreq): StringRAL;
   protected
     function CreateRALSSL: TRALSSL; override;
     procedure CreateServerHandle;
     procedure FreeServerHandle;
-    function InitializeServer: boolean;
-    function IPv6IsImplemented: boolean; override;
-
     function GetPoolCount: IntegerRAL;
     function GetSSL: TRALSaguiSSL;
-    procedure SetActive(const AValue: boolean); override;
-    procedure SetMaxConnections(const AValue: IntegerRAL);
+    function InitializeServer: boolean;
+    function IPv6IsImplemented: boolean; override;
+    /// Creates the libsagui server and listens - the part of SetActive(True)
+    /// that a new certificate has to repeat. Raises when it does not listen
+    procedure OpenListener;
     /// Streaming-only reader for the old ConnectionLimit - see DefineProperties
     procedure ReadOldConnectionLimit(Reader: TReader);
+    procedure SetActive(const AValue: boolean); override;
     procedure SetLibPath(const AValue: TFileName);
+    procedure SetMaxConnections(const AValue: IntegerRAL);
     procedure SetPoolCount(const AValue: IntegerRAL);
     procedure SetPort(const AValue: IntegerRAL); override;
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetSSL(const AValue: TRALSaguiSSL);
     procedure ShutdownServerHandle;
-    /// Creates the libsagui server and listens - the part of SetActive(True)
-    /// that a new certificate has to repeat. Raises when it does not listen
-    procedure OpenListener;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     { The writer of a stream: the pieces wait in a queue of up to StreamMaxPending
       bytes that libmicrohttpd pulls once the callback returns. On a route marked
       Streaming the handler runs on a thread of its own, so its pieces leave as
       it sends them; on any other, they leave when it returns }
     function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
-    class function SupportsLiveStream: boolean; override;
-    function TLSProvisioning: TRALTLSProvisioning; override;
+    { Reads a ConnectionLimit written by a .dfm/.lfm from before the rename, so
+      no existing project stops loading. It never WRITES it - nil writer and
+      HasData False - so the old name dies out with the next save. }
+    procedure DefineProperties(Filer: TFiler); override;
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     { libsagui takes the certificate only when it starts listening
       (sg_httpsrv_tls_listen3) and has no call to replace it, so on a running
@@ -125,10 +128,9 @@ type
       connections open at that moment are dropped, the next ones use the new
       certificate. Every other engine swaps it without closing anything }
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
-    { Reads a ConnectionLimit written by a .dfm/.lfm from before the rename, so
-      no existing project stops loading. It never WRITES it - nil writer and
-      HasData False - so the old name dies out with the next save. }
-    procedure DefineProperties(Filer: TFiler); override;
+    class function SupportsLiveStream: boolean; override;
+    function TLSProvisioning: TRALTLSProvisioning; override;
+
     /// DEPRECATED, use MaxConnections - the old name of the same property,
     /// kept so existing code still compiles. It is not published, so the
     /// Object Inspector shows the new name only, and it carries no
@@ -137,13 +139,13 @@ type
     /// comment on both).
     property ConnectionLimit: IntegerRAL read FMaxConnections write SetMaxConnections;
   published
+    property LibPath: TFileName read FLibPath write SetLibPath;
     /// Ceiling on how many connections may be open AT THE SAME TIME: past it
     /// libmicrohttpd refuses a NEW one, so no existing client is dropped to
     /// make room. 0 means no ceiling, the same as on the Indy, fpHTTP and
     /// mORMot2 servers - this was called ConnectionLimit until 2026-09-15, and
     /// the name is now the same on all four.
     property MaxConnections: IntegerRAL read FMaxConnections write SetMaxConnections default 0;
-    property LibPath: TFileName read FLibPath write SetLibPath;
     /// Size of libmicrohttpd's thread pool. Used only when ThreadPerConnection
     /// is False. Takes effect on the next activation.
     property PoolCount: IntegerRAL read GetPoolCount write SetPoolCount;
@@ -229,6 +231,7 @@ type
     Res: Psg_httpres;
     Server: TRALSaguiServer;
     Status: IntegerRAL;
+
     constructor Create(AServer: TRALSaguiServer; ARes: Psg_httpres);
     destructor Destroy; override;
   end;
@@ -242,6 +245,7 @@ type
   public
     constructor Create(AContext: TRALSaguiStreamContext);
     destructor Destroy; override;
+
     function Alive: boolean; override;
     procedure WriteEnd(AAborted: boolean); override;
     procedure WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCode: IntegerRAL); override;
@@ -283,13 +287,13 @@ type
     procedure Add(const AName, AValue: StringRAL);
     procedure AppendToParams(AParams: TRALParams; AKind: TRALParamKind);
     procedure AssignFromParams(AParams: TRALParams; AKind: TRALParamKind);
-    /// Counts the total pairs present in the map.
-    property Count: integer read GetCount;
     function First: boolean;
     procedure GetPair(var AName, AValue: StringRAL);
     function MapList: TStringList;
     function Next: boolean;
 
+    /// Counts the total pairs present in the map.
+    property Count: integer read GetCount;
     property FreeOnDestroy: boolean read FFreeOnDestroy write FFreeOnDestroy;
   end;
 
@@ -309,6 +313,7 @@ type
     function GetHandle: Pointer;
   public
     constructor Create(AHandle: Pointer);
+
     /// Handle of an upload.
     property Handle: Pointer read GetHandle;
     /// Stream handle of the upload. }
@@ -320,10 +325,10 @@ type
     property Encoding: StringRAL read FEncoding;
     /// Field name of the upload.
     property Field: StringRAL read FField;
-    /// Name of the uploaded file.
-    property Name: StringRAL read FName;
     /// MIME (content-type) of the upload.
     property Mime: StringRAL read FMime;
+    /// Name of the uploaded file.
+    property Name: StringRAL read FName;
     /// Size of the upload.
     property Size: uint64 read FSize;
   end;
@@ -332,18 +337,18 @@ type
 
   TRALSaguiUploadMap = class(TPersistent)
   private
-    FHandle: Psg_httpupld;
     FCurrent: Psg_httpupld;
+    FHandle: Psg_httpupld;
   protected
     function GetCount: integer;
   public
     constructor Create(AHandle: Pointer);
     destructor Destroy; override;
 
-    function First: boolean;
-    function Next: boolean;
-    function GetFile: TRALSaguiUploadFile;
     procedure AppendToParams(AParams: TRALParams);
+    function First: boolean;
+    function GetFile: TRALSaguiUploadFile;
+    function Next: boolean;
 
     // Counts the total pairs present in the map.
     property Count: integer read GetCount;

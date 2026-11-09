@@ -46,31 +46,34 @@ type
   /// connection does not serialise the way a shared HTTP/1.1 socket would.
   TRALMsQuicConnection = class
   private
-    FConfiguration: HQUIC;
-    FConnection: HQUIC;
-    FConnectedEvent: TEvent;
-    FConnectStatus: QUIC_STATUS;
-    FConnected: boolean;
+    FAlpn: AnsiString;
     FCertRefused: boolean;
+    FConfiguration: HQUIC;
+    FConnected: boolean;
+    FConnectedEvent: TEvent;
+    FConnection: HQUIC;
+    FConnectStatus: QUIC_STATUS;
     { the engine whose policy judges the certificate. Valid only while Open is
       waiting for the handshake, which is when PEER_CERTIFICATE_RECEIVED
       arrives; the connection is shared afterwards and belongs to nobody. }
     FJudge: TRALMsQuicClientHTTP;
-    FRefCount: IntegerRAL;
     FKey: StringRAL;
-    FAlpn: AnsiString;
+    FRefCount: IntegerRAL;
+
     procedure Close;
     function JudgeCertificate(AData: PQuicPeerCertificateReceivedData): QUIC_STATUS;
   public
     constructor Create(const AKey: StringRAL; const AAlpn: AnsiString);
     destructor Destroy; override;
+
+    procedure AddRef;
     /// Opens the connection and waits for the handshake. Raises on failure -
     /// ERALMsQuicCertError when the certificate is the reason.
     procedure Open(const AHost: StringRAL; APort: IntegerRAL;
                    ACertMode: TRALMsQuicCertMode; AJudge: TRALMsQuicClientHTTP;
                    AConnectTimeout, AKeepAlive: IntegerRAL);
-    procedure AddRef;
     procedure Release;
+
     property Connected: boolean read FConnected;
     property Handle: HQUIC read FConnection;
     property Key: StringRAL read FKey;
@@ -83,13 +86,15 @@ type
   /// context freed while a callback still holds it.
   TRALMsQuicPending = class
   public
-    Received: TMemoryStream;
     Done: TEvent;
-    Stream: HQUIC;
     Failed: boolean;
+    Received: TMemoryStream;
     RefCount: IntegerRAL;
+    Stream: HQUIC;
+
     constructor Create;
     destructor Destroy; override;
+
     procedure Release;
     /// Puts it back to the state Create leaves it in. The receive buffer is
     /// kept - only the position is rewound, so the next answer writes over
@@ -123,6 +128,16 @@ type
   /// ShareConnection is on by default for that reason.
   TRALMsQuicClientHTTP = class(TRALClientHTTP)
   private
+    FAlpn: AnsiString;
+    { ConnectionKey as last built and what it was built from: the same place
+      with the same settings keeps it, where a Format of six values ran on
+      every request }
+    FKey: StringRAL;
+    FKeyCaFile: TFileName;
+    FKeyHost: StringRAL;
+    FKeyKeepAlive: IntegerRAL;
+    FKeyPolicy: StringRAL;
+    FKeyPort: IntegerRAL;
     FOwnConnection: TRALMsQuicConnection;
     FShared: TRALMsQuicConnection;
     { The context of the last request, kept for the next one. An engine belongs
@@ -132,45 +147,25 @@ type
       is where the multiplexed arrangement was losing its transport advantage.
       A context a callback still holds (the timeout path) is never reused. }
     FSpare: TRALMsQuicPending;
-    FAlpn: AnsiString;
+    FTargetHost: StringRAL;
+    FTargetPort: IntegerRAL;
     { host and port of the last URL: a client hammering one route does not
       split the same string on every request }
     FTargetUrl: StringRAL;
-    FTargetHost: StringRAL;
-    FTargetPort: IntegerRAL;
-    { ConnectionKey as last built and what it was built from: the same place
-      with the same settings keeps it, where a Format of six values ran on
-      every request }
-    FKey: StringRAL;
-    FKeyHost: StringRAL;
-    FKeyPort: IntegerRAL;
-    FKeyPolicy: StringRAL;
-    FKeyKeepAlive: IntegerRAL;
-    FKeyCaFile: TFileName;
+
     function AcquirePending: TRALMsQuicPending;
     function CertMode: TRALMsQuicCertMode;
     function ConnectionKey: StringRAL;
-    procedure ResolveTarget(const AURL: StringRAL);
-    function PickConnection: TRALMsQuicConnection;
-    procedure DropShared;
     procedure DropOwn;
+    procedure DropShared;
+    function PickConnection: TRALMsQuicConnection;
+    procedure ResolveTarget(const AURL: StringRAL);
   public
     /// ALPN offered to the server. Both ends must agree or the handshake never
     /// completes; RALQUICALPN is what TRALMsQuicServer offers by default. A
     /// class variable because the engine object is built by TRALClient and
     /// never seen by the application.
     class var DefaultAlpn: StringRAL;
-    /// Where to load msquic from; empty means the platform default name -
-    /// msquic.dll on Windows, libmsquic.so.2 on POSIX and libmsquic.so on
-    /// Android, where the packager carries no versioned soname. The first load
-    /// wins for the whole process.
-    ///
-    /// Leave it empty on Android too: the library deployed to
-    /// library\lib\arm64-v8a\ (library\lib\armeabi-v7a\ for the 32-bit slice)
-    /// lands in the application's own folder, which is where dlopen looks for
-    /// a plain name. It is here for the odd case of a library kept somewhere
-    /// else.
-    class var DefaultLibPath: TFileName;
     /// PEM file with the certificate authorities a server's chain is checked
     /// against, for the OpenSSL build of msquic. Empty, the default, means the
     /// platform's own store: the Windows one on Windows; on Android the system
@@ -182,28 +177,41 @@ type
     /// first connection under a certificate policy is configured, so set it
     /// before the first request.
     class var DefaultCaFile: TFileName;
+    /// Where to load msquic from; empty means the platform default name -
+    /// msquic.dll on Windows, libmsquic.so.2 on POSIX and libmsquic.so on
+    /// Android, where the packager carries no versioned soname. The first load
+    /// wins for the whole process.
+    ///
+    /// Leave it empty on Android too: the library deployed to
+    /// library\lib\arm64-v8a\ (library\lib\armeabi-v7a\ for the 32-bit slice)
+    /// lands in the application's own folder, which is where dlopen looks for
+    /// a plain name. It is here for the odd case of a library kept somewhere
+    /// else.
+    class var DefaultLibPath: TFileName;
+
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
-    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest;
-                      AResponse: TRALResponse; AMethod: TRALMethod); override;
-    /// The single decision about a server certificate, reached from the
-    /// connection's callback: the event, else the pin, else the library.
-    function JudgeServerCert(const AInfo: TRALCertInfo): boolean;
+
     class function EngineName: StringRAL; override;
-    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     /// The version of the msquic actually loaded, asked of the library itself.
     /// Empty when it has not been loaded yet - there is nothing to report
     /// before the first request, and inventing a number would be worse.
     class function EngineVersion: StringRAL; override;
+    /// The single decision about a server certificate, reached from the
+    /// connection's callback: the event, else the pin, else the library.
+    function JudgeServerCert(const AInfo: TRALCertInfo): boolean;
     class function PackageDependency: StringRAL; override;
+    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest;
+                      AResponse: TRALResponse; AMethod: TRALMethod); override;
+    /// True: the certificate arrives as DER and its SHA-256 is computed here.
+    class function SupportsCertPin: boolean; override;
     /// False: this engine is below HTTP, so there is no version to ask for.
     /// It is what hides HTTPVersion in the IDE and keeps it at rhvDefault.
     class function SupportsHTTPVersion: boolean; override;
+    class function SupportsKeepAliveInterval: boolean; override;
+    class function SupportsMethod(AMethod: TRALMethod): boolean; override;
     /// True, and it is the point of this engine - see the class comment.
     class function SupportsSharedConnection: boolean; override;
-    class function SupportsKeepAliveInterval: boolean; override;
-    /// True: the certificate arrives as DER and its SHA-256 is computed here.
-    class function SupportsCertPin: boolean; override;
   end;
 
 {$IFDEF RALMSQUIC_PROFILE}

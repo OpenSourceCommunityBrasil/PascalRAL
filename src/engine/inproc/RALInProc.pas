@@ -24,6 +24,7 @@ type
   TRALInProcServer = class(TRALServer)
   private
     FServerName: StringRAL;
+
     procedure SetServerName(const AValue: StringRAL);
   protected
     procedure SetActive(const AValue: boolean); override;
@@ -39,12 +40,11 @@ type
   /// The client engine of inproc:// URLs.
   TRALInProcClientHTTP = class(TRALClientHTTP)
   public
-    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
-      AMethod: TRALMethod); override;
-
     class function EngineName: StringRAL; override;
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
+    procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
+      AMethod: TRALMethod); override;
     class function SupportsMethod(AMethod: TRALMethod): boolean; override;
   end;
 
