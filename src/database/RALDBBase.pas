@@ -9,6 +9,7 @@ uses
   RALRequest, RALResponse;
 
 type
+  /// The databases DBWare speaks to.
   TRALDatabaseType = (dtFirebird, dtSQLite, dtMySQL, dtPostgreSQL);
 
   /// Same as RALStorageTypes.TRALDBDriverType.
@@ -25,7 +26,9 @@ const
   qtOther = RALStorageTypes.qtOther;
 
 type
+  /// Event of a driver connecting, with the request.
   TRALDBOnConnect = procedure(ASender: TObject; ARequest: TRALRequest) of object;
+  /// Event of a failure, with its message and the request.
   TRALDBOnError = procedure(ASender: TObject; AException: StringRAL; ARequest: TRALRequest) of object;
   { Fired before the DBWare module runs a statement that came over the wire.
     AAllow starts True; set it False to refuse this one }
@@ -38,10 +41,8 @@ type
     MySQL CALL), pkFunction is selected from }
   TRALDBProcKind = (pkSelectable, pkExecutable, pkFunction);
 
-  { TRALDBProcInfo }
-
-  /// What the catalog of the database says about one stored procedure: name,
-  /// schema, kind and its params in the order the call takes them
+  { What the catalog of the database says about one stored procedure: name,
+    schema, kind and its params in the order the call takes them. }
   TRALDBProcInfo = class
   private
     FKind: TRALDBProcKind;
@@ -74,11 +75,11 @@ type
     property Schema: StringRAL read FSchema write FSchema;
   end;
 
-  { TRALDBBase }
-
+  /// Base of the DBWare drivers: connection, statements, catalog and transactions.
   TRALDBBase = class(TPersistent)
   private
     FCharacterSet: StringRAL;
+    /// Name=Value settings handed to the library.
     FConnectionParams: TStrings;
     FDatabase: StringRAL;
     FDatabaseType: TRALDatabaseType;
@@ -108,6 +109,7 @@ type
       param of the same name in ADest, the native list of a query (TParams in Zeos
       and sqldb); raises like ParamByName when ADest has no such param }
     class procedure BindParams(ASource, ADest: TParams);
+    /// Connects with the current settings.
     procedure Conectar; virtual; abstract;
     { An open, empty in-memory dataset of the library, with the fields of
       AddOutputDefs; nil when the driver has none (the default) }
@@ -119,6 +121,7 @@ type
     constructor Create; virtual; abstract;
     destructor Destroy; override;
 
+    /// Whether the driver writes datasets in its library's own format.
     function CanExportNative: boolean; virtual;
     { Commits what is pending: the transaction StartTransaction opened, or what a
       statement left in the library's own transaction. Does nothing when nothing
@@ -126,6 +129,7 @@ type
     procedure Commit; virtual;
     /// Opens the connection. Does nothing when it is already open
     procedure Connect; virtual;
+    /// The name the driver is registered under.
     class function DatabaseName: StringRAL; virtual; abstract;
     { Closes the connection. Descendants that do not override it simply keep the
       connection open until the driver is destroyed }
@@ -135,13 +139,15 @@ type
       AParams (added when missing). Answers the rows, or nil, freed by the caller }
     function ExecProc(AProc: TRALDBProcInfo; AParams: TParams;
       var ARowsAffected: Int64RAL): TDataSet; virtual;
+    /// Runs ASQL with AParams; returns the rows affected and the last insert id.
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); virtual; abstract;
     function GetDriverType: TRALDBDriverType; virtual; abstract;
+    /// The table of field AFieldIndex of ADataset.
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; virtual; abstract;
-    /// The connection object of the underlying library (TZConnection,
-    /// TFDConnection, TSQLConnector) - for code that already queries it
-    /// directly and wants the pool to manage it. nil when the driver has none
+    { The connection object of the underlying library (TZConnection,
+      TFDConnection, TSQLConnector) - for code that already queries it
+      directly and wants the pool to manage it. nil when the driver has none. }
     function GetNativeConnection: TComponent; virtual;
     { The stored procedure AName (schema.name allowed) as the catalog describes
       it, or nil when there is none; freed by the caller. On PostgreSQL the names
@@ -158,18 +164,23 @@ type
     { Moves ADataset, which ExecProc answered, to its next result set; False when
       there is none. Only libraries that hand over several result sets do it }
     function NextResultSet(ADataset: TDataSet): boolean; virtual;
+    /// Opens ASQL in a dataset the RAL storages write; the caller frees it.
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
+    /// Opens ASQL in the library's own dataset; the caller frees it.
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
     { The output params of AParams as a dataset of one row, a field each, which
       every storage writes; nil when there is none or the driver has no
       in-memory dataset. Freed by the caller }
     function OutputsDataset(AParams: TParams): TDataSet;
+    /// The Lazarus package the driver needs.
     class function PackageDependency: StringRAL; virtual; abstract;
     { Undoes anything the request left behind, pending transactions above all.
       Called by TRALDBConnectionPool before a connection is reused }
     procedure ResetSession; virtual;
     /// Undoes what is pending - see Commit
     procedure Rollback; virtual;
+    { Writes ADataset to AStream; ANative says whether it went in the library's own
+      format, AContentType the type. }
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
                            var AContentType: StringRAL;
                            var ANative: boolean); virtual; abstract;
@@ -183,6 +194,7 @@ type
     /// Cheapest statement that proves the connection is alive on this database
     function ValidationSQL: StringRAL; virtual;
 
+    /// The library of the driver.
     property DriverType: TRALDBDriverType read GetDriverType;
   published
     { Connection charset. Empty lets the driver pick a sane default for the
@@ -190,32 +202,48 @@ type
       server reject accented text with "Malformed string". Set it explicitly
       to talk to a legacy base in another charset. }
     property CharacterSet: StringRAL read FCharacterSet write FCharacterSet;
-    /// Name=Value settings that only the library understands, handed to it
-    /// before connecting: Zeos Properties (emulate_prepares, schema,
-    /// busytimeout), FireDAC or sqldb Params. They win over what RAL sets itself
+    { Name=Value settings that only the library understands, handed to it
+      before connecting: Zeos Properties (emulate_prepares, schema,
+      busytimeout), FireDAC or sqldb Params. They win over what RAL sets itself. }
     property ConnectionParams: TStrings read GetConnectionParams write SetConnectionParams;
+    /// The database name or file.
     property Database: StringRAL read FDatabase write FDatabase;
+    /// The kind of database.
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
+    /// The database server.
     property Hostname: StringRAL read FHostname write FHostname;
+    /// Location of the client library.
     property LibLocation: StringRAL read FLibLocation write SetLibLocation;
+    /// Fires after connecting.
     property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
+    /// Fires before connecting.
     property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
+    /// Fires when connecting fails.
     property OnErrorConnect: TRALDBOnError read FOnErrorConnect write FOnErrorConnect;
+    /// Fires when a statement fails.
     property OnErrorQuery: TRALDBOnError read FOnErrorQuery write FOnErrorQuery;
+    /// The password.
     property Password: StringRAL read FPassword write FPassword;
+    /// The port of the database server.
     property Port: IntegerRAL read FPort write FPort;
+    /// The request the driver serves.
     property Request: TRALRequest read FRequest write FRequest;
+    /// The response of that request.
     property Response: TRALResponse read FResponse write FResponse;
+    /// The user name.
     property Username: StringRAL read FUsername write FUsername;
   end;
 
+  /// Class of a driver.
   TRALDBClass = class of TRALDBBase;
 
   /// Registers ADatabase under its DatabaseName, replacing a class of that name.
   procedure RegisterDatabase(ADatabase: TRALDBClass);
   /// Unregisters ADatabase; each driver unit calls it in its finalization.
   procedure UnregisterDatabase(ADatabase: TRALDBClass);
+  /// The driver registered as ADatabaseName, or nil.
   function GetDatabaseClass(ADatabaseName: StringRAL): TRALDBClass;
+  /// Fills AList with the registered drivers.
   procedure GetDatabaseList(AList: TStrings);
 
 implementation
@@ -224,6 +252,7 @@ uses
   RALConsts;
 
 var
+  /// The registered drivers.
   DatabasesDefs: TStringList;
 
 /// The items of a comma separated list, kept empty ones included
@@ -385,6 +414,7 @@ begin
     Result := FName;
 end;
 
+/// Creates DatabasesDefs on first use.
 procedure CheckDatabaseDefs;
 begin
   if DatabasesDefs = nil then
@@ -394,6 +424,7 @@ begin
   end;
 end;
 
+/// Frees DatabasesDefs.
 procedure DoneEngineDefs;
 begin
   FreeAndNil(DatabasesDefs);
@@ -653,6 +684,7 @@ begin
     Result.CreateParam(ftString, ANames[vInt], ptInput).AsString := string(AValues[vInt]);
 end;
 
+/// What the Firebird catalog says of procedure AName.
 function FirebirdProcInfo(ADB: TRALDBBase; const AName: StringRAL): TRALDBProcInfo;
 var
   vParams: TParams;
@@ -727,6 +759,7 @@ begin
   end;
 end;
 
+/// What the PostgreSQL catalog says of a function.
 function PostgresProcInfo(ADB: TRALDBBase; const ASchema, AName: StringRAL;
   AParamNames: TStrings): TRALDBProcInfo;
 var
@@ -835,6 +868,7 @@ begin
   end;
 end;
 
+/// What the MySQL catalog says of a procedure.
 function MySQLProcInfo(ADB: TRALDBBase; const ASchema, AName: StringRAL): TRALDBProcInfo;
 var
   vParams: TParams;
@@ -1037,7 +1071,8 @@ begin
         ptResult: ;
         ptOutput:
           case DatabaseType of
-            // a procedure takes a placeholder for each OUT; a function answers them as columns
+            // a procedure takes a placeholder for each OUT; a function answers them as
+            // columns
             dtPostgreSQL:
               if AProc.Kind = pkExecutable then
                 AddArg('null');
@@ -1210,10 +1245,9 @@ begin
   FreeAndNil(vQuery);
 end;
 
-{ DoneEngineDefs existed and nobody called it: the driver registry (one
-  TStringList plus one entry per driver unit) outlived the process and showed
-  up in heaptrc as leaked at exit. The empty initialization is not optional:
-  Delphi refuses a finalization section without one (E2029), FPC does not. }
+{ DoneEngineDefs frees the driver registry at exit. The empty initialization
+  is not optional: Delphi refuses a finalization section without one (E2029),
+  FPC does not. }
 initialization
 
 finalization

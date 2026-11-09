@@ -1,3 +1,4 @@
+/// A FireDAC connection whose commands run on a remote DBWare server.
 unit RALDBFiredacDAO;
 
 interface
@@ -21,11 +22,14 @@ uses
 
 type
 
+  /// Fires when a remote call of a TRALFDQuery ends, with its exception or nil.
   TOnQueryRemoteFinish = procedure(ASender: TObject; AException: Exception) of object;
 
   {$IF Declared(pidAllPlatforms)}[ComponentPlatforms(pidAllPlatforms)]{$IFEND}
+  /// A FireDAC query whose Open, ExecSQL and ApplyUpdates can run on a RAL server.
   TRALFDQuery = class(TFDQuery)
   private
+    /// The exception of the last remote call, or nil.
     vException: Exception;
     vOnQueryRemoteFinish: TOnQueryRemoteFinish;
     vQueryBehavior: TRALExecBehavior;
@@ -33,12 +37,15 @@ type
     vRALFDConnectionServer: StringRAL;
     vRowsAffectedRemote: Int64;
   protected
+    /// Takes the answer of ApplyUpdatesRemote.
     procedure ApplyUpdatesRemoteResponse(Sender: TObject; AResponse: TRALResponse;
       AException: StringRAL);
+    /// Takes the answer of ExecSQLRemote.
     procedure ExecSQLRemoteResponse(Sender: TObject; AResponse: TRALResponse;
       AException: StringRAL);
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    /// Takes the answer of OpenRemote and loads it.
     procedure OpenRemoteResponse(Sender: TObject; AResponse: TRALResponse;
       AException: StringRAL);
     procedure SetOnQueryRemoteFinish(const value: TOnQueryRemoteFinish);
@@ -48,25 +55,37 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    /// Sends the cached updates to the server.
     procedure ApplyUpdatesRemote;
+    /// Runs the SQL on the server.
     procedure ExecSQLRemote;
+    /// Opens the SQL on the server and loads the answer.
     procedure OpenRemote;
   published
+    /// Fires when a remote call ends.
     property OnQueryRemoteFinish: TOnQueryRemoteFinish read vOnQueryRemoteFinish
       write SetOnQueryRemoteFinish;
+    /// The thread the remote calls run on.
     property QueryBehavior: TRALExecBehavior read vQueryBehavior write vQueryBehavior
       default ebSingleThread;
+    /// The client the remote calls go through.
     property RALClient: TRALClient read vRALClient write SetRALClient;
+    /// The route of the TRALFDConnection on the server.
     property RALFDConnectionServer: StringRAL read vRALFDConnectionServer
       write SetRALFDConnectionServer;
+    /// The rows the last remote call affected.
     property RowsAffectedRemote: Int64RAL read vRowsAffectedRemote;
   end;
 
+  /// Fires when a statement of the server fails.
   TOnQueryError = procedure(ASender, AInitiator: TObject; var AException: Exception)
     of object;
+  /// Fires after the server opens a query.
   TOnQueryAfterOpen = procedure(DataSet: TDataSet) of object;
 
   {$IF Declared(pidAllPlatforms)}[ComponentPlatforms(pidAllPlatforms)]{$IFEND}
+  { A FireDAC connection that serves its queries to TRALFDQuery clients through a RAL
+    server. }
   TRALFDConnection = class(TFDConnection)
   private
     vDriverName: StringRAL;
@@ -74,23 +93,30 @@ type
     vOnQueryError: TOnQueryError;
     vOnValidateApplyUpdates: TRALDBOnValidateSQL;
     vOnValidateSQL: TRALDBOnValidateSQL;
+    /// The internal module with the query route.
     vRALModule: TRALModuleRoutes;
     vRALServer: TRALServer;
 
+    /// Asks OnValidateApplyUpdates; with only OnValidateSQL assigned, refuses.
     procedure CheckApplyUpdates(ARequest: TRALRequest; const ASQL: StringRAL);
+    /// Asks OnValidateSQL; raises when it refuses.
     procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
     procedure SetDriverName(const value: StringRAL);
     procedure SetOnQueryAfterOpen(const value: TOnQueryAfterOpen);
     procedure SetOnQueryError(const value: TOnQueryError);
     procedure SetRALServer(const value: TRALServer);
+    /// Answers the request of a TRALFDQuery.
     procedure OnReplyQuery(ARequest: TRALRequest; AResponse: TRALResponse);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
+    /// The FireDAC driver.
     property DriverName: StringRAL read vDriverName write SetDriverName;
+    /// Fires after a query is opened for a client.
     property OnQueryAfterOpen: TOnQueryAfterOpen read vOnQueryAfterOpen
       write SetOnQueryAfterOpen;
+    /// Fires when a statement fails.
     property OnQueryError: TOnQueryError read vOnQueryError write SetOnQueryError;
     { Fired for an ApplyUpdates, after OnValidateSQL accepted its SELECT: ASQL
       is that SELECT, and saying yes lets the client insert, change and delete
@@ -108,15 +134,20 @@ type
       delta - see OnValidateApplyUpdates }
     property OnValidateSQL: TRALDBOnValidateSQL read vOnValidateSQL
       write vOnValidateSQL;
+    /// The server the connection answers on.
     property RALServer: TRALServer read vRALServer write SetRALServer;
   end;
 
 resourcestring
+  /// Error: the request type is unknown.
   emTypeNotImplemented = 'Type not Implemented.';
+  /// Error: no RALServer is assigned.
   emInvalidServer = 'RALServer not configured.';
+  /// Error: ApplyUpdates refused because only OnValidateSQL is assigned.
   emApplyUpdatesNotValidated = 'ApplyUpdates refused: OnValidateSQL is assigned and ' +
     'OnValidateApplyUpdates is not.';
 
+/// Registers the FireDAC DAO components.
 procedure Register;
 
 implementation
@@ -126,14 +157,12 @@ implementation
   OnReplyQuery answers Type='1' (ApplyUpdates) and Type='2' (ExecSQL) with a
   single body param. EncodeBody skips multipart for a lone body param and sends
   the raw value, so the param name never reaches the wire and DecodeBody names
-  whatever arrives 'ral_body' - ParamByName('AffectedRows') came back nil and
-  StrToInt('') raised "'' is not a valid integer value", which made
-  ExecSQLRemote and ApplyUpdatesRemote fail every time. Type='0' (Open) answers
-  with two params (Stream + AffectedRows), multipart preserves both names, and
-  the lookup by name works there - the fallback below never triggers for it.
+  whatever arrives 'ral_body', so the lookup by name finds nothing. Type='0'
+  (Open) answers with two params (Stream + AffectedRows), multipart preserves
+  both names, and the lookup by name works there.
 
-  Both getters are nil-safe, so an answer carrying neither still lands in
-  StrToInt(''), raising exactly as before instead of silently reporting 0. }
+  Both getters are nil-safe, so an answer carrying neither lands in
+  StrToInt(''), which raises instead of reporting 0. }
 function AffectedRowsFromResponse(AResponse: TRALResponse): StringRAL;
 begin
   Result := AResponse.ParamByName('AffectedRows').AsString;
@@ -232,13 +261,10 @@ begin
         Self.Params[i].GetData(PByte(vBytesAux));
 
         { GetData hands the string over with its terminator, and the server
-          feeds that buffer to SetData with a LENGTH: the terminator has to
-          go here. It used to be trimmed only for varString (AnsiString), so
-          an ftWideString param - what AsWideString sets, and what any
-          text outside the ANSI codepage needs - arrived with the two zero
-          bytes and a byte count where a char count was expected, and the
-          server bound garbage. Wide strings lose zero PAIRS, never a lone
-          byte: the high byte of a real character can be zero. }
+          feeds that buffer to SetData with a length: the terminator goes
+          here, for ftWideString as for varString. Wide strings lose zero
+          pairs, never a lone byte: the high byte of a real character can be
+          zero. }
         if not Self.Params[i].IsNull then
         begin
           t := 0;
@@ -474,7 +500,7 @@ begin
 
       if AResponse.StatusCode = HTTP_OK then
       begin
-        { the param's own stream: it was copied whole into another first }
+        { the param's own stream, not a copy }
         vStreamAux := AResponse.ParamByName('Stream').Content;
         if vStreamAux <> nil then
           vStreamAux.Position := 0;
@@ -486,10 +512,9 @@ begin
 
         { loaded on the thread that delivers the answer - the main one under
           ebMultiThread, the caller's under ebSingleThread - as the memtables
-          do, and as TFDQuery.Open itself does. It went through Synchronize,
-          which under the default ebSingleThread waited for a main thread that
-          was not coming: one blocked in TTask.Wait, or that of a service or
-          console program, which runs no loop - and WakeMainThread does not
+          do, and as TFDQuery.Open itself does. Not through Synchronize: under
+          ebSingleThread the main thread may be blocked (TTask.Wait) or run no
+          loop (a service, a console program), and WakeMainThread does not
           tell those apart, since this unit links Vcl.Forms through the
           FireDAC wait cursor. A dataset bound to controls is opened from the
           main thread, here as with FireDAC }
@@ -731,10 +756,8 @@ begin
         CheckApplyUpdates(ARequest, vSQL);
 
       { nil owner, not Self: this runs on the server's thread pool and Self is
-        the one TRALFDConnection of the datamodule, so concurrent requests were
-        all inserting into and removing from the same component list, which is
-        not guarded. Both queries are freed in the finally below, so nothing
-        relied on the owner to clean them up. }
+        the one TRALFDConnection of the datamodule, whose component list is not
+        guarded. Both queries are freed in the finally below. }
       vQueryAux := TFDQuery.Create(nil);
       vQueryAux.Connection := vAuxConnClone;
       vQueryAux.SQL.Text := vSQL;
@@ -931,9 +954,8 @@ procedure TRALFDConnection.SetRALServer(const value: TRALServer);
 begin
   vRALServer := value;
 
-  { the component's OWN state: a form at design time marks every component on
-    it csDesigning, and a connection created in code with a nil owner used to
-    die here reading Owner.ComponentState }
+  { the component's own state: a form at design time marks every component on
+    it csDesigning, and a connection created in code has a nil owner }
   if not(csDesigning in ComponentState) then
   begin
     if not(Assigned(vRALServer)) then
@@ -944,8 +966,8 @@ begin
     { A plain TRALModuleRoutes, not a TRALWebModule: this needs one route and
       nothing else. TRALWebModule also registers a default route that skips
       authentication and serves files, falling back to the executable's own
-      directory when DocumentRoot is empty - which it always was here, since
-      the module is created internally and never configured }
+      directory when DocumentRoot is empty - which it is here, since the
+      module is created internally and never configured }
     vRALModule := TRALModuleRoutes.Create(Self);
     vRALModule.Server := vRALServer;
 

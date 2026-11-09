@@ -20,17 +20,18 @@ uses
 
 type
   {$IFNDEF FPC}
+    /// Adds the units of the chosen driver to the uses of the form.
     TRALDBModuleSelectionEditor = class(TSelectionEditor)
     public
       procedure RequiresUnits(Proc: TGetStrProc); override;
     end;
   {$ENDIF}
 
-  { TRALDBDatabases }
-
+  /// Property editor that lists the registered drivers.
   TRALDBDatabases = class(TStringProperty)
   private
     {$IFDEF FPC}
+       /// Adds the unit of AEngine to the uses and its package to the Lazarus project.
        procedure FPCRequiresUnits(AEngine : string);
     {$ENDIF}
   public
@@ -39,6 +40,7 @@ type
     procedure SetValue(const AValue: string); override;
   end;
 
+/// Registers the DBWare components and editors.
 procedure Register;
 
 implementation

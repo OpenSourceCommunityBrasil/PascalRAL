@@ -1,3 +1,4 @@
+/// Registers the sqldb DBWare components (Lazarus).
 unit RALDBSQLDBReg;
 
 {$mode ObjFPC}{$H+}
@@ -14,8 +15,7 @@ uses
 
 type
 
-  { TRALDBBufDatasetEditor }
-
+  /// Component editor of TRALDBBufDataset: the fields editor.
   TRALDBBufDatasetEditor = class(TFieldsComponentEditor)
   public
     procedure ExecuteVerb(AIndex: integer); override;
@@ -23,14 +23,14 @@ type
     function GetVerbCount: integer; override;
   end;
 
-  { TRALDBBufDatasetTables }
-
+  /// Property editor that lists the tables of the remote database.
   TRALDBBufDatasetTables = class(TStringProperty)
   public
     function GetAttributes: TPropertyAttributes; override;
     procedure GetValues(Proc: TGetStrProc); override;
   end;
 
+/// Registers the sqldb DBWare components and editors.
 procedure Register;
 
 implementation

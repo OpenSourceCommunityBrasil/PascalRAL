@@ -23,14 +23,16 @@ uses
 
 type
 
-  { TRALDBFireDAC }
-
+  /// The DBWare driver over FireDAC (AnyDAC before XE4).
   TRALDBFireDAC = class(TRALDBBase)
   private
+    /// The FireDAC connection.
     FConnector: {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF};
+    /// The driver link, created once per driver.
     {$IFDEF DELPHIXE4UP}FPhysLink: TFDPhysDriverLink;{$ENDIF}
   protected
     procedure Conectar; override;
+    /// The FireDAC DriverID of DatabaseType.
     function FindProtocol: StringRAL;
     function NewMemDataset(AParams: TParams): TDataSet; override;
     /// A query on this connection with ASQL and AParams in place - see there
@@ -39,12 +41,15 @@ type
     /// Copies the output params of AQuery back to AParams
     procedure ReadOutputs(AQuery: {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
       AParams: TParams);
+    /// Fires OnAfterConnect with the request.
     procedure OnConnAfterConnect(ASender: TObject);
+    /// Fires OnBeforeConnect with the request.
     procedure OnConnBeforeConnect(ASender: TObject);
-    // AnyDAC (XE2..XE4) hands the initiator as an interface, FireDAC as an object
+    /// AnyDAC (XE2..XE4) hands the initiator as an interface, FireDAC as an object
     procedure OnConnError(ASender: TObject;
       {$IFDEF DELPHIXE4UP}AInitiator: TObject{$ELSE}const AInitiator: IADStanObject{$ENDIF};
       var AException: Exception);
+    /// Fires OnErrorQuery with the message of the error.
     procedure OnQueryError(ASender: TObject;
       {$IFDEF DELPHIXE4UP}AInitiator: TObject{$ELSE}const AInitiator: IADStanObject{$ENDIF};
       var AException: Exception);
@@ -97,6 +102,7 @@ begin
   Result := Succeeded(CoInitializeEx(nil, COINIT_MULTITHREADED));
 end;
 
+/// Ends the COM apartment ComEnter started, when it did.
 procedure ComLeave(AEntered: boolean);
 begin
   if AEntered then
@@ -144,9 +150,9 @@ begin
   FConnector.OnError := OnConnError;
 
   {$IFDEF DELPHIXE4UP}
-  { once per driver: Conectar runs again on every reconnect - the pool does it
-    for a connection that dropped - and each pass used to build another link
-    over the last, which FireDAC keeps in its own driver list }
+  { once per driver: Conectar runs again on every reconnect (the pool does it
+    for a connection that dropped), and FireDAC keeps every link in its own
+    driver list }
   if FPhysLink = nil then
   begin
     if FindProtocol = 'PG' then
@@ -220,9 +226,8 @@ begin
 end;
 
 { Connected - and with it configured - on the way out: DriverID, Database and
-  the credentials are only applied by Conectar, and with the pool off (the
-  default) nothing had called it yet, so a route that took this connection got
-  one with no driver definition. Conectar returns at once when it is open. }
+  the credentials are only applied by Conectar, which nothing calls before
+  with the pool off (the default). Conectar returns at once when it is open. }
 function TRALDBFireDAC.GetNativeConnection: TComponent;
 begin
   Result := GetConnector;
@@ -288,12 +293,9 @@ begin
 end;
 
 { The query a request runs, with its params - freed right here when any of that
-  fails, since nobody else holds it yet. Three routines built it inline, none
-  inside a try: an unknown param, a value that did not convert or a statement
-  the server refused left one query behind per request, hung on a connection
-  the pool keeps alive. AParams may be nil - TestConnection passes nil, and
-  OpenCompatible used to dereference it, so a pool with ValidateOnAcquire
-  failed its test every time and reconnected on every acquire. }
+  fails (an unknown param, a value that does not convert, a statement the
+  server refuses), since nobody else holds it yet and the pool keeps the
+  connection alive. AParams may be nil (TestConnection). }
 function TRALDBFireDAC.NewQuery(const ASQL: StringRAL; AParams: TParams):
   {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
 var

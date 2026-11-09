@@ -10,10 +10,11 @@ uses
   RALDBConnection, RALTypes, RALConsts;
 
 type
-  { TRALDBFDMemTableEditor }
 
+  /// Component editor of TRALDBFDMemTable: the fields editor.
   TRALDBFDMemTableEditor = Class(TComponentEditor)
   private
+    /// Opens the fields editor.
     procedure FieldsEditor;
   public
     procedure ExecuteVerb(AIndex : Integer); override;
@@ -21,14 +22,14 @@ type
     function GetVerbCount: Integer; override;
   end;
 
-  { TRALDBFDMemTableTables }
-
+  /// Property editor that lists the tables of the remote database.
   TRALDBFDMemTableTables = class(TStringProperty)
   public
     function GetAttributes: TPropertyAttributes; override;
     procedure GetValues(Proc: TGetStrProc); override;
   end;
 
+/// Registers the FireDAC DBWare components and editors.
 procedure register;
 
 implementation

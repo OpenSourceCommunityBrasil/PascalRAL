@@ -15,18 +15,21 @@ uses
 
 type
 
-  { TRALDBZeos }
-
+  /// The DBWare driver over ZeosLib.
   TRALDBZeos = class(TRALDBBase)
   private
+    /// The Zeos connection.
     FConnector: TZConnection;
   protected
     procedure Conectar; override;
+    /// The Zeos protocol of DatabaseType.
     function FindProtocol: StringRAL;
     { On FPC a TBufDataset; on Delphi none (nil): the outputs then go as JSON
       to a plain HTTP client }
     function NewMemDataset(AParams: TParams): TDataSet; override;
+    /// Fires OnAfterConnect with the request.
     procedure OnConnAfterConnect(ASender : TObject);
+    /// Fires OnBeforeConnect with the request.
     procedure OnConnBeforeConnect(ASender : TObject);
   public
     constructor Create; override;
@@ -124,11 +127,10 @@ begin
   FConnector.LoginPrompt            := False;
   FConnector.TransactIsolationLevel := tiReadCommitted;
   { SQLite refuses a second writer with "database is locked" the moment the
-    file is busy, and Zeos passes that straight through: with the pool
-    handing out two connections, one of eight concurrent writes was refused
-    (pooler suite, 07/09/2026). FireDAC waits up to 10 s by default
-    (BusyTimeout); ask Zeos for the same, so a pooled SQLite behaves alike
-    under both drivers. Only when the application did not set it }
+    file is busy, and Zeos passes that straight through. FireDAC waits up to
+    10 s by default (BusyTimeout); Zeos is asked for the same, so a pooled
+    SQLite behaves alike under both drivers. Only when the application did
+    not set it }
   ApplyConnectionParams(FConnector.Properties);
 
   if (DatabaseType = dtSQLite) and
@@ -190,7 +192,7 @@ begin
 
   Conectar;
 
-  // o uso de query unidirecional para extracao de dados ajuda a economizar memoria
+  // a unidirectional query reads the data with less memory
   vQuery := TZReadOnlyQuery.Create(nil);
   try
     vQuery.IsUniDirectional := True;
@@ -200,7 +202,7 @@ begin
     BindQuery(vQuery, AParams);
     vQuery.Open;
 
-    // aqui ocorre uma correcao dos fields devido vQuery ser TZReadOnlyQuery
+    // the fields are corrected here, since vQuery is a TZReadOnlyQuery
     for vInt := 0 to Pred(vQuery.Fields.Count) do
     begin
       vQuery.Fields[vInt].ReadOnly := not vQuery.DbcResultSet.GetMetadata.IsWritable(vInt);
@@ -214,8 +216,8 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
-      { nobody else holds it yet: every failed open used to leave one
-        behind, on a connection the pool keeps alive }
+      { nobody else holds it yet, and the pool keeps the connection
+        alive }
       vQuery.Free;
       raise;
     end;
@@ -325,15 +327,10 @@ begin
     {$ELSE}
       { Stock ZeosLib ships ZMEMTABLE_ENABLE_STREAM_EXPORT_IMPORT commented out
         in Zeos.inc, so on Delphi TZMemTable has no stream import and
-        TRALDBZMemTable.ZeosLoadFromStream compiles to an empty body. Without
-        this ELSE the function assigned nothing and returned whatever was left
-        in the result register: when that came back non-zero the server exported
-        a native stream no client could load, the dataset stayed closed, and the
-        First in OnQueryResponse raised "Cannot perform this operation on a
-        closed dataset" - inside the callback, which takes the process down.
-
-        False makes the server fall back to the RAL storage format, which both
-        sides do support. }
+        TRALDBZMemTable.ZeosLoadFromStream compiles to an empty body: this ELSE
+        answers False, and the server falls back to the RAL storage format,
+        which both sides support (a native stream no client can load would
+        leave the dataset closed). }
       Result := False;
     {$ENDIF}
   {$ELSE}
@@ -379,7 +376,7 @@ begin
 
   Conectar;
 
-  // o uso de query unidirecional para extracao de dados ajuda a economizar memoria
+  // a unidirectional query reads the data with less memory
   vQuery := TZReadOnlyQuery.Create(nil);
   try
     vQuery.IsUniDirectional := True;
@@ -389,7 +386,7 @@ begin
     BindQuery(vQuery, AParams);
     vQuery.Open;
 
-    // aqui ocorre uma correcao dos fields devido vQuery ser TZReadOnlyQuery
+    // the fields are corrected here, since vQuery is a TZReadOnlyQuery
     for vInt := 0 to Pred(vQuery.Fields.Count) do
     begin
       vQuery.Fields[vInt].ReadOnly := not vQuery.DbcResultSet.GetMetadata.IsWritable(vInt);
@@ -403,8 +400,8 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
-      { nobody else holds it yet: every failed open used to leave one
-        behind, on a connection the pool keeps alive }
+      { nobody else holds it yet, and the pool keeps the connection
+        alive }
       vQuery.Free;
       raise;
     end;

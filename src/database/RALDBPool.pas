@@ -23,9 +23,7 @@ type
   /// Raised when the pool cannot deliver a connection within WaitTimeout
   ERALDBPoolTimeout = class(ERALException);
 
-  { TRALDBPoolOptions }
-
-  // Configuration of a TRALDBConnectionPool, published by TRALDBModule
+  /// Configuration of a TRALDBConnectionPool, published by TRALDBModule
   TRALDBPoolOptions = class(TPersistent)
   private
     FEnabled: boolean;
@@ -47,7 +45,7 @@ type
   public
     constructor Create;
   published
-    // Turns pooling on. When false the module keeps creating one connection per request
+    /// Turns pooling on. When false the module keeps creating one connection per request
     property Enabled: boolean read FEnabled write FEnabled default False;
     { Milliseconds an idle connection is kept before being closed. The pool never
       shrinks below MinSize. Zero keeps idle connections forever }
@@ -58,14 +56,14 @@ type
     { Maximum simultaneous temporary connections created when OnExhausted is
       peOverflow. Zero means no limit }
     property MaxOverflow: IntegerRAL read FMaxOverflow write FMaxOverflow default 0;
-    // Maximum number of pooled connections
+    /// Maximum number of pooled connections
     property MaxSize: IntegerRAL read FMaxSize write SetMaxSize default 10;
     { How many times a connection may be handed out before being recycled on
       release. Zero disables recycling by usage }
     property MaxUses: IntegerRAL read FMaxUses write FMaxUses default 0;
-    // Number of connections the pool keeps open once created
+    /// Number of connections the pool keeps open once created
     property MinSize: IntegerRAL read FMinSize write SetMinSize default 0;
-    // What to do when the pool is exhausted and WaitTimeout expires
+    /// What to do when the pool is exhausted and WaitTimeout expires
     property OnExhausted: TRALDBPoolExhausted read FOnExhausted write FOnExhausted
                           default peRaiseError;
     { Opens MinSize connections (Prepare) when the server the module is linked
@@ -80,13 +78,11 @@ type
       connection dropped by the server does not break it. Costs one round trip }
     property ValidateOnAcquire: boolean read FValidateOnAcquire
                                 write FValidateOnAcquire default False;
-    // Milliseconds a request waits for a free connection
+    /// Milliseconds a request waits for a free connection
     property WaitTimeout: IntegerRAL read FWaitTimeout write FWaitTimeout default 5000;
   end;
 
-  { TRALDBPoolItem }
-
-  // Single connection held by the pool, along with its usage bookkeeping
+  /// Single connection held by the pool, along with its usage bookkeeping
   TRALDBPoolItem = class
   private
     FCreatedAt: TDateTime;
@@ -96,14 +92,21 @@ type
     FOverflow: boolean;
     FUseCount: Int64RAL;
   public
+    /// Wraps ADatabase, owned by the item.
     constructor Create(ADatabase: TRALDBBase);
     destructor Destroy; override;
 
+    /// When the connection was created.
     property CreatedAt: TDateTime read FCreatedAt;
+    /// The driver.
     property Database: TRALDBBase read FDatabase;
+    /// Whether a request holds the connection.
     property InUse: boolean read FInUse;
+    /// When the connection was last released.
     property LastUsed: TDateTime read FLastUsed;
+    /// Whether the connection is a temporary one of peOverflow.
     property Overflow: boolean read FOverflow;
+    /// How many times the connection was handed out.
     property UseCount: Int64RAL read FUseCount;
   end;
 
@@ -113,20 +116,19 @@ type
   TRALDBOnPoolTimeout = procedure(ASender: TObject; ARequest: TRALRequest;
                                   AWaitTime: IntegerRAL) of object;
 
-  { TRALDBConnectionPool }
-
   { Keeps a set of open TRALDBBase connections and hands them out one request at a
     time, so the driver does not have to connect and disconnect on every call.
     Works with any driver registered through RegisterDatabase, since everything it
     needs is declared on TRALDBBase }
   TRALDBConnectionPool = class(TRALThreadSafe)
   private
-    { items out of the pool and not yet closed - see RemoveItemLocked }
+    /// Items out of the pool and not yet closed - see RemoveItemLocked.
     FDead: TList;
     { auto-reset: set whenever a connection or a slot becomes free, consumed
       by one waiting Acquire. The signal is kept until someone waits, so a
       Release that lands between a waiter's check and its wait is not lost }
     FFreeEvent: TEvent;
+    /// The connections.
     FItems: TList;
     FOnCreateConnection: TRALDBOnPoolCreate;
     FOnError: TRALDBOnError;
@@ -135,37 +137,48 @@ type
     FTotalAcquired: Int64RAL;
     FTotalCreated: Int64RAL;
     FTotalTimeouts: Int64RAL;
+    /// Requests waiting for a connection.
     FWaiting: IntegerRAL;
   protected
-    // every routine below marked "locked" expects the caller to hold the lock
+    /// every routine below marked "locked" expects the caller to hold the lock
     function CountLocked(AOverflow: boolean; AInUseOnly: boolean): IntegerRAL;
+    /// Creates a connection item (temporary with AOverflow); the lock is held.
     function CreateItemLocked(AOverflow: boolean): TRALDBPoolItem;
+    /// A new driver from OnCreateConnection; raises when it gives none.
     function DoCreateConnection: TRALDBBase;
+    /// Sets aside the idle connections past IdleTimeout; the lock is held.
     procedure DropExpiredLocked;
+    { What an exhausted pool gives ARequest: a temporary connection (peOverflow) or an
+      error. }
     function ExhaustedItem(ARequest: TRALRequest; AWaited: IntegerRAL): TRALDBPoolItem;
+    /// The item of ADatabase, or nil; the lock is held.
     function FindItemLocked(ADatabase: TRALDBBase): TRALDBPoolItem;
-    { closes what RemoveItemLocked set aside - called WITHOUT the lock }
+    /// Closes what RemoveItemLocked set aside - called WITHOUT the lock.
     procedure FreeDead;
     function GetAvailableCount: IntegerRAL;
+    /// A connection nobody holds, or nil; the lock is held.
     function GetFreeItemLocked: TRALDBPoolItem;
     function GetInUseCount: IntegerRAL;
     function GetOverflowCount: IntegerRAL;
     function GetPooledCount: IntegerRAL;
     function GetWaitingCount: IntegerRAL;
+    /// Whether AItem passed MaxUses or MaxLifetime; the lock is held.
     function IsExpiredLocked(AItem: TRALDBPoolItem): boolean;
+    /// Connects AItem outside the lock and binds it to the request.
     function PrepareItem(AItem: TRALDBPoolItem; ARequest: TRALRequest;
                          AResponse: TRALResponse): TRALDBBase;
+    /// Takes AItem out of the pool; the lock is held.
     procedure RemoveItemLocked(AItem: TRALDBPoolItem);
-    // wakes one waiting Acquire; call it after a connection or a slot is freed
+    /// wakes one waiting Acquire; call it after a connection or a slot is freed
     procedure SignalFree;
   public
     constructor Create; override;
     destructor Destroy; override;
 
-    { Returns a connection ready to be used. When pooling is disabled it simply
-      creates a new driver, exactly like the module used to do }
+    { Returns a connection ready to be used. When pooling is disabled it
+      creates a new driver }
     function Acquire(ARequest: TRALRequest; AResponse: TRALResponse): TRALDBBase;
-    // Closes and destroys every connection that is not in use
+    /// Closes and destroys every connection that is not in use
     procedure Clear;
     { Opens MinSize connections up front. Call it once the server is up so the
       first requests do not pay for connecting }
@@ -174,26 +187,30 @@ type
       pooled ones that expired, are destroyed here }
     procedure Release(ADatabase: TRALDBBase);
 
-    // connections free to be handed out right now
+    /// connections free to be handed out right now
     property AvailableCount: IntegerRAL read GetAvailableCount;
-    // connections currently serving a request
+    /// connections currently serving a request
     property InUseCount: IntegerRAL read GetInUseCount;
+    /// Creates a driver for a new connection.
     property OnCreateConnection: TRALDBOnPoolCreate read FOnCreateConnection
                                  write FOnCreateConnection;
+    /// Fires when a connection fails.
     property OnError: TRALDBOnError read FOnError write FOnError;
+    /// Fires when a request gives up waiting for a connection.
     property OnTimeout: TRALDBOnPoolTimeout read FOnTimeout write FOnTimeout;
+    /// The limits and behaviour of the pool.
     property Options: TRALDBPoolOptions read FOptions;
-    // temporary connections created past MaxSize
+    /// temporary connections created past MaxSize
     property OverflowCount: IntegerRAL read GetOverflowCount;
-    // connections held by the pool, overflow aside
+    /// connections held by the pool, overflow aside
     property PooledCount: IntegerRAL read GetPooledCount;
-    // connections handed out since the pool was created
+    /// connections handed out since the pool was created
     property TotalAcquired: Int64RAL read FTotalAcquired;
-    // connections opened since the pool was created
+    /// connections opened since the pool was created
     property TotalCreated: Int64RAL read FTotalCreated;
-    // requests that gave up waiting since the pool was created
+    /// requests that gave up waiting since the pool was created
     property TotalTimeouts: Int64RAL read FTotalTimeouts;
-    // requests waiting for a free connection
+    /// requests waiting for a free connection
     property WaitingCount: IntegerRAL read GetWaitingCount;
   end;
 
@@ -440,10 +457,9 @@ begin
     FItems.Delete(vPos);
 
   { set aside, not freed: freeing disconnects, which is network I/O - a
-    database that went away makes it wait out a TCP timeout - and it ran
-    right here, with every Acquire and Release of every request queued
-    behind the lock. Connecting was already kept outside it, for the same
-    reason. Whoever let the lock go calls FreeDead. }
+    database that went away makes it wait out a TCP timeout - and every
+    Acquire and Release would queue behind the lock. Connecting is kept
+    outside it for the same reason. Whoever let the lock go calls FreeDead. }
   FDead.Add(AItem);
 end;
 

@@ -1,3 +1,4 @@
+/// The DBWare driver over sqldb (FPC).
 unit RALDBSQLDB;
 
 {$mode ObjFPC}{$H+}
@@ -12,20 +13,25 @@ uses
 
 type
 
-  { TRALDBSQLDB }
-
+  /// The DBWare driver over sqldb (FPC).
   TRALDBSQLDB = class(TRALDBBase)
   private
+    /// The sqldb connection.
     FConnector: TSQLConnector;
     /// A transaction StartTransaction opened, which only Commit or Rollback end
     FExplicit: boolean;
+    /// Loads the client library from LibLocation.
     FLibLocator: TSQLDBLibraryLoader;
+    /// The transaction of the connection.
     FTransaction: TSQLTransaction;
   protected
     procedure Conectar; override;
+    /// The sqldb connector type of DatabaseType.
     function FindProtocol: StringRAL;
     function NewMemDataset(AParams: TParams): TDataSet; override;
+    /// Fires OnAfterConnect with the request.
     procedure OnConnAfterConnect(ASender : TObject);
+    /// Fires OnBeforeConnect with the request.
     procedure OnConnBeforeConnect(ASender : TObject);
   public
     constructor Create; override;
@@ -76,10 +82,8 @@ var
   gFirebirdPinned: Boolean = False;
   { Opening a connection loads and reference-counts the client library
     (sqlite3dyn, ibase60dyn, the SQLDBLib loader), and none of that counting
-    is thread-safe: eight requests connecting at once, each with its own
-    driver (the pool off, the default), crashed with access violations in
-    the first burst of the process (pooler suite, 07/09/2026). One open at a
-    time costs nothing next to the request itself }
+    is thread-safe: requests connecting at once, each with its own driver,
+    crash. One open at a time costs nothing next to the request itself }
   gOpenLock: TCriticalSection;
 
 { TRALDBSQLDB }
@@ -122,11 +126,9 @@ begin
       FLibLocator.Enabled := LibLocation <> '';
       FConnector.Open;
       { SQLite refuses a second connection touching a busy file with "database
-        is locked" at once, and sqldb has no property to make it wait: with the
-        pool handing out several connections, concurrent reads and writes died
-        on that (pooler suite, 07/09/2026). FireDAC waits up to 10 s by
-        default; set the same on the handle right after the open, so a pooled
-        SQLite behaves alike under every driver }
+        is locked" at once, and sqldb has no property to make it wait. FireDAC
+        waits up to 10 s by default; the same is set on the handle right after
+        the open, so a pooled SQLite behaves alike under every driver }
       if (DatabaseType = dtSQLite) and Assigned(sqlite3_busy_timeout) and
          (FConnector.Handle <> nil) then
         sqlite3_busy_timeout(FConnector.Handle, 10000);
@@ -344,8 +346,8 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
-      { nobody else holds it yet: every failed open used to leave one
-        behind, on a connection the pool keeps alive }
+      { nobody else holds it yet, and the pool keeps the connection
+        alive }
       vQuery.Free;
       raise;
     end;
@@ -407,8 +409,8 @@ begin
     begin
       if Assigned(OnErrorQuery) then
         OnErrorQuery(vQuery, e.Message, Request);
-      { nobody else holds it yet: every failed open used to leave one
-        behind, on a connection the pool keeps alive }
+      { nobody else holds it yet, and the pool keeps the connection
+        alive }
       vQuery.Free;
       raise;
     end;
@@ -437,10 +439,9 @@ begin
       ARowsAffected := vQuery.RowsAffected;
       ReadOutputParams(vQuery.Params, AParams);
 
-      { persisted HERE, statement by statement, as FireDAC and Zeos do with
-        AutoCommit. Left to ResetSession, the commit ran after the answer was
-        built, and one that failed - a deferred constraint, a serialization
-        conflict - was swallowed while the client read 200 and RowsAffected }
+      { persisted here, statement by statement, as FireDAC and Zeos do with
+        AutoCommit: a commit that fails (a deferred constraint, a
+        serialization conflict) must reach the answer }
       if not FExplicit then
         FTransaction.CommitRetaining;
 

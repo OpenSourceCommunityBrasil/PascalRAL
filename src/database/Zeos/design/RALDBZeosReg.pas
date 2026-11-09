@@ -19,8 +19,8 @@ uses
 type
 
 {$IFDEF FPC}
-  { TRALDBZMemTableEditor }
 
+  /// Component editor of TRALDBZMemTable: the fields editor (Lazarus).
   TRALDBZMemTableEditor = class(TFieldsComponentEditor)
   public
     procedure ExecuteVerb(AIndex: Integer); override;
@@ -28,10 +28,11 @@ type
     function GetVerbCount: Integer; override;
   end;
 {$ELSE}
-  { TRALDBZMemTableEditor }
 
+  /// Component editor of TRALDBZMemTable: the fields editor (Delphi).
   TRALDBZMemTableEditor = Class(TComponentEditor)
   private
+    /// Opens the fields editor.
     procedure FieldsEditor;
   public
     procedure ExecuteVerb(AIndex : Integer); override;
@@ -40,14 +41,14 @@ type
   end;
 {$ENDIF}
 
-  { TRALDBZMemTableTables }
-
+  /// Property editor that lists the tables of the remote database.
   TRALDBZMemTableTables = class(TStringProperty)
   public
     function GetAttributes: TPropertyAttributes; override;
     procedure GetValues(Proc: TGetStrProc); override;
   end;
 
+/// Registers the Zeos DBWare components and editors.
 procedure Register;
 
 implementation

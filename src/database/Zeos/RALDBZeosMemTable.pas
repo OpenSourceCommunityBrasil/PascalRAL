@@ -14,8 +14,8 @@ uses
   RALMIMETypes, RALStorageTypes, RALTools, RALDBConnection, RALDBSQLCache, RALConsts;
 
 type
-  { TRALDBZMemTable }
 
+  /// A Zeos memtable whose SQL runs on a DBWare server.
   TRALDBZMemTable = class(TZMemTable)
   private
     FCountUpdatedRecords: boolean;
@@ -23,7 +23,9 @@ type
       raises when it returns }
     FFailure: StringRAL;
     FLastId: Int64RAL;
+    /// Whether an answer is being loaded, so Post does not queue a change.
     FLoading: boolean;
+    /// Whether the outputs of a procedure are being loaded.
     FLoadingProc: boolean;
     FOnError: TRALDBTableOnError;
     FParamCheck: boolean;
@@ -31,15 +33,18 @@ type
     { the last answer of ExecProc, kept for NextRecordSet, and the result set
       the dataset shows }
     FProcAnswer: TRALDBSQLCache;
+    /// The result set of the procedure call being shown.
     FProcSet: IntegerRAL;
     FRALConnection: TRALDBConnection;
     FResultSets: TRALDBResultSetLinks;
     FRowsAffected: Int64RAL;
-    { last answer of /getsqlfields and the SQL it describes: every Open used
-      to pay that round trip again before /opensql }
+    { last answer of /getsqlfields and the SQL it describes, so an Open does
+      not ask again before /opensql }
     FSchema: TRALDBInfoFields;
+    /// The SQL FSchema describes.
     FSchemaSQL: StringRAL;
     FSQL: TStrings;
+    /// The changes queued for ApplyUpdates.
     FSQLCache: TRALDBSQLCache;
     FStorage: TRALStorageLink;
     FStoredProcName: StringRAL;
@@ -50,28 +55,38 @@ type
     { The answers of ApplyUpdates, statements AFirst to AFirst + ACount - 1 of
       ACache: the direct call and the queue of TRALDBConnection read them alike }
     procedure ApplyAnswers(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+    /// Queues ASQL with the values of the current record as params.
     procedure CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType = etExecute);
-    /// A failure of ApplyUpdates or ExecSQL: OnError hears it, and the call
-    /// raises the first one when it returns
+    { A failure of ApplyUpdates or ExecSQL: OnError hears it, and the call
+      raises the first one when it returns. }
     procedure CallFailed(const AMessage: StringRAL);
+    /// Zeroes LastId and RowsAffected.
     procedure Clear;
+    /// Forgets the cached field schema.
     procedure DropSchema;
     /// The answer of ExecSQL: rows affected, last id and outputs
     procedure ExecAnswer(AResponse: TRALDBSQLResponse);
     procedure InternalDelete; override;
-    // carrega os fieldsdefs do servidor
+    /// carrega os fieldsdefs do servidor
     procedure InternalInitFieldDefs; override;
     procedure InternalPost; override;
+    /// Loads AStream into ADataSet through Storage; raises without one.
     procedure LoadFromRALStorage(ADataSet : TDataSet; AStream : TStream);
     /// needed to properly remove assignment in design-time.
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    /// The answer of ExecProc: outputs to Params, the rows to the dataset and to ResultSets
+    { The answer of ExecProc: outputs to Params, the rows to the dataset and to
+      ResultSets }
     procedure ProcAnswer(ACache: TRALDBSQLCache; AIndex: IntegerRAL);
+    /// Takes the answers of the changes it queued in a transaction.
     procedure QueuedApply(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+    /// Takes the answer of the statement it queued in a transaction.
     procedure QueuedExec(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+    /// Takes the answer of the procedure call it queued in a transaction.
     procedure QueuedProc(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+    /// Raises the failure the answer left, if any, and clears it.
     procedure RaiseFailure;
-    /// Server schema for ASQL, fetched once per SQL text and kept until the SQL or the connection changes
+    { Server schema for ASQL, fetched once per SQL text and kept until the SQL or the
+      connection changes }
     function SchemaFor(const ASQL: StringRAL): TRALDBInfoFields;
     procedure SetActive(AValue: boolean); override;
     procedure SetParams(const AValue: TParams);
@@ -80,23 +95,29 @@ type
     procedure SetSQL(AValue: TStrings);
     procedure SetStorage(const AValue: TRALStorageLink);
     procedure SetUpdateSQL(AValue: TRALDBUpdateSQL);
+    /// Loads a native Zeos stream into ADataset (when Zeos is built with stream import).
     class procedure ZeosLoadFromStream(ADataset: TZMemTable; AStream: TStream);
+    /// Takes the answer of ApplyUpdates.
     procedure OnApplyUpdates(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
+    /// Reads the params of the new SQL (ParamCheck) and drops the schema.
     procedure OnChangeSQL(Sender: TObject);
+    /// Takes the answer of a procedure call.
     procedure OnExecProcResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
+    /// Takes the answer of ExecSQL.
     procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
+    /// Takes the answer of an open and loads it.
     procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// Sends what Post and Delete cached, one statement per record, and waits
-    /// for the answer. A statement that failed, and an UPDATE or DELETE that
-    /// did not affect exactly one record - the record was changed or deleted
-    /// by someone else, or the criteria matched no row - is reported through
-    /// OnError and then raised, the first one, once the whole answer is
-    /// handled: the DAO's ApplyUpdatesRemote and FireDAC itself do the same.
-    /// CountUpdatedRecords set to False skips the count.
+    { Sends what Post and Delete cached, one statement per record, and waits
+      for the answer. A statement that failed, and an UPDATE or DELETE that
+      did not affect exactly one record - the record was changed or deleted
+      by someone else, or the criteria matched no row - is reported through
+      OnError and then raised, the first one, once the whole answer is
+      handled: the DAO's ApplyUpdatesRemote and FireDAC itself do the same.
+      CountUpdatedRecords set to False skips the count. }
     procedure ApplyUpdates; reintroduce;
     { Calls StoredProcName on the server with Params: the outputs come back to
       Params, and the rows, when the procedure answers some, open the dataset;
@@ -104,10 +125,10 @@ type
       through OnError and then raised. Inside TRALDBConnection.StartTransaction
       it is queued and answered when Commit returns }
     procedure ExecProc;
-    /// Runs SQL with Params on the server and waits: RowsAffected and LastId
-    /// are read on the next line. A failure is reported through OnError and
-    /// then raised, as the DAO's ExecSQLRemote does. (TZMemTable has an
-    /// ExecSQL of its own, which this replaces.)
+    { Runs SQL with Params on the server and waits: RowsAffected and LastId
+      are read on the next line. A failure is reported through OnError and
+      then raised, as the DAO's ExecSQLRemote does. (TZMemTable has an
+      ExecSQL of its own, which this replaces.). }
     procedure ExecSQL; override;
     { Loads into the dataset the result set AIndex of AResponse (0 is the
       first), natively or through Storage }
@@ -115,33 +136,45 @@ type
     { Shows the next result set of the last ExecProc; False, and the dataset as
       it was, when there is none }
     function NextRecordSet: boolean;
+    /// The param AValue, or nil.
     function ParamByName(const AValue: StringRAL): TParam; reintroduce;
 
+    /// The last insert id of the last statement.
     property LastId: Int64RAL read FLastId;
+    /// The rows the last statement affected.
     property RowsAffected: Int64RAL read FRowsAffected;
   published
     property Active;
-    /// Whether ApplyUpdates takes an UPDATE or DELETE that did not affect
-    /// exactly one record as an error, as FireDAC's CountUpdatedRecords does.
-    /// Off for an UpdateSQL whose statements do not report one record each -
-    /// a stored procedure, a statement that touches several rows.
+    { Whether ApplyUpdates takes an UPDATE or DELETE that did not affect
+      exactly one record as an error, as FireDAC's CountUpdatedRecords does.
+      Off for an UpdateSQL whose statements do not report one record each -
+      a stored procedure, a statement that touches several rows. }
     property CountUpdatedRecords: boolean read FCountUpdatedRecords
       write FCountUpdatedRecords default True;
     property FieldDefs;
+    /// Fires when the server answers an error.
     property OnError: TRALDBTableOnError read FOnError write FOnError;
+    /// Whether the params are read from the SQL when it changes.
     property ParamCheck: boolean read FParamCheck write FParamCheck;
+    /// The params of the SQL.
     property Params: TParams read FParams write SetParams;
+    /// The connection to the DBWare server.
     property RALConnection: TRALDBConnection read FRALConnection write SetRALConnection;
     { The result sets of a stored procedure after the first, in order, each into
       the dataset of its item: another RAL dataset or any TDataSet (Storage) }
     property ResultSets: TRALDBResultSetLinks read FResultSets write SetResultSets;
+    /// The SQL run on the server.
     property SQL: TStrings read FSQL write SetSQL;
+    /// The storage the data travels in.
     property Storage: TRALStorageLink read FStorage write SetStorage;
     { A stored procedure of the server: Open and ExecProc call it by name, with
       Params, instead of running SQL }
     property StoredProcName: StringRAL read FStoredProcName write FStoredProcName;
+    /// How the where clause of an update or delete is built.
     property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
+    /// Statements that replace the generated INSERT, UPDATE and DELETE.
     property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
+    /// The table the changes are written to.
     property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
   end;
 
@@ -237,10 +270,9 @@ begin
     if FRALConnection <> nil then
     begin
       FLoading := True;
-      { lowered by the callback - which a raise BEFORE the request (no Client,
-        an engine that is not registered) never reaches: the next Open then
-        opened the dataset locally and empty, and every Post was taken for a
-        load and never sent }
+      { lowered by the callback, which a raise before the request (no Client,
+        an engine that is not registered) never reaches: the flag would stay
+        set, and every Post would be taken for a load }
       try
         FRALConnection.OpenRemote(Self, FStorage, {$IFDEF FPC}@{$ENDIF}OnQueryResponse);
       except
@@ -303,11 +335,8 @@ end;
 
 procedure TRALDBZMemTable.Notification(AComponent: TComponent; Operation: TOperation);
 begin
-  { FRALConnection, not FConnection. The test asks about the RAL connection and
-    the assignment cleared the ZEOS one, inherited from TZAbstractRODataset - so
-    freeing the RAL connection left FRALConnection dangling AND nilled the
-    dataset's own connection. Both show up later as an access violation reading
-    address 0, far from here. }
+  { FRALConnection, not FConnection: the RAL connection is the one cleared
+    here; FConnection is Zeos' own, inherited from TZAbstractRODataset }
   if (Operation = opRemove) and (AComponent = FRALConnection) then
     FRALConnection := nil
   else if (Operation = opRemove) and (AComponent = FStorage) then
@@ -435,20 +464,10 @@ begin
 
         vField.Required := vInfo.Field[vInt].Flags and 2 > 0;
 
-        { faReadonly is deliberately NOT copied here.
-
-          The server sets that flag for every column with no base column - a
-          CAST(x) AS alias, a SUM(), any expression. It describes the SOURCE
-          column, and on a client-side memtable it lands on a local buffer that
-          this very unit has to fill with the answer. TZMemTable enforces
-          read-only on every write, so the storage load raised "Field 'X' cannot
-          be modified" between the Append and the Post: the row died there, and
-          with it the rest of the load - one record survived, RecordCount went
-          out of sync and reopening the same query came back empty. The FireDAC
-          memtable only gets away with copying the flag because FireDAC does not
-          enforce it while loading.
-
-          Required is still copied: that one is about the data, not about who
+        { faReadonly is not copied: the server sets it for every column with
+          no base column (a CAST(x) AS alias, a SUM(), any expression), and
+          TZMemTable enforces read-only on every write, the storage load
+          included. Required is copied: it is about the data, not about who
           may write it. }
         if vInfo.Field[vInt].Flags and 2 > 0 then
           vField.Attributes := vField.Attributes + [faRequired];
@@ -485,11 +504,9 @@ begin
     try
       FLoading := True;
       { A 200 whose body is not a query response - a route answering the
-        wrong thing, a truncated stream - used to raise out of this callback:
-        lost in the response thread on the ebMultiThread path, escaping Open
-        on the synchronous one, and FLoading stayed True either way, so the
-        dataset could never be opened again. It is an error of the same family
-        as a 500 and is reported the same way, through OnError. }
+        wrong thing, a truncated stream - must not raise out of this callback
+        (lost in the response thread, or escaping Open, with FLoading left
+        set): it is reported as a 500 is, through OnError. }
       try
         vSQLCache := TRALDBSQLCache.Create;
         vSQLCache.ResponseFromStream(vMem);
@@ -561,7 +578,7 @@ begin
   else
   begin
     { 401, 404, the pool's 429, a transport failure: the statement did not
-      run, which went unsaid whenever AException came empty }
+      run, said even when AException comes empty }
     vException := AException;
     if vException = '' then
       vException := RALDBResponseError(AResponse);
@@ -585,8 +602,8 @@ begin
     CallFailed(RALDBResponseError(AResponse))
   else
   begin
-    { 401, 404, a transport failure: nothing reached the database, which went
-      unsaid whenever AException came empty - the same words as an Open }
+    { 401, 404, a transport failure: nothing reached the database, said even
+      when AException comes empty - the same words as an Open }
     vException := AException;
     if vException = '' then
       vException := RALDBResponseError(AResponse);
@@ -831,10 +848,9 @@ begin
     FFailure := AMessage;
 end;
 
-{ ApplyUpdatesRemote and ExecSQLRemote are ebSingleThread: the answer was
-  handled on this thread before the call returned, so its failure is raised
-  to the caller - as the DAO does - instead of reaching OnError alone, or
-  nothing at all when OnError was not assigned }
+{ ApplyUpdatesRemote and ExecSQLRemote are ebSingleThread: the answer is
+  handled on this thread before the call returns, so its failure is raised
+  to the caller - as the DAO does - and not only to OnError }
 procedure TRALDBZMemTable.RaiseFailure;
 var
   vError: StringRAL;
@@ -897,7 +913,7 @@ begin
     begin
       vParam := vParams.Items[vInt];
       // verificando se existe um fieldname com nome do param
-      // pode existir um tabela com um field nomedo de new_field, old_field
+      // a table may have a field named new_field or old_field
       vField := Self.FindField(vParam.Name);
       vPrefix := '';
       if vField = nil then

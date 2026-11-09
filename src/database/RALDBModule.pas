@@ -26,13 +26,12 @@ type
   private
     FStatusCode: IntegerRAL;
   public
+    /// An error of a procedure call, answered with AStatusCode.
     constructor Create(AStatusCode: IntegerRAL; const AMessage: string);
 
     /// HTTP status of the answer: 400, 403 or 404
     property StatusCode: IntegerRAL read FStatusCode;
   end;
-
-  { TRALDBProcOptions }
 
   { How TRALDBModule exposes the stored procedures of its database: one route,
     Route + '/:name', off until Enabled. The database is the list - nothing is
@@ -42,6 +41,7 @@ type
     FCatalogLife: IntegerRAL;
     FEnabled: boolean;
     FFilter: TStrings;
+    /// The module the options belong to.
     FModule: TRALDBModule;
     FRoute: StringRAL;
     FSchemas: TStrings;
@@ -54,6 +54,7 @@ type
     procedure SetSchemas(AValue: TStrings);
     procedure SetStorage(AValue: TRALStorageLink);
   public
+    /// Creates the options of AModule.
     constructor Create(AModule: TRALDBModule);
     destructor Destroy; override;
 
@@ -63,21 +64,23 @@ type
     function AllowsSchema(const ASchema: StringRAL): boolean;
     procedure Assign(ASource: TPersistent); override;
   published
-    /// Minutes the module keeps what the catalog said of a procedure; 0 asks on every call
+    { Minutes the module keeps what the catalog said of a procedure; 0 asks on every
+      call }
     property CatalogLife: IntegerRAL read FCatalogLife write FCatalogLife default DEFAULTDBCATALOGLIFE;
-    /// Creates the route; off, the stored procedures are not reachable (also by the RAL datasets)
+    { Creates the route; off, the stored procedures are not reachable (also by the RAL
+      datasets) }
     property Enabled: boolean read FEnabled write SetEnabled default False;
     /// Name masks the route answers, one per line (API_*); empty takes every procedure
     property Filter: TStrings read FFilter write SetFilter;
     /// Prefix of the route: Route/name
     property Route: StringRAL read FRoute write SetRoute stored IsRouteStored;
-    /// Schemas whose procedures are reachable, one per line; empty is the connection's default
+    { Schemas whose procedures are reachable, one per line; empty is the connection's
+      default }
     property Schemas: TStrings read FSchemas write SetSchemas;
-    /// Storage of the answer to a plain HTTP client whose Accept names none; empty is JSON
+    { Storage of the answer to a plain HTTP client whose Accept names none; empty is
+      JSON }
     property Storage: TRALStorageLink read FStorage write SetStorage;
   end;
-
-  { TRALDBRequest }
 
   { The request of a DBWare route (see TRALModuleRequest): the core request plus
     what every one of those routes needs - the connection, taken from the pool
@@ -86,21 +89,22 @@ type
     so a route never writes the try/finally that returns the connection }
   TRALDBRequest = class(TRALModuleRequest)
   private
+    /// The core response the module answers through.
     FCoreResponse: TRALResponse;
+    /// The driver the request holds.
     FDatabase: TRALDBBase;
+    /// The statements the request carries.
     FSQLCache: TRALDBSQLCache;
   public
     destructor Destroy; override;
 
-    /// The pooled connection bound to this request; raises emDBDriverMissing
-    /// when there is no driver
+    { The pooled connection bound to this request; raises emDBDriverMissing
+      when there is no driver. }
     function Database: TRALDBBase;
-    /// The statements of the body (opensql, execsql, applyupdates); raises
-    /// emDBEmptyBody when there is no body
+    { The statements of the body (opensql, execsql, applyupdates); raises
+      emDBEmptyBody when there is no body. }
     function SQLCache: TRALDBSQLCache;
   end;
-
-  { TRALDBResponse }
 
   { The response of a DBWare route: the core response plus the answers of the
     DBWare protocol, which the RAL datasets on the client read. Only the routes
@@ -109,31 +113,31 @@ type
   public
     /// The results of the statements of ASQLCache, as the 'Stream' body param
     procedure Answer(ASQLCache: TRALDBSQLCache); overload;
-    /// The error as the datasets read it: the lone 'Exception' body param,
-    /// 429 when the pool timed out, 500 otherwise
+    { The error as the datasets read it: the lone 'Exception' body param,
+      429 when the pool timed out, 500 otherwise. }
     procedure AnswerException(AException: Exception);
   end;
 
   /// Handler of a DBWare route (TRALDBModule.CreateDBRoute)
   TRALDBOnReply = procedure(ARequest: TRALDBRequest; AResponse: TRALDBResponse) of object;
 
-  { TRALDBRoute }
-
-  /// A route of TRALDBModule: answered by OnDBReply, with the module's request
-  /// and response, unless a core handler (OnReply) was assigned
+  { A route of TRALDBModule: answered by OnDBReply, with the module's request
+    and response, unless a core handler (OnReply) was assigned. }
   TRALDBRoute = class(TRALRoute)
   private
     FOnDBReply: TRALDBOnReply;
   public
+    /// Handles the route with the DBWare request and response.
     property OnDBReply: TRALDBOnReply read FOnDBReply write FOnDBReply;
   end;
 
-  { TRALDBModule }
-
+  /// The server end of DBWare: a module whose routes run the SQL remote datasets send.
   TRALDBModule = class(TRALModuleRoutes)
   private
     FAutoCommit: boolean;
+    /// The procedures read from the catalog, by name.
     FCatalog: TStringList;
+    /// Guards FCatalog.
     FCatalogLock: TCriticalSection;
     FCharacterSet: StringRAL;
     FConnectionParams: TStrings;
@@ -152,6 +156,7 @@ type
     FPool: TRALDBConnectionPool;
     FPort: IntegerRAL;
     FProcOptions: TRALDBProcOptions;
+    /// The route of the procedure calls, when ProcOptions is enabled.
     FProcRoute: TRALDBRoute;
     FUsername: StringRAL;
 
@@ -179,24 +184,33 @@ type
     function CreatePoolConnection(ASender: TObject): TRALDBBase;
     /// The route of the stored procedures: Route/:ral_procname
     procedure ExecProcRoute(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    /// Handles /execsql: runs the statements and answers the rows affected.
     procedure ExecSQL(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    /// Runs one statement after OnValidateSQL and writes its answer into ADBSQL.
     procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
     /// Runs the OnDBReply of a TRALDBRoute with the module's request/response
     procedure ExecuteContext(ARoute: TRALRoute; ARequest: TRALModuleRequest;
       AResponse: TRALModuleResponse); override;
+    /// The driver of the request: from the pool, or a new one.
     function FindDatabaseDriver(ARequest: TRALRequest; AResponse: TRALResponse) : TRALDBBase;
+    /// Handles /getfields: the fields of a table.
     procedure GetFields(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    /// The field information of ADataset, binary or JSON.
     function GetInfoFieldsStream(ADatabase: TRALDBBase; ADataset: TDataSet;
                                  ABinary: boolean): TStream;
     function GetPoolOptions: TRALDBPoolOptions;
+    /// Handles /getsqlfields: the fields a SQL returns.
     procedure GetSQLFields(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    /// Handles /gettables: the tables of the database.
     procedure GetTables(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
-    /// The errors of the DBWare routes, answered as the datasets read them; a
-    /// route the application added with CreateRoute keeps the server's answer
+    { The errors of the DBWare routes, answered as the datasets read them; a
+      route the application added with CreateRoute keeps the server's answer. }
     function HandleException(ARequest: TRALRequest; AResponse: TRALResponse;
       AException: Exception): boolean; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    /// Handles /opensql: opens the statements and answers their datasets.
     procedure OpenSQL(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    /// Opens one statement after OnValidateSQL and writes its dataset into ADBSQL.
     procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
     /// Runs the stored procedure of ADBSQL (etProc) and fills its response
     procedure ProcSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
@@ -239,24 +253,28 @@ type
       the others answered as emDBRolledBack. A client may ask the same of one
       request (TRALDBConnection.StartTransaction) }
     property AutoCommit: boolean read FAutoCommit write FAutoCommit default True;
-    { Connection charset; empty lets the driver choose (UTF8 on Firebird) }
+    /// Connection charset; empty lets the driver choose (UTF8 on Firebird).
     property CharacterSet: StringRAL read FCharacterSet write FCharacterSet;
     { Name=Value settings handed to the database library before it connects -
       Zeos Properties, FireDAC or sqldb Params. See TRALDBBase.ConnectionParams }
     property ConnectionParams: TStrings read FConnectionParams write SetConnectionParams;
-    { Name of the database this DBModule is connecting into }
+    /// Name of the database this DBModule is connecting into.
     property Database: StringRAL read FDatabase write FDatabase;
-    { DAO object that will be used to connect with the Database }
+    /// The driver the module connects to the database with.
     property DatabaseLink: String read FDataBaseLink write FDataBaseLink;
-    { Database engine that this DBModule is connecting into }
+    /// Database engine that this DBModule is connecting into.
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
-    { Server where the database is located }
+    /// Server where the database is located.
     property Hostname: StringRAL read FHostname write FHostname;
-    { Location of the library (dll) that is used to connect with the database }
+    /// Location of the client library (dll) of the database.
     property LibLocation: String read FLibLocation write SetLibLocation;
+    /// Fires after a driver connects.
     property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
+    /// Fires before a driver connects.
     property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
+    /// Fires when a driver fails to connect.
     property OnErrorConnect: TRALDBOnError read FOnErrorConnect write FOnErrorConnect;
+    /// Fires when a statement fails.
     property OnErrorQuery: TRALDBOnError read FOnErrorQuery write FOnErrorQuery;
     { Every stored procedure call, by the route or by a RAL dataset, after Filter
       and the catalog: refuses it, audits it, fills params the client does not send }
@@ -268,17 +286,17 @@ type
       which statements it accepts: set AAllow to False and the request gets
       a 500 with the reason, nothing reaches the database }
     property OnValidateSQL: TRALDBOnValidateSQL read FOnValidateSQL write FOnValidateSQL;
-    { Password to connect into the database }
+    /// Password to connect into the database.
     property Password: StringRAL read FPassword write FPassword;
     { Connection pool settings, editable in the Object Inspector at design time.
       Turning PoolOptions.Enabled on makes the module reuse open connections
       instead of opening one per request }
     property PoolOptions: TRALDBPoolOptions read GetPoolOptions write SetPoolOptions;
-    { Database server port }
+    /// Database server port.
     property Port: IntegerRAL read FPort write FPort;
-    { The route of the stored procedures, off by default: see TRALDBProcOptions }
+    /// The route of the stored procedures, off by default: see TRALDBProcOptions.
     property ProcOptions: TRALDBProcOptions read FProcOptions write SetProcOptions;
-    { Name of the database server user }
+    /// Name of the database server user.
     property Username: StringRAL read FUsername write FUsername;
   end;
 
@@ -297,7 +315,9 @@ type
   /// What the catalog said of a procedure, and when
   TRALDBProcCacheItem = class
   public
+    /// What the catalog said.
     Info: TRALDBProcInfo;
+    /// When it was read.
     Stamp: TDateTime;
 
     destructor Destroy; override;
@@ -625,8 +645,8 @@ end;
 procedure TRALDBModule.SetLibLocation(AValue: String);
 begin
   if FLibLocation = AValue then Exit;
-  { empty is "the driver finds it"; an absolute path stays as it is: both were
-    turned into a path under the executable's folder }
+  { empty is "the driver finds it"; an absolute path stays as it is; only a
+    relative one is taken from the executable's folder }
   if AValue = EmptyStr then
     FLibLocation := EmptyStr
   else if (ExtractFileDrive(AValue) <> '') or (AValue[1] = PathDelim) then
@@ -637,9 +657,7 @@ end;
 
 procedure TRALDBModule.AnswerException(AResponse: TRALResponse; AException: Exception);
 begin
-  // the two branches were swapped: a plain exception answered 429 and a pool
-  // timeout answered 408. the intent on record ("pool exhaustion now answers
-  // HTTP 429 instead of 503") is pool -> 429 and anything else -> 500.
+  // pool exhaustion answers 429, anything else 500
   AResponse.ContentType := rctTEXTPLAIN;
   if AException is ERALDBPoolTimeout then
   begin
@@ -1113,7 +1131,8 @@ begin
   Result := vClass.Create(nil);
 end;
 
-/// The output params of AParams as a JSON object, for a driver without an in-memory dataset
+{ The output params of AParams as a JSON object, for a driver without an in-memory
+  dataset }
 function OutputsJSON(AParams: TParams): TStream;
 var
   vJSON: TRALJSONObject;
@@ -1395,7 +1414,7 @@ var
   vInt: Integer;
   vField: TRALDBInfoField;
 begin
-  Result := nil; // both early exits and the binary path used to leave it undefined
+  Result := nil; // every exit below leaves it set
   if not Assigned(ADataset) then exit;
 
   vFields:= TRALDBInfoFields.Create;
@@ -1781,8 +1800,7 @@ var
     vfbType: TRALFieldType;
   begin
     { a type not listed below - INT128 and DECFLOAT among them - travels as
-      text; vfbType had no value at all for them, and indexed the type name
-      table with whatever it held }
+      text, so vfbType always has a value }
     vfbType := sftString;
     case vQuery.FieldByName('rdb$field_type').AsInteger of
       { an integer with a sub type is a NUMERIC (1) or a DECIMAL (2) stored in
@@ -1869,12 +1887,12 @@ var
     vTypMod := vQuery.FieldByName('typtypmod').AsInteger;
     if vType = 0 then
     begin
-      vType := vQuery.FieldByName('atttypid').AsInteger; // campos sem domain
+      vType := vQuery.FieldByName('atttypid').AsInteger; // fields without a domain
       vTypMod := vQuery.FieldByName('atttypmod').AsInteger;
     end;
 
-    { an OID not listed below - uuid, json, jsonb among them - travels as text;
-      vpgType had no value at all for them, same as Firebird above }
+    { an OID not listed below - uuid, json, jsonb among them - travels as text,
+      so vpgType always has a value, as for Firebird above }
     vpgType := sftString;
     case vType of
       16   : vpgType := sftBoolean;
@@ -1915,7 +1933,7 @@ begin
   vQuery := nil;
 
   { the name goes into the SQL text on SQLite and MySQL, so only an
-    identifier is accepted - anything else was a SQL injection }
+    identifier is accepted - anything else would be a SQL injection }
   for vInt := POSINISTR to RALHighStr(vTable) do
     if not (vTable[vInt] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '$', '.']) then
       raise ERALException.Create(ecDBInvalidTableName);

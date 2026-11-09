@@ -1,3 +1,4 @@
+/// The client side of DBWare: the connection remote datasets reach the server by.
 unit RALDBConnection;
 
 interface
@@ -12,8 +13,6 @@ type
   { Hands a queued caller its answers when TRALDBConnection.Commit returns: the
     statements AFirst to AFirst + ACount - 1 of ACache are the ones it queued }
   TRALDBQueueHandler = procedure(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL) of object;
-
-  { TRALDBResultSetLink }
 
   /// Ties a result set of a stored procedure, by its position, to a dataset
   TRALDBResultSetLink = class(TCollectionItem)
@@ -30,14 +29,13 @@ type
     property DataSet: TDataSet read FDataSet write SetDataSet;
   end;
 
-  { TRALDBResultSetLinks }
-
   { The result sets after the first, in order: item 0 gets the second result set
     of a stored procedure, item 1 the third. The first goes to the dataset itself }
   TRALDBResultSetLinks = class(TOwnedCollection)
   private
     function GetLink(AIndex: IntegerRAL): TRALDBResultSetLink;
   public
+    /// Creates the collection, owned by AOwner.
     constructor Create(AOwner: TPersistent);
 
     /// Whether a link points to a dataset that is not of AClass
@@ -45,17 +43,19 @@ type
     /// Clears the links to ADataSet, being freed
     procedure Remove(ADataSet: TDataSet);
 
+    /// The link at AIndex.
     property Links[AIndex: IntegerRAL]: TRALDBResultSetLink read GetLink; default;
   end;
 
-  { TRALDBConnection }
-
+  /// The client end of DBWare: where remote datasets send their SQL, over a TRALClient.
   TRALDBConnection = class(TRALComponent)
   private
     FClient: TRALClient;
     FModuleRoute: StringRAL;
     FProcRoute: StringRAL;
+    /// The statements queued while InTransaction.
     FQueue: TRALDBSQLCache;
+    /// Who queued what: one entry per Enqueue.
     FQueueEntries: TList;
 
     /// Drops the queue and its entries
@@ -67,18 +67,25 @@ type
     procedure SetModuleRoute(AValue: StringRAL);
     procedure SetProcRoute(AValue: StringRAL);
   public
+    /// Creates the connection, owned by AOwner.
     constructor Create(AOwner: TComponent); overload;
     destructor Destroy; override;
 
+    /// Sends the changes in ACache; AResp gets the answer.
     procedure ApplyUpdatesRemote(ACache: TRALDBSQLCache; AResp: TRALThreadClientResponse);
     { Sends what was queued in one request: all of it is committed, or the first
       failure undoes everything. Each caller gets its own answer before this
       returns; a failure raises after that. The result of a queued statement
       cannot feed the next one - a procedure on the server does that }
     procedure Commit;
+    { The DELETE of the current record of ADataset on AUpdateTable, its where
+      clause by AUpdateMode. }
     function ConstructDeleteSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
                                 AUpdateMode: TUpdateMode): StringRAL;
+    /// The INSERT of the current record of ADataset on AUpdateTable.
     function ConstructInsertSQL(ADataset: TDataSet; AUpdateTable: StringRAL): StringRAL;
+    { The UPDATE of the changed fields of ADataset on AUpdateTable, its where
+      clause by AUpdateMode. }
     function ConstructUpdateSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
                                 AUpdateMode: TUpdateMode): StringRAL;
     { Queues the statements of ASource (copies); AHandler gets their answers when
@@ -96,11 +103,15 @@ type
       ADataSets are filled when Commit returns: they must live until then }
     procedure ExecProcRemote(const AName: StringRAL; AParams: TParams;
       const ADataSets: array of TDataSet; AStorage: TRALStorageLink = nil); overload;
+    /// Runs the SQL of AQuery on the server; AResp gets the answer.
     procedure ExecSQLRemote(AQuery: TDataset; AStorage: TRALStorageLink; AResp: TRALThreadClientResponse);
+    /// The tables of the remote database; the caller frees the list.
     function GetTables: TRALDBInfoTables;
+    /// The fields ASQL returns, asked of the server; the caller frees the list.
     function InfoFieldsFromSQL(ASQL: StringRAL): TRALDBInfoFields;
     /// True between StartTransaction and Commit or Rollback
     function InTransaction: boolean;
+    /// Opens the SQL of AQuery on the server in AStorage; AResp gets the answer.
     procedure OpenRemote(AQuery: TDataset; AStorage: TRALStorageLink; AResp: TRALThreadClientResponse);
     /// Drops what was queued: nothing was sent
     procedure Rollback;
@@ -110,7 +121,9 @@ type
       the queue is open: it needs an answer at once }
     procedure StartTransaction;
   published
+    /// The client the requests go through.
     property Client: TRALClient read FClient write SetClient;
+    /// The route of the TRALDBModule on the server.
     property ModuleRoute: StringRAL read FModuleRoute write SetModuleRoute;
     /// The ProcOptions.Route of the server's module
     property ProcRoute: StringRAL read FProcRoute write SetProcRoute stored IsProcRouteStored;
@@ -121,16 +134,15 @@ type
   that library reads it }
 function RALDBLoadResultSet(AResponse: TRALDBSQLResponse; AIndex: IntegerRAL;
   ADataSet: TDataSet; AStorage: TRALStorageLink): boolean;
-/// Copies the output params of AResponse to the params of the same name in AParams, adding missing ones
+{ Copies the output params of AResponse to the params of the same name in AParams,
+  adding missing ones }
 procedure RALDBCopyOutputs(AResponse: TRALDBSQLResponse; AParams: TParams);
 
 implementation
 
-{ Whether AField holds something other than what it was read with. This was
-  Value <> OldValue, a Variant comparison - and on Delphi a blob's Value is a
-  byte array, which that comparison refuses: the Post of any record with a
-  BLOB column raised EVariantTypeCastError before its statement was built.
-  FPC hands a blob over as a string and never had the problem. }
+{ Whether AField holds something other than what it was read with. Not a
+  Variant comparison of Value and OldValue: on Delphi a blob's Value is a byte
+  array, which that comparison refuses (EVariantTypeCastError). }
 function FieldChanged(AField: TField): Boolean;
 var
   vNew, vOld: Variant;
@@ -185,11 +197,17 @@ type
   /// One caller of the queue: its statements and who gets their answers
   TRALDBQueueEntry = class
   public
+    /// Statements this entry queued.
     Count: IntegerRAL;
+    /// The datasets that queued them.
     DataSets: array of TDataSet;
+    /// Index of its first statement in the queue.
     First: IntegerRAL;
+    /// Gets the answers when Commit returns.
     Handler: TRALDBQueueHandler;
+    /// The params of a queued procedure call.
     Params: TParams;
+    /// The storage the answers come in.
     Storage: TRALStorageLink;
   end;
 

@@ -18,9 +18,8 @@ type
     etProc calls the stored procedure named in SQL (wire version 2) }
   TRALDBExecType = (etOpen, etExecute, etProc);
 
-  { TRALDBResultSet }
-
-  /// One result set of an answer after the first: native or in the storage, with its content type
+  { One result set of an answer after the first: native or in the storage, with its
+    content type }
   TRALDBResultSet = class
   private
     FContentType: StringRAL;
@@ -38,17 +37,18 @@ type
     property Stream: TMemoryStream read FStream;
   end;
 
-  { TRALDBSQLResponse }
-
+  /// The answer of one statement: its dataset or count, or its error.
   TRALDBSQLResponse = class
   private
     FContentType: StringRAL;
     FError: boolean;
     FLastId: Int64RAL;
+    /// The result sets after the first, owned.
     FMoreResultSets: TList;
     FNative: boolean;
     FOutParams: TParams;
     FRowsAffected: Int64RAL;
+    /// The dataset of the answer.
     FStream: TStream;
   protected
     function GetStream: TStream;
@@ -64,8 +64,9 @@ type
     procedure AddResultSet(ANative: boolean; const AContentType: StringRAL;
       AStream: TMemoryStream);
     { Takes AStream - a memory stream - as Stream, without copying it: the
-      response frees it. Stream := copies, which held a result twice }
+      response frees it. Assigning Stream copies }
     procedure AdoptStream(AStream: TMemoryStream);
+    /// Empties the answer.
     procedure Clear;
     /// Drops the result sets after the first
     procedure ClearResultSets;
@@ -80,17 +81,23 @@ type
       with params marked ptOutput - with their values (wire version 2) }
     property OutParams: TParams read FOutParams;
   published
+    /// The media type of Stream.
     property ContentType: StringRAL read FContentType write FContentType;
+    /// Whether the statement failed.
     property Error: boolean read FError write FError;
+    /// The last insert id.
     property LastId: Int64RAL read FLastId write FLastId;
+    /// Whether Stream is in the native format of the server's driver.
     property Native: boolean read FNative write FNative;
+    /// The rows the statement affected.
     property RowsAffected: Int64RAL read FRowsAffected write FRowsAffected;
+    /// The dataset of the answer; assigning copies it.
     property Stream: TStream read GetStream write SetStream;
+    /// The message of the error.
     property StrError: StringRAL read GetStrError write SetStrError;
   end;
 
-  { TRALDBSQL }
-
+  /// One statement of a DBWare request: SQL, params, kind and answer.
   TRALDBSQL = class
   private
     FBookMark: TBookMark;
@@ -106,20 +113,27 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    /// The library of the client dataset that sent it.
     property DriverType: TRALDBDriverType read FDriverType write FDriverType;
   published
+    /// The record of the client dataset the statement belongs to.
     property BookMark: TBookMark read FBookMark write FBookMark;
+    /// Whether the statement opens, executes or calls a procedure.
     property ExecType: TRALDBExecType read FExecType write FExecType;
+    /// The params; assigning copies them.
     property Params: TParams read FParams write SetParams;
+    /// The answer.
     property Response: TRALDBSQLResponse read FResponse;
+    /// The statement, or the procedure name of etProc.
     property SQL: StringRAL read FSQL write FSQL;
+    /// Index of the statement in the request, or -1.
     property SQLIndex: IntegerRAL read FSQLIndex write FSQLIndex;
   end;
 
-  { TRALDBSQLCache }
-
+  /// The statements of a DBWare request and their answers: the envelope on the wire.
   TRALDBSQLCache = class
   private
+    /// The statements, owned.
     FSQLList: TList;
     FStorage: TRALStorageLink;
     FTransaction: boolean;
@@ -127,8 +141,11 @@ type
   protected
     /// Raises emQueryVersionError for a version this unit does not read
     procedure CheckVersion(AVersion: byte);
+    /// Reads the storage format and creates its link.
     procedure CreateStorage(AWriter : TRALBinaryWriter);
+    /// The params of ADataset, by RTTI; nil when it has none.
     function GetQueryParams(ADataset: TDataSet): TParams;
+    /// The SQL of ADataset, by RTTI.
     function GetQuerySQL(ADataset: TDataSet): StringRAL;
     function GetSQLList(AIndex: IntegerRAL): TRALDBSQL;
     /// Reads one param of the wire into AParams; AVersion 2 carries its direction
@@ -140,29 +157,45 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    /// Adds the SQL and params of ADataset.
     procedure Add(ADataset: TDataSet;
                   AExecType: TRALDBExecType = etOpen); overload;
+    /// Adds a statement.
     procedure Add(ASQL: StringRAL; AParams: TParams = nil;
                   ABookMark: TBookMark = nil;
                   AExecType: TRALDBExecType = etExecute;
                   ADriverType: TRALDBDriverType = qtOther); overload;
+    /// Frees every statement.
     procedure Clear;
+    /// Number of statements.
     function Count: IntegerRAL;
+    /// The library of ADataset by its class, or qtOther.
     function GetQueryClass(ADataset: TDataSet): TRALDBDriverType;
     { The version this unit writes: 2, or 1 under RALLegacyWire. It reads both,
       and answers a cache in the version the cache came in }
     function GetStructureVersion: byte;
+    /// Reads the statements from a file.
     procedure LoadFromFile(AFileName: StringRAL);
+    /// Reads the statements from a stream.
     procedure LoadFromStream(AStream: TStream);
+    /// Reads the answers from a file.
     procedure ReponseFromFile(AFileName: StringRAL);
+    /// Reads the answers from a stream.
     procedure ResponseFromStream(AStream: TStream);
+    /// Writes the answers to a file.
     procedure ResponseToFile(AFileName: StringRAL);
+    /// Writes the answers to a stream.
     procedure ResponseToStream(AStream: TStream); overload;
+    /// The answers in a new stream, owned by the caller.
     function ResponseToStream: TStream; overload;
+    /// Writes the statements to a file.
     procedure SaveToFile(AFileName: StringRAL);
+    /// Writes the statements to a stream.
     procedure SaveToStream(AStream: TStream); overload;
+    /// The statements in a new stream, owned by the caller.
     function SaveToStream: TStream; overload;
 
+    /// The statement at AIndex.
     property SQLList[AIndex: IntegerRAL]: TRALDBSQL read GetSQLList;
     { The client asks the statements to run as one transaction: all of them or
       none (wire version 2; TRALDBConnection.StartTransaction sets it) }
@@ -170,6 +203,7 @@ type
     /// Version of the last cache read; GetStructureVersion before any
     property Version: byte read FVersion;
   published
+    /// The storage the datasets travel in; assigning copies it.
     property Storage: TRALStorageLink read FStorage write SetStorage;
   end;
 
@@ -255,8 +289,7 @@ begin
   if (not FError) or (FStream.Size = 0) then
     Exit;
 
-  { from the start, every time: a second read went on from the end, and gave
-    back a text of zeros }
+  { from the start, every time: a second read must not go on from the end }
   SetLength(Result, FStream.Size);
   FStream.Position := 0;
   FStream.Read(Result[POSINISTR], FStream.Size);
@@ -351,12 +384,6 @@ destructor TRALDBSQL.Destroy;
 begin
   FreeAndNil(FParams);
   FreeAndNil(FResponse);
-//  // no delphi 7 o TBookMark é um Pointer
-//  // no radstudo 2007 o TBookmark é um TBytes
-//  {$IF (Defined(FPC) AND Defined(noautomatedbookmark))
-//  OR (not Defined(FPC) AND not Defined(DELPHI2007UP))}
-//  FreeMem(FBookMark);
-//  {$IFEND}
   inherited Destroy;
 end;
 
@@ -437,7 +464,7 @@ var
   vParam: TParam;
   vValue: Variant;
 begin
-  Result := nil; // a dataset without a Params property used to return garbage
+  Result := nil; // a dataset without a Params property returns nil
   vColetion := TCollection(GetObjectProp(ADataset, 'Params'));
   if vColetion <> nil then
   begin
@@ -452,11 +479,8 @@ begin
       vType := GetEnumProp(vColetItem, 'DataType');
       vParam.DataType := RALNameToFieldType(vType);
 
-      { TParam.Size is an Integer, and reading it as Int64 made the assignment
-        back into an Integer a checked conversion: with range checking on - the
-        default of every Debug build the IDE produces - any query carrying a
-        parameter died here with ERangeError, while Release truncated silently
-        and worked. }
+      { TParam.Size is an Integer: read as an Integer, so the assignment is
+        not a checked conversion (ERangeError in a Debug build) }
       vParam.Size := GetOrdProp(vColetItem, 'Size');
       // the direction travels from wire version 2 on: outputs come back
       if IsPublishedProp(vColetItem, 'ParamType') then
@@ -547,8 +571,8 @@ begin
   vParam.Name := AWriter.ReadString;
 
   // datatype - a byte of the request body, checked before it becomes
-  // an enum: the value below is read by a case over it, and on Win32
-  // a type from 128 up was folded onto another one (see RALStorageTypes)
+  // an enum: the value below is read by a case over it (see
+  // RALStorageTypes)
   vTypeByte := AWriter.ReadByte;
   if not RALIsFieldTypeOrdinal(vTypeByte) then
     raise ERALException.Create(ecStorageInvalidBinary);
@@ -585,10 +609,9 @@ begin
     sftBoolean : vParam.AsBoolean := AWriter.ReadBoolean;
     sftString  : vParam.AsString := AWriter.ReadString;
     sftBlob    : vParam.AsBlob := AWriter.ReadBytes;
-    { Value keeps the wide memo set above; AsMemo made it ftMemo,
-      which is ANSI on Delphi: an ideograph in a memo param was
-      bound as '?' - stored that way by an ExecSQL, and never found
-      by the WHERE of an ApplyUpdates, which then saved nothing }
+    { Value keeps the wide memo set above: AsMemo would make it
+      ftMemo, which is ANSI on Delphi and binds what CP_ACP has no
+      place for as '?' }
     sftMemo    : vParam.Value := string(AWriter.ReadString);
     // AsDateTime would make every one of them ftDateTime again
     sftDateTime: case vParam.DataType of
@@ -624,9 +647,8 @@ begin
   end
   else
   begin
-    { the class is nil in this branch - that is what put us here - so asking it
-      for a ClassName faulted instead of showing the message it was meant to.
-      The format number is what identifies the link that is missing. }
+    { the class is nil in this branch - that is what put us here - so the
+      format number identifies the link that is missing }
     raise ERALException.CreateFmt(ecStorageLinkNotFound, [IntToStr(Ord(vFormat))]);
   end;
 end;
@@ -770,8 +792,8 @@ begin
   if FStorage <> nil then
     FreeAndNil(FStorage);
 
-  { nil is a legitimate value - the memtables pass it on Storage := nil and
-    when their storage component is freed - and Clone on nil was an AV }
+  { nil is a legitimate value: the memtables pass it on Storage := nil and
+    when their storage component is freed }
   if AValue <> nil then
     FStorage := AValue.Clone;
 end;
@@ -902,9 +924,8 @@ begin
       // lendo e criado o cache
       for vInt2 := 1 to vInt1 do
       begin
-        { in the list at once: Clear frees what is there, and a body that
-          breaks off below - or lies about its counts - used to leak the one
-          being read, on every request }
+        { in the list at once: Clear frees what is there, so a body that
+          breaks off below - or lies about its counts - leaks nothing }
         vDBSQL := TRALDBSQL.Create;
         FSQLList.Add(vDBSQL);
 
@@ -986,9 +1007,8 @@ begin
       vDBSQL.Response.RowsAffected := vWriter.ReadInt64;
       vDBSQL.Response.LastId := vWriter.ReadInt64;
 
-      { emptied first: a cache read before - a memtable keeps one - left the
-        last answer in it, and ReadStream writes over it from the start, so a
-        shorter or an empty answer kept the old one's tail }
+      { emptied first: a cache read before (a memtable keeps one) holds the
+        last answer, and ReadStream writes over it from the start }
       vDBSQL.Response.Stream.Size := 0;
       vWriter.ReadStream(vDBSQL.Response.Stream);
 
