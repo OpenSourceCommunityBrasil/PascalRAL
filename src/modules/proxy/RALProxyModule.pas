@@ -1,6 +1,6 @@
-/// A reverse proxy inside any TRALServer (RALModuleProxyPackage): rules send the
-/// requests under a path (and a host) to a TRALUpstream, over a TRALClient per
-/// server, with the server's plugins in front as for any route.
+{ A reverse proxy inside any TRALServer (RALModuleProxyPackage): rules send the
+  requests under a path (and a host) to a TRALUpstream, over a TRALClient per
+  server, with the server's plugins in front as for any route. }
 unit RALProxyModule;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -58,18 +58,24 @@ type
   TRALProxyModule = class(TRALModuleRoutes)
   private
     FAddForwarded: boolean;
+    /// Owner of FProxyRoute.
     FInternal: TRALRoutes;
     FKeepForwardedChain: boolean;
     FMaxAttempts: IntegerRAL;
+    /// Internal route every proxied request runs on.
     FProxyRoute: TRALRoute;
     FRules: TRALProxyRules;
     FStatsPath: StringRAL;
     FVia: StringRAL;
 
+    /// Rule of ARequest by host and path, or nil.
     function FindRule(ARequest: TRALRequest): TRALProxyRule;
+    /// Whether APath is APrefix or below it.
     function PathMatches(const APath, APrefix: StringRAL): boolean;
+    /// Sends ARequest to a server of its rule and relays the answer.
     procedure ProxyRequest(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SetRules(const AValue: TRALProxyRules);
+    /// Answers the statistics of the upstreams as JSON.
     procedure StatsRequest(ARequest: TRALRequest; AResponse: TRALResponse);
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -104,23 +110,32 @@ type
 implementation
 
 type
-  { one call to a server behind: relays the pieces of a 2xx answer as they come }
+  /// One call to a server behind: relays the pieces of a 2xx answer as they come.
   TRALProxyCall = class
   public
+    /// The head of the answer went to the client.
     Committed: boolean;
+    /// The server failed before answering.
     Failed: boolean;
+    /// The module running the call.
     Module: TRALProxyModule;
+    /// Answer to the client.
     Response: TRALResponse;
+    /// Rule of the request.
     Rule: TRALProxyRule;
+    /// Server called.
     Server: TRALUpstreamServer;
+    /// Sticky cookie to set, when the rule uses one.
     Sticky: StringRAL;
 
+    /// Copies status and end-to-end headers of AFrom to the client's answer.
     procedure CopyHead(AFrom: TRALResponse);
+    /// Relays a piece of the server's answer to the client.
     procedure OnData(ASender: TObject; AResponse: TRALResponse; const ABuffer;
       ASize: IntegerRAL; var ACancel: boolean);
   end;
 
-{ the Location of the server behind, made relative to the proxy }
+/// The Location of the server behind, made relative to the proxy.
 function RewriteLocation(const ALocation: StringRAL; ACall: TRALProxyCall): StringRAL;
 var
   vBase: StringRAL;

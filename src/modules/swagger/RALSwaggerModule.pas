@@ -10,8 +10,7 @@ uses
 
 type
 
-  { TRALSwaggerLicense }
-
+  /// License of the API in the OpenAPI info.
   TRALSwaggerLicense = class(TPersistent)
   private
     FName: StringRAL;
@@ -21,12 +20,14 @@ type
   published
     constructor Create;
   published
+    /// License name.
     property Name: StringRAL read FName write FName;
+    /// License URL.
     property URL: StringRAL read FURL write FURL;
   end;
 
-  { TRALSwaggerModule }
-
+  { Serves Swagger UI, the OpenAPI document (JSON and YAML) and a Postman collection of
+    the server. }
   TRALSwaggerModule = class(TRALModuleRoutes)
   private
     FAllowCORSVerbs : boolean;
@@ -43,6 +44,7 @@ type
     FTermsOfService: StringRAL;
     FTitle: StringRAL;
   protected
+    /// Creates the module routes again (the Postman route only with PostmanTag).
     procedure CreateRoutes;
     /// GET only, and public unless RequireAuth is on
     procedure PublishRoute(ARoute: TRALRoute);
@@ -54,10 +56,15 @@ type
     procedure SetServersUrl(AValue: TStrings);
     procedure SetSwaggerFile(const AValue: TFileName);
     procedure SetSystemDescription(const AValue: TStrings);
+    /// Answers the page style sheet.
     procedure SwaggerCSS(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers the Swagger UI page.
     procedure SwaggerIndex(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers the script that points Swagger UI at swagger.json.
     procedure SwaggerInitializer(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers the OpenAPI document, SwaggerFile when set.
     procedure SwaggerJSON(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers the Postman collection, PostmanFile when set.
     procedure SwaggerPostman(ARequest: TRALRequest; AResponse: TRALResponse);
     /// The same document as swagger.json, in YAML.
     procedure SwaggerYAML(ARequest: TRALRequest; AResponse: TRALResponse);
@@ -67,22 +74,32 @@ type
 
     function GetListRoutes: TList; override;
   published
+    /// Lists the OPTIONS methods too.
     property AllowCORSVerbs: boolean read FAllowCORSVerbs write FAllowCORSVerbs;
+    /// Contact e-mail of the API.
     property EMail: StringRAL read FEMail write FEMail;
+    /// License of the API.
     property License: TRALSwaggerLicense read FLicense write SetLicense;
+    /// Postman collection served in place of the generated one; an existing file only.
     property PostmanFile: TFileName read FPostmanFile write SetPostmanFile;
+    /// Serves postman.json and links it from the document.
     property PostmanTag: boolean read FPostmanTag write SetPostmanTag;
-    { The swagger routes skip the server's Authentication by default, so the
-      whole route map is public even on a server that requires a login. True
-      makes them ordinary routes: the same 401 the API answers. The page keeps
-      working, Swagger UI sends what the user types in "Authorize" }
+    { The Swagger routes ask the server's authentication too; False (the default)
+      makes the route map public even on a server that requires a login. }
     property RequireAuth: boolean read FRequireAuth write SetRequireAuth default False;
+    /// Server URLs of the document, one per line.
     property ServersUrl: TStrings read FServersUrl write SetServersUrl;
+    /// Uses the route Name as the summary of each operation.
     property ShowCustomNames: boolean read FShowCustomNames write FShowCustomNames;
+    /// OpenAPI document served in place of the generated one; an existing file only.
     property SwaggerFile: TFileName read FSwaggerFile write SetSwaggerFile;
+    /// Description of the API.
     property SystemDescription: TStrings read FSystemDescription write SetSystemDescription;
+    /// Version of the API.
     property SystemVersion: StringRAL read FSystemVersion write FSystemVersion;
+    /// Terms of service URL.
     property TermsOfService: StringRAL read FTermsOfService write FTermsOfService;
+    /// Title of the API.
     property Title: StringRAL read FTitle write FTitle;
   end;
 
@@ -101,8 +118,11 @@ const
     PowerShell: [Convert]::ToBase64String([Security.Cryptography.SHA384]::
     Create().ComputeHash([IO.File]::ReadAllBytes('swagger-ui.css'))) }
   SWAGGER_UI_CDN = 'https://unpkg.com/swagger-ui-dist@5.17.9/';
+  /// Subresource integrity hash of the Swagger UI style sheet.
   SWAGGER_UI_CSS_SRI = 'sha384-wxLW6kwyHktdDGr6Pv1zgm/VGJh99lfUbzSn6HNHBENZlCN7W602k9VkGdxuFvPn';
+  /// Subresource integrity hash of the Swagger UI bundle.
   SWAGGER_UI_BUNDLE_SRI = 'sha384-/dEFsSqOkmDC4Li0Md5TtTcP7+H/mXJappHjKJMlSChNZC+tIWPVzRPsrAe8wHla';
+  /// Subresource integrity hash of the Swagger UI preset.
   SWAGGER_UI_PRESET_SRI = 'sha384-galk03E+Pl0FjoMG8/Q/YDvlX1EBQuy2m/ZtQyd2rxoBEB5bzmAMiGC0GO11pjJz';
 
   { TRALSwaggerLicense }
@@ -236,8 +256,7 @@ begin
     vHTML.Add('  </body>');
     vHTML.Add('</html>');
 
-    { straight into the body the response sends: it went through a
-      TMemoryStream that ResponseStream := then copied }
+    // straight into the body the response sends
     vHTML.SaveToStream(AResponse.BodyStream);
   finally
     FreeAndNil(vHTML);
@@ -315,8 +334,7 @@ begin
     vCSS.Add('    background: #fafafa;');
     vCSS.Add('}');
 
-    { straight into the body the response sends: it went through a
-      TMemoryStream that ResponseStream := then copied }
+    // straight into the body the response sends
     vCSS.SaveToStream(AResponse.BodyStream);
   finally
     FreeAndNil(vCSS);
@@ -354,8 +372,7 @@ begin
     vScript.Add('  })');
     vScript.Add('};');
 
-    { straight into the body the response sends: it went through a
-      TMemoryStream that ResponseStream := then copied }
+    // straight into the body the response sends
     vScript.SaveToStream(AResponse.BodyStream);
   finally
     FreeAndNil(vScript);
@@ -440,8 +457,7 @@ end;
 
 function TRALSwaggerModule.GetListRoutes: TList;
 begin
-  // nao devolve as rota, porque rotas do swagger nao devem ser vistas pelo
-  // proprio swagger
+  // the routes of the Swagger module are not listed by Swagger itself
   Result := TList.Create;
 end;
 

@@ -1,6 +1,6 @@
-/// Pieces of an MQTT session shared by the client and the broker: the Packet
-/// Identifiers in use, the Topic Alias maps of both directions, and the broker
-/// address in URI form.
+{ Pieces of an MQTT session shared by the client and the broker: the Packet
+  Identifiers in use, the Topic Alias maps of both directions, and the broker
+  address in URI form. }
 unit RALMQTTSession;
 
 {$I ..\..\core\PascalRAL.inc}

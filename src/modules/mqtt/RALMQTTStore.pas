@@ -1,9 +1,9 @@
-/// Where the session state of an MQTT client lives between connections and
-/// between runs of the program: the QoS 1 and 2 messages not yet fully
-/// acknowledged, the QoS 2 messages received and not yet released, the queue
-/// of what was published while offline, and the generated client identifier.
-/// In memory, or in a file of records appended one by one, each with its CRC,
-/// so a record cut by a power failure is dropped and the others are kept.
+{ Where the session state of an MQTT client lives between connections and
+  between runs of the program: the QoS 1 and 2 messages not yet fully
+  acknowledged, the QoS 2 messages received and not yet released, the queue
+  of what was published while offline, and the generated client identifier.
+  In memory, or in a file of records appended one by one, each with its CRC,
+  so a record cut by a power failure is dropped and the others are kept. }
 unit RALMQTTStore;
 
 {$I ..\..\core\PascalRAL.inc}

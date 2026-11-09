@@ -1,3 +1,4 @@
+/// Writes the OpenAPI 3.1 document of a server's routes.
 unit RALSwaggerExporter;
 
 interface
@@ -9,35 +10,46 @@ uses
 
 type
 
-  { TRALSwaggerExporter }
-
+  /// Builds the OpenAPI document of a server and its modules.
   TRALSwaggerExporter = class
   private
+    /// Schemas collected for the components section.
     FSchemas: TStrings;
     FSwaggerModule: TRALSwaggerModule;
   protected
+    /// The components section: schemas and security schemes.
     function getComponents(AServer: TRALServer): TRALJSONObject;
+    /// The info section, from SwaggerModule.
     function getInfo(AServer: TRALServer): TRALJSONObject;
+    /// The paths section: every route of the server and its modules.
     function getPaths(AServer: TRALServer): TRALJSONObject;
+    /// The security scheme of AAuth.
     function getSecurity(AAuth: TRALAuthServer): TRALJSONObject;
+    /// The servers section, from ServersUrl.
     function getServers(AServer: TRALServer): TRALJSONArray;
+    /// The tags: the Postman link (PostmanTag) and the route groups.
     function getTags(AServer: TRALServer): TRALJSONArray;
+    /// Adds the operations of ARoute (of AModule, or the server) to AItem.
     procedure RouteToJSON(AItem: TRALJSONObject; AServer: TRALServer;
                           AModule: TRALModuleRoutes; ARoute: TRALBaseRoute);
   public
     constructor Create;
     destructor Destroy; override;
 
+    /// Writes the document of AServer to AFileName.
     procedure ExportToFile(AServer: TRALServer; AFileName: TFileName);
+    /// Writes the document of AServer to AStream; the overload returns a new stream.
     procedure ExportToStream(AServer: TRALServer; AStream: TStream); overload;
+    /// The document of AServer in a new stream the caller frees.
     function ExportToStream(AServer: TRALServer): TStream; overload;
   published
+    /// Module whose settings fill the document.
     property SwaggerModule: TRALSwaggerModule read FSwaggerModule write FSwaggerModule;
   end;
 
 implementation
 
-// Adds the OpenAPI "type" and, where it has one, "format" of a route param type
+/// Adds the OpenAPI type and, where it has one, the format of a route param type.
 procedure AddSchemaType(AObject: TRALJSONObject; AType: TRALRouteParamType);
 begin
   case AType of
@@ -359,7 +371,6 @@ var
 
     rbAux1 := TRALJSONObject.Create;
     AddSchemaType(rbAux1, AParam.ParamType);
-    // rbAux2.Add('example', '');
 
     Result.Add('schema', rbAux1);
   end;
@@ -409,7 +420,6 @@ var
       spAux3 := TRALJSONObject.Create;
       AddSchemaType(spAux3, spParam.ParamType);
       spAux3.Add('description', spParam.Description.Text);
-      // spAux3.Add('example', '');
 
       spAux2.Add(spParam.ParamName, spAux3);
 
@@ -652,7 +662,7 @@ begin
         vRoute.Add(vStrMethod, vjMethod);
       end;
     end;
-    if assigned(AItem.Get(vStrRoute)) then // rota já existe, insere novo método
+    if assigned(AItem.Get(vStrRoute)) then // the path exists: the method joins it
       TRALJSONObject(AItem.Get(vStrRoute)).Add(vStrMethod, vjMethod)
     else
       AItem.Add(vStrRoute, vRoute)

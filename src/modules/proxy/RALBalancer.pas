@@ -1,10 +1,10 @@
-/// A load balancer with its own listener on RAL's sockets (RALModuleProxyPackage
-/// over RALNetPackage): TCP mode passes bytes both ways (TLS unopened, routed
-/// by the name in the ClientHello); HTTP mode reads only the request line and
-/// headers, rewrites them and streams the body both ways (chunked included),
-/// keeps connections to the servers behind, ends TLS with a certificate per
-/// name, tunnels an Upgrade (WebSocket) and runs the server's ppValidate
-/// plugins. Servers are picked by TRALUpstream (policy, health, statistics).
+{ A load balancer with its own listener on RAL's sockets (RALModuleProxyPackage
+  over RALNetPackage): TCP mode passes bytes both ways (TLS unopened, routed
+  by the name in the ClientHello); HTTP mode reads only the request line and
+  headers, rewrites them and streams the body both ways (chunked included),
+  keeps connections to the servers behind, ends TLS with a certificate per
+  name, tunnels an Upgrade (WebSocket) and runs the server's ppValidate
+  plugins. Servers are picked by TRALUpstream (policy, health, statistics). }
 unit RALBalancer;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -51,7 +51,8 @@ type
     procedure AssignTo(Dest: TPersistent); override;
     function GetDisplayName: string; override;
   published
-    /// Host the route is for (without the port); '*.example.com' covers one level; empty is any.
+    { Host the route is for (without the port); '*.example.com' covers one level;
+      empty is any. }
     property HostName: StringRAL read FHostName write FHostName;
     /// Path prefix (HTTP mode); empty or '/' is every path.
     property PathPrefix: StringRAL read FPathPrefix write FPathPrefix;
@@ -179,7 +180,7 @@ type
   TRALBalancerRouteEvent = procedure(Sender: TObject; const AHost, APath: StringRAL;
     var AUpstream: TRALUpstream) of object;
 
-  { One route as the threads see it (a copy made by Reload) }
+  /// One route as the threads see it (a copy made by Reload).
   TRALBalancerRule = class
   public
     /// Host the rule is for; empty is any.
@@ -220,13 +221,17 @@ type
   private
     FAccepted: Int64RAL;
     FAddForwarded: boolean;
+    /// TLS context of the connections to servers behind.
     FBackendTLS: TRALTLSContext;
     FBufferSize: IntegerRAL;
+    /// Guards FTargets and the TLS contexts.
     FConnectionsLock: TCriticalSection;
     FHeaderTimeout: IntegerRAL;
     FIdleTimeout: IntegerRAL;
     FKeepForwardedChain: boolean;
+    /// Listening sockets.
     FListeners: TList;
+    /// The socket loop that runs every connection.
     FLoop: TRALSocketLoop;
     FMaxAttempts: IntegerRAL;
     FMaxConnections: IntegerRAL;
@@ -236,31 +241,44 @@ type
     FOnRoute: TRALBalancerRouteEvent;
     FPreserveHost: boolean;
     FRequests: Int64RAL;
+    /// TLS contexts replaced by Reload, freed when it stops.
     FRetiredContexts: TList;
+    /// Routings replaced by Reload, freed when it stops.
     FRetiredRoutings: TList;
     FRoutes: TRALBalancerRoutes;
+    /// Routes and upstreams the threads route by.
     FRouting: TRALBalancerRouting;
+    /// The listeners are open.
     FRunning: boolean;
     FServerTimeout: IntegerRAL;
     FStatsPath: StringRAL;
+    /// Resolved addresses of the servers behind, by URL.
     FTargets: TStringList;
     FThreadCount: IntegerRAL;
+    /// TLS context of the listeners, a child per SNI name.
     FTLSContext: TRALTLSContext;
     FTunnelTimeout: IntegerRAL;
     FUpstream: TRALUpstream;
     FVia: StringRAL;
 
+    /// Takes a new connection of the listener ATag into the loop.
     procedure Accept(ASocket: TRALSocket; ATag: IntegerRAL);
+    /// A routing of Routes and Upstream as they are now.
     function BuildRouting: TRALBalancerRouting;
+    /// Upstream for AHost and APath, with the rule that chose it.
     function FindRule(ARouting: TRALBalancerRouting; const AHost, APath: StringRAL;
       out ARule: TRALBalancerRule): TRALUpstream;
     function GetSSL: TRALBalancerSSL;
+    /// A TLS context of SSL, with a child per certificate.
     function NewTLSContext: TRALTLSContext;
     procedure SetRoutes(const AValue: TRALBalancerRoutes);
     procedure SetSSL(const AValue: TRALBalancerSSL);
     procedure SetUpstream(const AValue: TRALUpstream);
+    /// Opens the listeners of Port, plain or TLS.
     procedure StartListeners;
+    /// Closes the listeners and the connections.
     procedure StopAll;
+    /// Starts or stops the health checks of every upstream.
     procedure UpstreamsDo(AStart: boolean);
   protected
     function CreateRALSSL: TRALSSL; override;
@@ -277,11 +295,9 @@ type
       when none matches }
     function FindUpstream(const AHost, APath: StringRAL): TRALUpstream;
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
-    { While running, takes Routes, Upstream and SSL (its certificates) as they
-      are now: new requests and connections follow them, open ones finish where
-      they are. Upstreams no longer named stop their health check and new ones
-      start it; none is freed here, as requests in flight may still use it -
-      free them after Active := False }
+    { While running, takes Routes, Upstream and SSL as they are now: new requests and
+      connections follow them, open ones finish where they are. Upstreams left out
+      stop their health check but are not freed (free them after stopping). }
     procedure Reload;
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
     /// The statistics as JSON: connections, requests and every upstream.
@@ -356,28 +372,42 @@ function RALBalancerAccessLine(const AEntry: TRALBalancerAccess;
 implementation
 
 const
+  /// Tag of a plain listener.
   cListenerPlain = 0;
+  /// Tag of a TLS listener.
   cListenerTLS = 1;
+  /// Line end of HTTP.
   CRLF = #13#10;
 
 type
-  { bytes waiting, Data[Start..Stop-1] }
+  /// Bytes waiting, Data[Start..Stop-1].
   TBuf = record
+    /// Bytes, with room.
     Data: TBytes;
+    /// First byte waiting.
     Start: IntegerRAL;
+    /// End of the bytes waiting.
     Stop: IntegerRAL;
   end;
 
-  { where a target (the URL of a server behind) is }
+  /// Where a target (the URL of a server behind) is.
   TRALBalancerTarget = class
   public
+    /// Resolved address.
     Address: TRALSocketAddress;
+    /// Path of the server URL, prefixed to the request.
     BasePath: StringRAL;
+    /// Host name of the server URL.
     Host: StringRAL;
+    /// Host header sent to the server.
     HostHeader: StringRAL;
+    /// scheme://host:port of the server.
     Origin: StringRAL;
+    /// Port of the server.
     Port: IntegerRAL;
+    /// Tick of the last name resolution.
     Resolved: Int64RAL;
+    /// The server speaks https.
     TLS: boolean;
   end;
 
@@ -388,21 +418,31 @@ type
   TChunkState = (ckSize, ckExt, ckSizeLF, ckData, ckDataCR, ckDataLF, ckTrailer,
     ckTrailerLine, ckTrailerLF, ckEndLF, ckDone);
 
-  { the framing of one body in flight: how much of what comes belongs to it }
+  /// The framing of one body in flight: how much of what comes belongs to it.
   TFrame = record
+    /// How the body ends.
     Kind: TFrameKind;
+    /// Bytes left of the body or of the chunk.
     Remaining: Int64RAL;
+    /// Position in the chunked framing.
     Chunk: TChunkState;
+    /// Digits read of a chunk size.
     Digits: IntegerRAL;
+    /// The body ended.
     Done: boolean;
+    /// The framing is malformed.
     Error: boolean;
   end;
 
-  { a head, parsed: the start line and the fields }
+  /// A head, parsed: the start line and the fields.
   THead = record
+    /// Start line.
     Line: StringRAL;
+    /// Field names.
     Names: array of StringRAL;
+    /// Field values.
     Values: array of StringRAL;
+    /// Fields read.
     Count: IntegerRAL;
   end;
 
@@ -412,15 +452,25 @@ type
     read from it (FIn) and the bytes waiting to go to it (FOut) }
   TRALBalancerSide = class(TRALSocketLoopConnection)
   protected
+    /// Balancer of the connection.
     FBalancer: TRALBalancer;
+    /// Tick at which the current wait times out.
     FDeadline: Int64RAL;
+    /// The peer closed its side.
     FEOF: boolean;
+    /// Bytes read and not yet used.
     FIn: TBuf;
+    /// Bytes waiting to be written.
     FOut: TBuf;
+    /// The other side of the exchange.
     FPeer: TRALBalancerSide;
+    /// Bytes written.
     FSent: Int64RAL;
+    /// The write side was shut down.
     FShutDone: boolean;
+    /// Shuts the write side once FOut is empty.
     FShutWhenFlushed: boolean;
+    /// TLS of the connection; nil for plain.
     FTLS: TRALTLSChannel;
 
     /// Both directions ended: closes both sides once flushed.
@@ -439,6 +489,7 @@ type
     /// Queues AText to this side and tries to write it now.
     procedure SendText(const AText: StringRAL);
   public
+    /// A side of ABalancer on ASocket.
     constructor Create(ABalancer: TRALBalancer; ASocket: TRALSocket);
     destructor Destroy; override;
 
@@ -446,64 +497,110 @@ type
     function HasOutput: boolean; override;
   end;
 
+  { Where the client side is: TLS handshake, SNI peek, head, body, waiting, tunnel,
+    connecting, lingering close. }
   TClientState = (csHandshake, csPeek, csHead, csBody, csWait, csTunnel, csConnecting, csLinger);
 
-  { the client side }
+  /// The client side.
   TRALBalancerClient = class(TRALBalancerSide)
   private
+    /// Servers tried for the request.
     FAttempts: IntegerRAL;
+    /// Server side of the exchange.
     FBackend: TRALBalancerBackend;
+    /// Bytes of the request body passed on.
     FBodySent: Int64RAL;
+    /// Address of the client.
     FClientIP: StringRAL;
+    /// Closes once the answer is sent.
     FCloseAfter: boolean;
+    /// Servers that failed this request.
     FExcluded: TList;
+    /// Framing of the request body.
     FFrame: TFrame;
+    /// Head of the request.
     FHead: THead;
+    /// Host of the request, without the port.
     FHost: StringRAL;
+    /// The request may go to another server after a failure.
     FIdempotent: boolean;
+    /// The client keeps the connection.
     FKeepAlive: boolean;
+    /// The last failure was a timeout (504).
     FLastTimeout: boolean;
+    /// Lingering close in progress.
     FLinger: boolean;
+    /// Bytes discarded while lingering.
     FLingered: Int64RAL;
+    /// Method of the request.
     FMethod: StringRAL;
+    /// Request the server plugins judge, kept until the exchange ends.
     FPlugRequest: TRALRequest;
+    /// The request has no body.
     FReqBodyless: boolean;
+    /// Head of the request as it goes to the server.
     FReqHead: StringRAL;
+    /// Bytes of the answer reached the client.
     FResponseStarted: boolean;
+    /// Rule of the request.
     FRoute: TRALBalancerRule;
+    /// The client came over TLS.
     FSecure: boolean;
+    /// Server chosen.
     FServer: TRALUpstreamServer;
+    /// Milliseconds the server has to answer.
     FServerTimeout: IntegerRAL;
+    /// Server name of the TLS handshake.
     FSNI: StringRAL;
+    /// Tick the request started, for the access log.
     FStarted: Int64RAL;
+    /// Where the client side is.
     FState: TClientState;
+    /// Status answered, for the access log.
     FStatus: IntegerRAL;
+    /// Request target of the start line.
     FTarget: StringRAL;
+    /// The request asks for a protocol upgrade.
     FUpgrade: boolean;
+    /// Upstream of the request.
     FUpstream: TRALUpstream;
+    /// HTTP version of the request.
     FVersion: StringRAL;
 
+    /// Answers the client itself (error, stats, plugin answer).
     procedure Answer(AStatus: IntegerRAL; const AText: StringRAL = '';
       const AExtra: StringRAL = '');
+    /// Answers the statistics page.
     procedure AnswerStats(const AQuery: StringRAL);
+    /// Head of the request as it goes to ATarget: hop-by-hop out, X-Forwarded-* in.
     function BuildRequestHead(ATarget: TRALBalancerTarget): StringRAL;
+    /// Takes a pooled connection or opens one to the server chosen.
     function Connect: boolean;
+    /// Ends the exchange: log, plugins, keep or close.
     procedure EndExchange(AFailed: boolean);
+    /// Answers AStatus and closes after it.
     procedure Fail(AStatus: IntegerRAL);
+    /// Value of the request field AName; empty when absent.
     function HeaderValue(const AName: StringRAL): StringRAL;
+    /// Parses and checks the head, runs the plugins and picks the server.
     procedure ProcessHead;
+    /// TCP mode: routes by SNI and connects.
     procedure ProcessTCPStart(ANow: Int64RAL);
+    /// Passes request body bytes on, by its framing.
     procedure PumpBody;
+    /// Runs the ppValidate plugins on the request; False when they answered.
     function RunPlugins(const APath: StringRAL): boolean;
+    /// Starts a request on the connection.
     procedure StartExchange;
   protected
     procedure Closed; override;
     procedure PeerGone; override;
   public
+    /// The client side on ASocket; ASecure when it came over TLS.
     constructor Create(ABalancer: TRALBalancer; ASocket: TRALSocket; ASecure: boolean);
     destructor Destroy; override;
 
-    { a backend failed before answering: the next server, or the error }
+    /// A backend failed before answering: the next server, or the error.
     procedure BackendFailed(ATimeout: boolean);
     function FlushOutput: boolean; override;
     function PollEvents: Word; override;
@@ -512,33 +609,53 @@ type
     procedure Serve(ANow: Int64RAL); override;
   end;
 
+  { Where the server side is: connecting, TLS handshake, head, body, tunnel, idle in the
+    pool. }
   TBackendState = (bsConnecting, bsHandshake, bsHead, bsBody, bsTunnel, bsIdle);
 
-  { the side of a server behind }
+  /// The side of a server behind.
   TRALBalancerBackend = class(TRALBalancerSide)
   private
+    /// Client side of the exchange.
     FClient: TRALBalancerClient;
+    /// Framing of the answer body.
     FFrame: TFrame;
+    /// The server sent something.
     FGotBytes: boolean;
+    /// The request was HEAD: the answer has no body.
     FHeadRequest: boolean;
+    /// The connection may go back to the pool.
     FReusable: boolean;
+    /// It came from the pool.
     FReused: boolean;
+    /// Server of the connection.
     FServer: TRALUpstreamServer;
+    /// Where the server side is.
     FState: TBackendState;
+    /// Address and names of the server.
     FTarget: TRALBalancerTarget;
+    /// Milliseconds of the current wait.
     FTimeout: IntegerRAL;
+    /// The answer switched protocols (101).
     FUpgrade: boolean;
 
+    /// The connect finished: starts TLS or sends the head.
     procedure ConnectedNow;
+    /// Detaches and tells the client the server failed (ATimeout: by time).
     procedure FailNow(ATimeout: boolean);
+    /// Parses the answer head and passes it to the client.
     procedure ProcessResponseHead;
+    /// Passes answer body bytes on, by its framing.
     procedure PumpResponse;
+    /// Returns the connection to the pool, or closes it.
     procedure Release;
+    /// Plain or TLS ready: sends the request head.
     procedure TransportReady;
   protected
     procedure Closed; override;
     procedure PeerGone; override;
   public
+    /// A server side to AServer.
     constructor Create(ABalancer: TRALBalancer; AServer: TRALUpstreamServer;
       ATarget: TRALBalancerTarget);
 
@@ -547,20 +664,23 @@ type
     procedure Serve(ANow: Int64RAL); override;
   end;
 
-  { the idle connections to the servers behind, one pool per poll thread }
+  /// The idle connections to the servers behind, one pool per poll thread.
   TRALBalancerPool = class
   public
+    /// Idle connections.
     Idle: TList;
 
     constructor Create;
     destructor Destroy; override;
 
+    /// An idle connection to AServer, or nil.
     function Take(AServer: TRALUpstreamServer): TRALBalancerBackend;
   end;
 
 { ---------------------------------------------------------------- access log }
 
-{ a value inside the quotes of a combined line: quote and control bytes as \xHH, as NGINX writes them }
+{ A value inside the quotes of a combined line: quote and control bytes as \xHH, as
+  NGINX writes them. }
 function LogQuoted(const AText: StringRAL): StringRAL;
 var
   vInt: IntegerRAL;
@@ -575,6 +695,7 @@ begin
     Result := '-';
 end;
 
+/// AText as a JSON string, quotes included.
 function JSONText(const AText: StringRAL): StringRAL;
 var
   vInt: IntegerRAL;
@@ -643,12 +764,13 @@ end;
 
 { ---------------------------------------------------------------- buffers }
 
+/// Bytes waiting in ABuf.
 function BufLen(const ABuf: TBuf): IntegerRAL;
 begin
   Result := ABuf.Stop - ABuf.Start;
 end;
 
-{ room at the end, after moving what waits to the front when it pays }
+/// Room at the end, after moving what waits to the front when it pays.
 function BufRoom(var ABuf: TBuf; ACapacity: IntegerRAL): IntegerRAL;
 var
   vLen: IntegerRAL;
@@ -670,6 +792,7 @@ begin
   Result := Length(ABuf.Data) - ABuf.Stop;
 end;
 
+/// Appends ALen bytes at AData to ABuf.
 procedure BufAppend(var ABuf: TBuf; AData: Pointer; ALen: IntegerRAL);
 var
   vLen: IntegerRAL;
@@ -697,19 +820,21 @@ begin
   Inc(ABuf.Stop, ALen);
 end;
 
+/// Appends AText to ABuf.
 procedure BufAppendText(var ABuf: TBuf; const AText: StringRAL);
 begin
   if AText <> '' then
     BufAppend(ABuf, Pointer(AText), Length(AText));
 end;
 
+/// Empties ABuf.
 procedure BufClear(var ABuf: TBuf);
 begin
   ABuf.Start := 0;
   ABuf.Stop := 0;
 end;
 
-{ the position (from Start) after the CRLF CRLF that ends a head; -1 when not there }
+/// The position (from Start) after the CRLF CRLF that ends a head; -1 when not there.
 function FindHeadEnd(const ABuf: TBuf): IntegerRAL;
 var
   vInt: IntegerRAL;
@@ -728,6 +853,7 @@ begin
   end;
 end;
 
+/// The first ALen bytes of ABuf as text.
 function BufText(const ABuf: TBuf; ALen: IntegerRAL): StringRAL;
 begin
   SetLength(Result, ALen);
@@ -737,6 +863,7 @@ end;
 
 { ---------------------------------------------------------------- heads }
 
+/// Whether AChar may appear in an HTTP token (RFC 9110 5.6.2).
 function IsTokenChar(AChar: AnsiChar): boolean;
 begin
   case AChar of
@@ -810,7 +937,7 @@ begin
   Result := not vFirst;
 end;
 
-{ the tokens of a list field ('keep-alive, Upgrade'), lowercase, ',' around }
+/// The tokens of a list field ('keep-alive, Upgrade'), lowercase, ',' around.
 function TokenList(const AValue: StringRAL): StringRAL;
 var
   vInt: IntegerRAL;
@@ -839,11 +966,13 @@ begin
   end;
 end;
 
+/// Whether the comma list AList holds AToken, ignoring case.
 function HasToken(const AList, AToken: StringRAL): boolean;
 begin
   Result := Pos(',' + AToken + ',', AList) > 0;
 end;
 
+/// Reason phrase of AStatus.
 function StatusText(AStatus: IntegerRAL): StringRAL;
 begin
   case AStatus of
@@ -1029,6 +1158,7 @@ begin
   end;
 end;
 
+/// Starts AFrame for a body of AKind and ALength.
 procedure FrameStart(var AFrame: TFrame; AKind: TFrameKind; ALength: Int64RAL);
 begin
   AFrame.Kind := AKind;
@@ -1041,7 +1171,7 @@ begin
     AFrame.Remaining := 0;
 end;
 
-{ Content-Length: digits only; a list or repeated field must say one number }
+/// Content-Length: digits only; a list or repeated field must say one number.
 function ParseLength(const AValues: StringRAL; out ALength: Int64RAL): boolean;
 var
   vInt: IntegerRAL;
@@ -1082,7 +1212,7 @@ end;
 
 { ---------------------------------------------------------------- targets }
 
-{ where the server AServer is (resolved again every 30 s) }
+/// Where the server AServer is (resolved again every 30 s).
 function TargetOf(ABalancer: TRALBalancer; AServer: TRALUpstreamServer): TRALBalancerTarget;
 var
   vIndex, vPos, vPort: IntegerRAL;
@@ -1178,7 +1308,7 @@ begin
     vIndex := ABalancer.FTargets.IndexOf(string(vURL));
     if vIndex >= 0 then
     begin
-      // the old one may be in use by a connection: its fields are refreshed
+      // a connection may be using this target: its fields are refreshed in place
       Result := TRALBalancerTarget(ABalancer.FTargets.Objects[vIndex]);
       Result.Address := vTarget.Address;
       Result.Resolved := vNow;
@@ -1194,7 +1324,7 @@ begin
   end;
 end;
 
-{ the idle-connection pool of the calling poll thread }
+/// The idle-connection pool of the calling poll thread.
 function PoolOf(AConnection: TRALSocketLoopConnection): TRALBalancerPool;
 begin
   Result := nil;
@@ -3275,8 +3405,8 @@ begin
     Result := tarRestartNeeded;
     Exit;
   end;
-  { a new context for the connections to come; the old one stays alive for
-    the open ones until the balancer stops }
+  { a context for the connections to come; the replaced one serves the open ones
+    until the balancer stops }
   vNew := NewTLSContext;
   FConnectionsLock.Acquire;
   try
@@ -3475,6 +3605,7 @@ begin
     Result := FLoop.ConnectionCount;
 end;
 
+/// Whether AHost matches APattern (empty, exact, or *.domain one level).
 function HostMatches(const APattern, AHost: StringRAL): boolean;
 var
   vHost: StringRAL;
@@ -3512,6 +3643,7 @@ begin
   end;
 end;
 
+/// Whether APath is APrefix or below it.
 function PrefixMatches(const APrefix, APath: StringRAL): boolean;
 var
   vLen: IntegerRAL;

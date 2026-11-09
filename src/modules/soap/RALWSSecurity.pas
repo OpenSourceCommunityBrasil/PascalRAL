@@ -1,4 +1,4 @@
-/// WS-Security of RAL: the UsernameToken profile, read on the server and written by the client.
+/// WS-Security UsernameToken: read on the server, written by the client.
 unit RALWSSecurity;
 
 {$I ..\..\core\PascalRAL.inc}

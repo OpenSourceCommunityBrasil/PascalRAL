@@ -1,4 +1,4 @@
-/// Registers the SOAP module, client, WS-Security authenticator and action in the IDE, with their verbs.
+/// Registers the SOAP module, client, WS-Security authenticator and action in the IDE.
 unit RALModuleSOAPReg;
 
 {$I ..\..\..\core\PascalRAL.inc}

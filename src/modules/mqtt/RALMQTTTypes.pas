@@ -1,6 +1,6 @@
-/// Shared types of the MQTT package: versions, packet types, reason codes,
-/// the property set of MQTT 5.0, the wire reader and writer, and the
-/// monotonic clock every timer of the package runs on.
+{ Shared types of the MQTT package: versions, packet types, reason codes,
+  the property set of MQTT 5.0, the wire reader and writer, and the
+  monotonic clock every timer of the package runs on. }
 unit RALMQTTTypes;
 
 {$I ..\..\core\PascalRAL.inc}

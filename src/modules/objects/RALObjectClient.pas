@@ -1,5 +1,5 @@
-/// The typed client: objects sent and received with TRALClient, through the
-/// same serializer and formatters as the server.
+{ The typed client: objects sent and received with TRALClient, through the
+  same serializer and formatters as the server. }
 unit RALObjectClient;
 
 {$I ..\..\core\PascalRAL.inc}

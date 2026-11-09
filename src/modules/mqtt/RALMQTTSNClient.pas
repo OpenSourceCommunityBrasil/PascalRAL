@@ -1,7 +1,7 @@
-/// The MQTT-SN client: UDP, with DTLS when asked, versions 1.2 and 2.0 (the
-/// draft) behind one component. Shares with TRALMQTTClient everything that is
-/// not the wire: subscriptions and publications as collections, the events,
-/// Mode, where events run, reconnection (D12).
+{ The MQTT-SN client: UDP, with DTLS when asked, versions 1.2 and 2.0 (the
+  draft) behind one component. Shares with TRALMQTTClient everything that is
+  not the wire: subscriptions and publications as collections, the events,
+  Mode, where events run, reconnection (D12). }
 unit RALMQTTSNClient;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -233,7 +233,7 @@ type
   TRALMQTTSNRequestKind = (srkRegister, srkPublish, srkSubscribe, srkUnsubscribe,
     srkPing, srkWillTopic, srkWillMsg, srkDisconnect);
 
-  { one request: what to send, the answer it waits for, its retries }
+  /// One request: what to send, the answer it waits for, its retries.
   TRALMQTTSNRequest = class
   public
     AutoFree: boolean;
@@ -259,7 +259,7 @@ type
     destructor Destroy; override;
   end;
 
-  { what a delivery remembers for its acknowledgement }
+  /// What a delivery remembers for its acknowledgement.
   TRALMQTTSNAck = class
   public
     MsgId: Word;

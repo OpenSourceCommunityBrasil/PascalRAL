@@ -1,9 +1,9 @@
-/// Objects to JSON and back through their published properties (TypInfo), the
-/// same on every Delphi from XE and on FPC 3.2: simple types, enumerations,
-/// sets, TDateTime, nested TPersistent, TCollection, TStrings, TStream (base64),
-/// TDataSet (array of records), lists registered with RegisterListClass and any
-/// class with a registered converter. Extended RTTI (fields, records, generic
-/// lists, attributes) is sugar in RALObjectRTTI.
+{ Objects to JSON and back through their published properties (TypInfo), the
+  same on every Delphi from XE and on FPC 3.2: simple types, enumerations,
+  sets, TDateTime, nested TPersistent, TCollection, TStrings, TStream (base64),
+  TDataSet (array of records), lists registered with RegisterListClass and any
+  class with a registered converter. Extended RTTI (fields, records, generic
+  lists, attributes) is sugar in RALObjectRTTI. }
 unit RALObjectJSON;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -35,8 +35,8 @@ type
   /// How enumerations are written.
   TRALObjectEnumAs = (eaName, eaNumber);
 
-  /// How TDateTime is written: ISO 8601 with the local offset, ISO 8601 in UTC
-  /// ('Z'), or Unix seconds.
+  { How TDateTime is written: ISO 8601 with the local offset, ISO 8601 in UTC
+    ('Z'), or Unix seconds. }
   TRALObjectDateFormat = (dfISO8601, dfISO8601UTC, dfUnix);
 
   /// What reading a JSON null into a property does.
@@ -95,31 +95,51 @@ type
     RALObjectRTTI: HasValue False is written as null, and null is read as
     HasValue False. Plain records, the same on every compiler. }
   TRALNullableInteger = record
+    /// False means null.
     HasValue: boolean;
+    /// The value, when HasValue.
     Value: Integer;
   end;
+  /// A Int64 that may be null (written as JSON null).
   TRALNullableInt64 = record
+    /// False means null.
     HasValue: boolean;
+    /// The value, when HasValue.
     Value: Int64;
   end;
+  /// A Double that may be null (written as JSON null).
   TRALNullableDouble = record
+    /// False means null.
     HasValue: boolean;
+    /// The value, when HasValue.
     Value: Double;
   end;
+  /// A Currency that may be null (written as JSON null).
   TRALNullableCurrency = record
+    /// False means null.
     HasValue: boolean;
+    /// The value, when HasValue.
     Value: Currency;
   end;
+  /// A Boolean that may be null (written as JSON null).
   TRALNullableBoolean = record
+    /// False means null.
     HasValue: boolean;
+    /// The value, when HasValue.
     Value: boolean;
   end;
+  /// A TDateTime that may be null (written as JSON null).
   TRALNullableDateTime = record
+    /// False means null.
     HasValue: boolean;
+    /// The value, when HasValue.
     Value: TDateTime;
   end;
+  /// A StringRAL that may be null (written as JSON null).
   TRALNullableString = record
+    /// False means null.
     HasValue: boolean;
+    /// The value, when HasValue.
     Value: StringRAL;
   end;
 
@@ -146,12 +166,18 @@ type
     and the escapes. }
   TRALJSONTextWriter = class
   private
+    /// Text written, with spare room.
     FBuffer: StringRAL;
+    /// Per open level: no member written yet.
     FFirst: array of boolean;
+    /// Bytes used of FBuffer.
     FLen: IntegerRAL;
+    /// A name was written and its value is next.
     FPendingName: boolean;
 
+    /// Appends AText to the buffer.
     procedure Append(const AText: StringRAL);
+    /// Writes the comma before a member when one came before.
     procedure Separator;
   public
     constructor Create;
@@ -182,7 +208,7 @@ type
     procedure ValueString(const AValue: StringRAL);
   end;
 
-  { Objects to JSON and back. AOptions nil = the defaults. }
+  /// Objects to JSON and back. AOptions nil = the defaults.
   TRALObjectJSON = class
   public
     /// Fills AObj from a parsed JSON value.
@@ -265,10 +291,15 @@ function RALPropType(AProp: PPropInfo): PTypeInfo;
 implementation
 
 var
+  /// Property names registered for JSON, by class and property.
   gNames: TStringList;
+  /// Converters registered, by type name.
   gConverters: TStringList;
+  /// List classes registered, with their item class.
   gLists: TStringList;
+  /// Classes registered for creation by name.
   gClasses: TStringList;
+  /// Format settings with "." for the decimals.
   gFormat: TFormatSettings;
 
 { registries keep the class pointer in Objects; the name is only for sorting }
@@ -278,7 +309,7 @@ begin
   gNames.Values[AClass.ClassName + '.' + string(APropName)] := string(AJSONName);
 end;
 
-{ the registered JSON name of APropName in AClass or an ancestor, or '' }
+/// The registered JSON name of APropName in AClass or an ancestor, or ''.
 function RegisteredName(AClass: TClass; const APropName: StringRAL): StringRAL;
 begin
   Result := '';
@@ -642,12 +673,14 @@ end;
 
 { helpers }
 
+/// Whether AType is TDateTime, TDate or TTime.
 function IsDateType(AType: PTypeInfo): boolean;
 begin
   Result := (AType = TypeInfo(TDateTime)) or (AType = TypeInfo(TDate)) or
     (AType = TypeInfo(TTime));
 end;
 
+/// Whether AType is a boolean type.
 function IsBoolType(AType: PTypeInfo): boolean;
 begin
   {$IFDEF FPC}
@@ -657,6 +690,7 @@ begin
   {$ENDIF}
 end;
 
+/// Value of the string property AProp of AObj.
 function GetText(AObj: TObject; AProp: PPropInfo): StringRAL;
 begin
   {$IFDEF FPC}
@@ -666,6 +700,7 @@ begin
   {$ENDIF}
 end;
 
+/// Sets the string property AProp of AObj.
 procedure SetText(AObj: TObject; AProp: PPropInfo; const AValue: StringRAL);
 begin
   {$IFDEF FPC}
@@ -675,7 +710,7 @@ begin
   {$ENDIF}
 end;
 
-{ UTF-8 to the RTL's string }
+/// UTF-8 to the RTL's string.
 function FromUTF8(const AValue: StringRAL): string;
 begin
   {$IFDEF FPC}
@@ -685,12 +720,13 @@ begin
   {$ENDIF}
 end;
 
+/// JSON name of AProp: registered name, attribute hook or Naming.
 function PropName(AProp: PPropInfo): StringRAL;
 begin
   Result := StringRAL(AProp^.Name);
 end;
 
-{ the properties of AObj in declaration order }
+/// The properties of AObj in declaration order.
 function PropsOf(AObj: TObject; out AList: PPropList): IntegerRAL;
 begin
   AList := nil;
@@ -701,6 +737,7 @@ begin
   Result := GetPropList(PTypeInfo(AObj.ClassInfo), tkProperties, AList, False);
 end;
 
+/// AValue as text, in the date format of AOptions.
 function DateText(AValue: TDateTime; AOptions: TRALObjectJSONOptions): StringRAL;
 begin
   case AOptions.DateFormat of
@@ -710,6 +747,7 @@ begin
   end;
 end;
 
+/// The date AValue holds, in the format of AOptions.
 function JSONDate(AValue: TRALJSONValue; AOptions: TRALObjectJSONOptions): TDateTime;
 var
   vText: StringRAL;
@@ -783,6 +821,7 @@ begin
   end;
 end;
 
+/// Writes AObj as a JSON value: object, list or dataset.
 procedure WriteValueOf(AObj: TObject; AWriter: TRALJSONTextWriter;
   AOptions: TRALObjectJSONOptions; ADepth: IntegerRAL); forward;
 
@@ -807,6 +846,7 @@ begin
   AName := TRALObjectJSON.JSONName(PropName(AProp), AOptions.Naming);
 end;
 
+/// Writes the records of ADataSet as a JSON array.
 procedure WriteDataSet(ADataSet: TDataSet; AWriter: TRALJSONTextWriter;
   AOptions: TRALObjectJSONOptions);
 var
@@ -858,6 +898,7 @@ begin
   AWriter.EndArray;
 end;
 
+/// Writes the published properties of AObj as JSON members.
 procedure WriteProps(AObj: TObject; AWriter: TRALJSONTextWriter;
   AOptions: TRALObjectJSONOptions; ADepth: IntegerRAL);
 var
@@ -972,6 +1013,7 @@ begin
   AWriter.EndObject;
 end;
 
+/// Writes AObj as a JSON value: object, list or dataset.
 procedure WriteValueOf(AObj: TObject; AWriter: TRALJSONTextWriter;
   AOptions: TRALObjectJSONOptions; ADepth: IntegerRAL);
 var
@@ -1071,14 +1113,17 @@ end;
 
 { reading }
 
+/// Reads AValue into AObj: object, list or dataset.
 procedure ReadInto(AValue: TRALJSONValue; AObj: TObject; AOptions: TRALObjectJSONOptions;
   ADepth: IntegerRAL); forward;
 
+/// A new object of AClass, created as RALCreateObject does.
 function NewItem(AClass: TClass): TObject;
 begin
   Result := RALCreateObject(AClass);
 end;
 
+/// Reads the JSON array AValue into ADataSet.
 procedure ReadDataSet(AValue: TRALJSONValue; ADataSet: TDataSet;
   AOptions: TRALObjectJSONOptions);
 var
@@ -1133,6 +1178,7 @@ begin
   end;
 end;
 
+/// Reads the JSON array AValue into the list AObj.
 procedure ReadList(AValue: TRALJSONValue; AObj: TObject; AOptions: TRALObjectJSONOptions;
   ADepth: IntegerRAL);
 var
@@ -1206,7 +1252,7 @@ begin
   end;
 end;
 
-{ the property of AObj that AName names, by the naming or as declared }
+/// The property of AObj that AName names, by the naming or as declared.
 function FindProp(AObj: TObject; AList: PPropList; ACount: IntegerRAL;
   const AName: StringRAL; AOptions: TRALObjectJSONOptions): PPropInfo;
 var
@@ -1223,6 +1269,7 @@ begin
   Result := nil;
 end;
 
+/// Reads the members of AValue into the published properties of AObj.
 procedure ReadProps(AValue: TRALJSONObject; AObj: TObject; AOptions: TRALObjectJSONOptions;
   ADepth: IntegerRAL);
 var
@@ -1382,6 +1429,7 @@ begin
   end;
 end;
 
+/// Reads AValue into AObj: object, list or dataset.
 procedure ReadInto(AValue: TRALJSONValue; AObj: TObject; AOptions: TRALObjectJSONOptions;
   ADepth: IntegerRAL);
 var

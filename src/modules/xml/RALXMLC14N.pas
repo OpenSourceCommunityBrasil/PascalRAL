@@ -63,17 +63,27 @@ type
     PreserveWhitespace, or the blanks between elements are already gone. }
   TRALXMLCanonicalizer = class
   private
+    /// Element being canonicalized as a subtree; nil for a document.
     FApex: TRALXMLNode;
     FInclusivePrefixes: StringRAL;
+    /// Namespace declarations in scope, nearest last.
     FInScope: array of TRALXMLC14NNamespace;
+    /// Entries used of FInScope.
     FInScopeCount: IntegerRAL;
+    /// Bytes used of FOut.
     FLen: IntegerRAL;
     FMethod: TRALXMLC14NMethod;
+    /// Output, with spare room.
     FOut: StringRAL;
+    /// InclusivePrefixes, split; empty is the default namespace.
     FPrefixList: array of StringRAL;
+    /// Namespaces rendered by output ancestors, nearest last.
     FRendered: array of TRALXMLC14NNamespace;
+    /// Entries used of FRendered.
     FRenderedCount: IntegerRAL;
+    /// Stack depths saved per open element.
     FSaved: array of TRALXMLC14NDepth;
+    /// Entries used of FSaved.
     FSavedCount: IntegerRAL;
     FWithComments: boolean;
 
@@ -595,7 +605,8 @@ begin
     Inc(FRenderedCount);
   end;
 
-  // namespaces by prefix (the default first), attributes by namespace URI, then local name
+  { namespaces by prefix (the default first), attributes by namespace URI, then
+    local name }
   for vInt := 1 to vNsCount - 1 do
   begin
     vNsTmp := vNs[vInt];

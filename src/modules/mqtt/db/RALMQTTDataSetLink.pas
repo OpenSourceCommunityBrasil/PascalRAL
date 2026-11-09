@@ -1,5 +1,5 @@
-/// Shows the messages an MQTT or MQTT-SN client receives in any TDataSet, one
-/// row per message, so a grid shows them with no code.
+{ Shows the messages an MQTT or MQTT-SN client receives in any TDataSet, one
+  row per message, so a grid shows them with no code. }
 unit RALMQTTDataSetLink;
 
 {$I ..\..\..\core\PascalRAL.inc}

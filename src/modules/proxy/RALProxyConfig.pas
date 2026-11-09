@@ -1,9 +1,9 @@
-/// A configuration in the style of NGINX for TRALBalancer (RALModuleProxyPackage):
-/// a subset of its syntax (http and stream blocks, upstream, server, listen,
-/// server_name, location, proxy_pass, TLS, timeouts, include) read by a parser
-/// of RAL's own, which stops at the first unknown directive and says the file,
-/// line and column. TRALProxyHost runs what a configuration describes and
-/// reloads another one without cutting the connections that are open.
+{ A configuration in the style of NGINX for TRALBalancer (RALModuleProxyPackage):
+  a subset of its syntax (http and stream blocks, upstream, server, listen,
+  server_name, location, proxy_pass, TLS, timeouts, include) read by a parser
+  of RAL's own, which stops at the first unknown directive and says the file,
+  line and column. TRALProxyHost runs what a configuration describes and
+  reloads another one without cutting the connections that are open. }
 unit RALProxyConfig;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -80,7 +80,8 @@ type
     property FileName: string read FFileName;
     /// File of pid.
     property PidFile: string read FPidFile write FPidFile;
-    /// worker_threads (worker_processes): poll threads of each balancer; 0 is one per processor.
+    { worker_threads (worker_processes): poll threads of each balancer; 0 is one per
+      processor. }
     property ThreadCount: IntegerRAL read FThreadCount write FThreadCount;
     /// The upstreams by name (Objects are TRALUpstream).
     property Upstreams: TStringList read FUpstreams;
@@ -94,12 +95,16 @@ type
   TRALProxyHost = class
   private
     FConfig: TRALProxyConfig;
+    /// Guards the running balancers.
     FLock: TCriticalSection;
     FOnAccess: TRALBalancerAccessEvent;
+    /// Configurations replaced, freed when the host stops.
     FRetired: TList;
     FRunning: TList;
 
+    /// Key of ABalancer: mode, TLS, bind address and port.
     function Key(ABalancer: TRALBalancer): string;
+    /// Running balancer of AKey, or nil.
     function Running(const AKey: string): TRALBalancer;
     procedure SetOnAccess(const AValue: TRALBalancerAccessEvent);
   public
@@ -128,79 +133,112 @@ type
 { Milliseconds of an NGINX time ('30s', '500ms', '2m', '1h', '1d'; a bare
   number is seconds); -1 when it is not one }
 function RALProxyParseTime(const AText: string): Int64RAL;
-{ Bytes of an NGINX size ('16k', '1m', '512'); -1 when it is not one }
+/// Bytes of an NGINX size ('16k', '1m', '512'); -1 when it is not one.
 function RALProxyParseSize(const AText: string): Int64RAL;
 
 implementation
 
 type
-  // one token of the text: a word, a string, a semicolon or a brace
+  /// One token of the text: a word, a string, a semicolon or a brace.
   TRALProxyToken = class
   public
+    /// Column in the file, from 1.
     Column: IntegerRAL;
+    /// File the token came from.
     FileName: string;
+    /// Line in the file, from 1.
     Line: IntegerRAL;
+    /// It was written between quotes.
     Quoted: boolean;
+    /// Text of the token.
     Text: string;
   end;
 
-  { one directive: its name, its values, and its block when it has one }
+  /// One directive: its name, its values, and its block when it has one.
   TRALProxyDirective = class
   public
+    /// Arguments, as tokens.
     Args: TList;
+    /// Directives of its block.
     Children: TList;
+    /// It opens a block.
     HasBlock: boolean;
+    /// Name token.
     Name: TRALProxyToken;
 
     constructor Create;
     destructor Destroy; override;
 
+    /// Argument AIndex as text.
     function Arg(AIndex: IntegerRAL): string;
+    /// Number of arguments.
     function ArgCount: IntegerRAL;
   end;
 
-  { reads tokens out of the text and of what it includes, then the tree }
+  /// Reads tokens out of the text and of what it includes, then the tree.
   TRALProxyParser = class
   private
+    /// Include nesting, against loops.
     FDepth: IntegerRAL;
+    /// Next token.
     FPos: IntegerRAL;
+    /// Tokens of the text.
     FTokens: TList;
 
+    /// Parses the files of APattern (relative to ABase) in place.
     procedure Include(const APattern, ABase: string; AToken: TRALProxyToken);
+    /// Reads directives into AList up to the end of the block.
     function ParseBlock(AList: TList; AInBlock: boolean; AOpen: TRALProxyToken): boolean;
+    /// Splits AText into tokens.
     procedure Tokenize(const AText, AFileName: string);
   public
     constructor Create;
     destructor Destroy; override;
 
+    /// The directives of AText; the caller frees the list.
     function Parse(const AText, AFileName: string): TList;
   end;
 
   /// A server block of http, kept until its port's balancer is built.
   THttpServerBlock = class
   public
+    /// Address of listen.
     Bind: string;
+    /// ssl_certificate and ssl_certificate_key.
     CertFile, KeyFile: string;
+    /// Its location blocks.
     Locations: TList; // TRALBalancerRoute-like data: prefix, upstream, strip
+    /// Lowest TLS version (ssl_protocols).
     MinVersion: TRALTLSVersion;
+    /// server_name values.
     Names: TStringList;
+    /// Port of listen.
     Port: IntegerRAL;
+    /// Sends the client's Host to the servers.
     PreserveHost: boolean;
+    /// listen ... ssl.
     SSL: boolean;
+    /// Path of the statistics; empty is none.
     StatsPath: string;
+    /// The server directive, for error positions.
     Where: TRALProxyDirective;
 
     constructor Create;
     destructor Destroy; override;
   end;
 
+  /// A location block: path prefix and where it goes.
   TLocation = class
   public
+    /// Path prefix.
     Prefix: string;
+    /// The prefix is cut before the request goes on.
     Strip: boolean;
+    /// Upstream it goes to.
     Upstream: TRALUpstream;
   end;
 
+/// Raises a configuration error at the position of AToken.
 procedure Fail(AToken: TRALProxyToken; const AMessage: string); overload;
 begin
   if AToken = nil then
@@ -209,6 +247,7 @@ begin
     raise ERALProxyConfigError.CreateAt(AToken.FileName, AToken.Line, AToken.Column, AMessage);
 end;
 
+/// Raises a configuration error at the position of ADirective.
 procedure Fail(ADirective: TRALProxyDirective; const AMessage: string); overload;
 begin
   Fail(ADirective.Name, AMessage);
@@ -1644,7 +1683,8 @@ begin
     end;
     for vInt := 0 to vStarted.Count - 1 do
       FRunning.Add(vStarted[vInt]);
-    // the balancers the host keeps leave the new configuration; the rest are freed with it
+    { the balancers the host keeps leave the new configuration; the rest are freed
+      with it }
     for vInt := ANew.Balancers.Count - 1 downto 0 do
       if vStarted.IndexOf(ANew.Balancers[vInt]) >= 0 then
         ANew.Balancers.Delete(vInt);

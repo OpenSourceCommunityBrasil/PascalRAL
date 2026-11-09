@@ -1,7 +1,7 @@
-/// The pieces a proxy needs (RALModuleProxyPackage): a group of servers behind
-/// it (TRALUpstream) with the policy that picks one, passive and active health,
-/// sticky sessions and statistics; and the header rules of a proxy (hop-by-hop
-/// headers, RFC 9110 7.6.1).
+{ The pieces a proxy needs (RALModuleProxyPackage): a group of servers behind
+  it (TRALUpstream) with the policy that picks one, passive and active health,
+  sticky sessions and statistics; and the header rules of a proxy (hop-by-hop
+  headers, RFC 9110 7.6.1). }
 unit RALProxyCore;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -46,25 +46,35 @@ type
   private
     FActive: IntegerRAL;
     FBackup: boolean;
+    /// Client shared by every request to this server.
     FClient: TRALClient;
+    /// Running weight of the smooth weighted round robin.
     FCurrentWeight: IntegerRAL;
     FDown: boolean;
     FErrors: Int64RAL;
+    /// Tick until which a passive failure keeps it out.
     FFailedUntil: Int64RAL;
+    /// Failures counted inside FailTimeout.
     FFails: IntegerRAL;
     FHealthy: boolean;
+    /// Latest latencies, in milliseconds, as a ring.
     FLatency: array[0..1023] of IntegerRAL;
+    /// Samples kept in FLatency.
     FLatencyCount: IntegerRAL;
+    /// Next slot of FLatency.
     FLatencyNext: IntegerRAL;
     FMaxConnections: IntegerRAL;
+    /// Out because of MaxFails.
     FPassiveDown: boolean;
     FRequests: Int64RAL;
+    /// Health checks in a row with the same result.
     FStreak: IntegerRAL;
     FURL: StringRAL;
     FWeight: IntegerRAL;
 
     procedure SetURL(const AValue: StringRAL);
     procedure SetWeight(const AValue: IntegerRAL);
+    /// The upstream that owns the server.
     function Upstream: TRALUpstream;
   protected
     procedure AssignTo(Dest: TPersistent); override;
@@ -73,7 +83,8 @@ type
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
 
-    /// Takes requests now: not Down, healthy, outside a failure window, under MaxConnections.
+    { Takes requests now: not Down, healthy, outside a failure window, under
+      MaxConnections. }
     function Available(ANow: Int64RAL): boolean;
     /// The client that calls this server (made on first use, shared by every thread).
     function Client: TRALClient;
@@ -176,22 +187,31 @@ type
     FHashBy: TRALUpstreamHashBy;
     FHashName: StringRAL;
     FHealthCheck: TRALUpstreamHealthCheck;
+    /// The active health check.
     FHealthThread: TThread;
+    /// Guards the runtime fields of the servers.
     FLock: TCriticalSection;
     FMaxFails: IntegerRAL;
     FOnServerChange: TRALUpstreamServerEvent;
     FPolicy: TRALUpstreamPolicy;
     FRequestTimeout: IntegerRAL;
+    /// Hash ring of the consistent hash, sorted.
     FRing: array of Cardinal;
+    /// Server of each point of FRing.
     FRingServer: array of IntegerRAL;
+    /// The servers changed: FRing is built again.
     FRingStale: boolean;
     FServers: TRALUpstreamServers;
     FSticky: TRALUpstreamSticky;
 
+    /// Builds the hash ring from the servers and their weights.
     procedure BuildRing;
+    /// Server of AKey on the ring, skipping AExclude and the unavailable.
     function FromRing(const AKey: StringRAL; AExclude: TList; ANow: Int64RAL;
       ABackup: boolean): TRALUpstreamServer;
+    /// Key the hash methods use for ARequest (client IP or HashKey).
     function KeyOf(ARequest: TRALRequest): StringRAL;
+    /// Server for AKey by Method, skipping AExclude; nil when none is available.
     function Pick(const AKey: StringRAL; AExclude: TList; ANow: Int64RAL;
       ABackup: boolean): TRALUpstreamServer;
     procedure SetHealthCheck(const AValue: TRALUpstreamHealthCheck);
@@ -320,13 +340,17 @@ end;
 
 { the thread of the active check }
 type
+  /// Probes the servers of an upstream every HealthCheck.Interval.
   TRALUpstreamHealthThread = class(TThread)
   private
+    /// Upstream it checks.
     FUpstream: TRALUpstream;
+    /// Wakes the thread to stop.
     FWake: TEvent;
   protected
     procedure Execute; override;
   public
+    /// The health thread of AUpstream, started.
     constructor Create(AUpstream: TRALUpstream);
     destructor Destroy; override;
   end;

@@ -1,7 +1,7 @@
-/// Formatters: how an object is read from a request body and written into a
-/// response, chosen by Content-Type (reading) and Accept with its q values
-/// (writing). JSON, HTML forms, CSV and YAML come registered; a formatter of
-/// your own registers like the storages do.
+{ Formatters: how an object is read from a request body and written into a
+  response, chosen by Content-Type (reading) and Accept with its q values
+  (writing). JSON, HTML forms, CSV and YAML come registered; a formatter of
+  your own registers like the storages do. }
 unit RALObjectFormat;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -101,8 +101,9 @@ function RALPreferredLanguage(const AHeader: StringRAL; const ASupported: array 
 implementation
 
 var
+  /// Formatters registered, in order.
   gFormatters: TList;
-  { q values are written with a dot, whatever the machine's locale }
+  /// Q values are written with a dot, whatever the machine's locale.
   gDot: TFormatSettings;
 
 procedure RALRegisterFormatter(AFormatter: TRALObjectFormatterClass);
@@ -145,9 +146,13 @@ begin
 end;
 
 type
+  /// One media range of an Accept header.
   TAcceptRange = record
+    /// Media range, as written.
     MediaType: StringRAL;
+    /// Its q value.
     Quality: Double;
+    /// Position in the header, for ties.
     Order: IntegerRAL;
   end;
 
@@ -393,6 +398,7 @@ begin
   end;
 end;
 
+/// AText encoded for a form field.
 function URLEncode(const AText: StringRAL): StringRAL;
 const
   cHex: StringRAL = '0123456789ABCDEF';
@@ -443,6 +449,7 @@ end;
 
 { TRALCSVFormatter }
 
+/// AText quoted as a CSV field when it needs to be.
 function CSVField(const AText: StringRAL): StringRAL;
 begin
   if (Pos(',', string(AText)) > 0) or (Pos('"', string(AText)) > 0) or
@@ -534,7 +541,7 @@ begin
   end;
 end;
 
-{ splits CSV text into rows of fields (RFC 4180) }
+/// Splits CSV text into rows of fields (RFC 4180).
 procedure ParseCSV(const AText: StringRAL; ARows: TList);
 var
   vInt, vLen: IntegerRAL;

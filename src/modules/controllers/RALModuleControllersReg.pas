@@ -1,5 +1,5 @@
-/// Registers the controller module in the IDE, where the compiler has
-/// attributes and extended RTTI.
+{ Registers the controller module in the IDE, where the compiler has
+  attributes and extended RTTI. }
 unit RALModuleControllersReg;
 
 {$I ..\..\core\PascalRAL.inc}

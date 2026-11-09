@@ -1,7 +1,7 @@
-/// A module of any RAL HTTP server that reaches a TRALMQTTBroker: publish by
-/// POST, read retained messages, list clients and counters. The server's
-/// plugins and authentication apply to these routes as to any other, and the
-/// topic goes through the broker's Permissions with the HTTP user.
+{ A module of any RAL HTTP server that reaches a TRALMQTTBroker: publish by
+  POST, read retained messages, list clients and counters. The server's
+  plugins and authentication apply to these routes as to any other, and the
+  topic goes through the broker's Permissions with the HTTP user. }
 unit RALMQTTRestModule;
 
 {$I ..\..\core\PascalRAL.inc}

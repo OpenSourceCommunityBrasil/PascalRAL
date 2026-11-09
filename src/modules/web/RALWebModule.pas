@@ -14,24 +14,24 @@ uses
   RALThreadSafe;
 
 const
-  { how many lists the sessions are spread over, each behind its own lock }
+  /// How many lists the sessions are spread over, each behind its own lock.
   cRALSessionShards = 16;
-  { TRALWebModule.IndexFile when nobody says otherwise }
+  /// TRALWebModule.IndexFile when nobody says otherwise.
   cRALIndexFile = 'index.html';
 
 type
 
-  { TRALWebSession }
-
-  /// What the WebModule keeps for one browser between its requests. A browser
-  /// opens several connections at once, so its requests run in parallel: every
-  /// access to the list of objects is locked. The lock covers the list, not
-  /// the objects in it - an object taken out is the caller's to synchronise
+  { What the WebModule keeps for one browser between its requests. A browser
+    opens several connections at once, so its requests run in parallel: every
+    access to the list of objects is locked. The lock covers the list, not
+    the objects in it - an object taken out is the caller's to synchronise. }
   TRALWebSession = class(TRALThreadSafe)
   private
     FLastDate: TDateTime;
+    /// Objects by name, owned by the session.
     FObjects: TStringList;
   protected
+    /// Frees every object of the session.
     procedure ClearObjects;
     function GetObjects(AName: StringRAL): TObject;
     procedure SetObjects(AName: StringRAL; AValue: TObject);
@@ -39,57 +39,63 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// Takes AName out of the session, freeing its object only when AFree is
-    /// True; False when the session had no such name
+    { Takes AName out of the session, freeing its object only when AFree is
+      True; False when the session had no such name. }
     function DeleteObject(AName: StringRAL; AFree: boolean = True): boolean;
 
-    /// Objects kept by name, OWNED by the session: assigning a name again
-    /// frees the object it held, and whatever is left is freed when the
-    /// session expires or the module goes away. Hand over objects nobody else
-    /// frees
+    { Objects kept by name, OWNED by the session: assigning a name again
+      frees the object it held, and whatever is left is freed when the
+      session expires or the module goes away. Hand over objects nobody else
+      frees. }
     property Objects[AName: StringRAL]: TObject read GetObjects write SetObjects;
   published
-    /// When the browser last used the session - what
-    /// TRALWebModule.SessionTimeout counts from
+    { When the browser last used the session - what
+      TRALWebModule.SessionTimeout counts from. }
     property LastDate: TDateTime read FLastDate write FLastDate;
   end;
 
-  { TRALWebFile }
-
-  /// What the WebModule knows of the file a request asks for, read with one
-  /// call to the system. CanAnswerRoute leaves it in TRALRequest.RouteData for
-  /// the handler, so a file is resolved once per request
+  { What the WebModule knows of the file a request asks for, read with one
+    call to the system. CanAnswerRoute leaves it in TRALRequest.RouteData for
+    the handler, so a file is resolved once per request. }
   TRALWebFile = class
   public
+    /// Full name of the file.
     FileName: string;
     /// When it was last written, in Unix seconds (UTC)
     Modified: Int64;
+    /// Size in bytes.
     Size: Int64;
   end;
 
   /// One line of TRALWebModule.CacheControl, as the requests read it
   TRALWebCacheRule = record
+    /// Extension, with its dot.
     Ext: StringRAL;
+    /// Cache-Control directive of that extension.
     Value: StringRAL;
   end;
+  /// Rules of TRALWebModule.CacheControl.
   TRALWebCacheRules = array of TRALWebCacheRule;
-
-  { TRALWebModule }
 
   /// Serves the files under DocumentRoot and keeps a session per browser
   TRALWebModule = class(TRALModuleRoutes)
   private
+    /// Extensions never served.
     FBlockedExtensions: TStringList;
+    /// Cache-Control per extension, "ext=directive" lines.
     FCacheControl: TStringList;
+    /// Owner of FDefaultRoute.
     FCollectionRoute: TRALRoutes;
+    /// Route that answers every file under the Domain.
     FDefaultRoute: TRALRoute;
     FDocumentRoot: StringRAL;
     FFileCacheTime: IntegerRAL;
     FFollowLinks: boolean;
     FIndexFile: StringRAL;
+    /// When the expired sessions were last swept.
     FLastSweep: TDateTime;
     FMaxFileSize: Int64RAL;
-    { a TRALWebPathCache - see the implementation }
+    /// A TRALWebPathCache - see the implementation.
     FPathCache: TObject;
     FServePrecompressed: boolean;
     { the sessions, spread over lists by the first character of their name -
@@ -101,13 +107,17 @@ type
       the blocked extensions, the Cache-Control rules, the Domain, worked out
       once per change and published whole - see PublishSettings }
     FSettings: TRALSnapshots;
+    /// Generation of the settings, raised on every change.
     FSettingsGen: IntegerRAL;
+    /// Lets one thread sweep at a time.
     FSweepLock: TCriticalSection;
     FUseAppPathAsRoot: boolean;
 
+    /// Publishes the settings again.
     procedure BlockedExtensionsChanged(Sender: TObject);
+    /// Publishes the settings again.
     procedure CacheControlChanged(Sender: TObject);
-    { the Cache-Control a file goes out with, '' for none }
+    /// The Cache-Control a file goes out with, '' for none.
     function CacheControlFor(const AFileName: string): StringRAL;
     { the session named AName in the list, or nil; touches it. Must run with
       that list locked }
@@ -123,8 +133,9 @@ type
     { builds the settings the requests read from the properties as they are
       now, and publishes them - on every change of one of them }
     procedure PublishSettings;
-    { the file a request asks for when the module may serve it, or nil }
+    /// The file a request asks for when the module may serve it, or nil.
     function ResolveFile(ARequest: TRALRequest): TRALWebFile;
+    /// Answers AFile: headers, ETag/304, Range, precompressed copy and body.
     procedure ServeFile(ARequest: TRALRequest; AResponse: TRALResponse; AFile: TRALWebFile);
     procedure SetBlockedExtensions(AValue: TStrings);
     procedure SetCacheControl(AValue: TStrings);
@@ -135,12 +146,16 @@ type
       freed with no lock held: what a session keeps may take a while to free }
     procedure SweepSessions;
   protected
+    /// Opens a session for the request and sends its cookie.
     procedure CreateSession(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Path of the file the request asks for, inside DocumentRoot.
     function GetFileRoute(ARequest: TRALRequest): StringRAL;
     function GetWebSession(ARequest: TRALRequest): TRALWebSession;
+    /// A new session name (see the implementation).
     function NewSessionName: StringRAL;
     procedure SetDocumentRoot(AValue: StringRAL);
     procedure SetDomain(const AValue: StringRAL); override;
+    /// Handler of the default route: serves the file of the request.
     procedure WebModFile(ARequest: TRALRequest; AResponse: TRALResponse);
   public
     constructor Create(AOwner: TComponent); override;
@@ -149,79 +164,73 @@ type
     procedure AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse); override;
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
       override;
-    /// The module's routes and, while DocumentRoot serves something, the one
-    /// that serves the files - which the Swagger and Postman exporters left
-    /// out. The caller frees the list, not the routes
+    { The module's routes and, while DocumentRoot serves something, the one
+      that serves the files - which the Swagger and Postman exporters left
+      out. The caller frees the list, not the routes. }
     function GetListRoutes: TList; override;
-    /// The browser's session, created - and its cookie added to AResponse -
-    /// when it has none. Sessions cost memory per browser, so they only exist
-    /// for the requests whose handlers ask for one: serving a file creates none.
-    /// Asking renews the session, so it cannot expire under a request that
-    /// takes less than SessionTimeout
+    { The browser's session, created - and its cookie added to AResponse -
+      when it has none. Sessions cost memory per browser, so they only exist
+      for the requests whose handlers ask for one: serving a file creates none.
+      Asking renews the session, so it cannot expire under a request that
+      takes less than SessionTimeout. }
     function OpenSession(ARequest: TRALRequest; AResponse: TRALResponse): TRALWebSession;
 
     /// The browser's session, or nil when it has none - see OpenSession
     property Session[ARequest: TRALRequest]: TRALWebSession read GetWebSession;
   published
-    /// Extensions never served, one per line ('.ini' or 'ini', any case).
-    /// Empty by default; a deploy folder usually deserves .ini, .log, .bak,
-    /// .pem, .key, .pfx and the database files
+    { Extensions never served, one per line ('.ini' or 'ini', any case).
+      Empty by default; a deploy folder usually deserves .ini, .log, .bak,
+      .pem, .key, .pfx and the database files. }
     property BlockedExtensions: TStrings read GetBlockedExtensions write SetBlockedExtensions;
-    /// Cache-Control for the files served, by extension, one per line:
-    /// '.css=max-age=31536000, immutable', 'html=no-cache', and '*=...' for
-    /// every extension not listed. Empty (the default) sends none. The answer
-    /// always carries ETag and Last-Modified, which is enough for a browser to
-    /// ask again cheaply - a 304 - but without Cache-Control it asks every time
+    { Cache-Control for the files served, by extension, one per line:
+      '.css=max-age=31536000, immutable', 'html=no-cache', and '*=...' for
+      every extension not listed. Empty (the default) sends none. The answer
+      always carries ETag and Last-Modified, which is enough for a browser to
+      ask again cheaply - a 304 - but without Cache-Control it asks every time. }
     property CacheControl: TStrings read GetCacheControl write SetCacheControl;
-    /// The folder whose files are served. Empty serves no file at all - it
-    /// used to fall back to the executable's folder, publishing its .ini and
-    /// certificates on a route that skips authentication; see
-    /// UseApplicationPathAsRoot. A relative path is taken from the
-    /// executable's folder. With a Domain other than '/', only the URLs under
-    /// it are served, and the URL still maps whole onto the folder:
-    /// '/static/x.css' is DocumentRoot\static\x.css. Every URL used to be,
-    /// whatever the Domain, taking those another module was meant to answer
+    { The folder whose files are served; empty serves none, relative is taken from
+      the executable's folder. With a Domain, only its URLs are served, mapped whole
+      ('/static/x.css' is DocumentRoot\static\x.css). }
     property DocumentRoot: StringRAL read FDocumentRoot write SetDocumentRoot;
-    /// Milliseconds the module trusts what it learned of a file - whether it
-    /// exists, its size and its date - before asking the disk again. Zero (the
-    /// default) asks on every request. Above zero, a file published or removed
-    /// is seen up to that much later, and a 404 costs no trip to the disk.
-    /// Where a URL leads inside DocumentRoot is always remembered: it only
-    /// changes with DocumentRoot or BlockedExtensions, which forget it
+    { Milliseconds the module trusts what it learned of a file - whether it
+      exists, its size and its date - before asking the disk again. Zero (the
+      default) asks on every request. Above zero, a file published or removed
+      is seen up to that much later, and a 404 costs no trip to the disk.
+      Where a URL leads inside DocumentRoot is always remembered: it only
+      changes with DocumentRoot or BlockedExtensions, which forget it. }
     property FileCacheTime: IntegerRAL read FFileCacheTime write FFileCacheTime default 0;
-    /// Serve a file reached through a symbolic link or a junction below
-    /// DocumentRoot - which may lead out of it, past every check on the path,
-    /// since those read the name and the system follows the link. True (the
-    /// default) is what the module always did. False answers such a file as if
-    /// it were not there; DocumentRoot itself may still be a link
+    { Serve a file reached through a symbolic link or a junction below
+      DocumentRoot - which may lead out of it, past every check on the path,
+      since those read the name and the system follows the link. True (the
+      default) is what the module always did. False answers such a file as if
+      it were not there; DocumentRoot itself may still be a link. }
     property FollowLinks: boolean read FFollowLinks write SetFollowLinks default True;
-    /// The file '/' - the Domain's own URL - answers with: index.html unless
-    /// told otherwise. Only that URL; a folder below it is not given one. With
-    /// no such file in the root, '/' is answered as before - by the server's
-    /// status page. A form does not keep an empty value, which comes back as
-    /// index.html: to serve no index page, leave the file out of the root
+    { The file '/' - the Domain's own URL - answers with: index.html unless
+      told otherwise. Only that URL; a folder below it is not given one. With
+      no such file in the root, '/' is answered as before - by the server's
+      status page. A form does not keep an empty value, which comes back as
+      index.html: to serve no index page, leave the file out of the root. }
     property IndexFile: StringRAL read FIndexFile write SetIndexFile stored IsIndexFileStored;
-    /// The largest file served, in bytes; a bigger one is answered as if it
-    /// were not there. Zero (the default) is no limit. A file goes out read
-    /// from the disk as it is sent, so its size only weighs on memory when it
-    /// is compressed or ciphered on the way
+    { The largest file served, in bytes; a bigger one is answered as if it
+      were not there. Zero (the default) is no limit. A file goes out read
+      from the disk as it is sent, so its size only weighs on memory when it
+      is compressed or ciphered on the way. }
     property MaxFileSize: Int64RAL read FMaxFileSize write FMaxFileSize default 0;
     property Routes;
-    /// Serve 'page.css.br' or 'page.css.gz', when one is beside 'page.css' and
-    /// the client takes that coding, instead of compressing 'page.css' on every
-    /// request: the compression is done once, when the site is built, at the
-    /// highest level. Brotli needs no compressor linked in for this. Off by
-    /// default
+    { Serve 'page.css.br' or 'page.css.gz', when one is beside 'page.css' and
+      the client takes that coding, instead of compressing 'page.css' on every
+      request: the compression is done once, when the site is built, at the
+      highest level. Brotli needs no compressor linked in for this. Off by
+      default. }
     property ServePrecompressed: boolean read FServePrecompressed
       write FServePrecompressed default False;
-    /// Milliseconds a session may sit unused before it is dropped, with
-    /// everything it holds; every request of its browser starts the count
-    /// again. Zero keeps sessions for as long as the module lives
+    { Milliseconds a session may sit unused before it is dropped, with
+      everything it holds; every request of its browser starts the count
+      again. Zero keeps sessions for as long as the module lives. }
     property SessionTimeout: IntegerRAL read FSessionTimeout write FSessionTimeout
       default DEFAULTWEBSESSIONTIMEOUT;
-    /// With DocumentRoot empty, serve the executable's own folder - what an
-    /// empty DocumentRoot did until 03/10/2026. That folder usually holds the
-    /// executable, its .ini files and the local database
+    { With DocumentRoot empty, serves the executable's own folder, which usually
+      holds its .ini files and the local database. }
     property UseApplicationPathAsRoot: boolean read FUseAppPathAsRoot
       write SetUseAppPathAsRoot default False;
   end;
@@ -231,9 +240,8 @@ implementation
 uses
   RALMIMETypes, RALStream, RALCompress, RALPlugin, RALContent;
 
-{ The coding the server fixed for its answers, ctNone when it follows the
-  client. Since 1.3 it is TRALCompressPlugin.CompressType, not a property of
-  the server: a server without that plugin compresses nothing on its own }
+{ The coding set for the answers (TRALCompressPlugin.CompressType), ctNone when it
+  follows the client or there is no such plugin. }
 function FixedCompressType(AServer: TRALServer): TRALCompressType;
 var
   vPlugin: TRALServerPlugin;
@@ -247,23 +255,30 @@ begin
 end;
 
 const
+  /// Name of the session cookie.
   RAL_SESSION: StringRAL = 'ral_websession';
   { the resolution cache: how many paths it remembers - a power of two - and
     how many locks guard them }
   cRALPathSlots = 1024;
+  /// Locks of the path cache.
   cRALPathLocks = 16;
 
 type
+  /// One path of the resolution cache.
   TRALWebPathEntry = record
-    { the request's path, as it came }
+    /// The request's path, as it came.
     Key: StringRAL;
-    { where it leads, when the module may serve it, '' when it may not }
+    /// Where it leads, when the module may serve it, '' when it may not.
     Path: string;
+    /// Generation of the settings the entry was resolved under.
     Gen: IntegerRAL;
-    { what the disk said, and when - only kept with FileCacheTime }
+    /// What the disk said, and when - only kept with FileCacheTime.
     Checked: TDateTime;
+    /// The file exists.
     Found: boolean;
+    /// Size in bytes.
     Size: Int64;
+    /// Last write, in Unix seconds (UTC).
     Modified: Int64;
   end;
 
@@ -278,7 +293,9 @@ type
     lock is one of a few, so requests rarely wait on each other }
   TRALWebPathCache = class
   private
+    /// The slots.
     FEntries: array of TRALWebPathEntry;
+    /// Locks of the slots, one per group.
     FLocks: array[0..cRALPathLocks - 1] of TCriticalSection;
   public
     constructor Create;
@@ -286,6 +303,7 @@ type
 
     /// The entry of AKey resolved under the settings of generation AGen
     function Find(const AKey: StringRAL; AGen: IntegerRAL; out AEntry: TRALWebPathEntry): boolean;
+    /// Keeps AEntry in its slot.
     procedure Store(const AEntry: TRALWebPathEntry);
   end;
 
@@ -301,15 +319,20 @@ type
     reused }
   TRALWebSettings = class
   public
+    /// BlockedExtensions, sorted.
     Blocked: TStringList;
+    /// Cache-Control of the extensions without a rule.
     CacheDefault: StringRAL;
     { CacheControl as the requests read it: the extensions with their dot,
       and the directive for every other one }
     CacheRules: TRALWebCacheRules;
-    { the module's Domain, '' for '/' }
+    /// The module's Domain, '' for '/'.
     Domain: StringRAL;
+    /// FollowLinks of the module.
     FollowLinks: boolean;
+    /// Generation of these settings.
     Gen: IntegerRAL;
+    /// IndexFile of the module.
     IndexFile: StringRAL;
     { DocumentRoot made absolute, with the separator at the end - or '' when
       no file is served }
@@ -318,16 +341,16 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    /// The path of the file AQuery asks for, the Domain's own URL turned into
-    /// its index file - or '' when AQuery is outside the Domain
+    { The path of the file AQuery asks for, the Domain's own URL turned into
+      its index file - or '' when AQuery is outside the Domain. }
     function FilePath(const AQuery: StringRAL): StringRAL;
   end;
 
+  /// What the Range header of a request asks: ignore it, a range, or none possible (416).
   TRALRangeResult = (rrIgnore, rrSatisfiable, rrUnsatisfiable);
 
-{ FNV-1a of the path, every byte as it is: two paths are the same only when
-  they are spelled the same. 32-bit arithmetic that wraps on purpose: overflow
-  and range checks are off for this one function }
+{ FNV-1a of the path, every byte as it is; the 32-bit arithmetic wraps,
+  with overflow and range checks off for this function. }
 {$IFOPT Q+}{$DEFINE RALWEB_Q}{$Q-}{$ENDIF}
 {$IFOPT R+}{$DEFINE RALWEB_R}{$R-}{$ENDIF}
 function PathSlot(const AKey: StringRAL): IntegerRAL;
@@ -519,8 +542,7 @@ begin
     Result := vInt >= 0;
     if Result then
     begin
-      { AFree used to be ignored: whoever passed False - the reason it exists -
-        was left holding a freed object }
+      // with AFree False the caller keeps the object
       if AFree then
         FObjects.Objects[vInt].Free;
       FObjects.Delete(vInt);
@@ -564,6 +586,7 @@ begin
 end;
 
 {$IFDEF RALWindows}
+/// GetLongPathNameW of kernel32.
 function RALGetLongPathNameW(lpszShortPath, lpszLongPath: PWideChar;
   cchBuffer: Cardinal): Cardinal; stdcall; external 'kernel32.dll' name 'GetLongPathNameW';
 
@@ -591,9 +614,8 @@ begin
   end;
 end;
 
-{ Whether a segment of APath - between '/' or '\' - ends in a dot or a blank,
-  '.' and '..' aside. Windows drops those when it opens a file, so 'x.ini.'
-  and 'x.ini ' ARE x.ini, under a name whose extension is '.' or none at all }
+{ Whether a segment of APath ends in a dot or a blank ('.' and '..' aside), which
+  Windows drops when it opens the file: 'x.ini.' is x.ini. }
 function HasTrimmedAlias(const APath: string): boolean;
 var
   vInt, vStart, vLen: Integer;
@@ -624,9 +646,7 @@ end;
 function ResolvePath(const ARoot: string; const AKey: StringRAL; ABlocked: TStrings): string;
 {$IFDEF RALWindows}
 const
-  { resolve inside ANY folder on Windows and are not files: a request for
-    one reached TFileStream, at best an empty answer, at worst a thread stuck
-    on a serial port }
+  { device names: on Windows they resolve inside every folder and are not files }
   cDevices: array[0..21] of string = ('CON', 'PRN', 'AUX', 'NUL',
     'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
     'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9');
@@ -644,12 +664,8 @@ begin
   if vFile = '' then
     Exit;
 
-  { the name judged has to be the name opened. No byte below 32 is part of a
-    file served, and NUL is where the system stops reading one: a path an
-    engine decoded into 'x.ini'#0'.txt' would pass the extension check as .txt
-    and open x.ini. On Windows no ':' either: 'x.ini::$DATA' IS x.ini, under
-    a name with no extension - BlockedExtensions served it - and 'C:x' is
-    relative to a drive }
+  { the name judged has to be the name opened: no byte below 32 (NUL ends a name)
+    and, on Windows, no ':' (alternate streams, drive-relative paths) }
   for vInt := 1 to Length(vFile) do
     if (vFile[vInt] < ' ') {$IFDEF RALWindows}or (vFile[vInt] = ':'){$ENDIF} then
       Exit;
@@ -810,6 +826,7 @@ begin
     Result := HTTPDateToUnixSecs(vValue, vSecs) and (vSecs = AModified);
 end;
 
+/// Whether AText is made of decimal digits only (and not empty).
 function IsDigits(const AText: StringRAL): boolean;
 var
   vInt: IntegerRAL;
@@ -914,7 +931,7 @@ begin
   Result := vStar > 0;
 end;
 
-{ Accept-Encoding into the Vary already there - CORS writes Origin into it }
+/// Accept-Encoding into the Vary already there - CORS writes Origin into it.
 procedure AddVary(AResponse: TRALResponse; const AName: StringRAL);
 var
   vParam: TRALParam;
@@ -932,7 +949,7 @@ function TRALWebModule.CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResp
 var
   vFile: TRALWebFile;
 begin
-  { inherited fires OnBeforeAnswer, which this override used to skip }
+  // the ancestor fires OnBeforeAnswer
   Result := inherited CanAnswerRoute(ARequest, AResponse);
   if Result <> nil then
     Exit;
@@ -948,9 +965,7 @@ begin
   end;
 end;
 
-{ a route of this module with no handler serves the file of its path. That
-  handler used to be written into the route itself, on the thread of each
-  request, where another request could read it half written }
+/// Serves the file of the path for a route of this module with no handler.
 procedure TRALWebModule.AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
   WebModFile(ARequest, AResponse);
@@ -1226,9 +1241,8 @@ begin
 
   if vEntry.Path <> '' then
   begin
-    { whether the file is there, how big and how old: one call to the system,
-      where FileExists, the open and the date used to be three - or nothing,
-      inside FileCacheTime. A link is the disk's answer too }
+    { whether the file is there, how big and how old: one call to the system, or
+      none inside FileCacheTime }
     vFresh := (FFileCacheTime > 0) and (vEntry.Checked <> 0) and
               (MilliSecondsBetween(Now, vEntry.Checked) < FFileCacheTime);
     if not vFresh then
@@ -1298,8 +1312,7 @@ begin
   AModified := 0;
   for vInt := Low(cCodings) to High(cCodings) do
   begin
-    { a CompressType fixed on the server is the coding, whatever the client
-      says - the rule of TRALCompressPlugin }
+    // a CompressType set on the server is the coding, whatever the client says
     if FixedCompressType(Server) <> ctNone then
     begin
       if FixedCompressType(Server) <> cTypes[vInt] then
@@ -1427,8 +1440,7 @@ begin
     end;
   end;
 
-  { 5. The body: the file itself, read as it goes out. It used to be read
-       whole into memory - and copied once more - before a byte was sent }
+  // 5. the body: the file itself, read as it goes out
   try
     vStream := TRALFileStream.Create(vSend, vStart, vCount, True);
   except
@@ -1483,9 +1495,8 @@ begin
     AddVary(AResponse, 'Accept-Encoding');
 end;
 
-{ 24 random bytes from the system's generator, in hex: the name IS the
-  credential of the session, and CreateGUID promises no cryptographic quality
-  on every platform. Uniqueness is checked by the caller, under the lock }
+{ A session name: 24 random bytes of the system's generator, in hex (the name is the
+  credential); the caller checks it is unique, under the lock. }
 function TRALWebModule.NewSessionName: StringRAL;
 const
   cHex: array[0..15] of AnsiChar = ('0', '1', '2', '3', '4', '5', '6', '7',
@@ -1614,8 +1625,7 @@ begin
     end;
   until Result <> nil;
 
-  { the cookie only goes out with a new session: it used to go with every
-    answer, and with no attribute at all }
+  // the cookie only goes out with a new session
   Finalize(vCookie);
   FillChar(vCookie, SizeOf(vCookie), 0);
   vCookie.Name := RAL_SESSION;

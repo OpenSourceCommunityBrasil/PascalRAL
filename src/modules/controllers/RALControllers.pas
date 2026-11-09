@@ -1,8 +1,8 @@
-/// Controllers by attributes: a class whose methods carry [GET], [POST]...
-/// becomes routes of a TRALControllerModule, its parameters filled from the
-/// path, the query, the headers and the body, its result written in the format
-/// Accept asks. Only where the compiler has attributes and extended RTTI
-/// (Delphi 2010 and later); the unit compiles empty elsewhere.
+{ Controllers by attributes: a class whose methods carry [GET], [POST]...
+  becomes routes of a TRALControllerModule, its parameters filled from the
+  path, the query, the headers and the body, its result written in the format
+  Accept asks. Only where the compiler has attributes and extended RTTI
+  (Delphi 2010 and later); the unit compiles empty elsewhere. }
 unit RALControllers;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -28,6 +28,7 @@ type
   private
     FPath: string;
   public
+    /// The base path APath of a controller.
     constructor Create(const APath: string);
 
     /// The path; '{id}' and ':id' are both params.
@@ -39,6 +40,7 @@ type
   private
     FPath: string;
   public
+    /// The route of the method, relative to the controller (empty: its base path).
     constructor Create(const APath: string = '');
 
     /// The method the attribute stands for.
@@ -83,6 +85,7 @@ type
   private
     FMediaType: string;
   public
+    /// Answers in AMediaType.
     constructor Create(const AMediaType: string);
 
     /// The media type.
@@ -94,6 +97,7 @@ type
   private
     FName: string;
   public
+    /// The parameter comes from AName (empty: the parameter name).
     constructor Create(const AName: string = '');
 
     /// The name of the value in its source.
@@ -114,6 +118,7 @@ type
   private
     FRoles: string;
   public
+    /// Roles the route asks for, separated by commas.
     constructor Create(const ARoles: string);
 
     /// Roles separated by commas.
@@ -129,6 +134,7 @@ type
   private
     FController: TClass;
     FMethodName: string;
+    /// Media type the method answers in.
     FProduces: string;
   public
     /// Runs the action.
@@ -176,7 +182,9 @@ implementation
 
 {$IF Defined(RALHasAttributes) and Defined(RALHasExtRTTI)}
 var
+  /// RTTI context of the unit.
   gContext: TRttiContext;
+  /// Controller classes registered, by name.
   gControllers: TStringList;
 
 procedure RALRegisterController(AClass: TClass);
@@ -209,6 +217,7 @@ begin
   end;
 end;
 
+/// A and B joined by one slash.
 function JoinPath(const A, B: string): string;
 begin
   if A = '' then
@@ -284,6 +293,7 @@ end;
 
 { conversion of text to a parameter's value }
 
+/// AText converted to a value of AType; raises EConvertError when it is not one.
 function TextToValue(const AText: string; AType: TRttiType): TValue;
 var
   vInfo: PTypeInfo;

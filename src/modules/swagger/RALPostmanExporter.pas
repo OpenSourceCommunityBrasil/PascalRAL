@@ -1,3 +1,4 @@
+/// Writes a Postman collection of a server's routes.
 unit RALPostmanExporter;
 
 interface
@@ -8,20 +9,30 @@ uses
   RALMIMETypes;
 
 type
+  /// Builds a Postman collection (v2.1) of a server's routes.
   TRALPostmanExporter = class
   private
     FAllowCORSVerbs: boolean;
   protected
+    /// Authentication of the collection, from the server's.
     function getAuth(AServer: TRALServer): TRALJSONObject;
+    /// The info section.
     function getInfo(AServer: TRALServer): TRALJSONObject;
+    /// One request per route and method.
     function getItems(AServer: TRALServer): TRALJSONArray;
+    /// Variables of the collection: the base URL and the credentials.
     function getVariables(AServer: TRALServer): TRALJSONArray;
+    /// Adds the requests of ARoute to AItem.
     procedure RouteToJSON(AItem: TRALJSONArray; ARoute: TRALBaseRoute; AAuth: TRALAuthServer = nil);
   public
+    /// Writes the collection of AServer to AFileName.
     procedure ExportToFile(AServer: TRALServer; AFileName: TFileName);
+    /// Writes the collection of AServer to AStream.
     procedure ExportToStream(AServer: TRALServer; AStream: TStream); overload;
+    /// The collection of AServer in a new stream the caller frees.
     function ExportToStream(AServer: TRALServer): TStream; overload;
   published
+    /// Lists the OPTIONS methods too.
     property AllowCORSVerbs: boolean read FAllowCORSVerbs write FAllowCORSVerbs;
   end;
 

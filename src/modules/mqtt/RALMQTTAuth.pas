@@ -1,10 +1,10 @@
-/// Authentication for MQTT: HMAC and PBKDF2 over SHA-1, SHA-256 and SHA-512,
-/// SCRAM (RFC 5802, RFC 7677) on both sides of the enhanced authentication of
-/// MQTT 5.0, and the components a client takes its credentials from - fixed,
-/// SCRAM, a token fetched from a server, a token signed on the device, an
-/// Azure shared access signature, or the application's own events. A token
-/// that expires is renewed before the next connection, and one component may
-/// serve many clients: they fetch one token, not one each.
+{ Authentication for MQTT: HMAC and PBKDF2 over SHA-1, SHA-256 and SHA-512,
+  SCRAM (RFC 5802, RFC 7677) on both sides of the enhanced authentication of
+  MQTT 5.0, and the components a client takes its credentials from - fixed,
+  SCRAM, a token fetched from a server, a token signed on the device, an
+  Azure shared access signature, or the application's own events. A token
+  that expires is renewed before the next connection, and one component may
+  serve many clients: they fetch one token, not one each. }
 unit RALMQTTAuth;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -334,7 +334,7 @@ uses
   RALSHA1, RALSHA2_32, RALSHA2_64, RALHashBase, RALBase64, RALTools, RALUrlCoder;
 
 type
-  { the client side of SCRAM }
+  /// The client side of SCRAM.
   TRALMQTTSCRAMClient = class(TRALMQTTAuthExchange)
   private
     FClient: TRALSCRAMClient;
@@ -348,7 +348,7 @@ type
     function Step(const AServerData: TBytes): TBytes; override;
   end;
 
-  { the exchange of TRALMQTTCustomAuth: the events }
+  /// The exchange of TRALMQTTCustomAuth: the events.
   TRALMQTTCustomExchange = class(TRALMQTTAuthExchange)
   private
     FOwner: TRALMQTTCustomAuth;
@@ -593,7 +593,7 @@ begin
     FPassword, '');
 end;
 
-{ token placement shared by the token authenticators }
+/// Token placement shared by the token authenticators.
 procedure PlaceToken(ATokenAs: TRALMQTTTokenAs; const AToken, AUser: StringRAL;
   var AUserName: StringRAL; var AHasUserName: boolean; var APassword: TBytes;
   var AHasPassword: boolean);

@@ -1,9 +1,9 @@
-/// Sugar of the object serializer, where the compiler has extended RTTI and
-/// attributes (Delphi 2010 and later): [JSONName('x')] and [JSONIgnore] on
-/// properties, validation attributes ([Required], [MinLength], [MaxLength],
-/// [Range], [Pattern], [Email]), and records, dynamic arrays and the generic
-/// lists of Generics.Collections through TRALObjectRTTI. Compiles empty
-/// elsewhere.
+{ Sugar of the object serializer, where the compiler has extended RTTI and
+  attributes (Delphi 2010 and later): [JSONName('x')] and [JSONIgnore] on
+  properties, validation attributes ([Required], [MinLength], [MaxLength],
+  [Range], [Pattern], [Email]), and records, dynamic arrays and the generic
+  lists of Generics.Collections through TRALObjectRTTI. Compiles empty
+  elsewhere. }
 unit RALObjectRTTI;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -25,6 +25,7 @@ type
   private
     FName: string;
   public
+    /// The JSON name AName of the property.
     constructor Create(const AName: string);
 
     /// The name.
@@ -42,6 +43,7 @@ type
   private
     FValue: Integer;
   public
+    /// At least AValue characters.
     constructor Create(AValue: Integer);
 
     /// The minimum.
@@ -53,6 +55,7 @@ type
   private
     FValue: Integer;
   public
+    /// At most AValue characters.
     constructor Create(AValue: Integer);
 
     /// The maximum.
@@ -65,6 +68,7 @@ type
     FMax: Double;
     FMin: Double;
   public
+    /// A number from AMin to AMax.
     constructor Create(AMin, AMax: Double);
 
     /// The maximum.
@@ -78,6 +82,7 @@ type
   private
     FPattern: string;
   public
+    /// Text matching the regular expression APattern, whole.
     constructor Create(const APattern: string);
 
     /// The pattern.
@@ -108,8 +113,11 @@ implementation
 
 {$IFDEF RALHasExtRTTI}
 var
+  /// RTTI context of the unit.
   gContext: TRttiContext;
+  /// RTTI properties per class, read once.
   gCache: TStringList;
+  /// Guards gCache.
   gLock: TCriticalSection;
 
 { attributes }
@@ -189,7 +197,7 @@ begin
     AJSONName := StringRAL(Copy(vValue, 2, MaxInt));
 end;
 
-{ the validation hook: the attributes of every property of AObj }
+/// The validation hook: the attributes of every property of AObj.
 procedure AttributeValidation(AObj: TObject; AErrors: TStrings);
 var
   vType: TRttiType;
@@ -276,7 +284,7 @@ begin
   end;
 end;
 
-{ the factory hook: the class's own Create without parameters }
+/// The factory hook: the class's own Create without parameters.
 function RTTIFactory(AClass: TClass): TObject;
 var
   vType: TRttiType;
@@ -296,6 +304,7 @@ end;
 
 { TRALObjectRTTI }
 
+/// Whether AType is a nullable record; AHas and AValue are its fields.
 function IsNullable(AType: TRttiType; out AHas, AValue: TRttiField): boolean;
 begin
   AHas := nil;
@@ -308,6 +317,7 @@ begin
   Result := (AHas <> nil) and (AValue <> nil) and (Length(AType.GetFields) = 2);
 end;
 
+/// Whether AObj is a TList<T> or TObjectList<T>.
 function IsGenericList(AObj: TObject): boolean;
 var
   vName: string;
@@ -316,6 +326,7 @@ begin
   Result := (Pos('TList<', vName) = 1) or (Pos('TObjectList<', vName) = 1);
 end;
 
+/// Writes AValue as JSON with AWriter.
 procedure WriteValue(const AValue: TValue; AWriter: TRALJSONTextWriter;
   AOptions: TRALObjectJSONOptions; ADepth: Integer);
 var
@@ -402,6 +413,7 @@ begin
   end;
 end;
 
+/// The RTTI writer hook: writes AObj through extended RTTI.
 function WriteHook(AObj: TObject; AWriter: TRALJSONTextWriter;
   AOptions: TRALObjectJSONOptions; ADepth: IntegerRAL): boolean;
 var
@@ -439,6 +451,7 @@ begin
   Result := ValueToText(TValue.From<T>(AValue), AOptions);
 end;
 
+/// The value of type ATypeInfo that AJSON holds.
 function ReadValue(AJSON: TRALJSONValue; ATypeInfo: PTypeInfo;
   AOptions: TRALObjectJSONOptions; ADepth: Integer): TValue;
 var
@@ -585,6 +598,7 @@ begin
   end;
 end;
 
+/// The RTTI reader hook: reads AValue into AObj through extended RTTI.
 function ReadHook(AValue: TRALJSONValue; AObj: TObject;
   AOptions: TRALObjectJSONOptions; ADepth: IntegerRAL): boolean;
 var

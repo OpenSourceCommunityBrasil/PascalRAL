@@ -1,5 +1,5 @@
-/// Registers the MQTT and MQTT-SN components and actions in the IDE, with the
-/// verbs "Test connection" (client) and "Test ports" (broker).
+{ Registers the MQTT and MQTT-SN components and actions in the IDE, with the
+  verbs "Test connection" (client) and "Test ports" (broker). }
 unit RALModuleMQTTReg;
 
 {$I ..\..\..\core\PascalRAL.inc}

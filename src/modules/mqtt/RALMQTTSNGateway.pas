@@ -1,7 +1,7 @@
-/// The MQTT-SN gateway of the broker, aggregating: each MQTT-SN client is a
-/// session of the broker itself, with no process apart. UDP, with DTLS when
-/// asked; versions 1.2 and 2.0 (draft) side by side, each client in its own.
-/// Sleeping clients get what waited for them when they wake.
+{ The MQTT-SN gateway of the broker, aggregating: each MQTT-SN client is a
+  session of the broker itself, with no process apart. UDP, with DTLS when
+  asked; versions 1.2 and 2.0 (draft) side by side, each client in its own.
+  Sleeping clients get what waited for them when they wake. }
 unit RALMQTTSNGateway;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -144,7 +144,7 @@ type
   TRALMQTTSNPeerState = (spsNew, spsWillTopic, spsWillMsg, spsAuth, spsActive, spsAsleep,
     spsAwake, spsLost);
 
-  { a transaction from the gateway to a client: one at a time }
+  /// A transaction from the gateway to a client: one at a time.
   TRALMQTTSNOut = class
   public
     Delivery: TRALMQTTBrokerDelivery;
@@ -159,7 +159,7 @@ type
     destructor Destroy; override;
   end;
 
-  { one MQTT-SN client }
+  /// One MQTT-SN client.
   TRALMQTTSNPeer = class
   public
     Address: TRALSocketAddress;

@@ -1,8 +1,8 @@
-/// MQTT-SN, common to its versions: one packet object with every field either
-/// version uses, and the codec interface each version implements
-/// (RALMQTTSNPacket12, RALMQTTSNPacket20). The client and the gateway talk to
-/// the interface, never to a version's bytes, so a change of the 2.0 draft
-/// touches its codec only (D12).
+{ MQTT-SN, common to its versions: one packet object with every field either
+  version uses, and the codec interface each version implements
+  (RALMQTTSNPacket12, RALMQTTSNPacket20). The client and the gateway talk to
+  the interface, never to a version's bytes, so a change of the 2.0 draft
+  touches its codec only (D12). }
 unit RALMQTTSNTypes;
 
 {$I ..\..\core\PascalRAL.inc}

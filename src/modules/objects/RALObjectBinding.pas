@@ -1,7 +1,7 @@
-/// Binding: objects read from the request (body by Content-Type, params by
-/// name), validated by rules, and written into the response by Accept; the
-/// runner of routes with OnReplyObject and the JSON schema of a class for the
-/// API documentation.
+{ Binding: objects read from the request (body by Content-Type, params by
+  name), validated by rules, and written into the response by Accept; the
+  runner of routes with OnReplyObject and the JSON schema of a class for the
+  API documentation. }
 unit RALObjectBinding;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -22,7 +22,7 @@ type
     error to AErrors (Field=message) to refuse. }
   TRALCustomValidation = procedure(AObj: TObject; ARule: TRALValidationRule;
     AErrors: TStrings) of object;
-  { Extra validation of AObj (the attributes of RALObjectRTTI register one). }
+  /// Extra validation of AObj (the attributes of RALObjectRTTI register one).
   TRALObjectValidationHook = procedure(AObj: TObject; AErrors: TStrings);
 
   { How the binding behaves; one global instance (RALObjectSettings), which the
@@ -101,7 +101,9 @@ procedure RALUnregisterValidationHook(AHook: TRALObjectValidationHook);
 implementation
 
 var
+  /// Settings of the binding, shared by every route.
   gSettings: TRALObjectBindingSettings;
+  /// Validation hooks registered.
   gHooks: array of TRALObjectValidationHook;
 
 function RALObjectSettings: TRALObjectBindingSettings;
@@ -283,6 +285,7 @@ end;
 
 { validation }
 
+/// The published property named AField of AObj, or nil.
 function FindProp(AObj: TObject; const AField: StringRAL): PPropInfo;
 var
   vList: PPropList;
@@ -307,7 +310,7 @@ begin
   end;
 end;
 
-{ the value of the property as text, and whether it is empty }
+/// The value of the property as text, and whether it is empty.
 function ValueOf(AObj: TObject; AProp: PPropInfo; out AEmpty: boolean;
   out AIsNumber: boolean; out ANumber: Double): StringRAL;
 var
@@ -359,6 +362,7 @@ begin
   end;
 end;
 
+/// Characters (not bytes) of the UTF-8 AText.
 function CharCount(const AText: StringRAL): IntegerRAL;
 var
   vInt: IntegerRAL;
@@ -370,6 +374,7 @@ begin
       Inc(Result);
 end;
 
+/// Message of ARule when it has none of its own.
 function DefaultMessage(ARule: TRALValidationRule): StringRAL;
 begin
   case ARule.Rule of
@@ -389,6 +394,7 @@ begin
   end;
 end;
 
+/// AText as a number with "." for the decimals.
 function InvFloat(const AText: StringRAL): Double;
 var
   vFmt: TFormatSettings;
@@ -429,7 +435,8 @@ begin
       if vRule.Rule = vrRequired then
         vOk := not vEmpty
       else if vEmpty and not vIsNumber then
-        vOk := True // an empty optional value is not judged; vrRequired says if it must exist
+        // an empty optional value is not judged; vrRequired says if it must exist
+        vOk := True
       else
         case vRule.Rule of
           vrMinLength: vOk := CharCount(vText) >= StrToIntDef(string(vRule.Value), 0);
@@ -517,6 +524,8 @@ begin
   end;
 end;
 
+{ Runs an object route: reads and validates the body, calls the handler, writes the
+  answer. }
 procedure RunObjectRoute(ARoute: TRALBaseRoute; ARequest: TRALRequest;
   AResponse: TRALResponse);
 var
@@ -562,6 +571,7 @@ end;
 
 { schema }
 
+/// Writes the JSON Schema of AClass and ARules with AWriter.
 procedure SchemaOf(AClass: TClass; ARules: TRALValidationRules; AWriter: TRALJSONTextWriter;
   ADepth: IntegerRAL);
 var
@@ -758,6 +768,7 @@ begin
   end;
 end;
 
+/// The schema hook of Swagger: the JSON Schema of the class AClassName.
 function SchemaProvider(const AClassName: StringRAL; ARules: TRALValidationRules): StringRAL;
 var
   vClass: TClass;

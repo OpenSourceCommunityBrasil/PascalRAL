@@ -1,8 +1,8 @@
-/// The journal of the MQTT broker: persistent sessions, their subscriptions,
-/// the messages waiting for them or in flight, and the retained messages,
-/// kept in a file of appended records (each with its CRC) and replayed at
-/// start. Writes are grouped: the broker calls Flush before it acknowledges,
-/// and with SyncWrites the flush reaches the disk (D17).
+{ The journal of the MQTT broker: persistent sessions, their subscriptions,
+  the messages waiting for them or in flight, and the retained messages,
+  kept in a file of appended records (each with its CRC) and replayed at
+  start. Writes are grouped: the broker calls Flush before it acknowledges,
+  and with SyncWrites the flush reaches the disk (D17). }
 unit RALMQTTBrokerStore;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -149,7 +149,7 @@ const
   cMaxRecord = 300 * 1024 * 1024;
 
 type
-  { a record being built }
+  /// A record being built.
   TRALMQTTRecord = class
   private
     FData: TBytes;
@@ -166,7 +166,7 @@ type
     function Bytes: TBytes;
   end;
 
-  { reading a record back }
+  /// Reading a record back.
   TRALMQTTRecordReader = class
   private
     FData: TBytes;

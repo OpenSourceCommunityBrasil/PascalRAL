@@ -1,10 +1,10 @@
-/// The MQTT broker: MQTT 3.1.1 and 5.0 on TCP, TLS, WebSocket and secure
-/// WebSocket, a TRALServer descendant so the security plugins, the
-/// authenticators and RALSelfSigned of the RAL work on it unchanged (D13):
-/// each CONNECT goes through them as a request to an internal route.
-/// Connections are served by a few threads, each waiting with poll() on a
-/// share of them (D11); sessions, subscriptions and retained messages live
-/// under one lock and, by default, in a journal on disk (D17).
+{ The MQTT broker: MQTT 3.1.1 and 5.0 on TCP, TLS, WebSocket and secure
+  WebSocket, a TRALServer descendant so the security plugins, the
+  authenticators and RALSelfSigned of the RAL work on it unchanged (D13):
+  each CONNECT goes through them as a request to an internal route.
+  Connections are served by a few threads, each waiting with poll() on a
+  share of them (D11); sessions, subscriptions and retained messages live
+  under one lock and, by default, in a journal on disk (D17). }
 unit RALMQTTBroker;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -207,7 +207,7 @@ type
     it; ADiscard accepts it without delivering }
   TRALMQTTBrokerPublishEvent = procedure(Sender: TObject; AClient: TRALMQTTBrokerClient;
     AMessage: TRALMQTTBrokerMessage; var AReasonCode: Byte; var ADiscard: boolean) of object;
-  { A client subscribes: AQoS may be lowered; AReasonCode >= 0x80 refuses }
+  /// A client subscribes: AQoS may be lowered; AReasonCode >= 0x80 refuses.
   TRALMQTTBrokerSubscribeEvent = procedure(Sender: TObject; AClient: TRALMQTTBrokerClient;
     const ATopicFilter: StringRAL; var AQoS: TRALMQTTQoS; var AReasonCode: Byte) of object;
   /// Every message routed (from a client or from the broker); only to look at.
@@ -464,7 +464,7 @@ type
     procedure SetPermissions(AValue: TRALMQTTPermissions);
     procedure SetSSL(AValue: TRALMQTTBrokerSSL);
     procedure SetUsers(AValue: TStrings);
-    { inside, under FLock unless said }
+    /// Inside, under FLock unless said.
     procedure StartListeners;
     procedure Stat(AIndex: IntegerRAL; ADelta: Int64RAL = 1);
     procedure StopAll;
@@ -532,7 +532,7 @@ type
     { Counter AIndex: 0 messages received, 1 messages sent, 2 bytes received,
       3 bytes sent, 4 connections accepted, 5 refused, 6 messages dropped }
     function Statistic(AIndex: IntegerRAL): Int64RAL;
-    { For an extension: subscribe ASession to AFilter; the granted QoS or >= 0x80 }
+    /// For an extension: subscribe ASession to AFilter; the granted QoS or >= 0x80.
     function SubscribeSession(ASession: TRALMQTTBrokerSession; const AFilter: StringRAL;
       AQoS: TRALMQTTQoS): Byte;
     { For an extension: takes the messages waiting for ASession, as
@@ -657,7 +657,7 @@ const
   cConnectRoute = 'mqtt/connect';
 
 type
-  { a listening socket and its kind }
+  /// A listening socket and its kind.
   TRALMQTTListener = class
   public
     Kind: IntegerRAL;
@@ -666,7 +666,7 @@ type
     destructor Destroy; override;
   end;
 
-  { a subscription of a session }
+  /// A subscription of a session.
   TRALMQTTBrokerSub = class
   public
     Filter: StringRAL;        // the filter itself
@@ -680,7 +680,7 @@ type
     Text: StringRAL;          // as subscribed ($share/... included)
   end;
 
-  { a shared subscription group: its members, served in turn }
+  /// A shared subscription group: its members, served in turn.
   TRALMQTTShareGroup = class
   public
     Filter: StringRAL;
@@ -692,7 +692,7 @@ type
     destructor Destroy; override;
   end;
 
-  { a message in flight to a session, or waiting in its queue }
+  /// A message in flight to a session, or waiting in its queue.
   TRALMQTTOutMessage = class
   public
     JournalId: Int64RAL;
@@ -708,10 +708,10 @@ type
     destructor Destroy; override;
   end;
 
-  { the internal module whose one route the CONNECTs go through }
+  /// The internal module whose one route the CONNECTs go through.
   TRALMQTTConnectModule = class(TRALModuleRoutes);
 
-  { exchange state of a SCRAM or custom enhanced authentication }
+  /// Exchange state of a SCRAM or custom enhanced authentication.
   TRALMQTTServerAuth = class
   public
     SCRAM: TRALMQTTSCRAMServer;

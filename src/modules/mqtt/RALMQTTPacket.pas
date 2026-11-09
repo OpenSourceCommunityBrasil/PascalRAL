@@ -1,7 +1,7 @@
-/// The MQTT control packets of versions 3.1.1 and 5.0, each one encoded and
-/// decoded in both directions, and the frame reader that cuts a byte stream
-/// into packets. No network and no thread: the client and the broker use the
-/// same code.
+{ The MQTT control packets of versions 3.1.1 and 5.0, each one encoded and
+  decoded in both directions, and the frame reader that cuts a byte stream
+  into packets. No network and no thread: the client and the broker use the
+  same code. }
 unit RALMQTTPacket;
 
 {$I ..\..\core\PascalRAL.inc}

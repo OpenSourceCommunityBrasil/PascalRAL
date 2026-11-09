@@ -1,4 +1,4 @@
-/// WS-Security on the server: an authenticator that checks the UsernameToken of SOAP envelopes.
+/// WS-Security on the server: an authenticator of the UsernameToken of SOAP envelopes.
 unit RALWSSecurityAuth;
 
 {$I ..\..\core\PascalRAL.inc}

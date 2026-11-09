@@ -1,7 +1,7 @@
-/// Topic Names and Topic Filters: validation, matching (section 4.7 of both
-/// standards), shared subscriptions ($share/), and the topic tree the broker
-/// uses to find the subscribers of a message without walking every
-/// subscription.
+{ Topic Names and Topic Filters: validation, matching (section 4.7 of both
+  standards), shared subscriptions ($share/), and the topic tree the broker
+  uses to find the subscribers of a message without walking every
+  subscription. }
 unit RALMQTTTopic;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -181,7 +181,7 @@ begin
     Result := ValidPlainFilter(AFilter);
 end;
 
-{ the levels of a topic or filter: 'a//b' is three, the middle one empty }
+/// The levels of a topic or filter: 'a//b' is three, the middle one empty.
 procedure SplitLevels(const AText: StringRAL; var ALevels: TRALMQTTLevels;
   out ACount: IntegerRAL);
 var

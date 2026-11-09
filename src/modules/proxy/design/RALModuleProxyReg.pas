@@ -1,7 +1,7 @@
-/// Registers the reverse proxy and the load balancer (TRALUpstream,
-/// TRALProxyModule, TRALBalancer) in the IDE, with the verbs "Test servers"
-/// (upstream: asks each server now) and "Test port" (balancer: whether its port
-/// opens and its certificates load).
+{ Registers the reverse proxy and the load balancer (TRALUpstream,
+  TRALProxyModule, TRALBalancer) in the IDE, with the verbs "Test servers"
+  (upstream: asks each server now) and "Test port" (balancer: whether its port
+  opens and its certificates load). }
 unit RALModuleProxyReg;
 
 {$I ..\..\..\core\PascalRAL.inc}

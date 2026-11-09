@@ -1,5 +1,5 @@
-/// The bytes of MQTT-SN 1.2 (IBM, November 2013): every packet of the
-/// specification, both directions, and the forwarder encapsulation.
+{ The bytes of MQTT-SN 1.2 (IBM, November 2013): every packet of the
+  specification, both directions, and the forwarder encapsulation. }
 unit RALMQTTSNPacket12;
 
 {$I ..\..\core\PascalRAL.inc}

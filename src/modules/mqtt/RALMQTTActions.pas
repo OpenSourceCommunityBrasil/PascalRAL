@@ -1,5 +1,5 @@
-/// Actions that connect, disconnect and publish with an MQTT or MQTT-SN client
-/// from a button or a menu, with no code.
+{ Actions that connect, disconnect and publish with an MQTT or MQTT-SN client
+  from a button or a menu, with no code. }
 unit RALMQTTActions;
 
 {$I ..\..\core\PascalRAL.inc}

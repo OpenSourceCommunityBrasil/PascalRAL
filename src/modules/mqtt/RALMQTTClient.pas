@@ -1,11 +1,11 @@
-/// The MQTT client components: TRALMQTTCustomClient, the base shared with the
-/// MQTT-SN client (subscriptions and publications as collections, events,
-/// Mode, SynchronizeEvents, reconnection), and TRALMQTTClient, MQTT 3.1.1 and
-/// 5.0 over TCP, TLS, WebSocket and secure WebSocket, through a proxy when
-/// asked. Everything the standards give a client is here, and the defaults
-/// favour delivery over speed (D17 of the plan): persistent session, session
-/// and offline queue on disk, acknowledgement after the handler, automatic
-/// reconnection.
+{ The MQTT client components: TRALMQTTCustomClient, the base shared with the
+  MQTT-SN client (subscriptions and publications as collections, events,
+  Mode, SynchronizeEvents, reconnection), and TRALMQTTClient, MQTT 3.1.1 and
+  5.0 over TCP, TLS, WebSocket and secure WebSocket, through a proxy when
+  asked. Everything the standards give a client is here, and the defaults
+  favour delivery over speed (D17 of the plan): persistent session, session
+  and offline queue on disk, acknowledgement after the handler, automatic
+  reconnection. }
 unit RALMQTTClient;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -632,7 +632,7 @@ type
     procedure FailWaits(const AMessage: string);
     procedure Handshake(const AURI: TRALMQTTURI);
     procedure MessageDone(AMessage: TRALMQTTStoredMessage; AReasonCode: Byte);
-    { connection, on the client thread }
+    /// Connection, on the client thread.
     function NextBroker(out AURI: TRALMQTTURI): boolean;
     procedure OpenChannel(const AURI: TRALMQTTURI);
     function OpenStore: TRALMQTTSessionStore;
@@ -646,7 +646,7 @@ type
     procedure ReadLoop;
     function ReadPacket(ATimeout: IntegerRAL): TRALMQTTPacket;
     procedure Reauthenticate;
-    { sending }
+    /// Sending.
     procedure SendPacket(APacket: TRALMQTTPacket);
     function SendStored(AMessage: TRALMQTTStoredMessage; ADup: boolean): boolean;
     function SessionKey: StringRAL;
@@ -835,7 +835,7 @@ uses
   RALTools;
 
 type
-  { an item run on the right thread: an event, a delivery }
+  /// An item run on the right thread: an event, a delivery.
   TRALMQTTQueued = class
   private
     FClient: TRALMQTTCustomClient;
@@ -873,7 +873,7 @@ type
     procedure Run; override;
   end;
 
-  { what a delivery remembers for its acknowledgement }
+  /// What a delivery remembers for its acknowledgement.
   TRALMQTTAckInfo = class
   public
     Generation: IntegerRAL;
@@ -881,7 +881,7 @@ type
     QoS: TRALMQTTQoS;
   end;
 
-  { a call waiting for the end of a flow, or for a SUBACK/UNSUBACK }
+  /// A call waiting for the end of a flow, or for a SUBACK/UNSUBACK.
   TRALMQTTWait = class
   public
     Codes: TBytes;
@@ -895,7 +895,7 @@ type
     destructor Destroy; override;
   end;
 
-  { a Request waiting for its answer }
+  /// A Request waiting for its answer.
   TRALMQTTRequestWait = class
   public
     Answer: TRALMQTTMessage;

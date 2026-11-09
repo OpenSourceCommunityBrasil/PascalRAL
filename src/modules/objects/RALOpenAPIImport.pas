@@ -1,8 +1,8 @@
-/// Imports an OpenAPI 3.0/3.1 document (JSON): writes a Pascal unit with one
-/// TRALObject class per schema of components/schemas (published properties,
-/// portable to every compiler RAL supports) and, optionally, a client class
-/// with one method per operation over TRALObjectClient. The command line tool
-/// tools/ralopenapi wraps it.
+{ Imports an OpenAPI 3.0/3.1 document (JSON): writes a Pascal unit with one
+  TRALObject class per schema of components/schemas (published properties,
+  portable to every compiler RAL supports) and, optionally, a client class
+  with one method per operation over TRALObjectClient. The command line tool
+  tools/ralopenapi wraps it. }
 unit RALOpenAPIImport;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -42,6 +42,7 @@ function RALPascalIdent(const AName: string): string;
 implementation
 
 const
+  /// Pascal reserved words, which get a prefix as identifiers.
   cReserved: array[0..64] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class',
     'const', 'constructor', 'destructor', 'div', 'do', 'downto', 'else', 'end', 'except',
     'exports', 'file', 'finalization', 'finally', 'for', 'function', 'goto', 'if',
@@ -87,31 +88,51 @@ begin
 end;
 
 type
+  /// Turns the schemas of an OpenAPI document into Pascal classes.
   TImporter = class
   private
+    /// Class names, in the order they are declared.
     FClasses: TStringList;   // class name -> order
+    /// The OpenAPI document.
     FDoc: TRALJSONObject;
+    /// Schemas already emitted.
     FDone: TStringList;
+    /// List classes to declare.
     FLists: TStringList;     // list classes to declare: TFooList=TFoo
+    /// RALRegisterPropertyName calls to emit.
     FNames: TStringList;     // RALRegisterPropertyName calls
+    /// Options of the import.
     FOptions: TRALOpenAPIImportOptions;
+    /// The unit being written.
     FOut: TStringList;
+    /// components/schemas of the document.
     FSchemas: TRALJSONObject;
 
+    /// Class name of the schema ASchemaName.
     function ClassOf(const ASchemaName: string): string;
+    /// Gathers the properties of ASchema, allOf included.
     procedure CollectProps(ASchema: TRALJSONValue; AProps, ARequired: TStringList;
       out AParent: string);
+    /// Writes the class of the schema AName, its dependencies first.
     procedure EmitClass(const AName: string);
+    /// Whether the schema AName becomes a class.
     function IsClassSchema(const AName: string): boolean;
+    /// Member AName of the JSON object AObj, or nil.
     function Member(AObj: TRALJSONValue; const AName: string): TRALJSONValue;
+    /// Pascal type of a property of ASchema; AOwned names the class it owns.
     function PropType(ASchema: TRALJSONValue; out AOwned: string): string;
+    /// Schema name of the reference ARef.
     function RefName(const ARef: string): string;
+    /// ASchema with its $ref followed.
     function Resolve(ASchema: TRALJSONValue): TRALJSONValue;
+    /// Member AName of AObj as text.
     function Text(AObj: TRALJSONValue; const AName: string): string;
   public
+    /// An importer of ADoc with AOptions.
     constructor Create(ADoc: TRALJSONObject; const AOptions: TRALOpenAPIImportOptions);
     destructor Destroy; override;
 
+    /// The unit text.
     function Run: string;
   end;
 

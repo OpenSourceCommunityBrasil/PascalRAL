@@ -26,6 +26,7 @@ type
     FBody: string;
     FStatus: Integer;
   public
+    /// An error for the HTTP AStatus answered with ABody.
     constructor CreateStatus(AStatus: Integer; const ABody: string);
 
     /// The body of the answer (the problem+json of an error).
@@ -34,11 +35,13 @@ type
     property Status: Integer read FStatus;
   end;
 
-  { The object behind a proxy: every call of the interface becomes a request. }
+  /// The object behind a proxy: every call of the interface becomes a request.
   TRALProxyInvoker = class(TVirtualInterface)
   private
+    /// Client that sends the calls.
     FClient: TRALClient;
 
+    /// Turns a call of the interface into an HTTP request and its answer into Result.
     procedure DoInvoke(Method: TRttiMethod; const Args: TArray<TValue>; out Result: TValue);
   public
     /// An invoker of the interface PIID over AClient.
@@ -68,6 +71,7 @@ begin
   FBody := ABody;
 end;
 
+/// AText encoded for a URL path segment or query value.
 function URLEncode(const AText: string): string;
 const
   cHex = '0123456789ABCDEF';
@@ -88,6 +92,7 @@ begin
   end;
 end;
 
+/// AValue as the text sent in a URL.
 function ValueText(const AValue: TValue): string;
 var
   vFmt: TFormatSettings;
