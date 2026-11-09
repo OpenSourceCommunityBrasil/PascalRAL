@@ -42,9 +42,6 @@ type
   TRALStorageJSON = class(TRALStorage)
   private
     FFormatOptions: TRALJSONFormatOptions;
-  public
-    constructor Create;
-    destructor Destroy; override;
   protected
     function JSONFormatDateTime(AValue: TDateTime): StringRAL;
     /// Puts AValue into the field at AIndex, by that field's RAL type -
@@ -70,6 +67,9 @@ type
     function WriteInt64(AValue: Int64RAL): StringRAL;
     function WriteString(AValue: StringRAL): StringRAL;
     procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
+  public
+    constructor Create;
+    destructor Destroy; override;
   published
     property FormatOptions: TRALJSONFormatOptions read FFormatOptions
       write FFormatOptions;
