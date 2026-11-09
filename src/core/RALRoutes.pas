@@ -274,7 +274,9 @@ type
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetDisplayName: string; override;
+    /// Whether OutputParams goes into the form file: only when it has items.
     function IsOutputParamsStored: Boolean;
+    /// Whether ValidationRules goes into the form file: only when it has items.
     function IsValidationRulesStored: Boolean;
     procedure SetAllowedMethods(const AValue: TRALMethods);
     procedure SetAllowURIParams(const AValue: boolean);
