@@ -66,22 +66,22 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    /// A copy of another message.
-    procedure Assign(ASource: TRALMQTTMessage);
 
-    /// The content as UTF-8 text.
-    function AsString: StringRAL;
     /// The content as bytes (a reference to the message's own).
     function AsBytes: TBytes;
-    /// A new stream with the content; the caller frees it.
-    function AsStream: TStream;
     /// The content parsed as JSON; the caller frees it. nil when it is not JSON.
     function AsJSON: TRALJSONValue;
-    /// Writes the content to AFileName.
-    procedure SaveToFile(const AFileName: string);
+    /// A copy of another message.
+    procedure Assign(ASource: TRALMQTTMessage);
+    /// A new stream with the content; the caller frees it.
+    function AsStream: TStream;
+    /// The content as UTF-8 text.
+    function AsString: StringRAL;
     /// Fills the message (for the clients of other transports, MQTT-SN).
     procedure Fill(const ATopic: StringRAL; const APayload: TBytes; AQoS: TRALMQTTQoS;
       ARetain, ADup: boolean; APacketId: Word);
+    /// Writes the content to AFileName.
+    procedure SaveToFile(const AFileName: string);
 
     /// Content Type (5.0).
     property ContentType: StringRAL read GetContentType;
@@ -194,6 +194,7 @@ type
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
+
     procedure Assign(Source: TPersistent); override;
     /// True when AMessage belongs to this subscription.
     function Matches(AMessage: TRALMQTTMessage): boolean;
@@ -244,6 +245,7 @@ type
     function Add(const ATopicFilter: StringRAL; AQoS: TRALMQTTQoS): TRALMQTTSubscriptionItem; overload;
     /// The subscription of ATopicFilter, or nil.
     function Find(const ATopicFilter: StringRAL): TRALMQTTSubscriptionItem;
+
     property Items[AIndex: IntegerRAL]: TRALMQTTSubscriptionItem read GetItem; default;
   end;
 
@@ -268,6 +270,7 @@ type
   public
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
+
     procedure Assign(Source: TPersistent); override;
     /// Publishes it; the Packet Identifier, or 0 (QoS 0, or queued while offline).
     function Publish: Word; overload;
@@ -303,6 +306,7 @@ type
     function Add: TRALMQTTPublicationItem;
     /// The publication named AName, or nil.
     function Find(const AName: StringRAL): TRALMQTTPublicationItem;
+
     property Items[AIndex: IntegerRAL]: TRALMQTTPublicationItem read GetItem; default;
   end;
 
@@ -323,6 +327,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     procedure Assign(Source: TPersistent); override;
   published
     /// Content Type (5.0).
@@ -356,6 +361,7 @@ type
     FMinDelay: IntegerRAL;
   public
     constructor Create;
+
     procedure Assign(Source: TPersistent); override;
     /// Wait before attempt AAttempt (from 1), with jitter.
     function DelayFor(AAttempt: IntegerRAL): IntegerRAL;
@@ -394,6 +400,7 @@ type
     procedure Assign(Source: TPersistent); override;
     /// Back to the protocol's defaults.
     procedure Clear;
+
     /// Client identifier the broker gave (when ClientID was empty).
     property AssignedClientId: StringRAL read FAssignedClientId;
     /// Authentication Method the broker accepted.
@@ -437,8 +444,8 @@ type
   TRALMQTTCustomClient = class(TRALComponent)
   private
     FActive: boolean;
-    FListeners: TList;
     FAutoReconnect: TRALMQTTReconnect;
+    FListeners: TList;
     FMode: TRALMQTTClientMode;
     FOnConnect: TRALMQTTOnConnect;
     FOnDisconnect: TRALMQTTOnDisconnect;
@@ -459,15 +466,26 @@ type
     procedure SetPublications(AValue: TRALMQTTPublications);
     procedure SetSubscriptions(AValue: TRALMQTTSubscriptions);
   protected
+    /// Raises when Mode refuses publishing.
+    procedure CheckCanPublish;
+    /// Raises when Mode refuses subscribing.
+    procedure CheckCanSubscribe;
+    { Hands AMessage (owned from here on) to the subscriptions and OnMessage;
+      AAfter runs after the handlers (the acknowledgement), with AData }
+    procedure DeliverMessage(AMessage: TRALMQTTMessage; AAfter: TNotifyEvent; AData: TObject);
+    { Runs AItem's Execute on the main thread when events are synchronized, or
+      here; AItem is freed after it runs }
+    procedure Dispatch_(AItem: TObject);
     /// Starts the client (Active True).
     procedure DoStart; virtual; abstract;
     /// Stops the client (Active False).
     procedure DoStop; virtual; abstract;
-    { Runs AItem's Execute on the main thread when events are synchronized, or
-      here; AItem is freed after it runs }
-    procedure Dispatch_(AItem: TObject);
     /// Whether events go to the main thread.
     function EventsOnMainThread: boolean;
+    /// A queued item ran; it leaves the pending list.
+    procedure ItemDone(AItem: TObject);
+    procedure Loaded; override;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     /// Fires OnConnect (on the right thread).
     procedure NotifyConnect(ASessionPresent: boolean);
     /// Fires OnDisconnect.
@@ -478,25 +496,15 @@ type
     procedure NotifyPublished(APacketId: Word; AReasonCode: Byte);
     /// Fires OnSubscribed.
     procedure NotifySubscribed(const AFilter: StringRAL; AReasonCode: Byte);
-    { Hands AMessage (owned from here on) to the subscriptions and OnMessage;
-      AAfter runs after the handlers (the acknowledgement), with AData }
-    procedure DeliverMessage(AMessage: TRALMQTTMessage; AAfter: TNotifyEvent; AData: TObject);
-    /// A queued item ran; it leaves the pending list.
-    procedure ItemDone(AItem: TObject);
-    procedure Loaded; override;
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    /// Raises when Mode refuses publishing.
-    procedure CheckCanPublish;
-    /// Raises when Mode refuses subscribing.
-    procedure CheckCanSubscribe;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
+    /// AListener hears every message from now on.
+    procedure AddListener(AListener: TRALMQTTMessageListener);
     /// Publishes; see TRALMQTTClient.
     function Publish(const ATopic: StringRAL; const APayload: TBytes; AQoS: TRALMQTTQoS;
       ARetain: boolean; AProperties: TRALMQTTProperties): Word; overload; virtual; abstract;
-    /// AListener hears every message from now on.
-    procedure AddListener(AListener: TRALMQTTMessageListener);
     /// AListener stops hearing.
     procedure RemoveListener(AListener: TRALMQTTMessageListener);
   published
@@ -506,14 +514,6 @@ type
     property AutoReconnect: TRALMQTTReconnect read FAutoReconnect write SetAutoReconnect;
     /// What the client is for.
     property Mode: TRALMQTTClientMode read FMode write FMode default cmBoth;
-    /// Messages set up to publish.
-    property Publications: TRALMQTTPublications read FPublications write SetPublications;
-    /// Subscriptions, subscribed by themselves.
-    property Subscriptions: TRALMQTTSubscriptions read FSubscriptions write SetSubscriptions;
-    { Events on the main thread (True), or on the client's thread (False, for
-      speed or in a service). A console program always gets them on the client's thread }
-    property SynchronizeEvents: boolean read FSynchronizeEvents write FSynchronizeEvents default True;
-
     property OnConnect: TRALMQTTOnConnect read FOnConnect write FOnConnect;
     property OnDisconnect: TRALMQTTOnDisconnect read FOnDisconnect write FOnDisconnect;
     property OnError: TRALMQTTOnError read FOnError write FOnError;
@@ -521,6 +521,13 @@ type
     property OnPublished: TRALMQTTOnPublished read FOnPublished write FOnPublished;
     property OnReconnecting: TRALMQTTOnReconnecting read FOnReconnecting write FOnReconnecting;
     property OnSubscribed: TRALMQTTOnSubscribed read FOnSubscribed write FOnSubscribed;
+    /// Messages set up to publish.
+    property Publications: TRALMQTTPublications read FPublications write SetPublications;
+    /// Subscriptions, subscribed by themselves.
+    property Subscriptions: TRALMQTTSubscriptions read FSubscriptions write SetSubscriptions;
+    { Events on the main thread (True), or on the client's thread (False, for
+      speed or in a service). A console program always gets them on the client's thread }
+    property SynchronizeEvents: boolean read FSynchronizeEvents write FSynchronizeEvents default True;
   end;
 
   TRALMQTTClientThread = class;
@@ -533,18 +540,21 @@ type
     FAckMode: TRALMQTTAckMode;
     FAliasIn: TRALMQTTAliasIn;
     FAliasOut: TRALMQTTAliasOut;
+    /// Packet Identifiers of the SUBSCRIBEs of SubscribeAll, and their items.
+    FAllSubIds: TList;
+    FAllSubItems: TList;
+    FAuthentication: TRALMQTTAuthenticator;
+    FAuthExchange: TRALMQTTAuthExchange;
     /// The CONNECT went out and no CONNACK came yet.
     FAwaitingConnack: boolean;
-    FAuthExchange: TRALMQTTAuthExchange;
-    FAuthentication: TRALMQTTAuthenticator;
     FBrokerIndex: IntegerRAL;
     FBrokerURL: StringRAL;
     FBrokerURLs: TStrings;
     FChannel: TRALChannel;
     FCleanStart: boolean;
     FClientID: StringRAL;
-    FConnected: boolean;
     FConnectDone: TEvent;
+    FConnected: boolean;
     FConnectError: string;
     FConnectReason: Byte;
     FConnectTimeout: IntegerRAL;
@@ -556,17 +566,6 @@ type
     FHost: StringRAL;
     FIds: TRALMQTTPacketIds;
     FInflight: IntegerRAL;
-    { how many QoS 1/2 messages may be on the wire now: the broker's Receive
-      Maximum, halved after each connection that dropped soon after it
-      started, grown by one with each acknowledgement - a link that keeps
-      breaking still moves forward instead of resending the same window }
-    FWindow: IntegerRAL;
-    /// The last connection lasted less than 5 s.
-    FShortLived: boolean;
-    { the Receive Maximum announced (5.0): ReceiveMaximum, halved after each
-      connection that dropped soon, so a broker that resends all it had in
-      flight sends less at once on a link that keeps breaking }
-    FReceiveWindow: IntegerRAL;
     FIOLock: TCriticalSection;
     FKeepAlive: Word;
     FKeepAliveMS: Int64RAL;
@@ -583,15 +582,21 @@ type
     FProtocolVersion: TRALMQTTVersion;
     FProxy: TRALMQTTProxy;
     FReceiveMaximum: Word;
+    { the Receive Maximum announced (5.0): ReceiveMaximum, halved after each
+      connection that dropped soon, so a broker that resends all it had in
+      flight sends less at once on a link that keeps breaking }
+    FReceiveWindow: IntegerRAL;
     FRedirect: StringRAL;
     FRequestProblemInfo: boolean;
     FRequestResponseInfo: boolean;
-    FRequestTopic: StringRAL;
     FRequests: TList;
+    FRequestTopic: StringRAL;
     FServerInfo: TRALMQTTServerInfo;
     FSessionExpiry: Cardinal;
     FSessionFolder: StringRAL;
     FSessionStore: TRALMQTTSessionStoreKind;
+    /// The last connection lasted less than 5 s.
+    FShortLived: boolean;
     FSSL: TRALMQTTSSL;
     FStateLock: TCriticalSection;
     FStopping: boolean;
@@ -606,15 +611,45 @@ type
     FVersionFallback: boolean;
     FVersionInUse: TRALMQTTVersion;
     FWaits: TList;
-    /// Packet Identifiers of the SUBSCRIBEs of SubscribeAll, and their items.
-    FAllSubIds: TList;
-    FAllSubItems: TList;
     FWebSocketHeaders: TStrings;
     FWebSocketPath: StringRAL;
     FWill: TRALMQTTWillSettings;
+    { how many QoS 1/2 messages may be on the wire now: the broker's Receive
+      Maximum, halved after each connection that dropped soon after it
+      started, grown by one with each acknowledgement - a link that keeps
+      breaking still moves forward instead of resending the same window }
+    FWindow: IntegerRAL;
     FWriteBuffer: TRALMQTTWriter;
     FWriteTimeout: IntegerRAL;
 
+    procedure AckReceived(ASender: TObject);
+    procedure AfterConnect(AConnack: TRALMQTTConnackPacket; const AURI: TRALMQTTURI);
+    function BuildConnect: TRALMQTTConnectPacket;
+    /// Forgets the SUBSCRIBEs of SubscribeAll still unanswered.
+    procedure ClearAllSubs;
+    procedure CloseChannel;
+    procedure DropConnection(AReasonCode: Byte; const AReason: StringRAL);
+    procedure FailWaits(const AMessage: string);
+    procedure Handshake(const AURI: TRALMQTTURI);
+    procedure MessageDone(AMessage: TRALMQTTStoredMessage; AReasonCode: Byte);
+    { connection, on the client thread }
+    function NextBroker(out AURI: TRALMQTTURI): boolean;
+    procedure OpenChannel(const AURI: TRALMQTTURI);
+    function OpenStore: TRALMQTTSessionStore;
+    procedure ProcessAck(APacket: TRALMQTTAckPacket);
+    procedure ProcessAuth(APacket: TRALMQTTAuthPacket);
+    procedure ProcessPacket(APacket: TRALMQTTPacket);
+    procedure ProcessPublish(APacket: TRALMQTTPublishPacket);
+    procedure ProcessSuback(APacket: TRALMQTTSubackPacket; AUnsub: boolean);
+    function PublishPacket(APacket: TRALMQTTPublishPacket; out ASeq: Int64RAL): Word;
+    procedure Pump;
+    procedure ReadLoop;
+    function ReadPacket(ATimeout: IntegerRAL): TRALMQTTPacket;
+    procedure Reauthenticate;
+    { sending }
+    procedure SendPacket(APacket: TRALMQTTPacket);
+    function SendStored(AMessage: TRALMQTTStoredMessage; ADup: boolean): boolean;
+    function SessionKey: StringRAL;
     procedure SetAuthentication(AValue: TRALMQTTAuthenticator);
     procedure SetBrokerURL(const AValue: StringRAL);
     procedure SetBrokerURLs(AValue: TStrings);
@@ -623,38 +658,8 @@ type
     procedure SetUserProperties(AValue: TStrings);
     procedure SetWebSocketHeaders(AValue: TStrings);
     procedure SetWill(AValue: TRALMQTTWillSettings);
-
-    { connection, on the client thread }
-    function NextBroker(out AURI: TRALMQTTURI): boolean;
-    procedure OpenChannel(const AURI: TRALMQTTURI);
-    procedure CloseChannel;
-    function BuildConnect: TRALMQTTConnectPacket;
-    procedure Handshake(const AURI: TRALMQTTURI);
-    procedure AfterConnect(AConnack: TRALMQTTConnackPacket; const AURI: TRALMQTTURI);
-    procedure ReadLoop;
-    function ReadPacket(ATimeout: IntegerRAL): TRALMQTTPacket;
-    procedure DropConnection(AReasonCode: Byte; const AReason: StringRAL);
-    procedure ProcessPacket(APacket: TRALMQTTPacket);
-    procedure ProcessPublish(APacket: TRALMQTTPublishPacket);
-    procedure ProcessAck(APacket: TRALMQTTAckPacket);
-    procedure ProcessSuback(APacket: TRALMQTTSubackPacket; AUnsub: boolean);
-    procedure ProcessAuth(APacket: TRALMQTTAuthPacket);
-    procedure SubscribeAll;
-    /// Forgets the SUBSCRIBEs of SubscribeAll still unanswered.
-    procedure ClearAllSubs;
-    procedure Reauthenticate;
-
-    { sending }
-    procedure SendPacket(APacket: TRALMQTTPacket);
-    procedure Pump;
-    function SendStored(AMessage: TRALMQTTStoredMessage; ADup: boolean): boolean;
-    procedure MessageDone(AMessage: TRALMQTTStoredMessage; AReasonCode: Byte);
-    procedure AckReceived(ASender: TObject);
     procedure SignalWaits(ASeq: Int64RAL; APacketId: Word; AReasonCode: Byte; ASubscribe: boolean);
-    procedure FailWaits(const AMessage: string);
-    function OpenStore: TRALMQTTSessionStore;
-    function SessionKey: StringRAL;
-    function PublishPacket(APacket: TRALMQTTPublishPacket; out ASeq: Int64RAL): Word;
+    procedure SubscribeAll;
   protected
     procedure DoStart; override;
     procedure DoStop; override;
@@ -669,20 +674,15 @@ type
       ConnectTimeout: raises ERALMQTTError when it failed. With AutoReconnect
       the client keeps trying in the background even after raising }
     procedure Connect;
-    { Ends the connection with a DISCONNECT and stops: AReasonCode 0x04 makes
-      the broker publish the will (5.0); 0 discards it }
-    procedure Disconnect(AReasonCode: Byte = 0);
     /// Connected now.
     function Connected: boolean;
     /// The client identifier in use (the generated or assigned one, when ClientID is empty).
     function CurrentClientID: StringRAL;
-    { Connects a temporary copy of this client's connection settings (the
-      address, transport, TLS, proxy, credentials; a clean session of its
-      own, no subscription) and disconnects it. True when the broker
-      accepted; AReport says the version and what the broker announced, or
-      why it failed. This client is not touched (the IDE's "Test connection") }
-    function TestConnection(out AReport: StringRAL): boolean;
-
+    { Ends the connection with a DISCONNECT and stops: AReasonCode 0x04 makes
+      the broker publish the will (5.0); 0 discards it }
+    procedure Disconnect(AReasonCode: Byte = 0);
+    /// Messages waiting (offline queue and in flight).
+    function PendingCount: IntegerRAL;
     { Publishes. Never waits: QoS 0 goes now (or to the offline queue), QoS 1
       and 2 are stored first and sent within Receive Maximum. Returns the
       Packet Identifier when it went out now, 0 otherwise; OnPublished tells
@@ -704,6 +704,8 @@ type
     function PublishWait(const ATopic: StringRAL; const APayload: TBytes; AQoS: TRALMQTTQoS;
       ARetain: boolean = False; ATimeout: IntegerRAL = 30000;
       AProperties: TRALMQTTProperties = nil): Byte;
+    /// Re-authenticates now (5.0, with an Authentication Method).
+    procedure ReauthenticateNow;
     { Request/response (5.0): publishes with a Response Topic and Correlation
       Data and waits ATimeout ms for the answer, which comes as the result
       (the caller frees it). Raises on timeout }
@@ -717,12 +719,14 @@ type
     /// Subscribes with every option (5.0), AProperties may carry the identifier.
     function Subscribe(const ASubscription: TRALMQTTSubscription; AProperties: TRALMQTTProperties;
       ATimeout: IntegerRAL = 10000): Byte; overload;
+    { Connects a temporary copy of this client's connection settings (the
+      address, transport, TLS, proxy, credentials; a clean session of its
+      own, no subscription) and disconnects it. True when the broker
+      accepted; AReport says the version and what the broker announced, or
+      why it failed. This client is not touched (the IDE's "Test connection") }
+    function TestConnection(out AReport: StringRAL): boolean;
     /// Unsubscribes and waits for the UNSUBACK; the reason code.
     function Unsubscribe(const ATopicFilter: StringRAL; ATimeout: IntegerRAL = 10000): Byte;
-    /// Re-authenticates now (5.0, with an Authentication Method).
-    procedure ReauthenticateNow;
-    /// Messages waiting (offline queue and in flight).
-    function PendingCount: IntegerRAL;
 
     /// What the broker said in the CONNACK.
     property ServerInfo: TRALMQTTServerInfo read FServerInfo;
@@ -756,6 +760,11 @@ type
     property OfflineQueueQoS0: boolean read FOfflineQueueQoS0 write FOfflineQueueQoS0 default True;
     /// Messages kept while offline; Publish raises past it.
     property OfflineQueueSize: IntegerRAL read FOfflineQueueSize write FOfflineQueueSize default 1000;
+    /// Decides on the broker's certificate; see TRALClient.
+    property OnValidateServerCert: TRALOnValidateCert read FOnValidateServerCert
+      write FOnValidateServerCert;
+    /// The broker refused 5.0 and the client went to 3.1.1.
+    property OnVersionFallback: TNotifyEvent read FOnVersionFallback write FOnVersionFallback;
     /// Password, without Authentication.
     property Password: StringRAL read FPassword write FPassword;
     /// Broker port; 0 is the default of the transport.
@@ -801,12 +810,6 @@ type
     { Milliseconds a write may go without progress before the connection is
       given up: a slow link that keeps moving is never cut }
     property WriteTimeout: IntegerRAL read FWriteTimeout write FWriteTimeout default 20000;
-
-    /// Decides on the broker's certificate; see TRALClient.
-    property OnValidateServerCert: TRALOnValidateCert read FOnValidateServerCert
-      write FOnValidateServerCert;
-    /// The broker refused 5.0 and the client went to 3.1.1.
-    property OnVersionFallback: TNotifyEvent read FOnVersionFallback write FOnVersionFallback;
   end;
 
   /// The thread of a TRALMQTTClient.
@@ -818,8 +821,10 @@ type
     procedure Execute; override;
   public
     constructor Create(AClient: TRALMQTTClient);
+
     /// Asked to stop.
     function Stopping: boolean;
+
     /// Run returned (stopped by itself, or asked to).
     property Done: boolean read FDone;
   end;
@@ -835,8 +840,8 @@ type
   private
     FClient: TRALMQTTCustomClient;
   public
-    procedure Run; virtual; abstract;
     procedure Execute;
+    procedure Run; virtual; abstract;
   end;
 
   TRALMQTTQueuedKind = (mqkConnect, mqkDisconnect, mqkError, mqkPublished, mqkSubscribed,
@@ -844,43 +849,48 @@ type
 
   TRALMQTTQueuedEvent = class(TRALMQTTQueued)
   public
-    Kind: TRALMQTTQueuedKind;
-    Flag: boolean;
     Code: Byte;
-    Id: Word;
-    Text: StringRAL;
-    Error: Exception;
     Delay: IntegerRAL;
+    Error: Exception;
+    Flag: boolean;
+    Id: Word;
+    Kind: TRALMQTTQueuedKind;
+    Text: StringRAL;
+
     destructor Destroy; override;
+
     procedure Run; override;
   end;
 
   TRALMQTTQueuedMessage = class(TRALMQTTQueued)
   public
-    Message: TRALMQTTMessage;
     After: TNotifyEvent;
     Data: TObject;
+    Message: TRALMQTTMessage;
+
     destructor Destroy; override;
+
     procedure Run; override;
   end;
 
   { what a delivery remembers for its acknowledgement }
   TRALMQTTAckInfo = class
   public
+    Generation: IntegerRAL;
     PacketId: Word;
     QoS: TRALMQTTQoS;
-    Generation: IntegerRAL;
   end;
 
   { a call waiting for the end of a flow, or for a SUBACK/UNSUBACK }
   TRALMQTTWait = class
   public
-    Seq: Int64RAL;
-    PacketId: Word;
-    Subscribe: boolean;
-    Done: TEvent;
     Codes: TBytes;
+    Done: TEvent;
     Failed: string;
+    PacketId: Word;
+    Seq: Int64RAL;
+    Subscribe: boolean;
+
     constructor Create;
     destructor Destroy; override;
   end;
@@ -888,9 +898,10 @@ type
   { a Request waiting for its answer }
   TRALMQTTRequestWait = class
   public
+    Answer: TRALMQTTMessage;
     Correlation: TBytes;
     Done: TEvent;
-    Answer: TRALMQTTMessage;
+
     constructor Create;
     destructor Destroy; override;
   end;

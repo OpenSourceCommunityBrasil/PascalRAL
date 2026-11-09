@@ -89,28 +89,29 @@ end;
 type
   TImporter = class
   private
-    FDoc: TRALJSONObject;
-    FSchemas: TRALJSONObject;
     FClasses: TStringList;   // class name -> order
+    FDoc: TRALJSONObject;
     FDone: TStringList;
-    FOut: TStringList;
     FLists: TStringList;     // list classes to declare: TFooList=TFoo
     FNames: TStringList;     // RALRegisterPropertyName calls
     FOptions: TRALOpenAPIImportOptions;
+    FOut: TStringList;
+    FSchemas: TRALJSONObject;
 
-    function Member(AObj: TRALJSONValue; const AName: string): TRALJSONValue;
-    function Text(AObj: TRALJSONValue; const AName: string): string;
-    function RefName(const ARef: string): string;
     function ClassOf(const ASchemaName: string): string;
-    function Resolve(ASchema: TRALJSONValue): TRALJSONValue;
-    function PropType(ASchema: TRALJSONValue; out AOwned: string): string;
-    procedure EmitClass(const AName: string);
-    function IsClassSchema(const AName: string): boolean;
     procedure CollectProps(ASchema: TRALJSONValue; AProps, ARequired: TStringList;
       out AParent: string);
+    procedure EmitClass(const AName: string);
+    function IsClassSchema(const AName: string): boolean;
+    function Member(AObj: TRALJSONValue; const AName: string): TRALJSONValue;
+    function PropType(ASchema: TRALJSONValue; out AOwned: string): string;
+    function RefName(const ARef: string): string;
+    function Resolve(ASchema: TRALJSONValue): TRALJSONValue;
+    function Text(AObj: TRALJSONValue; const AName: string): string;
   public
     constructor Create(ADoc: TRALJSONObject; const AOptions: TRALOpenAPIImportOptions);
     destructor Destroy; override;
+
     function Run: string;
   end;
 

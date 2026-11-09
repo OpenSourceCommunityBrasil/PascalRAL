@@ -119,6 +119,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     /// Certificate as PEM text (set by SetTLSCertificate, RALSelfSigned).
     property CertPEM: StringRAL read FCertPEM write FCertPEM;
     /// Key as PEM text.
@@ -197,12 +198,13 @@ type
   public
     /// The servers of the requests no rule claims.
     Default: TRALUpstream;
+    /// A rule has a HostName (TCP mode: the ClientHello is read).
+    NeedSNI: boolean;
     /// The rules, in order.
     Rules: array of TRALBalancerRule;
     /// Every upstream named, once.
     Upstreams: TList;
-    /// A rule has a HostName (TCP mode: the ClientHello is read).
-    NeedSNI: boolean;
+
     constructor Create;
     destructor Destroy; override;
   end;
@@ -248,16 +250,15 @@ type
     FUpstream: TRALUpstream;
     FVia: StringRAL;
 
-    function GetSSL: TRALBalancerSSL;
-    procedure SetRoutes(const AValue: TRALBalancerRoutes);
-    procedure SetSSL(const AValue: TRALBalancerSSL);
-    procedure SetUpstream(const AValue: TRALUpstream);
-
     procedure Accept(ASocket: TRALSocket; ATag: IntegerRAL);
     function BuildRouting: TRALBalancerRouting;
     function FindRule(ARouting: TRALBalancerRouting; const AHost, APath: StringRAL;
       out ARule: TRALBalancerRule): TRALUpstream;
+    function GetSSL: TRALBalancerSSL;
     function NewTLSContext: TRALTLSContext;
+    procedure SetRoutes(const AValue: TRALBalancerRoutes);
+    procedure SetSSL(const AValue: TRALBalancerSSL);
+    procedure SetUpstream(const AValue: TRALUpstream);
     procedure StartListeners;
     procedure StopAll;
     procedure UpstreamsDo(AStart: boolean);
@@ -275,12 +276,14 @@ type
     { The upstream of AHost and APath by the routes (and OnRoute) in force; nil
       when none matches }
     function FindUpstream(const AHost, APath: StringRAL): TRALUpstream;
+    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     { While running, takes Routes, Upstream and SSL (its certificates) as they
       are now: new requests and connections follow them, open ones finish where
       they are. Upstreams no longer named stop their health check and new ones
       start it; none is freed here, as requests in flight may still use it -
       free them after Active := False }
     procedure Reload;
+    function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
     /// The statistics as JSON: connections, requests and every upstream.
     function StatsJSON: StringRAL;
     /// The statistics in the Prometheus text format.
@@ -288,10 +291,7 @@ type
     { Whether Port can be opened now and the certificates (SSL) load, in
       AReport; the IDE's "Test port" }
     function TestPort(out AReport: StringRAL): boolean;
-
     function TLSProvisioning: TRALTLSProvisioning; override;
-    function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
-    function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
 
     /// Connections accepted since it started.
     property AcceptedCount: Int64RAL read FAccepted;
@@ -319,6 +319,10 @@ type
     property MaxHeaderSize: IntegerRAL read FMaxHeaderSize write FMaxHeaderSize default 16384;
     /// HTTP or TCP.
     property Mode: TRALBalancerMode read FMode write FMode default bmHTTP;
+    /// A request (connection) ended.
+    property OnAccess: TRALBalancerAccessEvent read FOnAccess write FOnAccess;
+    /// Picks the upstream of a request.
+    property OnRoute: TRALBalancerRouteEvent read FOnRoute write FOnRoute;
     { Passes the Host the client sent on to the server, instead of the
       server's own host and port }
     property PreserveHost: boolean read FPreserveHost write FPreserveHost default False;
@@ -341,10 +345,6 @@ type
     property Upstream: TRALUpstream read FUpstream write SetUpstream;
     /// A Via header (RFC 9110 7.6.3) with this name, on both sides; empty is none.
     property Via: StringRAL read FVia write FVia;
-    /// A request (connection) ended.
-    property OnAccess: TRALBalancerAccessEvent read FOnAccess write FOnAccess;
-    /// Picks the upstream of a request.
-    property OnRoute: TRALBalancerRouteEvent read FOnRoute write FOnRoute;
   end;
 
 { AEntry as a line of an access log: 'combined' (NGINX's and Apache's:
@@ -418,26 +418,26 @@ type
     FIn: TBuf;
     FOut: TBuf;
     FPeer: TRALBalancerSide;
+    FSent: Int64RAL;
     FShutDone: boolean;
     FShutWhenFlushed: boolean;
     FTLS: TRALTLSChannel;
-    FSent: Int64RAL;
 
+    /// Both directions ended: closes both sides once flushed.
+    procedure CheckBothEnded;
     procedure Closed; override;
+    /// The peer went away.
+    procedure PeerGone; virtual;
+    /// Room in the peer's output for what this side reads.
+    function PeerHasRoom: boolean;
     { reads from the channel into ABuf, at most AMax bytes (MaxInt: as much as
       fits in ACapacity, 0: BufferSize); bytes read, 0 at the end,
       RALSocketWouldBlock when none (or AMax <= 0) }
     function ReadInto(var ABuf: TBuf; AMax: IntegerRAL; ACapacity: IntegerRAL = 0): IntegerRAL;
-    /// Queues AText to this side and tries to write it now.
-    procedure SendText(const AText: StringRAL);
-    /// The peer went away.
-    procedure PeerGone; virtual;
     /// The socket says there is something to read (or TLS holds some).
     function ReadReady: boolean;
-    /// Room in the peer's output for what this side reads.
-    function PeerHasRoom: boolean;
-    /// Both directions ended: closes both sides once flushed.
-    procedure CheckBothEnded;
+    /// Queues AText to this side and tries to write it now.
+    procedure SendText(const AText: StringRAL);
   public
     constructor Create(ABalancer: TRALBalancer; ASocket: TRALSocket);
     destructor Destroy; override;
@@ -453,6 +453,7 @@ type
   private
     FAttempts: IntegerRAL;
     FBackend: TRALBalancerBackend;
+    FBodySent: Int64RAL;
     FClientIP: StringRAL;
     FCloseAfter: boolean;
     FExcluded: TList;
@@ -461,15 +462,16 @@ type
     FHost: StringRAL;
     FIdempotent: boolean;
     FKeepAlive: boolean;
+    FLastTimeout: boolean;
+    FLinger: boolean;
+    FLingered: Int64RAL;
     FMethod: StringRAL;
     FPlugRequest: TRALRequest;
     FReqBodyless: boolean;
     FReqHead: StringRAL;
-    FLastTimeout: boolean;
-    FLinger: boolean;
-    FLingered: Int64RAL;
     FResponseStarted: boolean;
     FRoute: TRALBalancerRule;
+    FSecure: boolean;
     FServer: TRALUpstreamServer;
     FServerTimeout: IntegerRAL;
     FSNI: StringRAL;
@@ -480,11 +482,10 @@ type
     FUpgrade: boolean;
     FUpstream: TRALUpstream;
     FVersion: StringRAL;
-    FBodySent: Int64RAL;
-    FSecure: boolean;
 
     procedure Answer(AStatus: IntegerRAL; const AText: StringRAL = '';
       const AExtra: StringRAL = '');
+    procedure AnswerStats(const AQuery: StringRAL);
     function BuildRequestHead(ATarget: TRALBalancerTarget): StringRAL;
     function Connect: boolean;
     procedure EndExchange(AFailed: boolean);
@@ -495,7 +496,6 @@ type
     procedure PumpBody;
     function RunPlugins(const APath: StringRAL): boolean;
     procedure StartExchange;
-    procedure AnswerStats(const AQuery: StringRAL);
   protected
     procedure Closed; override;
     procedure PeerGone; override;
@@ -506,9 +506,9 @@ type
     { a backend failed before answering: the next server, or the error }
     procedure BackendFailed(ATimeout: boolean);
     function FlushOutput: boolean; override;
+    function PollEvents: Word; override;
     /// The backend finished the answer; AReuse: it may serve another.
     procedure ResponseDone(AReuse: boolean);
-    function PollEvents: Word; override;
     procedure Serve(ANow: Int64RAL); override;
   end;
 
@@ -541,6 +541,7 @@ type
   public
     constructor Create(ABalancer: TRALBalancer; AServer: TRALUpstreamServer;
       ATarget: TRALBalancerTarget);
+
     function FlushOutput: boolean; override;
     function PollEvents: Word; override;
     procedure Serve(ANow: Int64RAL); override;
@@ -550,8 +551,10 @@ type
   TRALBalancerPool = class
   public
     Idle: TList;
+
     constructor Create;
     destructor Destroy; override;
+
     function Take(AServer: TRALUpstreamServer): TRALBalancerBackend;
   end;
 

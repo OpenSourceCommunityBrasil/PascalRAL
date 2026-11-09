@@ -132,11 +132,11 @@ type
     /// Fills AObj from AValue.
     class procedure Read(AValue: TRALJSONValue; AObj: TObject;
       AOptions: TRALObjectJSONOptions); virtual; abstract;
+    /// The JSON schema of the class, for the API documentation ('' = an object).
+    class function Schema: StringRAL; virtual;
     /// Writes AObj as one JSON value.
     class procedure Write(AObj: TObject; AWriter: TRALJSONTextWriter;
       AOptions: TRALObjectJSONOptions); virtual; abstract;
-    /// The JSON schema of the class, for the API documentation ('' = an object).
-    class function Schema: StringRAL; virtual;
   end;
 
   /// A converter class.
@@ -185,13 +185,6 @@ type
   { Objects to JSON and back. AOptions nil = the defaults. }
   TRALObjectJSON = class
   public
-    /// AObj as a parsed JSON object (the caller frees it).
-    class function ToJSON(AObj: TObject; AOptions: TRALObjectJSONOptions = nil): TRALJSONValue;
-    /// AObj as JSON text.
-    class function ToText(AObj: TObject; AOptions: TRALObjectJSONOptions = nil): StringRAL;
-    /// Writes AObj into AWriter (one value).
-    class procedure WriteObject(AObj: TObject; AWriter: TRALJSONTextWriter;
-      AOptions: TRALObjectJSONOptions; ADepth: IntegerRAL = 0);
     /// Fills AObj from a parsed JSON value.
     class procedure FromJSON(AJSON: TRALJSONValue; AObj: TObject;
       AOptions: TRALObjectJSONOptions = nil);
@@ -200,6 +193,13 @@ type
       AOptions: TRALObjectJSONOptions = nil);
     /// APropName as AOptions name it in JSON.
     class function JSONName(const APropName: StringRAL; ANaming: TRALObjectNaming): StringRAL;
+    /// AObj as a parsed JSON object (the caller frees it).
+    class function ToJSON(AObj: TObject; AOptions: TRALObjectJSONOptions = nil): TRALJSONValue;
+    /// AObj as JSON text.
+    class function ToText(AObj: TObject; AOptions: TRALObjectJSONOptions = nil): StringRAL;
+    /// Writes AObj into AWriter (one value).
+    class procedure WriteObject(AObj: TObject; AWriter: TRALJSONTextWriter;
+      AOptions: TRALObjectJSONOptions; ADepth: IntegerRAL = 0);
   end;
 
 { A new object of AClass through the right constructor: TRALObject and

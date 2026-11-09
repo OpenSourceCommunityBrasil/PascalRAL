@@ -33,11 +33,11 @@ type
   private
     FProperties: TRALMQTTProperties;
   protected
-    /// Writes the variable header and the payload.
-    procedure EncodeBody(AWriter: TRALMQTTWriter; AVersion: TRALMQTTVersion); virtual; abstract;
     /// Reads the variable header and the payload; AFlags are the low four bits of the first byte.
     procedure DecodeBody(AReader: TRALMQTTReader; AFlags: Byte;
       AVersion: TRALMQTTVersion); virtual; abstract;
+    /// Writes the variable header and the payload.
+    procedure EncodeBody(AWriter: TRALMQTTWriter; AVersion: TRALMQTTVersion); virtual; abstract;
     /// The low four bits of the first byte.
     function GetFlags: Byte; virtual;
     /// Drops the Reason String and the User Properties, to fit a size limit.
@@ -46,20 +46,20 @@ type
     constructor Create; virtual;
     destructor Destroy; override;
 
-    /// Packet type.
-    class function PacketType: TRALMQTTPacketType; virtual; abstract;
     { Reads one complete packet (fixed header included) of ALength bytes at
       AData, in AVersion; a CONNECT tells its own version. Raises
       ERALMQTTProtocolError when it is malformed }
     class function Decode(AData: Pointer; ALength: IntegerRAL;
       AVersion: TRALMQTTVersion): TRALMQTTPacket;
+    /// The whole packet as bytes.
+    function Encode(AVersion: TRALMQTTVersion): TBytes;
     { Writes the whole packet into AWriter, which is cleared first. With
       AMaxSize above zero and the packet bigger, the optional parts (Reason
       String, User Properties) are left out; False when it still does not fit }
     function EncodeTo(AWriter: TRALMQTTWriter; AVersion: TRALMQTTVersion;
       AMaxSize: Cardinal = 0): boolean;
-    /// The whole packet as bytes.
-    function Encode(AVersion: TRALMQTTVersion): TBytes;
+    /// Packet type.
+    class function PacketType: TRALMQTTPacketType; virtual; abstract;
 
     /// Properties of the packet (5.0 only; ignored on 3.1.1).
     property Properties: TRALMQTTProperties read FProperties;
@@ -77,6 +77,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     /// Copies another will.
     procedure Assign(ASource: TRALMQTTWill);
 
@@ -114,6 +115,7 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
+
     class function PacketType: TRALMQTTPacketType; override;
 
     /// Clean Start (5.0), Clean Session (3.1.1).
@@ -258,11 +260,11 @@ type
     procedure EncodeBody(AWriter: TRALMQTTWriter; AVersion: TRALMQTTVersion); override;
     function GetFlags: Byte; override;
   public
-    class function PacketType: TRALMQTTPacketType; override;
     /// Adds a Topic Filter with its options.
     procedure Add(const ASubscription: TRALMQTTSubscription); overload;
     /// Adds a Topic Filter with the default options.
     procedure Add(const ATopicFilter: StringRAL; AQoS: TRALMQTTQoS); overload;
+    class function PacketType: TRALMQTTPacketType; override;
 
     /// Number of Topic Filters.
     property Count: IntegerRAL read GetCount;
@@ -284,6 +286,7 @@ type
     procedure EncodeBody(AWriter: TRALMQTTWriter; AVersion: TRALMQTTVersion); override;
   public
     class function PacketType: TRALMQTTPacketType; override;
+
     /// Packet Identifier of the request.
     property PacketId: Word read FPacketId write FPacketId;
     /// One reason code per Topic Filter, in order.
@@ -303,7 +306,9 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
+
     class function PacketType: TRALMQTTPacketType; override;
+
     /// Topic Filters, as UTF-8 strings.
     property Filters: TStringList read FFilters;
     /// Packet Identifier.
@@ -382,16 +387,17 @@ type
     FTail: IntegerRAL;
   public
     constructor Create;
+
     /// Appends ALength bytes from AData.
     procedure Feed(const AData; ALength: IntegerRAL);
     { The next complete packet, or False when it has not all arrived yet.
       Raises ERALMQTTProtocolError (Malformed Packet, or Packet too large) }
     function Next(out AData: Pointer; out ALength: IntegerRAL): boolean;
+    /// Bytes buffered that are not a whole packet yet.
+    function Pending: IntegerRAL;
     /// Forgets everything buffered.
     procedure Reset;
 
-    /// Bytes buffered that are not a whole packet yet.
-    function Pending: IntegerRAL;
     /// Largest packet accepted, the fixed header included; 0 is the protocol's limit.
     property MaxPacketSize: Cardinal read FMaxPacketSize write FMaxPacketSize;
   end;

@@ -30,9 +30,10 @@ type
   TRALObjectBindingSettings = class(TPersistent)
   private
     FJSON: TRALObjectJSONOptions;
+    FOnCustomValidation: TRALCustomValidation;
     FUnreadableStatus: IntegerRAL;
     FValidationStatus: IntegerRAL;
-    FOnCustomValidation: TRALCustomValidation;
+
     procedure SetJSON(const AValue: TRALObjectJSONOptions);
   protected
     procedure AssignTo(Dest: TPersistent); override;
@@ -56,16 +57,16 @@ type
     the global settings (RALObjectSettings), so one per application. }
   TRALObjectSettings = class(TRALComponent)
   private
-    function GetSettings: TRALObjectBindingSettings;
     function GetOnCustomValidation: TRALCustomValidation;
-    procedure SetSettings(const AValue: TRALObjectBindingSettings);
+    function GetSettings: TRALObjectBindingSettings;
     procedure SetOnCustomValidation(const AValue: TRALCustomValidation);
+    procedure SetSettings(const AValue: TRALObjectBindingSettings);
   published
-    /// The global settings of the binding.
-    property Settings: TRALObjectBindingSettings read GetSettings write SetSettings;
     /// Called for the vrCustom rules.
     property OnCustomValidation: TRALCustomValidation read GetOnCustomValidation
       write SetOnCustomValidation;
+    /// The global settings of the binding.
+    property Settings: TRALObjectBindingSettings read GetSettings write SetSettings;
   end;
 
 /// The global settings of the binding.

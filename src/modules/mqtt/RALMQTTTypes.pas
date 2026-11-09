@@ -248,6 +248,7 @@ type
   public
     /// AMessage, with AReasonCode as the reason code.
     constructor CreateReason(AReasonCode: Byte; const AMessage: string);
+
     /// Reason code of the failure (see the MQTTRC_ constants).
     property ReasonCode: Byte read FReasonCode;
   end;
@@ -259,9 +260,9 @@ type
     order they came, with repeated names allowed (MQTT 5.0, 3.3.2.3.7) }
   TRALMQTTUserProperties = class(TPersistent)
   private
+    FCount: IntegerRAL;
     FNames: array of StringRAL;
     FValues: array of StringRAL;
-    FCount: IntegerRAL;
 
     function GetName(AIndex: IntegerRAL): StringRAL;
     function GetValue(AIndex: IntegerRAL): StringRAL;
@@ -294,10 +295,10 @@ type
     PUBLISH, so it is a list; the User Property is a list of pairs }
   TRALMQTTProperties = class(TPersistent)
   private
-    FPresent: array[0..MQTTP_Last] of boolean;
-    FInts: array[0..MQTTP_Last] of Cardinal;
-    FStrings: array[0..MQTTP_Last] of StringRAL;
     FBinaries: array[0..MQTTP_Last] of TBytes;
+    FInts: array[0..MQTTP_Last] of Cardinal;
+    FPresent: array[0..MQTTP_Last] of boolean;
+    FStrings: array[0..MQTTP_Last] of StringRAL;
     FSubscriptionIds: array of Cardinal;
     FUserProperties: TRALMQTTUserProperties;
 
@@ -340,12 +341,12 @@ type
     /// Takes the property AId out.
     procedure Remove(AId: Byte);
 
+    /// Assigned Client Identifier.
+    property AssignedClientId: StringRAL index MQTTP_AssignedClientId read GetString write SetString;
     /// Authentication Data.
     property AuthData: TBytes index MQTTP_AuthData read GetBinary write SetBinary;
     /// Authentication Method.
     property AuthMethod: StringRAL index MQTTP_AuthMethod read GetString write SetString;
-    /// Assigned Client Identifier.
-    property AssignedClientId: StringRAL index MQTTP_AssignedClientId read GetString write SetString;
     /// Content Type.
     property ContentType: StringRAL index MQTTP_ContentType read GetString write SetString;
     /// Correlation Data.
@@ -382,10 +383,10 @@ type
     property SharedAvailable: Cardinal index MQTTP_SharedAvailable read GetInt write SetInt;
     /// Subscription Identifier Available.
     property SubIdAvailable: Cardinal index MQTTP_SubIdAvailable read GetInt write SetInt;
-    /// Subscription Identifier at AIndex.
-    property SubscriptionIds[AIndex: IntegerRAL]: Cardinal read GetSubscriptionId;
     /// Number of Subscription Identifiers.
     property SubscriptionIdCount: IntegerRAL read GetSubscriptionIdCount;
+    /// Subscription Identifier at AIndex.
+    property SubscriptionIds[AIndex: IntegerRAL]: Cardinal read GetSubscriptionId;
     /// Topic Alias.
     property TopicAlias: Cardinal index MQTTP_TopicAlias read GetInt write SetInt;
     /// Topic Alias Maximum.
@@ -468,10 +469,10 @@ type
     /// Bytes not read yet.
     function Remaining: IntegerRAL;
 
-    /// Bytes read so far.
-    property Position: IntegerRAL read FPosition write FPosition;
     /// Total bytes.
     property Length: IntegerRAL read FLength;
+    /// Bytes read so far.
+    property Position: IntegerRAL read FPosition write FPosition;
   end;
 
 /// Raises ERALMQTTProtocolError with AReasonCode (Malformed Packet by default).

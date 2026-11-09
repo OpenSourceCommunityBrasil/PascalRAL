@@ -44,42 +44,42 @@ type
     has one, and where it stands }
   TRALMQTTStoredMessage = class
   public
-    /// Order of the message, kept forever: messages are resent in this order.
-    Seq: Int64RAL;
-    /// Packet Identifier; 0 while queued.
-    PacketId: Word;
-    /// QoS of the message.
-    QoS: TRALMQTTQoS;
-    /// Where it stands.
-    State: TRALMQTTStoredState;
     /// The PUBLISH, encoded as 5.0.
     Data: TBytes;
+    /// Packet Identifier; 0 while queued.
+    PacketId: Word;
     /// Run time: in flight before, not sent again on this connection yet.
     Pending: boolean;
+    /// QoS of the message.
+    QoS: TRALMQTTQoS;
+    /// Order of the message, kept forever: messages are resent in this order.
+    Seq: Int64RAL;
+    /// Where it stands.
+    State: TRALMQTTStoredState;
   end;
 
   { The session state of a client, kept in memory. TRALMQTTFileStore keeps the
     same in a file. Thread-safe: every method takes the lock }
   TRALMQTTSessionStore = class
   private
+    FClientID: StringRAL;
     FIncoming: TList;
     FLock: TCriticalSection;
     FMessages: TList;
     FNextSeq: Int64RAL;
-    FClientID: StringRAL;
 
     function FindIndex(ASeq: Int64RAL): IntegerRAL;
   protected
     /// A message was added or changed (the file store writes a record).
     procedure Persist(AMessage: TRALMQTTStoredMessage); virtual;
-    /// A message left (the file store writes a record).
-    procedure PersistRemove(ASeq: Int64RAL); virtual;
-    /// The incoming list changed.
-    procedure PersistIncoming(APacketId: Word; AAdded: boolean); virtual;
-    /// The client identifier changed.
-    procedure PersistClientID; virtual;
     /// The session part was dropped.
     procedure PersistClearSession; virtual;
+    /// The client identifier changed.
+    procedure PersistClientID; virtual;
+    /// The incoming list changed.
+    procedure PersistIncoming(APacketId: Word; AAdded: boolean); virtual;
+    /// A message left (the file store writes a record).
+    procedure PersistRemove(ASeq: Int64RAL); virtual;
     /// Adds a message read back from storage, keeping its Seq.
     procedure Restore(AMessage: TRALMQTTStoredMessage);
   public
@@ -89,41 +89,38 @@ type
     { Adds AMessage (owned from here on) at the end, with the next Seq, and
       stores it before returning }
     procedure Add(AMessage: TRALMQTTStoredMessage);
-    /// Stores the new State and PacketId of AMessage.
-    procedure Update(AMessage: TRALMQTTStoredMessage);
-    /// Removes and frees the message of ASeq.
-    procedure Remove(ASeq: Int64RAL);
-    /// The message with Packet Identifier APacketId in a sent state, or nil.
-    function FindByPacketId(APacketId: Word): TRALMQTTStoredMessage;
-    /// Number of messages.
-    function Count: IntegerRAL;
-    /// Number of messages in AState.
-    function CountState(AState: TRALMQTTStoredState): IntegerRAL;
-    /// Number of messages waiting to go again on this connection.
-    function CountPending: IntegerRAL;
-    /// Message at AIndex, in Seq order.
-    function Get(AIndex: IntegerRAL): TRALMQTTStoredMessage;
+    /// Remembers a received QoS 2 Packet Identifier until its PUBREL.
+    procedure AddIncoming(APacketId: Word);
+    /// Drops everything (clean start with an empty queue too).
+    procedure ClearAll;
     { Session lost (Session Present 0): what was sent and not answered goes
       back to the queue without its identifier, a released QoS 2 message is
       dropped (the broker had it already), the incoming list is emptied }
     procedure ClearSession;
-    /// Drops everything (clean start with an empty queue too).
-    procedure ClearAll;
-
-    /// Remembers a received QoS 2 Packet Identifier until its PUBREL.
-    procedure AddIncoming(APacketId: Word);
-    /// True when APacketId was received and not released yet.
-    function HasIncoming(APacketId: Word): boolean;
-    /// Forgets a received QoS 2 Packet Identifier.
-    procedure RemoveIncoming(APacketId: Word);
-
-    procedure Lock;
-    procedure Unlock;
-
+    /// Number of messages.
+    function Count: IntegerRAL;
+    /// Number of messages waiting to go again on this connection.
+    function CountPending: IntegerRAL;
+    /// Number of messages in AState.
+    function CountState(AState: TRALMQTTStoredState): IntegerRAL;
+    /// The message with Packet Identifier APacketId in a sent state, or nil.
+    function FindByPacketId(APacketId: Word): TRALMQTTStoredMessage;
+    /// Message at AIndex, in Seq order.
+    function Get(AIndex: IntegerRAL): TRALMQTTStoredMessage;
     /// Generated client identifier kept for the next runs; empty when none.
     function GetClientID: StringRAL;
+    /// True when APacketId was received and not released yet.
+    function HasIncoming(APacketId: Word): boolean;
+    procedure Lock;
+    /// Removes and frees the message of ASeq.
+    procedure Remove(ASeq: Int64RAL);
+    /// Forgets a received QoS 2 Packet Identifier.
+    procedure RemoveIncoming(APacketId: Word);
     /// Keeps a generated client identifier.
     procedure SetClientID(const AValue: StringRAL);
+    procedure Unlock;
+    /// Stores the new State and PacketId of AMessage.
+    procedure Update(AMessage: TRALMQTTStoredMessage);
   end;
 
   { The session state in a file of appended records. Each change is one
@@ -132,23 +129,23 @@ type
     second client with the same identifier in the same folder is refused }
   TRALMQTTFileStore = class(TRALMQTTSessionStore)
   private
+    FCompacting: boolean;
     FFileName: string;
     FStream: TFileStream;
     FSyncWrites: boolean;
-    FCompacting: boolean;
 
     procedure Append(AKind: Byte; const AData: TBytes);
     procedure Compact;
-    procedure Load;
     /// Bytes the live state takes in a compacted file.
     function LiveSize: Int64RAL;
+    procedure Load;
     function MessageRecord(AMessage: TRALMQTTStoredMessage): TBytes;
   protected
     procedure Persist(AMessage: TRALMQTTStoredMessage); override;
-    procedure PersistRemove(ASeq: Int64RAL); override;
-    procedure PersistIncoming(APacketId: Word; AAdded: boolean); override;
-    procedure PersistClientID; override;
     procedure PersistClearSession; override;
+    procedure PersistClientID; override;
+    procedure PersistIncoming(APacketId: Word; AAdded: boolean); override;
+    procedure PersistRemove(ASeq: Int64RAL); override;
   public
     { Opens (or creates) AFileName and reads it back; raises when another
       process has it open }

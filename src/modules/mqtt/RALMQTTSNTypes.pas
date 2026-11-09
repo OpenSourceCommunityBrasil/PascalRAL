@@ -66,91 +66,91 @@ type
     left at zero or empty }
   TRALMQTTSNPacket = class
   public
-    Kind: TRALMQTTSNKind;
-    /// DUP.
-    Dup: boolean;
-    /// QoS -1, 0, 1 or 2.
-    QoS: ShortInt;
-    /// RETAIN.
-    Retain: boolean;
-    /// Will flag (CONNECT).
-    Will: boolean;
+    /// 2.0: assigned client identifier (CONNACK).
+    AssignedClientID: StringRAL;
+    /// 2.0: authentication data.
+    AuthData: TBytes;
+    /// 2.0: authentication method.
+    AuthMethod: StringRAL;
     /// Clean Session (1.2) / Clean Start (2.0).
     CleanStart: boolean;
-    /// How TopicId or TopicName is to be read.
-    TopicType: TRALMQTTSNTopicType;
+    /// Client identifier.
+    ClientID: StringRAL;
+    /// 2.0: correlation of a request and its answer.
+    CorrelationId: Byte;
+    /// Encapsulation: control byte.
+    Ctrl: Byte;
+    /// Content of PUBLISH, or the will message.
+    Data: TBytes;
+    /// 2.0: messages per awake period.
+    DefaultAwakeMessages: Byte;
+    /// DUP.
+    Dup: boolean;
+    /// 1.2: keep alive of CONNECT, sleep of DISCONNECT, period of ADVERTISE.
+    Duration: Word;
+    /// Gateway address (GWINFO sent by a client).
+    GwAddress: TBytes;
+    /// Gateway id.
+    GwId: Byte;
+    /// 2.0: authentication present.
+    HasAuth: boolean;
+    /// Whether a DISCONNECT carries a duration (1.2) or a session expiry (2.0).
+    HasDuration: boolean;
+    /// 2.0: whether a DISCONNECT carries a reason code.
+    HasReason: boolean;
+    /// Encapsulation: the packet inside, encoded.
+    Inner: TBytes;
+    /// 2.0: keep alive of the CONNECT.
+    KeepAlive: Word;
+    Kind: TRALMQTTSNKind;
+    /// 2.0: largest packet the client takes.
+    MaxPacketSize: Word;
+    /// 2.0: messages left (PINGRESP); -1 absent.
+    MessagesRemaining: IntegerRAL;
+    /// Message / packet identifier.
+    MsgId: Word;
+    /// Encapsulation: wireless node id.
+    NodeId: TBytes;
+    /// 2.0: subscription options.
+    NoLocal: boolean;
+    /// QoS -1, 0, 1 or 2.
+    QoS: ShortInt;
+    /// Radius (SEARCHGW).
+    Radius: Byte;
+    /// 2.0: reason string of DISCONNECT.
+    ReasonString: StringRAL;
+    /// RETAIN.
+    Retain: boolean;
+    RetainAsPublished: boolean;
+    RetainHandling: Byte;
+    /// 2.0: keep the registrations while asleep.
+    RetainRegistrations: boolean;
+    /// Return code (1.2) or reason code (2.0).
+    ReturnCode: Byte;
+    /// 2.0: session expiry.
+    SessionExpiry: Cardinal;
+    /// 2.0: session present (CONNACK).
+    SessionPresent: boolean;
     /// Topic id / alias, or a short name as two bytes.
     TopicId: Word;
     /// Topic name or filter.
     TopicName: StringRAL;
-    /// Message / packet identifier.
-    MsgId: Word;
-    /// Return code (1.2) or reason code (2.0).
-    ReturnCode: Byte;
-    /// 1.2: keep alive of CONNECT, sleep of DISCONNECT, period of ADVERTISE.
-    Duration: Word;
-    /// Whether a DISCONNECT carries a duration (1.2) or a session expiry (2.0).
-    HasDuration: boolean;
-    /// Client identifier.
-    ClientID: StringRAL;
-    /// Gateway id.
-    GwId: Byte;
-    /// Gateway address (GWINFO sent by a client).
-    GwAddress: TBytes;
-    /// Radius (SEARCHGW).
-    Radius: Byte;
-    /// Content of PUBLISH, or the will message.
-    Data: TBytes;
-    /// Will topic (WILLTOPIC, 2.0 CONNECT).
-    WillTopic: StringRAL;
-    /// 2.0 will topic type.
-    WillTopicType: TRALMQTTSNTopicType;
-    /// 2.0 will topic id.
-    WillTopicId: Word;
+    /// How TopicId or TopicName is to be read.
+    TopicType: TRALMQTTSNTopicType;
+    /// Will flag (CONNECT).
+    Will: boolean;
+    /// Will content.
+    WillData: TBytes;
     /// Will QoS.
     WillQoS: Byte;
     /// Will retain.
     WillRetain: boolean;
-    /// Will content.
-    WillData: TBytes;
-    /// 2.0: correlation of a request and its answer.
-    CorrelationId: Byte;
-    /// 2.0: keep alive of the CONNECT.
-    KeepAlive: Word;
-    /// 2.0: session expiry.
-    SessionExpiry: Cardinal;
-    /// 2.0: largest packet the client takes.
-    MaxPacketSize: Word;
-    /// 2.0: messages per awake period.
-    DefaultAwakeMessages: Byte;
-    /// 2.0: authentication present.
-    HasAuth: boolean;
-    /// 2.0: authentication method.
-    AuthMethod: StringRAL;
-    /// 2.0: authentication data.
-    AuthData: TBytes;
-    /// 2.0: session present (CONNACK).
-    SessionPresent: boolean;
-    /// 2.0: assigned client identifier (CONNACK).
-    AssignedClientID: StringRAL;
-    /// 2.0: subscription options.
-    NoLocal: boolean;
-    RetainAsPublished: boolean;
-    RetainHandling: Byte;
-    /// 2.0: messages left (PINGRESP); -1 absent.
-    MessagesRemaining: IntegerRAL;
-    /// 2.0: reason string of DISCONNECT.
-    ReasonString: StringRAL;
-    /// 2.0: keep the registrations while asleep.
-    RetainRegistrations: boolean;
-    /// 2.0: whether a DISCONNECT carries a reason code.
-    HasReason: boolean;
-    /// Encapsulation: control byte.
-    Ctrl: Byte;
-    /// Encapsulation: wireless node id.
-    NodeId: TBytes;
-    /// Encapsulation: the packet inside, encoded.
-    Inner: TBytes;
+    /// Will topic (WILLTOPIC, 2.0 CONNECT).
+    WillTopic: StringRAL;
+    /// 2.0 will topic id.
+    WillTopicId: Word;
+    /// 2.0 will topic type.
+    WillTopicType: TRALMQTTSNTopicType;
 
     constructor Create(AKind: TRALMQTTSNKind);
   end;
@@ -159,12 +159,12 @@ type
     Decode raises ERALMQTTProtocolError on anything malformed }
   TRALMQTTSNCodec = class
   public
-    /// The version.
-    function Version: TRALMQTTSNVersion; virtual; abstract;
-    /// The packet as a datagram.
-    function Encode(APacket: TRALMQTTSNPacket): TBytes; virtual; abstract;
     /// A datagram as a packet; the caller frees it.
     function Decode(const AData: TBytes): TRALMQTTSNPacket; virtual; abstract;
+    /// The packet as a datagram.
+    function Encode(APacket: TRALMQTTSNPacket): TBytes; virtual; abstract;
+    /// The version.
+    function Version: TRALMQTTSNVersion; virtual; abstract;
   end;
 
   /// A codec of a version, made on demand.

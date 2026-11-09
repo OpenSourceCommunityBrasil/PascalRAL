@@ -47,21 +47,20 @@ type
     /// GET only, and public unless RequireAuth is on
     procedure PublishRoute(ARoute: TRALRoute);
     procedure SetDomain(const AValue: StringRAL); override;
+    procedure SetLicense(const AValue: TRALSwaggerLicense);
     procedure SetPostmanFile(const AValue: TFileName);
     procedure SetPostmanTag(AValue: boolean);
     procedure SetRequireAuth(AValue: boolean);
     procedure SetServersUrl(AValue: TStrings);
-    procedure SetSystemDescription(const AValue: TStrings);
     procedure SetSwaggerFile(const AValue: TFileName);
-    procedure SetLicense(const AValue: TRALSwaggerLicense);
-
+    procedure SetSystemDescription(const AValue: TStrings);
     procedure SwaggerCSS(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SwaggerIndex(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SwaggerInitializer(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SwaggerJSON(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure SwaggerPostman(ARequest: TRALRequest; AResponse: TRALResponse);
     /// The same document as swagger.json, in YAML.
     procedure SwaggerYAML(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure SwaggerPostman(ARequest: TRALRequest; AResponse: TRALResponse);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;

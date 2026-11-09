@@ -21,9 +21,9 @@ type
   /// MQTT-SN 1.2.
   TRALMQTTSNCodec12 = class(TRALMQTTSNCodec)
   public
-    function Version: TRALMQTTSNVersion; override;
-    function Encode(APacket: TRALMQTTSNPacket): TBytes; override;
     function Decode(const AData: TBytes): TRALMQTTSNPacket; override;
+    function Encode(APacket: TRALMQTTSNPacket): TBytes; override;
+    function Version: TRALMQTTSNVersion; override;
   end;
 
 implementation

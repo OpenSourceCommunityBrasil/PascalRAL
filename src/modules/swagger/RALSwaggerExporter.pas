@@ -13,16 +13,15 @@ type
 
   TRALSwaggerExporter = class
   private
-    FSwaggerModule: TRALSwaggerModule;
     FSchemas: TStrings;
+    FSwaggerModule: TRALSwaggerModule;
   protected
+    function getComponents(AServer: TRALServer): TRALJSONObject;
     function getInfo(AServer: TRALServer): TRALJSONObject;
+    function getPaths(AServer: TRALServer): TRALJSONObject;
+    function getSecurity(AAuth: TRALAuthServer): TRALJSONObject;
     function getServers(AServer: TRALServer): TRALJSONArray;
     function getTags(AServer: TRALServer): TRALJSONArray;
-    function getPaths(AServer: TRALServer): TRALJSONObject;
-    function getComponents(AServer: TRALServer): TRALJSONObject;
-    function getSecurity(AAuth: TRALAuthServer): TRALJSONObject;
-
     procedure RouteToJSON(AItem: TRALJSONObject; AServer: TRALServer;
                           AModule: TRALModuleRoutes; ARoute: TRALBaseRoute);
   public

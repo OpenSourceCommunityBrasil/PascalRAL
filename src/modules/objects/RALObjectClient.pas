@@ -27,6 +27,7 @@ type
     FLastResponse: TRALResponse;
     FLastText: StringRAL;
     FOptions: TRALObjectJSONOptions;
+
     procedure SetOptions(const AValue: TRALObjectJSONOptions);
   public
     /// A typed client over AClient (not owned).

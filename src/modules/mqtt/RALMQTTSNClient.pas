@@ -41,8 +41,8 @@ type
     FClientID: StringRAL;
     FClosing: boolean;
     FCodec: TRALMQTTSNCodec;
-    FConnected: boolean;
     FConnectDone: TEvent;
+    FConnected: boolean;
     FConnectError: string;
     FConnectTimeout: IntegerRAL;
     FCorrelation: Byte;
@@ -57,8 +57,8 @@ type
     FIds: TRALMQTTPacketIds;
     FIncomingQoS2: TList;
     FKeepAlive: Word;
-    FLastSent: Int64RAL;
     FLastReceived: Int64RAL;
+    FLastSent: Int64RAL;
     FLock: TCriticalSection;
     FMaxPacketSize: Word;
     FOfflineQueueSize: IntegerRAL;
@@ -80,32 +80,31 @@ type
     FVersion: TRALMQTTSNVersion;
     FWill: TRALMQTTWillSettings;
 
+    procedure AckReceived(ASender: TObject);
+    procedure CloseTransport;
+    function DecodeDatagram(const AData: TBytes): TRALMQTTSNPacket;
+    procedure Discover;
+    procedure DropTransactions(const AReason: string);
+    procedure Enqueue(ARequest: TObject; AFront: boolean = False);
+    procedure FinishCurrent(AReply: TRALMQTTSNPacket);
+    procedure HandlePacket(APacket: TRALMQTTSNPacket);
+    procedure HandlePublish(APacket: TRALMQTTSNPacket);
+    procedure Handshake;
+    procedure Loop;
+    function NextCorrelation: Byte;
+    procedure OpenTransport;
+    function ReceiveDatagram(ATimeout: IntegerRAL; out AData: TBytes): boolean;
+    procedure SendPacket(APacket: TRALMQTTSNPacket);
+    procedure SendRaw(const AData: TBytes);
     procedure SetAuthentication(AValue: TRALMQTTAuthenticator);
     procedure SetPredefinedTopics(AValue: TStrings);
     procedure SetSSL(AValue: TRALMQTTSSL);
     procedure SetWill(AValue: TRALMQTTWillSettings);
-
-    function NextCorrelation: Byte;
-    procedure SendPacket(APacket: TRALMQTTSNPacket);
-    procedure SendRaw(const AData: TBytes);
-    function ReceiveDatagram(ATimeout: IntegerRAL; out AData: TBytes): boolean;
-    function DecodeDatagram(const AData: TBytes): TRALMQTTSNPacket;
-    procedure Discover;
-    procedure OpenTransport;
-    procedure CloseTransport;
-    procedure Handshake;
-    procedure Loop;
-    procedure HandlePacket(APacket: TRALMQTTSNPacket);
-    procedure HandlePublish(APacket: TRALMQTTSNPacket);
     procedure StartNext;
-    procedure FinishCurrent(AReply: TRALMQTTSNPacket);
-    procedure Enqueue(ARequest: TObject; AFront: boolean = False);
-    procedure DropTransactions(const AReason: string);
-    procedure AckReceived(ASender: TObject);
+    procedure SubscribeAll;
     function TopicIdFor(const ATopic: StringRAL; out AType: TRALMQTTSNTopicType;
       out AId: Word): boolean;
     function TopicNameOf(AType: TRALMQTTSNTopicType; AId: Word): StringRAL;
-    procedure SubscribeAll;
   protected
     procedure DoStart; override;
     procedure DoStop; override;
@@ -118,16 +117,12 @@ type
 
     /// Connects and waits for the CONNACK, up to ConnectTimeout; raises when it failed.
     procedure Connect;
-    /// Ends the connection with a DISCONNECT and stops.
-    procedure Disconnect;
     /// Connected now (awake or active).
     function Connected: boolean;
-    { Goes to sleep for ADuration seconds (DISCONNECT with a duration): the
-      gateway keeps what comes until the client wakes }
-    procedure Sleep_(ADuration: Word);
-    { Wakes from sleep for a moment (PINGREQ with the client identifier): the
-      gateway sends what it kept, then PINGRESP, and the client sleeps again }
-    procedure Wake;
+    /// Ends the connection with a DISCONNECT and stops.
+    procedure Disconnect;
+    /// Requests waiting (in flight and queued).
+    function PendingCount: IntegerRAL;
     { Publishes. AQoS -1 needs no connection and a predefined or two-character
       topic (2.0 also takes any name); 0, 1 and 2 are queued while offline }
     function Publish(const ATopic: StringRAL; const APayload: TBytes; AQoS: TRALMQTTQoS;
@@ -138,18 +133,22 @@ type
     /// Publishes with QoS -1: no connection, no answer.
     procedure PublishMinusOne(const ATopic: StringRAL; const APayload: TBytes;
       ARetain: boolean = False);
+    /// Registers a topic now; its id.
+    function RegisterTopic(const ATopic: StringRAL; ATimeout: IntegerRAL = 10000): Word;
+    { Goes to sleep for ADuration seconds (DISCONNECT with a duration): the
+      gateway keeps what comes until the client wakes }
+    procedure Sleep_(ADuration: Word);
     { Subscribes now and waits for the SUBACK; the granted QoS or a refusal
       code (1.2: 0x80 + return code) }
     function Subscribe(const ATopicFilter: StringRAL; AQoS: TRALMQTTQoS = mqQoS1;
       ATimeout: IntegerRAL = 10000): Byte;
     /// Unsubscribes and waits for the UNSUBACK.
     procedure Unsubscribe(const ATopicFilter: StringRAL; ATimeout: IntegerRAL = 10000);
-    /// Registers a topic now; its id.
-    function RegisterTopic(const ATopic: StringRAL; ATimeout: IntegerRAL = 10000): Word;
-    /// Requests waiting (in flight and queued).
-    function PendingCount: IntegerRAL;
     /// Sends a will update (1.2: WILLTOPICUPD and WILLMSGUPD) from Will.
     procedure UpdateWill(ATimeout: IntegerRAL = 10000);
+    { Wakes from sleep for a moment (PINGREQ with the client identifier): the
+      gateway sends what it kept, then PINGRESP, and the client sleeps again }
+    procedure Wake;
 
     /// Gateway id found or set.
     property GatewayId: Byte read FGatewayId;
@@ -175,6 +174,11 @@ type
     property MaxPacketSize: Word read FMaxPacketSize write FMaxPacketSize default 0;
     /// Requests kept while offline.
     property OfflineQueueSize: IntegerRAL read FOfflineQueueSize write FOfflineQueueSize default 1000;
+    /// A gateway was found.
+    property OnGateway: TRALMQTTSNOnGateway read FOnGateway write FOnGateway;
+    /// Decides on the gateway's DTLS certificate.
+    property OnValidateServerCert: TRALOnValidateCert read FOnValidateServerCert
+      write FOnValidateServerCert;
     /// Gateway UDP port.
     property Port: IntegerRAL read FPort write FPort default RALMQTTSNPort;
     /// Topics known beforehand by both sides, id=name.
@@ -196,12 +200,6 @@ type
     property SSL: TRALMQTTSSL read FSSL write SetSSL;
     /// The will.
     property Will: TRALMQTTWillSettings read FWill write SetWill;
-
-    /// A gateway was found.
-    property OnGateway: TRALMQTTSNOnGateway read FOnGateway write FOnGateway;
-    /// Decides on the gateway's DTLS certificate.
-    property OnValidateServerCert: TRALOnValidateCert read FOnValidateServerCert
-      write FOnValidateServerCert;
   end;
 
   /// The thread of a TRALMQTTSNClient.
@@ -213,8 +211,10 @@ type
     procedure Execute; override;
   public
     constructor Create(AClient: TRALMQTTSNClient);
+
     /// Asked to stop.
     function Stopping: boolean;
+
     /// Run returned.
     property Done: boolean read FDone;
   end;
@@ -236,24 +236,25 @@ type
   { one request: what to send, the answer it waits for, its retries }
   TRALMQTTSNRequest = class
   public
-    Kind: TRALMQTTSNRequestKind;
-    Topic: StringRAL;
-    Payload: TBytes;
-    QoS: ShortInt;
-    Retain: boolean;
-    MsgId: Word;
-    Packet: TBytes;
-    Expect: TRALMQTTSNKind;
-    Retries: IntegerRAL;
-    NextAt: Int64RAL;
-    Done: TEvent;
-    Code: Byte;
-    TopicId: Word;
-    Failed: string;
-    Released: boolean;
     AutoFree: boolean;
+    Code: Byte;
+    Done: TEvent;
     /// srkDisconnect: seconds to sleep; 0 is the end of the connection.
     Duration: Word;
+    Expect: TRALMQTTSNKind;
+    Failed: string;
+    Kind: TRALMQTTSNRequestKind;
+    MsgId: Word;
+    NextAt: Int64RAL;
+    Packet: TBytes;
+    Payload: TBytes;
+    QoS: ShortInt;
+    Released: boolean;
+    Retain: boolean;
+    Retries: IntegerRAL;
+    Topic: StringRAL;
+    TopicId: Word;
+
     constructor Create;
     destructor Destroy; override;
   end;
@@ -261,9 +262,9 @@ type
   { what a delivery remembers for its acknowledgement }
   TRALMQTTSNAck = class
   public
-    TopicId: Word;
     MsgId: Word;
     QoS: ShortInt;
+    TopicId: Word;
   end;
 
 constructor TRALMQTTSNRequest.Create;

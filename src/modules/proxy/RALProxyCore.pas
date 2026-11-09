@@ -63,9 +63,9 @@ type
     FURL: StringRAL;
     FWeight: IntegerRAL;
 
-    function Upstream: TRALUpstream;
     procedure SetURL(const AValue: StringRAL);
     procedure SetWeight(const AValue: IntegerRAL);
+    function Upstream: TRALUpstream;
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetDisplayName: string; override;
@@ -204,38 +204,38 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    /// Runs one round of the active check now (the thread calls it).
+    procedure CheckHealth;
     { Picks a server for ARequest, leaving out those in AExclude (a TList of
       TRALUpstreamServer; nil for none), and counts it in flight; nil when none
       is available }
     function Choose(ARequest: TRALRequest; AExclude: TList = nil): TRALUpstreamServer;
-    { Picks a server for the key AKey (the client address for lpIPHash, the
-      hashed value for lpConsistentHash), as Choose does }
-    function ChooseKey(const AKey: StringRAL; AExclude: TList = nil): TRALUpstreamServer;
     { As Choose, for a caller that read the request itself (TRALBalancer):
       AStickyValue is the value of the Sticky cookie ('' none), AKey what the
       policy hashes }
     function ChooseFor(const AKey, AStickyValue: StringRAL;
       AExclude: TList = nil): TRALUpstreamServer;
+    { Picks a server for the key AKey (the client address for lpIPHash, the
+      hashed value for lpConsistentHash), as Choose does }
+    function ChooseKey(const AKey: StringRAL; AExclude: TList = nil): TRALUpstreamServer;
     { Gives AServer back: AFailed when it gave no answer (counted by the passive
       check), AError when it answered 5xx (only counted), with the time it took }
     procedure Done(AServer: TRALUpstreamServer; AFailed, AError: boolean;
       AMilliseconds: IntegerRAL);
-    /// Runs one round of the active check now (the thread calls it).
-    procedure CheckHealth;
-    { Asks every server for HealthCheck.Path now, as the active check does,
-      and says in AReport (one line per server) what each answered and in how
-      long; True when all answered below 400. The IDE's "Test servers" }
-    function TestServers(out AReport: StringRAL): boolean;
     /// Starts the active check (when HealthCheck.Enabled).
     procedure StartHealthCheck;
-    /// Stops the active check.
-    procedure StopHealthCheck;
     /// The statistics as JSON: one object per server.
     function StatsJSON: StringRAL;
     /// The statistics in the Prometheus text format, the group named AName.
     function StatsPrometheus(const AName: StringRAL): StringRAL;
     /// The server a sticky cookie names, as Sticky writes it.
     function StickyValue(AServer: TRALUpstreamServer): StringRAL;
+    /// Stops the active check.
+    procedure StopHealthCheck;
+    { Asks every server for HealthCheck.Path now, as the active check does,
+      and says in AReport (one line per server) what each answered and in how
+      long; True when all answered below 400. The IDE's "Test servers" }
+    function TestServers(out AReport: StringRAL): boolean;
   published
     { Milliseconds to connect to a server before trying the next; short, since
       a server that does not answer should cost little. A refused connection
@@ -255,6 +255,8 @@ type
     property HealthCheck: TRALUpstreamHealthCheck read FHealthCheck write SetHealthCheck;
     /// Failures (no answer) that take a server out; 0 never does.
     property MaxFails: IntegerRAL read FMaxFails write FMaxFails default 1;
+    /// A server left or came back.
+    property OnServerChange: TRALUpstreamServerEvent read FOnServerChange write FOnServerChange;
     /// How a server is picked.
     property Policy: TRALUpstreamPolicy read FPolicy write FPolicy default lpRoundRobin;
     /// Milliseconds without data before a call to a server fails.
@@ -263,8 +265,6 @@ type
     property Servers: TRALUpstreamServers read FServers write SetServers;
     /// Sticky sessions by cookie.
     property Sticky: TRALUpstreamSticky read FSticky write SetSticky;
-    /// A server left or came back.
-    property OnServerChange: TRALUpstreamServerEvent read FOnServerChange write FOnServerChange;
   end;
 
 /// Whether AName is a hop-by-hop header, never passed on (RFC 9110 7.6.1).

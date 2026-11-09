@@ -27,6 +27,7 @@ type
     FStatus: Integer;
   public
     constructor CreateStatus(AStatus: Integer; const ABody: string);
+
     /// The body of the answer (the problem+json of an error).
     property Body: string read FBody;
     /// The status; 0 when no answer came.
@@ -37,6 +38,7 @@ type
   TRALProxyInvoker = class(TVirtualInterface)
   private
     FClient: TRALClient;
+
     procedure DoInvoke(Method: TRttiMethod; const Args: TArray<TValue>; out Result: TValue);
   public
     /// An invoker of the interface PIID over AClient.

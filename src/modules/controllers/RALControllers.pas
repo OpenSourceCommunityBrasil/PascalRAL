@@ -29,6 +29,7 @@ type
     FPath: string;
   public
     constructor Create(const APath: string);
+
     /// The path; '{id}' and ':id' are both params.
     property Path: string read FPath;
   end;
@@ -39,8 +40,10 @@ type
     FPath: string;
   public
     constructor Create(const APath: string = '');
+
     /// The method the attribute stands for.
     function Method: TRALMethod; virtual; abstract;
+
     /// The path of the action, after the controller's.
     property Path: string read FPath;
   end;
@@ -81,6 +84,7 @@ type
     FMediaType: string;
   public
     constructor Create(const AMediaType: string);
+
     /// The media type.
     property MediaType: string read FMediaType;
   end;
@@ -91,6 +95,7 @@ type
     FName: string;
   public
     constructor Create(const AName: string = '');
+
     /// The name of the value in its source.
     property Name: string read FName;
   end;
@@ -110,6 +115,7 @@ type
     FRoles: string;
   public
     constructor Create(const ARoles: string);
+
     /// Roles separated by commas.
     property Roles: string read FRoles;
   end;
@@ -128,10 +134,10 @@ type
     /// Runs the action.
     procedure Execute(ARequest: TRALRequest; AResponse: TRALResponse); override;
 
-    /// The controller class.
-    property Controller: TClass read FController;
     /// The method of the action.
     property ActionName: string read FMethodName;
+    /// The controller class.
+    property Controller: TClass read FController;
   end;
 
   { A module whose routes come from controller classes: RegisterController
@@ -141,6 +147,7 @@ type
   TRALControllerModule = class(TRALModuleRoutes)
   private
     FControllers: TStrings;
+
     procedure SetControllers(const AValue: TStrings);
   protected
     procedure Loaded; override;

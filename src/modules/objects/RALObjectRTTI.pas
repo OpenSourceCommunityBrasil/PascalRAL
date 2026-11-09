@@ -26,6 +26,7 @@ type
     FName: string;
   public
     constructor Create(const AName: string);
+
     /// The name.
     property Name: string read FName;
   end;
@@ -42,6 +43,7 @@ type
     FValue: Integer;
   public
     constructor Create(AValue: Integer);
+
     /// The minimum.
     property Value: Integer read FValue;
   end;
@@ -52,6 +54,7 @@ type
     FValue: Integer;
   public
     constructor Create(AValue: Integer);
+
     /// The maximum.
     property Value: Integer read FValue;
   end;
@@ -63,6 +66,7 @@ type
     FMin: Double;
   public
     constructor Create(AMin, AMax: Double);
+
     /// The maximum.
     property Max: Double read FMax;
     /// The minimum.
@@ -75,6 +79,7 @@ type
     FPattern: string;
   public
     constructor Create(const APattern: string);
+
     /// The pattern.
     property Pattern: string read FPattern;
   end;
@@ -87,15 +92,15 @@ type
     properties); a record's public fields are its members. }
   TRALObjectRTTI = class
   public
-    /// AValue as JSON text.
-    class function ToText<T>(const AValue: T; AOptions: TRALObjectJSONOptions = nil): StringRAL;
     /// A T read from AText (a class is created; the caller frees it).
     class function FromText<T>(const AText: StringRAL; AOptions: TRALObjectJSONOptions = nil): T;
     /// AValue as JSON text.
-    class function ValueToText(const AValue: TValue; AOptions: TRALObjectJSONOptions = nil): StringRAL;
+    class function ToText<T>(const AValue: T; AOptions: TRALObjectJSONOptions = nil): StringRAL;
     /// AJSON read into a value of the type ATypeInfo.
     class function ValueFromJSON(AJSON: TRALJSONValue; ATypeInfo: PTypeInfo;
       AOptions: TRALObjectJSONOptions = nil): TValue;
+    /// AValue as JSON text.
+    class function ValueToText(const AValue: TValue; AOptions: TRALObjectJSONOptions = nil): StringRAL;
   end;
 {$ENDIF}
 

@@ -29,14 +29,15 @@ type
   public
     /// Forgets every identifier.
     procedure Clear;
-    /// Frees AId.
-    procedure Release(AId: Word);
-    /// Marks AId as in use (one read back from storage).
-    procedure Reserve(AId: Word);
     /// Whether AId is in use.
     function InUse(AId: Word): boolean;
     /// The next identifier not in use; 0 when all 65 535 are.
     function Next: Word;
+    /// Frees AId.
+    procedure Release(AId: Word);
+    /// Marks AId as in use (one read back from storage).
+    procedure Reserve(AId: Word);
+
     /// Identifiers in use.
     property Count: IntegerRAL read FCount;
   end;
@@ -46,15 +47,16 @@ type
   TRALMQTTAliasOut = class
   private
     FMaximum: IntegerRAL;
+    FTick: Int64RAL;
     FTopics: array of StringRAL;
     FUsed: array of Int64RAL;
-    FTick: Int64RAL;
   public
-    /// Forgets every alias and sets the maximum the receiver accepts.
-    procedure Reset(AMaximum: IntegerRAL);
     { The alias for ATopic: ANew True when the topic must go with it (first
       use of the number); 0 when aliases are off }
     function AliasFor(const ATopic: StringRAL; out ANew: boolean): Word;
+    /// Forgets every alias and sets the maximum the receiver accepts.
+    procedure Reset(AMaximum: IntegerRAL);
+
     /// The maximum in force.
     property Maximum: IntegerRAL read FMaximum;
   end;

@@ -30,9 +30,9 @@ type
     FChildren: TStringList;
     FHash: TRALMQTTTopicNode;
     FItems: TList;
+    FName: StringRAL;
     FParent: TRALMQTTTopicNode;
     FPlus: TRALMQTTTopicNode;
-    FName: StringRAL;
 
     function IsEmpty: boolean;
   public

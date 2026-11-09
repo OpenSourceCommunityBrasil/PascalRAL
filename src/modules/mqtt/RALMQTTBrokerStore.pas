@@ -47,12 +47,12 @@ type
   /// A message of a session in the journal.
   TRALMQTTJournalMessage = class
   public
-    Id: Int64RAL;
     Data: TBytes;
-    QoS: Byte;
-    Retain: boolean;
+    Id: Int64RAL;
     PacketId: Word;
+    QoS: Byte;
     Released: boolean;
+    Retain: boolean;
   end;
 
   /// A session in the journal.
@@ -60,13 +60,15 @@ type
   public
     ClientID: StringRAL;
     Expiry: Cardinal;
-    Version: Byte;
-    /// Filters, with a TRALMQTTJournalSub each.
-    Subs: TStringList;
     /// TRALMQTTJournalMessage, in order.
     Messages: TList;
+    /// Filters, with a TRALMQTTJournalSub each.
+    Subs: TStringList;
+    Version: Byte;
+
     constructor Create;
     destructor Destroy; override;
+
     function FindMessage(AId: Int64RAL): IntegerRAL;
   end;
 
@@ -87,11 +89,11 @@ type
     procedure Append(AKind: Byte; const AData: TBytes);
     procedure Apply(AKind: Byte; const AData: TBytes);
     procedure Compact;
-    procedure Load;
-    function Session(const AClientID: StringRAL; ACreate: boolean): TRALMQTTJournalSession;
     function LiveSize: Int64RAL;
+    procedure Load;
     /// Writes a message of a session again, with its state (compaction).
     procedure RecordMessage(const AClientID: StringRAL; AMessage: TRALMQTTJournalMessage);
+    function Session(const AClientID: StringRAL; ACreate: boolean): TRALMQTTJournalSession;
   public
     /// Opens (or creates) AFileName and replays it; locked against a second broker.
     constructor CreateFile(const AFileName: string; ASyncWrites: boolean);
@@ -99,31 +101,31 @@ type
 
     /// Writes what was recorded since the last flush (to the disk with SyncWrites).
     procedure Flush;
-    /// A persistent session, created or updated.
-    procedure SessionPut(const AClientID: StringRAL; AExpiry: Cardinal; AVersion: TRALMQTTVersion);
-    /// The session is gone.
-    procedure SessionDel(const AClientID: StringRAL);
-    /// A subscription, added or replaced.
-    procedure SubPut(const AClientID, AFilter: StringRAL; AOptions: Byte; ASubId: Cardinal);
-    /// A subscription dropped.
-    procedure SubDel(const AClientID, AFilter: StringRAL);
+    /// Done with it.
+    procedure OutDone(const AClientID: StringRAL; AId: Int64RAL);
     /// A message queued for a session; its journal identifier.
     function OutPut(const AClientID: StringRAL; const AData: TBytes; AQoS: Byte;
       ARetain: boolean): Int64RAL;
-    /// The message went out with APacketId.
-    procedure OutSent(const AClientID: StringRAL; AId: Int64RAL; APacketId: Word);
     /// Its PUBREC came.
     procedure OutReleased(const AClientID: StringRAL; AId: Int64RAL);
-    /// Done with it.
-    procedure OutDone(const AClientID: StringRAL; AId: Int64RAL);
-    /// A retained message, stored or replaced.
-    procedure RetainedPut(const ATopic: StringRAL; const AData: TBytes);
+    /// The message went out with APacketId.
+    procedure OutSent(const AClientID: StringRAL; AId: Int64RAL; APacketId: Word);
     /// A retained message removed.
     procedure RetainedDel(const ATopic: StringRAL);
+    /// A retained message, stored or replaced.
+    procedure RetainedPut(const ATopic: StringRAL; const AData: TBytes);
+    /// The session is gone.
+    procedure SessionDel(const AClientID: StringRAL);
+    /// A persistent session, created or updated.
+    procedure SessionPut(const AClientID: StringRAL; AExpiry: Cardinal; AVersion: TRALMQTTVersion);
     { Copies of the state: TRALMQTTJournalSession objects into ASessions, the
       retained messages (topic, TRALMQTTJournalBytes) into ARetained; the
       caller frees what it gets }
     procedure Snapshot(ASessions: TList; ARetained: TStrings);
+    /// A subscription dropped.
+    procedure SubDel(const AClientID, AFilter: StringRAL);
+    /// A subscription, added or replaced.
+    procedure SubPut(const AClientID, AFilter: StringRAL; AOptions: Byte; ASubId: Cardinal);
 
     /// The file.
     property FileName: string read FFileName;
@@ -152,14 +154,15 @@ type
   private
     FData: TBytes;
     FSize: IntegerRAL;
+
     procedure Need(ACount: IntegerRAL);
   public
     procedure AddByte(AValue: Byte);
-    procedure AddWord(AValue: Word);
+    procedure AddBytes(const AValue: TBytes);
     procedure AddCardinal(AValue: Cardinal);
     procedure AddInt64(AValue: Int64RAL);
     procedure AddString(const AValue: StringRAL);
-    procedure AddBytes(const AValue: TBytes);
+    procedure AddWord(AValue: Word);
     function Bytes: TBytes;
   end;
 
@@ -170,12 +173,13 @@ type
     FPos: IntegerRAL;
   public
     constructor Create(const AData: TBytes);
+
     function ReadByte: Byte;
-    function ReadWord: Word;
     function ReadCardinal: Cardinal;
     function ReadInt64: Int64RAL;
-    function ReadString: StringRAL;
     function ReadRest: TBytes;
+    function ReadString: StringRAL;
+    function ReadWord: Word;
   end;
 
 procedure SyncFile(AStream: TFileStream);

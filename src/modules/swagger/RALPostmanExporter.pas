@@ -12,11 +12,10 @@ type
   private
     FAllowCORSVerbs: boolean;
   protected
-    function getInfo(AServer: TRALServer): TRALJSONObject;
-    function getVariables(AServer: TRALServer): TRALJSONArray;
-    function getItems(AServer: TRALServer): TRALJSONArray;
     function getAuth(AServer: TRALServer): TRALJSONObject;
-
+    function getInfo(AServer: TRALServer): TRALJSONObject;
+    function getItems(AServer: TRALServer): TRALJSONArray;
+    function getVariables(AServer: TRALServer): TRALJSONArray;
     procedure RouteToJSON(AItem: TRALJSONArray; ARoute: TRALBaseRoute; AAuth: TRALAuthServer = nil);
   public
     procedure ExportToFile(AServer: TRALServer; AFileName: TFileName);

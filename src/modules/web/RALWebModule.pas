@@ -62,9 +62,9 @@ type
   TRALWebFile = class
   public
     FileName: string;
-    Size: Int64;
     /// When it was last written, in Unix seconds (UTC)
     Modified: Int64;
+    Size: Int64;
   end;
 
   /// One line of TRALWebModule.CacheControl, as the requests read it
@@ -104,10 +104,14 @@ type
     FSettingsGen: IntegerRAL;
     FSweepLock: TCriticalSection;
     FUseAppPathAsRoot: boolean;
+
     procedure BlockedExtensionsChanged(Sender: TObject);
     procedure CacheControlChanged(Sender: TObject);
     { the Cache-Control a file goes out with, '' for none }
     function CacheControlFor(const AFileName: string): StringRAL;
+    { the session named AName in the list, or nil; touches it. Must run with
+      that list locked }
+    function FindSession(AList: TStringList; const AName: StringRAL): TRALWebSession;
     function GetBlockedExtensions: TStrings;
     function GetCacheControl: TStrings;
     function IsIndexFileStored: boolean;
@@ -130,9 +134,6 @@ type
     { the expired sessions of every list go, at most once a second, and are
       freed with no lock held: what a session keeps may take a while to free }
     procedure SweepSessions;
-    { the session named AName in the list, or nil; touches it. Must run with
-      that list locked }
-    function FindSession(AList: TStringList; const AName: StringRAL): TRALWebSession;
   protected
     procedure CreateSession(ARequest: TRALRequest; AResponse: TRALResponse);
     function GetFileRoute(ARequest: TRALRequest): StringRAL;
@@ -282,6 +283,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     /// The entry of AKey resolved under the settings of generation AGen
     function Find(const AKey: StringRAL; AGen: IntegerRAL; out AEntry: TRALWebPathEntry): boolean;
     procedure Store(const AEntry: TRALWebPathEntry);
@@ -299,21 +301,23 @@ type
     reused }
   TRALWebSettings = class
   public
-    Gen: IntegerRAL;
-    { DocumentRoot made absolute, with the separator at the end - or '' when
-      no file is served }
-    RootPath: string;
     Blocked: TStringList;
+    CacheDefault: StringRAL;
     { CacheControl as the requests read it: the extensions with their dot,
       and the directive for every other one }
     CacheRules: TRALWebCacheRules;
-    CacheDefault: StringRAL;
     { the module's Domain, '' for '/' }
     Domain: StringRAL;
-    IndexFile: StringRAL;
     FollowLinks: boolean;
+    Gen: IntegerRAL;
+    IndexFile: StringRAL;
+    { DocumentRoot made absolute, with the separator at the end - or '' when
+      no file is served }
+    RootPath: string;
+
     constructor Create;
     destructor Destroy; override;
+
     /// The path of the file AQuery asks for, the Domain's own URL turned into
     /// its index file - or '' when AQuery is outside the Domain
     function FilePath(const AQuery: StringRAL): StringRAL;

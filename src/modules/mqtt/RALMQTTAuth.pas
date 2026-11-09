@@ -30,14 +30,14 @@ type
   /// One run of an enhanced authentication (the AUTH exchange), per connection.
   TRALMQTTAuthExchange = class
   public
+    { The server accepted (CONNACK or AUTH 0x00) with AServerData; raises when
+      what the server proves about itself is wrong }
+    procedure Finish(const AServerData: TBytes); virtual;
     /// Authentication Data of the CONNECT (or of an AUTH 0x19 to re-authenticate).
     function Start: TBytes; virtual; abstract;
     { The next answer to the server's challenge (an AUTH 0x18). Raises
       ERALMQTTError to give up }
     function Step(const AServerData: TBytes): TBytes; virtual; abstract;
-    { The server accepted (CONNACK or AUTH 0x00) with AServerData; raises when
-      what the server proves about itself is wrong }
-    procedure Finish(const AServerData: TBytes); virtual;
   end;
 
   { Base of the components a client takes its credentials from, linked by
@@ -56,19 +56,18 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    /// Authentication Method of the enhanced authentication (5.0); empty for none.
+    function AuthMethod: StringRAL; virtual;
     { Fills the user name and password of a CONNECT for AClientID; a flag
       left False sends no field. May wait on the network (a token fetch) }
     procedure Credentials(const AClientID: StringRAL; var AUserName: StringRAL;
       var AHasUserName: boolean; var APassword: TBytes; var AHasPassword: boolean); virtual;
-    /// Authentication Method of the enhanced authentication (5.0); empty for none.
-    function AuthMethod: StringRAL; virtual;
+    procedure Lock;
     /// A new exchange for one connection; nil without enhanced authentication.
     function NewExchange: TRALMQTTAuthExchange; virtual;
     { Milliseconds until the credential should be renewed (its expiry minus
       RenewMargin); -1 when it does not expire }
     function RenewIn: Int64RAL;
-
-    procedure Lock;
     procedure Unlock;
   published
     { Seconds before expiry when a token is renewed: before the next
@@ -104,6 +103,7 @@ type
     FUserName: StringRAL;
   public
     constructor Create(AOwner: TComponent); override;
+
     function AuthMethod: StringRAL; override;
     function NewExchange: TRALMQTTAuthExchange; override;
   published
@@ -140,13 +140,15 @@ type
     procedure SetSource(AValue: TRALAuthClient);
     procedure SetTokenClient(AValue: TRALClient);
   protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     /// The token now, fetching it when missing or about to expire.
     function FetchToken: StringRAL;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
+
     procedure Credentials(const AClientID: StringRAL; var AUserName: StringRAL;
       var AHasUserName: boolean; var APassword: TBytes; var AHasPassword: boolean); override;
+
     /// The token handed out last.
     property Token: StringRAL read FToken;
   published
@@ -184,10 +186,12 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     procedure Credentials(const AClientID: StringRAL; var AUserName: StringRAL;
       var AHasUserName: boolean; var APassword: TBytes; var AHasPassword: boolean); override;
     /// A new token, now.
     function NewToken: StringRAL;
+
     /// The token handed out last.
     property Token: StringRAL read FToken;
   published
@@ -228,6 +232,7 @@ type
     FUserName: StringRAL;
   public
     constructor Create(AOwner: TComponent); override;
+
     procedure Credentials(const AClientID: StringRAL; var AUserName: StringRAL;
       var AHasUserName: boolean; var APassword: TBytes; var AHasPassword: boolean); override;
     /// The signature for AExpiry (Unix seconds).
@@ -285,6 +290,7 @@ type
   TRALMQTTSCRAMServer = class
   private
     FServer: TRALSCRAMServer;
+
     function GetAccepted: boolean;
     function GetDone: boolean;
     function GetUserName: StringRAL;
@@ -292,6 +298,7 @@ type
     /// A server exchange of AMechanism, asking ALookup for users.
     constructor Create(AAlg: TRALMQTTHashAlg; ALookup: TRALMQTTSCRAMLookup);
     destructor Destroy; override;
+
     { Answers the client's AData: the server-first message after the
       client-first, the server-final after the client-final. Raises on a
       malformed message; a wrong password sets Done and leaves Accepted False }
@@ -335,9 +342,10 @@ type
     constructor Create(AAlg: TRALMQTTHashAlg; const AUserName, APassword,
       AClientNonce: StringRAL);
     destructor Destroy; override;
+
+    procedure Finish(const AServerData: TBytes); override;
     function Start: TBytes; override;
     function Step(const AServerData: TBytes): TBytes; override;
-    procedure Finish(const AServerData: TBytes); override;
   end;
 
   { the exchange of TRALMQTTCustomAuth: the events }
@@ -345,11 +353,12 @@ type
   private
     FOwner: TRALMQTTCustomAuth;
     FStep: IntegerRAL;
+
     function Ask(AStep: IntegerRAL; const AData: TBytes): TBytes;
   public
+    procedure Finish(const AServerData: TBytes); override;
     function Start: TBytes; override;
     function Step(const AServerData: TBytes): TBytes; override;
-    procedure Finish(const AServerData: TBytes); override;
   end;
 
 function SCRAMAlg(AAlg: TRALMQTTHashAlg): TRALSCRAMAlg;

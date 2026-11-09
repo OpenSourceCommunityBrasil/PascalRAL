@@ -70,6 +70,13 @@ type
     { Seconds a token stays valid after its wsu:Created; 0 does not check the age
       (nor remember nonces for long: an hour). }
     property MaxAge: IntegerRAL read FMaxAge write FMaxAge default 300;
+    /// Gives the password of a user (see TRALWSSOnGetPassword).
+    property OnGetPassword: TRALWSSOnGetPassword read FOnGetPassword write FOnGetPassword;
+    { Fired after the user was accepted, to fill the roles of ARequest.Identity
+      (route Roles, policies); the name and scheme are already there. }
+    property OnGetRoles: TRALOnGetRoles read FOnGetRoles write FOnGetRoles;
+    /// Decides a text password itself (see TRALWSSOnValidate).
+    property OnValidate: TRALWSSOnValidate read FOnValidate write FOnValidate;
     /// Password of UserName, when OnGetPassword is not assigned.
     property Password: StringRAL read FPassword write FPassword;
     /// Password types accepted.
@@ -84,13 +91,6 @@ type
     property ReplayStore: TRALKeyValueStore read FReplayStore write SetReplayStore;
     /// The one user accepted when OnGetPassword is not assigned.
     property UserName: StringRAL read FUserName write FUserName;
-    /// Gives the password of a user (see TRALWSSOnGetPassword).
-    property OnGetPassword: TRALWSSOnGetPassword read FOnGetPassword write FOnGetPassword;
-    { Fired after the user was accepted, to fill the roles of ARequest.Identity
-      (route Roles, policies); the name and scheme are already there. }
-    property OnGetRoles: TRALOnGetRoles read FOnGetRoles write FOnGetRoles;
-    /// Decides a text password itself (see TRALWSSOnValidate).
-    property OnValidate: TRALWSSOnValidate read FOnValidate write FOnValidate;
   end;
 
 implementation

@@ -52,6 +52,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     procedure BrokerStarting(ABroker: TRALMQTTBroker); override;
     procedure BrokerStopped(ABroker: TRALMQTTBroker); override;
     /// MQTT-SN clients known now (connected, asleep or lost but kept).
@@ -84,53 +85,54 @@ type
   /// The gateway's thread: both sockets, every client, the timers.
   TRALMQTTSNGatewayThread = class(TThread)
   private
-    FGateway: TRALMQTTSNGateway;
     FBroker: TRALMQTTBroker;
-    FPlain: TRALSocket;
-    FSecure: TRALSocket;
-    FWaker: TRALSocket;
-    FWakerAddress: TRALSocketAddress;
-    FWakePending: IntegerRAL;
-    FPeers: TStringList;
     FByClient: TStringList;
     FCodecs: array[TRALMQTTSNVersion] of TRALMQTTSNCodec;
     FDTLSContext: TRALTLSContext;
+    FGateway: TRALMQTTSNGateway;
     FLock: TCriticalSection;
     FNextAdvertise: Int64RAL;
+    FPeers: TStringList;
+    FPlain: TRALSocket;
+    FSecure: TRALSocket;
+    FWakePending: IntegerRAL;
+    FWaker: TRALSocket;
+    FWakerAddress: TRALSocketAddress;
 
-    procedure Receive(ASocket: TRALSocket; ASecure: boolean);
+    procedure Acked(APeer: TObject; APacket: TRALMQTTSNPacket);
+    procedure Anonymous(APacket: TRALMQTTSNPacket);
+    procedure Connect_(APeer: TObject; APacket: TRALMQTTSNPacket);
+    procedure FinishConnect(APeer: TObject);
+    procedure Handle(APeer: TObject; APacket: TRALMQTTSNPacket);
+    procedure Lost(APeer: TObject; APublishWill: boolean);
+    function PeerOf(ASocket: TRALSocket; const AAddress: TRALSocketAddress; ASecure: boolean;
+      ACreate: boolean): TObject;
     procedure Process(ASocket: TRALSocket; const AFrom: TRALSocketAddress; ASecure: boolean;
       APeer: TObject; const AData: TBytes);
-    procedure Handle(APeer: TObject; APacket: TRALMQTTSNPacket);
+    procedure Publish_(APeer: TObject; APacket: TRALMQTTSNPacket);
+    procedure Pump(APeer: TObject);
+    procedure Receive(ASocket: TRALSocket; ASecure: boolean);
+    procedure Reply(APeer: TObject; AKind: TRALMQTTSNKind; AMsgId: Word; ACode: Byte;
+      ATopicId: Word = 0);
+    procedure ReturnPending(APeer: TObject);
     procedure Send(APeer: TObject; APacket: TRALMQTTSNPacket);
     procedure SendTo(ASocket: TRALSocket; const AAddress: TRALSocketAddress;
       APacket: TRALMQTTSNPacket; AVersion: TRALMQTTSNVersion);
-    procedure Connect_(APeer: TObject; APacket: TRALMQTTSNPacket);
-    procedure Reply(APeer: TObject; AKind: TRALMQTTSNKind; AMsgId: Word; ACode: Byte;
-      ATopicId: Word = 0);
-    procedure FinishConnect(APeer: TObject);
-    procedure Publish_(APeer: TObject; APacket: TRALMQTTSNPacket);
-    procedure Anonymous(APacket: TRALMQTTSNPacket);
     procedure Subscribe_(APeer: TObject; APacket: TRALMQTTSNPacket);
-    procedure Pump(APeer: TObject);
-    procedure Acked(APeer: TObject; APacket: TRALMQTTSNPacket);
-    procedure Lost(APeer: TObject; APublishWill: boolean);
-    procedure ReturnPending(APeer: TObject);
     procedure Timers;
-    procedure WakeSession(Sender: TObject);
-    function PeerOf(ASocket: TRALSocket; const AAddress: TRALSocketAddress; ASecure: boolean;
-      ACreate: boolean): TObject;
     function TopicOf(APeer: TObject; AType: TRALMQTTSNTopicType; AId: Word;
       const AName: StringRAL): StringRAL;
+    procedure WakeSession(Sender: TObject);
   protected
     procedure Execute; override;
   public
     constructor Create(AGateway: TRALMQTTSNGateway);
     destructor Destroy; override;
-    /// Wakes the poll.
-    procedure Wake;
+
     /// Clients known.
     function Count: IntegerRAL;
+    /// Wakes the poll.
+    procedure Wake;
   end;
 
 implementation
@@ -146,13 +148,14 @@ type
   TRALMQTTSNOut = class
   public
     Delivery: TRALMQTTBrokerDelivery;
-    Packet: TBytes;
     Expect: TRALMQTTSNKind;
     MsgId: Word;
-    TopicId: Word;
-    Retries: IntegerRAL;
     NextAt: Int64RAL;
+    Packet: TBytes;
     Registering: boolean;
+    Retries: IntegerRAL;
+    TopicId: Word;
+
     destructor Destroy; override;
   end;
 
@@ -160,37 +163,39 @@ type
   TRALMQTTSNPeer = class
   public
     Address: TRALSocketAddress;
-    Key: string;
-    Socket: TRALSocket;
-    Secure: boolean;
-    DTLS: TRALDTLSSession;
-    Version: TRALMQTTSNVersion;
-    ClientID: StringRAL;
-    Session: TRALMQTTBrokerSession;
-    State: TRALMQTTSNPeerState;
+    AuthFinal: TBytes;
+    AuthMethod: StringRAL;
     CleanStart: boolean;
-    KeepAliveMS: Int64RAL;
-    SleepMS: Int64RAL;
-    LastReceived: Int64RAL;
+    ClientID: StringRAL;
+    Correlation: Byte;
+    Current: TRALMQTTSNOut;
+    DTLS: TRALDTLSSession;
     Expiry: Cardinal;
-    WillTopic: StringRAL;
-    WillQoS: Byte;
-    WillRetain: boolean;
-    WillData: TBytes;
     HasWill: boolean;
-    Topics: TStringList;
-    NextTopicId: Word;
     Ids: TRALMQTTPacketIds;
     Incoming: TList;
-    Queue: TList;
-    Current: TRALMQTTSNOut;
-    Correlation: Byte;
-    SCRAM: TRALMQTTSCRAMServer;
-    AuthMethod: StringRAL;
-    AuthFinal: TBytes;
+    KeepAliveMS: Int64RAL;
+    Key: string;
+    LastReceived: Int64RAL;
     MaxPacket: Word;
+    NextTopicId: Word;
+    Queue: TList;
+    SCRAM: TRALMQTTSCRAMServer;
+    Secure: boolean;
+    Session: TRALMQTTBrokerSession;
+    SleepMS: Int64RAL;
+    Socket: TRALSocket;
+    State: TRALMQTTSNPeerState;
+    Topics: TStringList;
+    Version: TRALMQTTSNVersion;
+    WillData: TBytes;
+    WillQoS: Byte;
+    WillRetain: boolean;
+    WillTopic: StringRAL;
+
     constructor Create;
     destructor Destroy; override;
+
     /// The id of a topic name for this client, made when new.
     function IdOf(const AName: StringRAL; out ANew: boolean): Word;
     /// The name of a normal topic id, or ''.

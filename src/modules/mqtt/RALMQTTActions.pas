@@ -36,11 +36,11 @@ type
 
     procedure SetClient(const AValue: TRALMQTTCustomClient);
   protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     /// Does the action; called by Execute when there is no OnExecute.
     procedure Act; virtual; abstract;
     /// Whether the action can be done now.
     function CanAct: boolean; virtual;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
 

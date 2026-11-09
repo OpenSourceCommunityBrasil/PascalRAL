@@ -32,6 +32,7 @@ type
     /// The error AMessage at AFileName, ALine, AColumn.
     constructor CreateAt(const AFileName: string; ALine, AColumn: IntegerRAL;
       const AMessage: string);
+
     /// Column (from 1) of the token at fault.
     property Column: IntegerRAL read FColumn;
     /// File the token came from ('' for text).
@@ -57,13 +58,13 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    /// The balancer listening on APort, or nil.
+    function BalancerOf(APort: IntegerRAL): TRALBalancer;
     /// Reads AFileName (and what it includes); raises ERALProxyConfigError.
     procedure LoadFromFile(const AFileName: string);
     { Reads AText; AFileName names it in the errors and is the folder of
       relative includes }
     procedure LoadFromText(const AText: string; const AFileName: string = '');
-    /// The balancer listening on APort, or nil.
-    function BalancerOf(APort: IntegerRAL): TRALBalancer;
     /// The upstream named AName, or nil.
     function UpstreamOf(const AName: string): TRALUpstream;
 
@@ -105,21 +106,21 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    { Starts AConfig (owned from now on). Raises, with nothing left running,
-      when a port does not open }
-    procedure Start(AConfig: TRALProxyConfig);
     { Takes ANew (owned from now on) in place of the configuration running.
       Raises when a new port does not open; what was running keeps running }
     procedure Reload(ANew: TRALProxyConfig);
-    /// Stops every balancer and frees the configurations.
-    procedure Stop;
+    { Starts AConfig (owned from now on). Raises, with nothing left running,
+      when a port does not open }
+    procedure Start(AConfig: TRALProxyConfig);
     /// The statistics of every balancer, as one JSON object by port.
     function StatsJSON: StringRAL;
+    /// Stops every balancer and frees the configurations.
+    procedure Stop;
 
-    /// The configuration in force.
-    property Config: TRALProxyConfig read FConfig;
     /// The balancers running (TRALBalancer).
     property Balancers: TList read FRunning;
+    /// The configuration in force.
+    property Config: TRALProxyConfig read FConfig;
     /// Every request or connection that ends, on a balancer's thread.
     property OnAccess: TRALBalancerAccessEvent read FOnAccess write SetOnAccess;
   end;
@@ -136,22 +137,24 @@ type
   // one token of the text: a word, a string, a semicolon or a brace
   TRALProxyToken = class
   public
-    Text: string;
-    Quoted: boolean;
+    Column: IntegerRAL;
     FileName: string;
     Line: IntegerRAL;
-    Column: IntegerRAL;
+    Quoted: boolean;
+    Text: string;
   end;
 
   { one directive: its name, its values, and its block when it has one }
   TRALProxyDirective = class
   public
-    Name: TRALProxyToken;
     Args: TList;
     Children: TList;
     HasBlock: boolean;
+    Name: TRALProxyToken;
+
     constructor Create;
     destructor Destroy; override;
+
     function Arg(AIndex: IntegerRAL): string;
     function ArgCount: IntegerRAL;
   end;
@@ -159,32 +162,34 @@ type
   { reads tokens out of the text and of what it includes, then the tree }
   TRALProxyParser = class
   private
-    FTokens: TList;
-    FPos: IntegerRAL;
     FDepth: IntegerRAL;
+    FPos: IntegerRAL;
+    FTokens: TList;
 
-    procedure Tokenize(const AText, AFileName: string);
     procedure Include(const APattern, ABase: string; AToken: TRALProxyToken);
     function ParseBlock(AList: TList; AInBlock: boolean; AOpen: TRALProxyToken): boolean;
+    procedure Tokenize(const AText, AFileName: string);
   public
     constructor Create;
     destructor Destroy; override;
+
     function Parse(const AText, AFileName: string): TList;
   end;
 
   /// A server block of http, kept until its port's balancer is built.
   THttpServerBlock = class
   public
-    Port: IntegerRAL;
     Bind: string;
-    SSL: boolean;
-    Names: TStringList;
     CertFile, KeyFile: string;
     Locations: TList; // TRALBalancerRoute-like data: prefix, upstream, strip
-    StatsPath: string;
-    PreserveHost: boolean;
     MinVersion: TRALTLSVersion;
+    Names: TStringList;
+    Port: IntegerRAL;
+    PreserveHost: boolean;
+    SSL: boolean;
+    StatsPath: string;
     Where: TRALProxyDirective;
+
     constructor Create;
     destructor Destroy; override;
   end;
@@ -192,8 +197,8 @@ type
   TLocation = class
   public
     Prefix: string;
-    Upstream: TRALUpstream;
     Strip: boolean;
+    Upstream: TRALUpstream;
   end;
 
 procedure Fail(AToken: TRALProxyToken; const AMessage: string); overload;

@@ -38,22 +38,22 @@ type
     FRetainedRoute: TRALRoute;
     FStatsRoute: TRALRoute;
 
+    procedure DoClients(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure DoPublish(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure DoRetained(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure DoStats(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure Fail(AResponse: TRALResponse; AStatus: IntegerRAL; const AText: StringRAL);
+    function ParamText(ARequest: TRALRequest; const AName, AHeader: StringRAL): StringRAL;
+    function Prefix(const AName: StringRAL): StringRAL;
     procedure SetBroker(AValue: TRALMQTTBroker);
     function TopicOf(ARequest: TRALRequest; const APrefix: StringRAL): StringRAL;
     function UserOf(ARequest: TRALRequest): StringRAL;
-    function ParamText(ARequest: TRALRequest; const AName, AHeader: StringRAL): StringRAL;
-    function Prefix(const AName: StringRAL): StringRAL;
-    procedure Fail(AResponse: TRALResponse; AStatus: IntegerRAL; const AText: StringRAL);
-
-    procedure DoPublish(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure DoRetained(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure DoClients(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure DoStats(ARequest: TRALRequest; AResponse: TRALResponse);
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// The fixed routes, then publish/<topic> and retained/<topic> by prefix.
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
       override;

@@ -34,13 +34,14 @@ type
 
     procedure SetClient(AValue: TRALMQTTCustomClient);
     procedure SetDataSet(AValue: TDataSet);
-    function Wanted(AMessage: TRALMQTTMessage): boolean;
     procedure Trim_;
+    function Wanted(AMessage: TRALMQTTMessage): boolean;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     /// Adds the row of AMessage (called by the client).
     procedure MessageArrived(AClient: TRALMQTTCustomClient; AMessage: TRALMQTTMessage);
       override;
