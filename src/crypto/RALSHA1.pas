@@ -9,12 +9,15 @@ uses
 
 type
 
-  { TRALSHA1 }
-
+  { SHA-1 digest (RFC 3174), for protocols that still require it (WebSocket, WS-
+    Security). }
   TRALSHA1 = class(TRALHashBase)
   private
+    /// The block being filled.
     FBuffer: array[0..63] of byte;
+    /// The running state (H0 to H4).
     FHash: array[0..4] of cardinal;
+    /// Size of the digest, in bytes.
     FHashSize: byte;
   protected
     procedure Compress; override;
@@ -22,6 +25,7 @@ type
     function GetBuffer(AIndex: IntegerRAL): Pointer; override;
     function GetBufLength: IntegerRAL; override;
     procedure Initialize; override;
+    /// Reverses the byte order of a 32-bit value.
     function Swap(AValue: cardinal): cardinal;
   public
     constructor Create;
@@ -29,11 +33,9 @@ type
 
 implementation
 
-{ SHA-1 adds modulo 2^32 on purpose: with overflow checks on - the default of
-  many Debug builds, and of an implicit build of this package - every block
-  raised EIntOverflow, and with range checks on, ERangeError (FPC checks the
-  result of Inc on a Cardinal). Here every sum is one, so the whole unit goes
-  without both, as the SHA-2 units do }
+{ SHA-1 adds modulo 2^32: overflow and range checks (on in many Debug builds;
+  FPC checks the result of Inc on a Cardinal) would raise on every block, so
+  the whole unit goes without both }
 {$Q-}
 {$R-}
 

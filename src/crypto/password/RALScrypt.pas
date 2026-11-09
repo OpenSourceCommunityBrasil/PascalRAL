@@ -1,5 +1,5 @@
-/// scrypt (RFC 7914): PBKDF2-HMAC-SHA256 around a memory-hard mix of
-/// Salsa20/8 blocks. Pure Pascal, no library.
+{ scrypt (RFC 7914): PBKDF2-HMAC-SHA256 around a memory-hard mix of
+  Salsa20/8 blocks. Pure Pascal, no library. }
 unit RALScrypt;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -24,7 +24,7 @@ function RALScryptHash(const APassword, ASalt: TBytes; N, R, P: Cardinal;
 
 implementation
 
-{ BlockMix of RFC 7914 over the 2R blocks of 64 bytes at AB, using AY as work }
+/// BlockMix of RFC 7914 over the 2R blocks of 64 bytes at AB, using AY as work.
 procedure BlockMix(AB, AY: PRALSalsaBlock; R: Cardinal);
 var
   vX: TRALSalsaBlock;
@@ -47,7 +47,7 @@ begin
   Move(AY^, AB^, 128 * R);
 end;
 
-{ ROMix of RFC 7914 over the 128 * R bytes at AB }
+/// ROMix of RFC 7914 over the 128 * R bytes at AB.
 procedure ROMix(AB: PByte; R, N: Cardinal; var AV, AY: TBytes);
 var
   vBlock, vInt: Cardinal;

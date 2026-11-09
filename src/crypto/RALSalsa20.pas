@@ -1,5 +1,5 @@
-/// The Salsa20 core (Bernstein) with a chosen number of rounds: Salsa20/8 is
-/// the mixing function of scrypt (RFC 7914). Pure Pascal, no library.
+{ The Salsa20 core (Bernstein) with a chosen number of rounds: Salsa20/8 is
+  the mixing function of scrypt (RFC 7914). Pure Pascal, no library. }
 unit RALSalsa20;
 
 {$I ..\core\PascalRAL.inc}
@@ -30,6 +30,7 @@ procedure RALSalsaCore(var ABlock: TRALSalsaBlock; ARounds: IntegerRAL = 8);
 
 implementation
 
+/// Rotates AValue left by ABits bits.
 function RotL(AValue: Cardinal; ABits: IntegerRAL): Cardinal;
 begin
   Result := (AValue shl ABits) or (AValue shr (32 - ABits));

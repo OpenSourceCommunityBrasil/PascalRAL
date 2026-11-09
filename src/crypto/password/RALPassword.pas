@@ -1,7 +1,7 @@
-/// Password hashing: Argon2id (the default), bcrypt, scrypt and PBKDF2, in the
-/// PHC string format ($argon2id$v=19$m=...) and bcrypt's ($2b$...). Verify
-/// recognises any of them, NeedsRehash says when a stored hash is weaker than
-/// the current settings. Pure Pascal, no library.
+{ Password hashing: Argon2id (the default), bcrypt, scrypt and PBKDF2, in the
+  PHC string format ($argon2id$v=19$m=...) and bcrypt's ($2b$...). Verify
+  recognises any of them, NeedsRehash says when a stored hash is weaker than
+  the current settings. Pure Pascal, no library. }
 unit RALPassword;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -93,7 +93,8 @@ type
   /// Gives the stored hash of AUserName (AHash empty: no such user).
   TRALOnGetPasswordHash = procedure(Sender: TRALPasswordList; const AUserName: StringRAL;
     var AHash: StringRAL) of object;
-  /// A user logged in with a hash weaker than the settings: ANewHash is the new one to store.
+  { A user logged in with a hash weaker than the settings: ANewHash is the new one to
+    store. }
   TRALOnPasswordRehash = procedure(Sender: TRALPasswordList; const AUserName,
     ANewHash: StringRAL) of object;
 
@@ -103,8 +104,10 @@ type
     time whether the user exists or not. }
   TRALPasswordList = class(TRALComponent)
   private
+    /// Age of the file when it was last read, or -1.
     FFileAge: Integer;
     FFileName: string;
+    /// Guards the list and its reload.
     FLock: TCriticalSection;
     FOnGetHash: TRALOnGetPasswordHash;
     FOnRehash: TRALOnPasswordRehash;
@@ -152,7 +155,8 @@ function RALPasswordHash(const APassword: StringRAL;
 /// A new hash of APassword with AOptions.
 function RALPasswordHash(const APassword: StringRAL;
   AOptions: TRALPasswordOptions): StringRAL; overload;
-/// Whether APassword matches AHash: $argon2id$/$argon2i$/$argon2d$, $2a$/$2b$/$2y$, $scrypt$, $pbkdf2-sha256$/$pbkdf2-sha512$.
+{ Whether APassword matches AHash: $argon2id$/$argon2i$/$argon2d$, $2a$/$2b$/$2y$,
+  $scrypt$, $pbkdf2-sha256$/$pbkdf2-sha512$. }
 function RALPasswordVerify(const APassword, AHash: StringRAL): boolean;
 /// Whether AHash is of another algorithm than AOptions, or cheaper; nil = the defaults.
 function RALPasswordNeedsRehash(const AHash: StringRAL;
@@ -165,21 +169,31 @@ function RALPHCBase64Decode(const AText: StringRAL; out AData: TBytes): boolean;
 implementation
 
 const
+  /// The Argon2 version written and the only one read (1.3).
   cArgon2DefaultVersion = $13;
+  /// Bytes of the random salt of a new hash.
   cSaltLength = 16;
+  /// Bytes of the derived key of a new hash.
   cHashLength = 32;
 
 type
-  { a hash string split into its parts }
+  /// A hash string split into its parts.
   TRALParsedHash = record
+    /// The algorithm the hash names.
     Algorithm: TRALPasswordAlgorithm;
+    /// The Argon2 variant (id, i, d).
     Argon: TRALArgon2Type;
+    /// The Argon2 version.
     Version: IntegerRAL;
+    /// The cost parameters; each algorithm reads its own.
     M, T, P, R, LogN, Iterations, Cost: Int64RAL;
+    /// The salt and the derived key, decoded.
     Salt, Hash: TBytes;
+    /// The bcrypt salt as written, 22 characters.
     SaltText: StringRAL;
   end;
 
+/// The UTF-8 bytes of AText.
 function BytesOf(const AText: StringRAL): TBytes;
 begin
   Result := RALUTF8Bytes(AText);
@@ -217,7 +231,7 @@ begin
   end;
 end;
 
-{ 'm=19456,t=2,p=1' into the record }
+/// 'm=19456,t=2,p=1' into the record.
 procedure ParseParams(const AText: StringRAL; var AHash: TRALParsedHash);
 var
   vList: TStringList;
@@ -245,7 +259,7 @@ begin
   end;
 end;
 
-{ splits AHash into its parts; False when it is no hash this unit knows }
+/// Splits AHash into its parts; False when it is no hash this unit knows.
 function ParseHash(const AHash: StringRAL; out AParsed: TRALParsedHash): boolean;
 var
   vParts: TStringList;
@@ -323,7 +337,7 @@ begin
   end;
 end;
 
-{ the raw hash of APassword with the parameters and salt of AParsed }
+/// The raw hash of APassword with the parameters and salt of AParsed.
 function Compute(const APassword: StringRAL; const AParsed: TRALParsedHash): TBytes;
 var
   vPass: TBytes;
@@ -686,8 +700,10 @@ var
   { a hash nobody's password matches, checked for unknown users so that a
     missing user costs what a wrong password costs }
   gDummyHash: StringRAL;
+  /// Guards the creation of gDummyHash.
   gDummyLock: TCriticalSection;
 
+/// The hash checked for an unknown user, created once with AOptions.
 function DummyHash(AOptions: TRALPasswordOptions): StringRAL;
 begin
   gDummyLock.Acquire;

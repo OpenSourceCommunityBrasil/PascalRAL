@@ -1,6 +1,6 @@
-/// One-time passwords: HOTP (RFC 4226) and TOTP (RFC 6238), the codes of
-/// authenticator apps, with base32 secrets, the otpauth:// URI of their QR
-/// code, a tolerance window and protection against reusing a code.
+{ One-time passwords: HOTP (RFC 4226) and TOTP (RFC 6238), the codes of
+  authenticator apps, with base32 secrets, the otpauth:// URI of their QR
+  code, a tolerance window and protection against reusing a code. }
 unit RALOTP;
 
 {$I ..\core\PascalRAL.inc}
@@ -51,7 +51,8 @@ type
     property Issuer: StringRAL read FIssuer write FIssuer;
     /// Seconds of a step.
     property Period: IntegerRAL read FPeriod write FPeriod;
-    /// Where the last accepted step of each user is kept (not owned); nil = no reuse check.
+    { Where the last accepted step of each user is kept (not owned); nil = no reuse
+      check. }
     property Store: TRALKeyValueStore read FStore write FStore;
     /// Steps tolerated before and after now (clock drift).
     property Window: IntegerRAL read FWindow write FWindow;
@@ -73,6 +74,7 @@ function RALUnixNow: Int64RAL;
 implementation
 
 const
+  /// The RFC 4648 base32 alphabet of TOTP secrets.
   cBase32: StringRAL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
 { RFC 3986 percent-encoding: everything but the unreserved characters, so a

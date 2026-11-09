@@ -1,3 +1,5 @@
+{ OpenSSL libcrypto bound at run time: the library, its symbols and the
+  helpers RAL builds on it (AES, digests, RSA/EC keys, certificates) }
 unit RALOpenSSL;
 
 { Delphi mode on FPC: the bindings are procedural variables, and in ObjFPC a
@@ -22,6 +24,7 @@ uses
 const
   {$IFDEF RALWindows}
     {$IFDEF CPU64}
+  /// libcrypto file names tried in order, newest first.
   RALOpenSSLLibraryNames: array[0..5] of string = (
     'libcrypto-3-x64.dll',
     'libcrypto-3.dll',
@@ -31,6 +34,7 @@ const
     'libeay32.dll'
   );
     {$ELSE}
+  /// libcrypto file names tried in order, newest first.
   RALOpenSSLLibraryNames: array[0..3] of string = (
     'libcrypto-3.dll',
     'libcrypto-1_1.dll',
@@ -39,6 +43,7 @@ const
   );
     {$ENDIF}
   {$ELSE}
+  /// libcrypto file names tried in order, newest first.
   RALOpenSSLLibraryNames: array[0..2] of string = (
     'libcrypto.so.3',
     'libcrypto.so.1.1',
@@ -47,15 +52,20 @@ const
   {$ENDIF}
 
 type
+  /// OpenSSL's opaque cipher context.
   EVP_CIPHER_CTX = record end;
+  /// Pointer to an EVP_CIPHER_CTX.
   PEVP_CIPHER_CTX = ^EVP_CIPHER_CTX;
 
   {$IFDEF RALWindows}
+  /// What OpenSSL_version_num returns on this platform (unsigned long).
   TRALOpenSSLVersionWord = Cardinal;
   {$ELSE}
+  /// What OpenSSL_version_num returns on this platform (unsigned long).
   TRALOpenSSLVersionWord = NativeUInt;
   {$ENDIF}
 
+  /// The AES chaining mode.
   TRALOpenSSLAESMode = (aesCBC, aesECB);
 
   /// Hash used for RSA PKCS#1 v1.5 or ECDSA signatures.
@@ -67,7 +77,9 @@ type
     OpenSSL's native format: RSA bytes or an ECDSA DER sequence. }
   TRALOpenSSLKey = class
   private
+    /// The EVP_PKEY.
     FHandle: Pointer;
+    /// The library that loaded the key.
     FLibrary: TRALOpenSSL;
     FPrivate: Boolean;
 
@@ -88,54 +100,77 @@ type
     property IsPrivate: Boolean read FPrivate;
   end;
 
-  { Library lifetime, symbol bindings and synchronization shared by OpenSSL operations. }
+  /// Library lifetime, symbol bindings and synchronization shared by OpenSSL operations.
   TRALOpenSSLLibrary = class
+  /// Serializes operations on OpenSSL before 1.1.0, which is not thread-safe by itself.
   protected class var
     FOperationLock: TCriticalSection;
   protected
+    /// libcrypto's ASN1_TIME_diff.
     ASN1_TIME_diff: function(
       var Days: Integer;
       var Seconds: Integer;
       FromTime: Pointer;
       ToTime: Pointer
     ): Integer; cdecl;
+    /// libcrypto's ASN1_TIME_free.
     ASN1_TIME_free: procedure(Value: Pointer); cdecl;
+    /// libcrypto's ASN1_TIME_new.
     ASN1_TIME_new: function: Pointer; cdecl;
+    /// libcrypto's ASN1_TIME_set_string.
     ASN1_TIME_set_string: function(Value: Pointer; Text: PAnsiChar): Integer; cdecl;
+    /// libcrypto's BIO_free.
     BIO_free: function(P: Pointer): Integer; cdecl;
+    /// libcrypto's BIO_new.
     BIO_new: function(Method: Pointer): Pointer; cdecl;
+    /// libcrypto's BIO_new_mem_buf.
     BIO_new_mem_buf: function(
       Buffer: Pointer;
       Size: Integer
     ): Pointer; cdecl;
+    /// libcrypto's BIO_read.
     BIO_read: function(
       P: Pointer;
       Buffer: Pointer;
       Size: Integer
     ): Integer; cdecl;
+    /// libcrypto's BIO_s_mem.
     BIO_s_mem: function: Pointer; cdecl;
+    /// libcrypto's BN_bn2bin.
     BN_bn2bin: function(
       BN: Pointer;
       Buffer: Pointer
     ): Integer; cdecl;
+    /// libcrypto's BN_free.
     BN_free: procedure(BN: Pointer); cdecl;
+    /// libcrypto's BN_num_bits.
     BN_num_bits: function(BN: Pointer): Integer; cdecl;
     /// Optional public-key decoder for a DER SubjectPublicKeyInfo.
     d2i_PUBKEY: function(Key: PPointer; Buffer: PPointer;
       Size: {$IFDEF RALWindows}LongInt{$ELSE}NativeInt{$ENDIF}): Pointer; cdecl;
+    /// libcrypto's EVP_aes_128_cbc.
     EVP_aes_128_cbc: function: Pointer; cdecl;
+    /// libcrypto's EVP_aes_128_ecb.
     EVP_aes_128_ecb: function: Pointer; cdecl;
+    /// libcrypto's EVP_aes_192_cbc.
     EVP_aes_192_cbc: function: Pointer; cdecl;
+    /// libcrypto's EVP_aes_192_ecb.
     EVP_aes_192_ecb: function: Pointer; cdecl;
+    /// libcrypto's EVP_aes_256_cbc.
     EVP_aes_256_cbc: function: Pointer; cdecl;
+    /// libcrypto's EVP_aes_256_ecb.
     EVP_aes_256_ecb: function: Pointer; cdecl;
+    /// libcrypto's EVP_CIPHER_CTX_free.
     EVP_CIPHER_CTX_free: procedure(Ctx: PEVP_CIPHER_CTX); cdecl;
+    /// libcrypto's EVP_CIPHER_CTX_new.
     EVP_CIPHER_CTX_new: function: PEVP_CIPHER_CTX; cdecl;
+    /// libcrypto's EVP_DecryptFinal_ex.
     EVP_DecryptFinal_ex: function(
       Ctx: PEVP_CIPHER_CTX;
       OutBuffer: PByte;
       OutLength: PInteger
     ): Integer; cdecl;
+    /// libcrypto's EVP_DecryptInit_ex.
     EVP_DecryptInit_ex: function(
       Ctx: PEVP_CIPHER_CTX;
       Cipher: Pointer;
@@ -143,6 +178,7 @@ type
       Key: PByte;
       IV: PByte
     ): Integer; cdecl;
+    /// libcrypto's EVP_DecryptUpdate.
     EVP_DecryptUpdate: function(
       Ctx: PEVP_CIPHER_CTX;
       OutBuffer: PByte;
@@ -150,6 +186,7 @@ type
       InBuffer: PByte;
       InLength: Integer
     ): Integer; cdecl;
+    /// libcrypto's EVP_Digest.
     EVP_Digest: function(
       Data: Pointer;
       Size: NativeUInt;
@@ -158,11 +195,13 @@ type
       Kind: Pointer;
       Engine: Pointer
     ): Integer; cdecl;
+    /// libcrypto's EVP_DigestSignFinal.
     EVP_DigestSignFinal: function(
       Ctx: Pointer;
       Sig: Pointer;
       var Size: NativeUInt
     ): Integer; cdecl;
+    /// libcrypto's EVP_DigestSignInit.
     EVP_DigestSignInit: function(
       Ctx: Pointer;
       PCtx: Pointer;
@@ -170,6 +209,7 @@ type
       Engine: Pointer;
       Key: Pointer
     ): Integer; cdecl;
+    /// libcrypto's EVP_DigestSignUpdate.
     EVP_DigestSignUpdate: function(
       Ctx: Pointer;
       Data: Pointer;
@@ -184,11 +224,13 @@ type
     /// Adds bytes to a digest verification operation.
     EVP_DigestVerifyUpdate: function(Ctx: Pointer; Data: Pointer;
       Size: NativeUInt): Integer; cdecl;
+    /// libcrypto's EVP_EncryptFinal_ex.
     EVP_EncryptFinal_ex: function(
       Ctx: PEVP_CIPHER_CTX;
       OutBuffer: PByte;
       OutLength: PInteger
     ): Integer; cdecl;
+    /// libcrypto's EVP_EncryptInit_ex.
     EVP_EncryptInit_ex: function(
       Ctx: PEVP_CIPHER_CTX;
       Cipher: Pointer;
@@ -196,6 +238,7 @@ type
       Key: PByte;
       IV: PByte
     ): Integer; cdecl;
+    /// libcrypto's EVP_EncryptUpdate.
     EVP_EncryptUpdate: function(
       Ctx: PEVP_CIPHER_CTX;
       OutBuffer: PByte;
@@ -203,8 +246,11 @@ type
       InBuffer: PByte;
       InLength: Integer
     ): Integer; cdecl;
+    /// libcrypto's EVP_MD_CTX_free.
     EVP_MD_CTX_free: procedure(P: Pointer); cdecl;
+    /// libcrypto's EVP_MD_CTX_new.
     EVP_MD_CTX_new: function: Pointer; cdecl;
+    /// libcrypto's EVP_PKEY_CTX_ctrl.
     EVP_PKEY_CTX_ctrl: function(
       Ctx: Pointer;
       KeyType: Integer;
@@ -213,57 +259,83 @@ type
       Value: Integer;
       Data: Pointer
     ): Integer; cdecl;
+    /// libcrypto's EVP_PKEY_CTX_free.
     EVP_PKEY_CTX_free: procedure(P: Pointer); cdecl;
+    /// libcrypto's EVP_PKEY_CTX_new_id.
     EVP_PKEY_CTX_new_id: function(
       ID: Integer;
       E: Pointer
     ): Pointer; cdecl;
+    /// libcrypto's EVP_PKEY_CTX_set_rsa_keygen_bits.
     EVP_PKEY_CTX_set_rsa_keygen_bits: function(
       P: Pointer;
       Bits: Integer
     ): Integer; cdecl;
+    /// libcrypto's EVP_PKEY_free.
     EVP_PKEY_free: procedure(P: Pointer); cdecl;
+    /// libcrypto's EVP_PKEY_get0_RSA.
     EVP_PKEY_get0_RSA: function(Key: Pointer): Pointer; cdecl;
+    /// libcrypto's EVP_PKEY_get1_RSA.
     EVP_PKEY_get1_RSA: function(Key: Pointer): Pointer; cdecl;
+    /// libcrypto's EVP_PKEY_get_bn_param.
     EVP_PKEY_get_bn_param: function(
       Key: Pointer;
       Name: PAnsiChar;
       var BN: Pointer
     ): Integer; cdecl;
+    /// libcrypto's EVP_PKEY_keygen.
     EVP_PKEY_keygen: function(
       P: Pointer;
       var Key: Pointer
     ): Integer; cdecl;
+    /// libcrypto's EVP_PKEY_keygen_init.
     EVP_PKEY_keygen_init: function(P: Pointer): Integer; cdecl;
+    /// libcrypto's EVP_sha256.
     EVP_sha256: function: Pointer; cdecl;
     /// Optional SHA-384 implementation used by asymmetric signatures.
     EVP_sha384: function: Pointer; cdecl;
     /// Optional SHA-512 implementation used by asymmetric signatures.
     EVP_sha512: function: Pointer; cdecl;
-    { Optional exports. Check Assigned before calling; callbacks are never installed automatically. }
+    { Optional exports. Check Assigned before calling; callbacks are never installed
+      automatically. }
     FGetLockingCallback: function: Pointer; cdecl;
+    /// The file the bindings were loaded from.
     FLibraryFilename: string;
+    /// libcrypto's CRYPTO_set_locking_callback (before 1.1.0).
     FSetLockingCallback: procedure(Callback: Pointer); cdecl;
+    /// Guards the bindings: operations read, loading another library writes.
     FStateLock: TMultiReadExclusiveWriteSynchronizer;
+    /// OpenSSL_version_num of the loaded library.
     FVersionNumber: Cardinal;
+    /// OpenSSL_version of the loaded library.
     FVersionText: string;
     /// Optional public-key encoder for a DER SubjectPublicKeyInfo.
     i2d_PUBKEY: function(Key: Pointer; Buffer: PPointer): Integer; cdecl;
+    /// libcrypto's i2d_RSAPublicKey.
     i2d_RSAPublicKey: function(RSA: Pointer; Buffer: PPointer): Integer; cdecl;
+    /// libcrypto's i2d_X509.
     i2d_X509: function(Cert: Pointer; Buffer: PPointer): Integer; cdecl;
+    /// libcrypto's i2d_X509_REQ.
     i2d_X509_REQ: function(
       Req: Pointer;
       Buffer: PPointer
     ): Integer; cdecl;
+    /// The loaded library, nil when none is.
     Lib: IRALDynLibs;
+    /// libcrypto's OPENSSL_sk_free.
     OPENSSL_sk_free: procedure(P: Pointer); cdecl;
+    /// libcrypto's OPENSSL_sk_new_null.
     OPENSSL_sk_new_null: function: Pointer; cdecl;
+    /// libcrypto's OPENSSL_sk_push.
     OPENSSL_sk_push: function(
       Stack: Pointer;
       Value: Pointer
     ): Integer; cdecl;
+    /// libcrypto's OpenSSL_version.
     OpenSSL_version: function(Kind: Integer): PAnsiChar; cdecl;
+    /// libcrypto's OpenSSL_version_num.
     OpenSSL_version_num: function: TRALOpenSSLVersionWord; cdecl;
+    /// libcrypto's PEM_read_bio_PrivateKey.
     PEM_read_bio_PrivateKey: function(
       Bio: Pointer;
       Key: Pointer;
@@ -273,12 +345,14 @@ type
     /// Optional reader for an unencrypted public key in PEM.
     PEM_read_bio_PUBKEY: function(Bio: Pointer; Key: Pointer;
       CB: Pointer; User: Pointer): Pointer; cdecl;
+    /// libcrypto's PEM_read_bio_X509.
     PEM_read_bio_X509: function(
       Bio: Pointer;
       Cert: Pointer;
       CB: Pointer;
       U: Pointer
     ): Pointer; cdecl;
+    /// libcrypto's PEM_write_bio_PrivateKey.
     PEM_write_bio_PrivateKey: function(
       Bio: Pointer;
       Key: Pointer;
@@ -288,13 +362,16 @@ type
       CB: Pointer;
       U: Pointer
     ): Integer; cdecl;
+    /// libcrypto's RSA_free.
     RSA_free: procedure(RSA: Pointer); cdecl;
+    /// libcrypto's RSA_get0_key.
     RSA_get0_key: procedure(
       RSA: Pointer;
       N: PPointer;
       E: PPointer;
       D: PPointer
     ); cdecl;
+    /// libcrypto's X509_check_host.
     X509_check_host: function(
       Cert: Pointer;
       Name: PAnsiChar;
@@ -302,33 +379,45 @@ type
       Flags: Cardinal;
       Peer: Pointer
     ): Integer; cdecl;
+    /// libcrypto's X509_check_private_key.
     X509_check_private_key: function(
       Cert: Pointer;
       Key: Pointer
     ): Integer; cdecl;
+    /// libcrypto's X509_EXTENSION_free.
     X509_EXTENSION_free: procedure(P: Pointer); cdecl;
+    /// libcrypto's X509_free.
     X509_free: procedure(P: Pointer); cdecl;
+    /// libcrypto's X509_get0_notAfter.
     X509_get0_notAfter: function(P: Pointer): Pointer; cdecl;
+    /// libcrypto's X509_get0_notBefore.
     X509_get0_notBefore: function(P: Pointer): Pointer; cdecl;
+    /// libcrypto's X509_REQ_add_extensions.
     X509_REQ_add_extensions: function(
       Req: Pointer;
       Extensions: Pointer
     ): Integer; cdecl;
+    /// libcrypto's X509_REQ_free.
     X509_REQ_free: procedure(P: Pointer); cdecl;
+    /// libcrypto's X509_REQ_new.
     X509_REQ_new: function: Pointer; cdecl;
+    /// libcrypto's X509_REQ_set_pubkey.
     X509_REQ_set_pubkey: function(
       Req: Pointer;
       Key: Pointer
     ): Integer; cdecl;
+    /// libcrypto's X509_REQ_set_version.
     X509_REQ_set_version: function(
       P: Pointer;
       Version: {$IFDEF RALWindows}LongInt{$ELSE}NativeInt{$ENDIF}
     ): Integer; cdecl;
+    /// libcrypto's X509_REQ_sign.
     X509_REQ_sign: function(
       Req: Pointer;
       Key: Pointer;
       MD: Pointer
     ): Integer; cdecl;
+    /// libcrypto's X509V3_EXT_conf_nid.
     X509V3_EXT_conf_nid: function(
       Conf: Pointer;
       Ctx: Pointer;
@@ -336,10 +425,15 @@ type
       Value: PAnsiChar
     ): Pointer; cdecl;
 
+    /// Creates the object without loading a library.
     constructor CreateEmpty(Internal: Boolean);
 
+    /// Takes the library and bindings Candidate loaded.
     procedure AdoptBindings(Candidate: TRALOpenSSLLibrary);
+    { Starts an operation: holds the bindings and, before OpenSSL 1.1.0, the operation
+      lock. }
     procedure BeginOperation;
+    /// Ends what BeginOperation started.
     procedure EndOperation;
     function GetLibraryFilename: string;
     function GetLibraryHandle: NativeUInt;
@@ -347,33 +441,47 @@ type
     function GetSupportsLockingCallbacks: Boolean;
     function GetVersionNumber: Cardinal;
     function GetVersionText: string;
+    /// Binds the entry points of LibraryHandle.
     procedure LoadBindings(const LibraryHandle: IRALDynLibs);
     procedure SetLibraryFilename(const Value: string);
   public
     constructor Create;
     destructor Destroy; override;
 
+    /// The first libcrypto of RALOpenSSLLibraryNames that loads, or empty.
     class function FindLibrary: string; static;
+    /// The locking callback set in OpenSSL before 1.1.0.
     function GetLockingCallback: Pointer;
+    /// Sets the locking callback of OpenSSL before 1.1.0.
     procedure SetLockingCallback(Callback: Pointer);
 
+    { The libcrypto file in use; assigning loads it, empty searches
+      RALOpenSSLLibraryNames. }
     property LibraryFilename: string read GetLibraryFilename write SetLibraryFilename;
+    /// Handle of the loaded library, or 0.
     property LibraryHandle: NativeUInt read GetLibraryHandle;
+    /// Whether a library is loaded.
     property Loaded: Boolean read GetLoaded;
+    /// Whether the library takes locking callbacks (OpenSSL before 1.1.0).
     property SupportsLockingCallbacks: Boolean read GetSupportsLockingCallbacks;
+    /// OpenSSL_version_num of the loaded library.
     property VersionNumber: Cardinal read GetVersionNumber;
+    /// OpenSSL_version of the loaded library.
     property VersionText: string read GetVersionText;
   end;
 
-  { High-level cryptography and certificate helpers. }
+  /// High-level cryptography and certificate helpers.
   TRALOpenSSL = class(TRALOpenSSLLibrary)
+  /// The shared instance GetInstance returns.
   private class var
     FInstance: TRALOpenSSL;
   private
+    /// Raises ecOpenSSLCallFailed naming Operation when Value is not positive.
     procedure Check(
       Value: Integer;
       const Operation: string
     );
+    /// Encrypts or decrypts Input with AES.
     function CryptAESBytes(
       const Input: TBytes;
       const Key: TBytes;
@@ -381,6 +489,7 @@ type
       Mode: TRALOpenSSLAESMode;
       Encrypting: Boolean
     ): TBytes;
+    /// Encrypts or decrypts Source into Destination with AES.
     procedure CryptAESStream(
       Source: TStream;
       Destination: TStream;
@@ -395,32 +504,43 @@ type
     function ImportKey(const AData: RawByteString; APrivate, APEM: Boolean): TRALOpenSSLKey;
     /// Tests the optional bindings while the library read lock is held.
     function JWSBindingsAvailable: Boolean;
+    { notBefore or notAfter of Cert read from its DER, for OpenSSL before 1.1.0; the
+      caller frees it. }
     function LegacyCertificateTime(
       Cert: Pointer;
       AfterTime: Boolean
     ): Pointer;
+    { The RSA modulus (n) or exponent (e) of Key read from its DER, for OpenSSL before
+      1.1.0. }
     function LegacyRSAParameter(
       Key: Pointer;
       const Name: AnsiString
     ): RawByteString;
+    /// Reads an unencrypted PEM private key; the caller frees it with EVP_PKEY_free.
     function LoadKey(const PEM: RawByteString): Pointer;
+    /// Frees the shared instance.
     class procedure ReleaseInstance; static;
   public
+    { Days left on the PEM certificate, after checking that it matches Key and every
+      name of Domains. }
     function CertificateDays(
       const PEM: RawByteString;
       const Key: RawByteString;
       Domains: TStrings
     ): Double;
+    /// A DER certificate request signed by the PEM Key, with Domains in subjectAltName.
     function CSR(
       const Key: RawByteString;
       Domains: TStrings
     ): RawByteString;
+    /// Decrypts Input with AES.
     function DecryptAES(
       const Input: TBytes;
       const Key: TBytes;
       const IV: TBytes;
       Mode: TRALOpenSSLAESMode = aesCBC
     ): TBytes;
+    /// Decrypts Source into Destination with AES.
     procedure DecryptAESStream(
       Source: TStream;
       Destination: TStream;
@@ -428,12 +548,14 @@ type
       const IV: TBytes;
       Mode: TRALOpenSSLAESMode = aesCBC
     );
+    /// Encrypts Input with AES.
     function EncryptAES(
       const Input: TBytes;
       const Key: TBytes;
       const IV: TBytes;
       Mode: TRALOpenSSLAESMode = aesCBC
     ): TBytes;
+    /// Encrypts Source into Destination with AES.
     procedure EncryptAESStream(
       Source: TStream;
       Destination: TStream;
@@ -441,9 +563,11 @@ type
       const IV: TBytes;
       Mode: TRALOpenSSLAESMode = aesCBC
     );
+    /// A new RSA 2048 private key, in PEM.
     function GenerateKey: RawByteString;
-    { Borrowed singleton, released at unit finalization. Do not call Free on it. }
+    /// Borrowed singleton, released at unit finalization. Do not call Free on it.
     class function GetInstance: TRALOpenSSL; static;
+    /// The JSON Web Key (RFC 7517) of the public half of the PEM RSA Key.
     function JWK(const Key: RawByteString): string;
     /// Imports an unencrypted private PEM key; the caller frees the returned key.
     function LoadPrivateKeyPEM(const APEM: StringRAL): TRALOpenSSLKey;
@@ -451,7 +575,9 @@ type
     function LoadPublicKeyDER(const ADER: TBytes): TRALOpenSSLKey;
     /// Imports a public PEM key; the caller frees the returned key.
     function LoadPublicKeyPEM(const APEM: StringRAL): TRALOpenSSLKey;
+    /// The SHA-256 digest of Bytes.
     function SHA256(const Bytes: RawByteString): RawByteString;
+    /// The RS256 signature of Bytes with the PEM private Key.
     function Sign(
       const Key: RawByteString;
       const Bytes: RawByteString
@@ -776,7 +902,7 @@ begin
   FStateLock.EndRead;
 end;
 
-{ Read DER rather than depending on OpenSSL 1.0.2 public structure layouts. }
+/// Read DER rather than depending on OpenSSL 1.0.2 public structure layouts.
 function DERElement(
   const DER: RawByteString;
   var Position: Integer;
@@ -814,6 +940,7 @@ begin
   Inc(Position, Size);
 end;
 
+/// PEM password callback that gives none, so OpenSSL never prompts on stdin.
 function NoPassword(
   Buffer: PAnsiChar;
   Size: Integer;
@@ -1688,6 +1815,7 @@ begin
   end;
 end;
 
+/// Raises unless Domain is an ASCII DNS name a CSR can carry.
 procedure ValidateCSRDomain(const Domain: string);
 var
   I: Integer;

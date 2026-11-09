@@ -1,5 +1,5 @@
-/// BLAKE2b (RFC 7693): the hash under Argon2, any digest length from 1 to 64
-/// bytes, keyed or not. Pure Pascal, no library.
+{ BLAKE2b (RFC 7693): the hash under Argon2, any digest length from 1 to 64
+  bytes, keyed or not. Pure Pascal, no library. }
 unit RALBLAKE2;
 
 {$I ..\core\PascalRAL.inc}
@@ -25,11 +25,17 @@ type
     Final. One object hashes one message at a time. }
   TRALBLAKE2b = class
   private
+    /// The block being filled.
     FBuffer: array[0..127] of Byte;
+    /// Bytes held in FBuffer.
     FBufLen: IntegerRAL;
+    /// The running state.
     FH: array[0..7] of UInt64RAL;
+    /// Size of the digest, in bytes.
     FOutLen: IntegerRAL;
+    /// Low word of the byte counter.
     FT0: UInt64RAL;
+    /// High word of the byte counter.
     FT1: UInt64RAL;
 
     /// Mixes the 128-byte block at ABlock into the state; ALast marks the final one.
@@ -68,12 +74,14 @@ function RALRotR64(AValue: UInt64RAL; ABits: IntegerRAL): UInt64RAL;
 implementation
 
 const
+  /// The BLAKE2b initialization vector (RFC 7693).
   cIV: array[0..7] of UInt64RAL = (
     $6A09E667F3BCC908, $BB67AE8584CAA73B,
     $3C6EF372FE94F82B, $A54FF53A5F1D36F1,
     $510E527FADE682D1, $9B05688C2B3E6C1F,
     $1F83D9ABFB41BD6B, $5BE0CD19137E2179);
 
+  /// The BLAKE2b message permutations (RFC 7693).
   cSigma: array[0..9, 0..15] of Byte = (
     (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15),
     (14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3),

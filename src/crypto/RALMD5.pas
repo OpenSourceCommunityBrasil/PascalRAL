@@ -15,10 +15,14 @@ uses
   RALHashBase, RALTypes;
 
 type
+  /// MD5 digest (RFC 1321), for protocols that still require it (Digest authentication).
   TRALMD5 = class(TRALHashBase)
   private
+    /// The block being filled.
     FBuffer: array[0..63] of Byte;
+    /// The running state (A, B, C, D).
     FHash: array[0..3] of Cardinal;
+    /// Size of the digest, in bytes.
     FHashSize: Byte;
   protected
     procedure Compress; override;
@@ -26,7 +30,7 @@ type
     function GetBuffer(AIndex: IntegerRAL) : Pointer; override;
     function GetBufLength: IntegerRAL; override;
     procedure Initialize; override;
-    // returns the left rotation of one value by the other
+    /// Rotates AValue1 left by AValue2 bits
     function LRot32(AValue1, AValue2: Cardinal): Cardinal;
   public
     constructor Create;

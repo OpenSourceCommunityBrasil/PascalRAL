@@ -1,3 +1,4 @@
+/// AES (CBC and ECB) through OpenSSL's EVP API.
 unit RALCriptoOpenSSL;
 
 { Delphi mode on FPC, for the reason RALOpenSSL gives: the OpenSSL entry points
@@ -16,14 +17,17 @@ uses
   RALExceptions, RALErrorCodes, RALCripto, RALTypes, RALConsts, RALTools, RALOpenSSL;
 
 type
+  /// Key size and chaining mode of the OpenSSL AES cipher.
   TRALCriptoOpenSSLTypes = (cotAES128_CBC, cotAES192_CBC, cotAES256_CBC,
                             cotAES128_ECB, cotAES192_ECB, cotAES256_ECB);
 
+  /// AES cipher through OpenSSL, as an alternative to the Pascal TRALCriptoAES.
   TRALCriptoOpenSSL = class(TRALCripto)
   private
     FAESType : TRALCriptoOpenSSLTypes;
     FIV : StringRAL;
 
+    /// Encrypts or decrypts AValue into a new stream, owned by the caller.
     function CryptAsStream(AValue: TStream; Encrypting: Boolean): TStream;
   protected
     function CanCript : boolean; override;
@@ -33,7 +37,9 @@ type
     function DecryptAsStream(AValue: TStream): TStream; override;
     function EncryptAsStream(AValue: TStream): TStream; override;
   published
+    /// Key size and chaining mode.
     property AESType: TRALCriptoOpenSSLTypes read FAESType write FAESType;
+    /// Initialization vector; empty means 16 zero bytes.
     property IV: StringRAL read FIV write FIV;
   end;
 

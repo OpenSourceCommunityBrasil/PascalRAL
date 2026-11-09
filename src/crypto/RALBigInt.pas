@@ -1,5 +1,5 @@
-/// Unsigned multiple-precision integers, enough for RSA: arithmetic, modular
-/// exponentiation (Montgomery), modular inverse and prime generation
+{ Unsigned multiple-precision integers, enough for RSA: arithmetic, modular
+  exponentiation (Montgomery), modular inverse and prime generation. }
 unit RALBigInt;
 
 {$IFDEF FPC}
@@ -27,50 +27,68 @@ uses
   RALExceptions, RALErrorCodes, RALTypes, RALTools, RALConsts;
 
 type
+  { A non-negative integer: 32-bit limbs, least significant first, no zero limb at the
+    top. }
   TRALBigNum = array of Cardinal;
 
+  /// Error of the big number arithmetic.
   ERALBigNum = class(ERALException);
 
 /// the number whose big-endian bytes are ABytes (leading zeros allowed)
 function BigFromBytes(const ABytes: TBytes): TRALBigNum;
 /// big-endian bytes, left padded with zeros to ALength when it is larger
 function BigToBytes(const A: TRALBigNum; ALength: IntegerRAL = 0): TBytes;
+/// The number AValue.
 function BigFromCardinal(AValue: Cardinal): TRALBigNum;
 /// hexadecimal, most significant digit first; spaces and colons are ignored
 function BigFromHex(const AHex: StringRAL): TRALBigNum;
 /// lowercase hexadecimal, '0' for zero
 function BigToHex(const A: TRALBigNum): StringRAL;
 
+/// Whether A is zero.
 function BigIsZero(const A: TRALBigNum): boolean;
+/// Whether A is odd.
 function BigIsOdd(const A: TRALBigNum): boolean;
+/// Whether A is one.
 function BigIsOne(const A: TRALBigNum): boolean;
 /// number of significant bits, 0 for zero
 function BigBitLength(const A: TRALBigNum): IntegerRAL;
+/// Whether bit ABit of A is set.
 function BigTestBit(const A: TRALBigNum; ABit: IntegerRAL): boolean;
 /// -1, 0 or 1
 function BigCompare(const A, B: TRALBigNum): IntegerRAL;
 
+/// A + B.
 function BigAdd(const A, B: TRALBigNum): TRALBigNum;
 /// A - B; raises when B > A (the numbers are unsigned)
 function BigSub(const A, B: TRALBigNum): TRALBigNum;
+/// A * B.
 function BigMul(const A, B: TRALBigNum): TRALBigNum;
+/// A div B and A mod B; raises for a zero B.
 procedure BigDivMod(const A, B: TRALBigNum; out AQuotient, ARemainder: TRALBigNum);
+/// A div B.
 function BigDiv(const A, B: TRALBigNum): TRALBigNum;
+/// A mod B.
 function BigMod(const A, B: TRALBigNum): TRALBigNum;
+/// A shifted left by ABits.
 function BigShl(const A: TRALBigNum; ABits: IntegerRAL): TRALBigNum;
+/// A shifted right by ABits.
 function BigShr(const A: TRALBigNum; ABits: IntegerRAL): TRALBigNum;
+/// A + AValue.
 function BigAddCardinal(const A: TRALBigNum; AValue: Cardinal): TRALBigNum;
+/// A - AValue; raises when negative.
 function BigSubCardinal(const A: TRALBigNum; AValue: Cardinal): TRALBigNum;
 /// A mod AValue, AValue > 0
 function BigModCardinal(const A: TRALBigNum; AValue: Cardinal): Cardinal;
 
+/// The greatest common divisor of A and B.
 function BigGcd(const A, B: TRALBigNum): TRALBigNum;
 /// least common multiple
 function BigLcm(const A, B: TRALBigNum): TRALBigNum;
 /// X such that A * X mod M = 1; raises when A and M are not coprime
 function BigModInverse(const A, M: TRALBigNum): TRALBigNum;
-/// ABase ^ AExponent mod AModulus. Montgomery with a 4-bit window when the
-/// modulus is odd (every RSA and prime test case), plain otherwise
+{ ABase ^ AExponent mod AModulus. Montgomery with a 4-bit window when the
+  modulus is odd (every RSA and prime test case), plain otherwise. }
 function BigModPow(const ABase, AExponent, AModulus: TRALBigNum): TRALBigNum;
 
 /// a random number of exactly ABits bits (the top bit set)
@@ -79,9 +97,9 @@ function BigRandomBits(ABits: IntegerRAL): TRALBigNum;
 function BigRandomRange(const ALow, AHigh: TRALBigNum): TRALBigNum;
 /// Miller-Rabin with ARounds random bases, after trial division
 function BigIsProbablePrime(const A: TRALBigNum; ARounds: IntegerRAL = 0): boolean;
-/// a random prime of exactly ABits bits with the two top bits set, so that the
-/// product of two of them has exactly twice as many; when APublicExponent is
-/// not zero, gcd(prime - 1, APublicExponent) = 1 as well (it must be prime)
+{ a random prime of exactly ABits bits with the two top bits set, so that the
+  product of two of them has exactly twice as many; when APublicExponent is
+  not zero, gcd(prime - 1, APublicExponent) = 1 as well (it must be prime). }
 function BigRandomPrime(ABits: IntegerRAL; APublicExponent: Cardinal = 0): TRALBigNum;
 
 implementation
@@ -90,14 +108,18 @@ implementation
 {$R-}
 
 type
+  /// Two limbs, for products and carries.
   TLimb2 = UInt64;
 
 const
+  /// Small primes tried before Miller-Rabin.
   cSmallPrimeCount = 2048;
 
 var
+  /// The first cSmallPrimeCount primes.
   gSmallPrimes: array of Cardinal;
 
+/// Fills gSmallPrimes.
 procedure InitSmallPrimes;
 var
   vSieve: array of boolean;
@@ -143,6 +165,7 @@ begin
   SetLength(gSmallPrimes, vCount);
 end;
 
+/// Drops the zero limbs at the top.
 procedure Normalize(var A: TRALBigNum);
 var
   vLen: IntegerRAL;
@@ -700,15 +723,23 @@ end;
   X is kept as X R mod N, so a product needs no division: MontMul(aR, bR) =
   abR mod N. Each operand is exactly S limbs, zero padded }
 type
+  /// The constants of Montgomery multiplication modulo one odd N.
   TMontgomery = record
+    /// The modulus.
     N: TRALBigNum;
+    /// Limbs of the modulus.
     S: IntegerRAL;
+    /// -N^-1 mod 2^32.
     NInv: Cardinal;
+    /// R^2 mod N.
     R2: TRALBigNum;
+    /// R mod N: one in Montgomery form.
     One: TRALBigNum;
+    /// The work buffer of MontMul.
     T: array of Cardinal;
   end;
 
+/// A with zero limbs up to ASize.
 function PadLimbs(const A: TRALBigNum; ASize: IntegerRAL): TRALBigNum;
 var
   vInt: IntegerRAL;
@@ -721,7 +752,7 @@ begin
       Result[vInt] := 0;
 end;
 
-{ Result := A * B / R mod N (CIOS). Result may be A or B }
+/// Result is A * B / R mod N (CIOS); Result may be A or B.
 procedure MontMul(var ACtx: TMontgomery; const A, B: TRALBigNum;
   var AResult: TRALBigNum);
 var
@@ -793,6 +824,7 @@ begin
   end;
 end;
 
+/// Prepares ACtx for AModulus, which must be odd.
 procedure MontInit(var ACtx: TMontgomery; const AModulus: TRALBigNum);
 var
   vInv: Cardinal;
@@ -824,6 +856,7 @@ begin
   ACtx.One := PadLimbs(BigMod(vR2, AModulus), ACtx.S);
 end;
 
+/// ABase ^ AExponent mod AModulus, by Montgomery multiplication.
 function MontModPow(const ABase, AExponent, AModulus: TRALBigNum): TRALBigNum;
 const
   cWindow = 4;
@@ -951,6 +984,7 @@ begin
   Result := BigAdd(ALow, vCand);
 end;
 
+/// Whether A passes ARounds rounds of Miller-Rabin with random bases.
 function MillerRabin(const A: TRALBigNum; ARounds: IntegerRAL): boolean;
 var
   vMinus1, vD, vX, vBase, vLow, vHigh: TRALBigNum;
@@ -998,7 +1032,7 @@ begin
   Result := True;
 end;
 
-{ rounds for a 2^-100 error on a random candidate, FIPS 186-4 table C.2 }
+/// Rounds for a 2^-100 error on a random candidate, FIPS 186-4 table C.2.
 function DefaultRounds(ABits: IntegerRAL): IntegerRAL;
 begin
   if ABits >= 1536 then

@@ -10,16 +10,14 @@ interface
 uses
   Classes, SysUtils, ZLib,
   {$IFDEF FPC}
-    { after ZLib, on purpose: FPC's ZLib binds the C library (zlib1.dll,
-      libz.so), and the names of zbase and zdeflate - paszlib, Pascal, no
-      library to load - must be the ones the deflate below calls }
+    { after ZLib: the names of zbase and zdeflate (paszlib, no library to
+      load) must win over those of FPC's ZLib, which binds the C library }
     ZStream, zbase, zdeflate, zinflate,
   {$ENDIF}
   RALExceptions, RALErrorCodes, RALCompress, RALTypes, RALConsts, RALCRC32, RALHashBase,
   RALStream;
 
 type
-  { TRALCompressZLib }
 
   /// Compression class ZLIB for PascalRAL
   TRALCompressZLib = class(TRALCompress)
@@ -39,6 +37,7 @@ type
 implementation
 
 const
+  /// The fixed gzip header written (RFC 1952): no name, no time, OS unknown.
   GZipHeader: array [0 .. 9] of byte = ($1F, $8B, $08, $00, $00, $00, $00, $00, $04, $FF);
   // 1F8B08 = gzip signature | 04 = fastest | FF = source is stream | 00 = fill the gaps
 
@@ -50,7 +49,7 @@ const
 
 {$IFDEF RALZLIB_DIRECT}
 const
-  { the pieces read from the body and written to the output, on the stack }
+  /// The pieces read from the body and written to the output, on the stack.
   cZLibPiece = 4096;
 
 { The window for a body of ASize bytes: the smallest that holds it whole - a
@@ -140,10 +139,9 @@ var
   {$ENDIF}
 begin
   { an empty body goes through like any other: a gzip, zlib or deflate stream
-    of nothing is still a stream - 20, 8 and 2 bytes. Leaving the output empty,
-    as this did, sent a body of no bytes under a Content-Encoding that promised
-    a stream, which a strict decoder refuses; zstd and brotli always wrote
-    theirs. Decompress still takes an empty body as an empty one }
+    of nothing is still a stream (20, 8 and 2 bytes), which a strict decoder
+    expects under that Content-Encoding. Decompress still takes an empty body
+    as an empty one }
   vSize := AInStream.Size;
   ZLibSizes(AInStream.Size, vWindowBits, vMemLevel);
 
@@ -175,11 +173,8 @@ begin
     vCRC32.Free;
   end;
   {$ELSE}
-  // the framing by windowBits: W = zlib, -W = raw deflate, W + 16 = gzip.
-  // ctDeflate used to fall into the gzip branch, which framed it as GZIP
-  // while the header still said "deflate" - and FPC writes raw deflate for
-  // the same format, so the two compilers could not read each other. Raw is
-  // what the wire name means.
+  // the framing by windowBits: W = zlib, -W = raw deflate, W + 16 = gzip;
+  // ctDeflate is raw deflate, as FPC writes it
   if Format = ctDeflate then
     vWindowBits := -vWindowBits
   else if Format <> ctZLib then
@@ -203,17 +198,14 @@ var
   {$ENDIF}
 begin
   { an empty body goes through like any other: a gzip, zlib or deflate stream
-    of nothing is still a stream - 20, 8 and 2 bytes. Leaving the output empty,
-    as this did, sent a body of no bytes under a Content-Encoding that promised
-    a stream, which a strict decoder refuses; zstd and brotli always wrote
-    theirs. Decompress still takes an empty body as an empty one }
+    of nothing is still a stream (20, 8 and 2 bytes), which a strict decoder
+    expects under that Content-Encoding. Decompress still takes an empty body
+    as an empty one }
   vSize := AInStream.Size;
 
-  { a work buffer of a fixed size. Sized from the input, it came out empty
-    for an empty one - and vBuf[0] of it is a range error - and, on the way
-    back, as small as the compressed body: a 20-byte deflate of a megabyte of
-    zeros took fifty thousand turns of the loop. Nor does a body of 40 MB
-    need a 40 MB copy of itself to go through the compressor }
+  { a work buffer of a fixed size: one sized from the input is empty for an
+    empty body, tiny for a small compressed one (a megabyte of zeros deflates
+    to 20 bytes) and as big as a large one }
   SetLength(vBuf, DEFAULTCOMPRESSBUFFERSIZE);
 
   {$IFDEF FPC}
@@ -234,10 +226,8 @@ begin
   else
     vZip := TCompressionStream.Create(clfastest, AOutStream, True);
   {$ELSE}
-  // windowBits: 15 = zlib, -15 = raw deflate, 31 = gzip. ctDeflate used to
-  // fall into the 31 branch, which framed it as GZIP while the header still
-  // said "deflate" - and FPC writes raw deflate for the same format, so the
-  // two compilers could not read each other. -15 is what the wire name means.
+  // windowBits: 15 = zlib, -15 = raw deflate, 31 = gzip; ctDeflate is raw
+  // deflate, as FPC writes it
   if Format = ctZLib then
     vZip := TCompressionStream.Create(AOutStream, zcFastest, 15)
   else if Format = ctDeflate then
@@ -283,7 +273,7 @@ end;
 
 { Whether the stream starts with a zlib header (RFC 1950): method 8 (deflate),
   window of at most 32 KB, and the check bits that make the first two bytes a
-  multiple of 31. HTTP's "deflate" IS zlib (RFC 9110 8.4.1.2) - what most
+  multiple of 31. HTTP's "deflate" is zlib (RFC 9110 8.4.1.2) - what most
   servers send - while RAL, and a few old servers, send it raw; asking the
   stream is what reads both. Leaves the position where it was }
 function StartsWithZlibHeader(AStream: TStream): boolean;
@@ -336,9 +326,8 @@ begin
     AInStream.ReadBuffer(vCRCFile, SizeOf(vCRCFile));
     AInStream.ReadBuffer(vFileSize, SizeOf(vFileSize));
     { FPC's TDecompressionStream reads raw deflate: it gets a window over the
-      data between the gzip header and the trailer. It used to cut the trailer
-      off the CALLER's stream and write it back afterwards - which a read-only
-      view of an engine's buffer cannot take }
+      data between the gzip header and the trailer, which leaves the caller's
+      stream (possibly a read-only view of an engine's buffer) untouched }
     vSource := RALStreamSlice(AInStream, Length(GZipHeader),
       AInStream.Size - Length(GZipHeader) - 2 * SizeOf(LongWord));
     vCRC32 := TRALCRC32.Create;
@@ -404,6 +393,7 @@ const
     server holding a thousand streams open pays for each of them while they
     last }
   cStreamWindowBits = 12;
+  /// zlib memLevel of a stream encoder, small to keep open streams cheap.
   cStreamMemLevel = 5;
   { zlib's largest window, what a reader takes (Delphi's ZLib declares no
     cZLibMaxBits) }
@@ -412,26 +402,36 @@ const
 type
   { TRALZLibStreamDecoder }
 
-  { gzip, zlib or deflate decompressed in pieces, as they arrive }
+  /// Gzip, zlib or deflate decompressed in pieces, as they arrive.
   TRALZLibStreamDecoder = class(TRALStreamCoder)
   private
+    /// Whether zlib reported the end of the data.
     FEnded: boolean;
+    /// The format being read.
     FFormat: TRALCompressType;
     { the first bytes, held until the framing is known: the zlib header test of
       a deflate body, and on FPC the whole gzip header }
     FHead: RawByteString;
+    /// Whether the inflater was set up.
     FStarted: boolean;
+    /// Bytes decompressed so far.
     FWritten: Int64RAL;
+    /// The zlib stream state.
     FZ: z_stream;
     {$IFDEF FPC}
+    /// The CRC of the output, checked against the gzip trailer.
     FCRC32: TRALCRC32;
-    { the gzip trailer, read after the end of the deflate stream }
+    /// The gzip trailer, read after the end of the deflate stream.
     FTrailer: RawByteString;
     {$ENDIF}
+    /// Inflates ASize bytes at ABuffer into AOutput.
     procedure InflatePiece(ABuffer: Pointer; ASize: IntegerRAL; AOutput: TStream);
+    /// Sets up the inflater with AWindowBits.
     procedure Start(AWindowBits: Integer);
+    /// Sets up the inflater once enough of the head arrived to know the framing.
     function TryStart(AOutput: TStream): boolean;
   public
+    /// Creates a decoder of AFormat.
     constructor Create(AFormat: TRALCompressType);
     destructor Destroy; override;
 
@@ -445,17 +445,25 @@ type
     (Z_SYNC_FLUSH), so a reader gets every piece when it is sent }
   TRALZLibStreamEncoder = class(TRALStreamCoder)
   private
+    /// The format being written.
     FFormat: TRALCompressType;
+    /// The zlib stream state.
     FZ: z_stream;
     {$IFDEF FPC}
+    /// The CRC of the input, for the gzip trailer.
     FCRC32: TRALCRC32;
+    /// Whether the gzip header was written.
     FHeaderSent: boolean;
+    /// Input bytes so far, for the gzip trailer.
     FSize: LongWord;
 
+    /// Writes the gzip header once, before the first piece.
     procedure SendHeader(AOutput: TStream);
     {$ENDIF}
+    /// Deflates ASize bytes at ABuffer into AOutput with the zlib flush mode AFlush.
     procedure DeflatePiece(ABuffer: Pointer; ASize: IntegerRAL; AFlush: Integer; AOutput: TStream);
   public
+    /// Creates an encoder of AFormat.
     constructor Create(AFormat: TRALCompressType);
     destructor Destroy; override;
 

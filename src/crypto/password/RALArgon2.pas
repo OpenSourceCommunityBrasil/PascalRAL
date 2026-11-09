@@ -1,6 +1,6 @@
-/// Argon2 (RFC 9106), version 1.3, in its three flavours (Argon2d, Argon2i,
-/// Argon2id). Pure Pascal over RALBLAKE2; the lanes are filled one after the
-/// other on the calling thread, which gives the same tag as a parallel run.
+{ Argon2 (RFC 9106), version 1.3, in its three flavours (Argon2d, Argon2i,
+  Argon2id). Pure Pascal over RALBLAKE2; the lanes are filled one after the
+  other on the calling thread, which gives the same tag as a parallel run. }
 unit RALArgon2;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -50,12 +50,17 @@ function RALArgon2HashLong(const AInput: TBytes; ALength: Cardinal): TBytes;
 implementation
 
 const
+  /// Argon2 version 1.3 (RFC 9106).
   cArgonVersion = $13;
+  /// Slices per pass (RFC 9106).
   cSyncPoints = 4;
+  /// 64-bit words in a 1 KB block.
   cBlockWords = 128;
 
 type
+  /// One 1 KB block of the Argon2 memory.
   TArgonBlock = array[0..cBlockWords - 1] of UInt64RAL;
+  /// Pointer to a TArgonBlock.
   PArgonBlock = ^TArgonBlock;
 
 function RALArgon2Params(AType: TRALArgon2Type; AMemoryKiB, AIterations,
@@ -68,6 +73,7 @@ begin
   Result.TagLength := ATagLength;
 end;
 
+/// The four little-endian bytes of AValue.
 function LE32(AValue: Cardinal): TBytes;
 begin
   SetLength(Result, 4);
@@ -118,7 +124,7 @@ begin
   end;
 end;
 
-{ GB of the RFC: BLAKE2b's G with the multiplications of BlaMka }
+/// GB of the RFC: BLAKE2b's G with the multiplications of BlaMka.
 procedure GB(var A, B, C, D: UInt64RAL);
 begin
   A := A + B + 2 * (A and $FFFFFFFF) * (B and $FFFFFFFF);
@@ -131,7 +137,7 @@ begin
   B := RALRotR64(B xor C, 63);
 end;
 
-{ the permutation P over sixteen words of ABlock, at the indexes in AIdx }
+/// The permutation P over sixteen words of ABlock, at the indexes in AIdx.
 procedure Permute(var ABlock: TArgonBlock; const AIdx: array of IntegerRAL);
 begin
   GB(ABlock[AIdx[0]], ABlock[AIdx[4]], ABlock[AIdx[8]], ABlock[AIdx[12]]);
@@ -144,7 +150,7 @@ begin
   GB(ABlock[AIdx[3]], ABlock[AIdx[4]], ABlock[AIdx[9]], ABlock[AIdx[14]]);
 end;
 
-{ the compression G: ANext := G(APrev, ARef), or ANext xor G(...) with AXor }
+/// The compression G: ANext is G(APrev, ARef), or ANext xor G(...) with AXor.
 procedure FillBlock(const APrev, ARef: TArgonBlock; var ANext: TArgonBlock; AXor: boolean);
 var
   vR, vTmp: TArgonBlock;

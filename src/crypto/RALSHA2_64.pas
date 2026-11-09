@@ -8,12 +8,17 @@ uses
   RALHashBase, RALTypes, RALTools, RALBase64;
 
 type
+  /// The SHA-2 variants of 64-bit words.
   TRALSHA64Versions = (rsv384, rsv512, rsv512_224, rsv512_256);
 
+  /// SHA-384, SHA-512, SHA-512/224 and SHA-512/256 (FIPS 180-4).
   TRALSHA2_64 = class(TRALHashBase)
   private
+    /// The block being filled.
     FBuffer: array[0..127] of byte;
+    /// The running state (H0 to H7).
     FHash: array[0..7] of UInt64RAL;
+    /// Size of the digest, in bytes.
     FHashSize: byte;
     FVersion: TRALSHA64Versions;
   protected
@@ -25,25 +30,26 @@ type
     procedure SetVersion(const Value: TRALSHA64Versions);
     /// returns swaps bits of a value
     function Swap(AValue: Cardinal): Cardinal; overload;
+    /// Reverses the byte order of a 64-bit value.
     function Swap(AValue: UInt64RAL): UInt64RAL; overload;
   public
     constructor Create;
   published
+    /// Which variant the hash computes.
     property Version: TRALSHA64Versions read FVersion write SetVersion;
   end;
 
 implementation
 
-{ Hashing is arithmetic modulo 2^64 by definition: overflow and range checks
-  have nothing to find here and only slow it down. Off for the whole unit -
-  the Q-/Q+ switches it used to carry turned overflow checks ON after each
-  block, whatever the project had chosen, and FPC refused the constant table
-  below under -Cr (it reads a hex literal past High(Int64) as a negative
-  number) }
+{ Hashing is arithmetic modulo 2^64: overflow and range checks have nothing
+  to find here, so they are off for the whole unit (FPC under -Cr also refuses
+  the constant table below, reading a hex literal past High(Int64) as
+  negative) }
 {$Q-}
 {$R-}
 
 const
+  /// The round constants of SHA-384/512.
   K: array[0..79] of UInt64RAL = (
     $428a2f98d728ae22, $7137449123ef65cd, $b5c0fbcfec4d3b2f, $e9b5dba58189dbbc,
     $3956c25bf348b538, $59f111f1b605d019, $923f82a4af194f9b, $ab1c5ed5da6d8118,

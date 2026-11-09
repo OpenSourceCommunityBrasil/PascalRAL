@@ -11,12 +11,13 @@ uses
   RALExceptions, RALErrorCodes, RALTypes, RALStream, RALConsts;
 
 type
+  /// Class of a compressor.
   TRALCompressClass = class of TRALCompress;
 
+  /// The content codings RAL knows; each exists only when its unit is linked.
   TRALCompressType = (ctNone, ctDeflate, ctZLib, ctGZip, ctZStd, ctBrotli);
+  /// A set of codings.
   TRALCompressTypes = set of TRALCompressType;
-
-  { TRALStreamCoder }
 
   { Compresses or decompresses a body in pieces, as they come, keeping its state
     between them: one per body, used by one thread at a time. What a piece
@@ -30,26 +31,32 @@ type
     procedure Update(const ABuffer; ASize: IntegerRAL; AOutput: TStream); virtual; abstract;
   end;
 
-  { TRALCompress }
-
   /// Compression class for PascalRAL
   TRALCompress = class(TPersistent)
   private
     FFormat: TRALCompressType;
   protected
+    /// Compresses AInStream into AOutStream in Format.
     procedure InitCompress(AInStream, AOutStream: TStream); virtual; abstract;
+    /// Decompresses AInStream, in Format, into AOutStream.
     procedure InitDeCompress(AInStream, AOutStream: TStream); virtual; abstract;
     procedure SetFormat(AValue: TRALCompressType); virtual;
   public
+    /// The coding of ATypes this class prefers, or ctNone.
     class function BestCompressFromClass(ATypes : TRALCompressTypes) : TRALCompressType; virtual;
+    /// Compresses AStream from its start into a new stream, owned by the caller.
     function Compress(AStream: TStream): TStream; overload;
+    /// Compresses a string of bytes.
     function Compress(const AString: StringRAL): StringRAL; overload;
+    /// Compresses the file AInFile into AOutFile.
     procedure CompressFile(AInFile, AOutFile: StringRAL);
     { AInStream, from its start, compressed into AOutStream, where AOutStream
       is: nothing but a working buffer of DEFAULTBUFFERSTREAMSIZE in between.
       What EncodeBody uses, writing straight into the body that goes out }
     procedure CompressTo(AInStream, AOutStream: TStream);
+    /// The Content-Encoding name of ACompress.
     class function CompressToString(ACompress: TRALCompressType): StringRAL;
+    /// The codings this class handles.
     class function CompressTypes : TRALCompressTypes; virtual; abstract;
     { A decompressor of AFormat that takes the body in pieces, or nil when this
       class has none (the base answers nil): the body is then decompressed whole }
@@ -57,40 +64,52 @@ type
     { A compressor of AFormat whose every Update sends out all it was given (a
       flush per piece), or nil when this class has none (the base answers nil) }
     class function CreateStreamEncoder(AFormat: TRALCompressType): TRALStreamCoder; virtual;
+    /// Decompresses AStream from its start into a new stream, owned by the caller.
     function Decompress(AStream: TStream): TStream; overload;
+    /// Decompresses a string of bytes.
     function Decompress(const AString: StringRAL): StringRAL; overload;
+    /// Decompresses the file AInFile into AOutFile.
     procedure DecompressFile(AInFile, AOutFile: StringRAL);
     /// The inverse of CompressTo: AInStream, from its start, into AOutStream
     procedure DecompressTo(AInStream, AOutStream: TStream);
+    /// The registered coding to answer an Accept-Encoding value with, or ctNone.
     class function GetBestCompress(const AEncoding: StringRAL): TRALCompressType;
-    /// The coding of a name as RALSplitCoding hands it back - lowercase, no
-    /// parameters - for a caller that already split the entry
+    { The coding of a name as RALSplitCoding hands it back - lowercase, no
+      parameters - for a caller that already split the entry. }
     class function NameToCompress(const AName: StringRAL): TRALCompressType;
+    /// The coding of a Content-Encoding name, or ctNone.
     class function StringToCompress(const AStr: StringRAL): TRALCompressType;
   published
+    /// The coding this instance writes and reads.
     property Format: TRALCompressType read FFormat write SetFormat;
   end;
 
+  /// Registers a compressor for the codings it handles.
   procedure RegisterCompress(ACompress : TRALCompressClass);
+  /// Removes the registration of a compressor.
   procedure UnregisterCompress(ACompress : TRALCompressClass);
-  /// Changes whenever a compressor is registered or leaves: what
-  /// GetBestCompress answers for a header depends on that set, so a value kept
-  /// from it is only good while this stays the same
+  { Changes whenever a compressor is registered or leaves: what
+    GetBestCompress answers for a header depends on that set, so a value kept
+    from it is only good while this stays the same. }
   function CompressRegistration: IntegerRAL;
+  /// The compressor of ACompressType, or nil when its unit is not linked.
   function GetCompressClass(ACompressType : TRALCompressType) : TRALCompressClass;
+  /// Fills AList with the names of the registered codings.
   procedure GetCompressList(AList : TStrings);
+  /// The codings with a registered compressor.
   function GetSuportedCompress : TRALCompressTypes;
+  /// The Accept-Encoding value of the registered codings.
   function GetAcceptCompress : StringRAL;
   /// A piecewise decompressor of ACompressType, or nil - see CreateStreamDecoder.
   function RALCreateStreamDecoder(ACompressType: TRALCompressType): TRALStreamCoder;
   /// A piecewise compressor of ACompressType, or nil - see CreateStreamEncoder.
   function RALCreateStreamEncoder(ACompressType: TRALCompressType): TRALStreamCoder;
-  /// One entry of an Accept-Encoding / Content-Encoding list: 'gzip;q=0.5'
-  /// gives 'gzip' and 0.5. The name comes lowercase; with no q, the quality is 1
+  { One entry of an Accept-Encoding / Content-Encoding list: 'gzip;q=0.5'
+    gives 'gzip' and 0.5. The name comes lowercase; with no q, the quality is 1. }
   procedure RALSplitCoding(const AToken: StringRAL; out AName: StringRAL;
     out AQuality: Double);
-  /// Raises emDecompressLimit when ACurrent passes RALMaxDecompressedSize;
-  /// every compressor calls it from its decompression loop
+  { Raises emDecompressLimit when ACurrent passes RALMaxDecompressedSize;
+    every compressor calls it from its decompression loop. }
   procedure RALCheckDecompressedSize(ACurrent: Int64);
   { Whether a body of AContentType is already compressed, so compressing it
     again gains nothing: images (not SVG), audio, video, zip, gzip, 7z, rar,
@@ -114,10 +133,9 @@ type
   function RALInflatedSizeHint(ASource: TStream; AFormat: TRALCompressType): Int64RAL;
 
 var
-  { Ceiling, in bytes, for what one Decompress may produce. A 1 MB gzip of
-    zeros inflates to 1 GB, and without a ceiling that is one request worth
-    of memory per attacker. Zero (the default) keeps the old behaviour: no
-    limit at all. 512 MB is a sane value for a server }
+  { Ceiling, in bytes, for what one Decompress may produce (a 1 MB gzip of
+    zeros inflates to 1 GB). Zero, the default, sets no limit; 512 MB suits a
+    server }
   RALMaxDecompressedSize: Int64 = 0;
 
 implementation
@@ -277,18 +295,16 @@ begin
 end;
 
 const
+  /// Preference among codings a client accepts: the highest wins.
   CompressWeight : array[TRALCompressType] of integer = (0, 1, 2, 3, 5, 4);
+  /// The Content-Encoding name of each coding.
   CompressNames : array[TRALCompressType] of StringRAL = ('', 'deflate', 'zlib', 'gzip', 'zstd', 'br');
 
 var
+  /// The registered coding names, for the design-time listing.
   CompressDefs : TStringList;
-  { The class of each type, kept at registration time. The lookup used to go
-    by NAME and end in GetClass, which takes MonitorEnter on the RTL's global
-    class registry - a process-wide lock, taken several times per request
-    (GetBestCompress alone takes one per registered compressor).
-    RegisterCompress already receives the class; keeping the pointer removes the
-    lock, the GetEnumName and the list search from the hot path in one go.
-    CompressDefs stays for the by-name listing at design time. }
+  { The class of each type, kept at registration time so that a lookup takes
+    no lock; CompressDefs holds the names for the design-time listing }
   CompressClasses : array[TRALCompressType] of TRALCompressClass;
   { bumped by every change to CompressClasses - see CompressRegistration.
     Registration runs in unit initializations and finalizations, one thread }
@@ -299,6 +315,7 @@ begin
   Result := CompressGen;
 end;
 
+/// Creates CompressDefs on first use.
 procedure CheckCompressDefs;
 begin
   if CompressDefs = nil then
@@ -308,6 +325,7 @@ begin
   end;
 end;
 
+/// Frees CompressDefs.
 procedure DoneCompressDefs;
 begin
   FreeAndNil(CompressDefs);
@@ -358,8 +376,6 @@ end;
 
 function GetCompressClass(ACompressType: TRALCompressType): TRALCompressClass;
 begin
-  { was GetEnumName + IndexOfName + GetClass, with the global lock; now it is
-    an array index }
   Result := CompressClasses[ACompressType];
 end;
 
@@ -410,10 +426,6 @@ function GetSuportedCompress: TRALCompressTypes;
 var
   vType: TRALCompressType;
 begin
-  { through the class array: the by-name version called GetClass - and the
-    RTL's global lock - once per registered entry. And GetClass could answer nil
-    when a class was listed without RegisterClass, which made the vClass
-    .CompressTypes right after it an access violation }
   Result := [];
   for vType := Low(TRALCompressType) to High(TRALCompressType) do
     if CompressClasses[vType] <> nil then
@@ -481,11 +493,8 @@ begin
   if AStream = nil then
     Exit;
 
-  // start from the beginning whatever the caller left behind. DecodeBody
-  // and EncodeBody hand over a stream still positioned at the end of a
-  // CopyFrom, and only the FPC gzip branch happened to reposition it while
-  // reading its own header and trailer - deflate and zlib read nothing and
-  // raised "buffer error".
+  // start from the beginning whatever the caller left behind (DecodeBody and
+  // EncodeBody hand over a stream positioned at the end of a CopyFrom)
   AStream.Position := 0;
   // a compressor that raises (zstd/brotli without their DLL, for one) must
   // not leave the output stream behind with the exception
@@ -589,17 +598,15 @@ var
   vName: StringRAL;
   vQuality: Double;
 begin
-  { a header entry may carry parameters - 'gzip;q=1.0' is what many clients
-    send - and comparing the whole entry recognised none of them }
+  // a header entry may carry parameters ('gzip;q=1.0'): only the name counts
   RALSplitCoding(AStr, vName, vQuality);
   Result := NameToCompress(vName);
 end;
 
 class function TRALCompress.NameToCompress(const AName: StringRAL): TRALCompressType;
 begin
-  { split already: GetBestCompress and HasValidAcceptEncoding have the name in
-    hand, and going through StringToCompress split and lowercased it again -
-    on Delphi two more UTF-8/UTF-16 round trips per entry, on every request }
+  { the name comes split and lowercased, as GetBestCompress and
+    HasValidAcceptEncoding have it, so no more conversions per entry }
   if (AName = 'gzip') or (AName = 'x-gzip') then
     Result := ctGZip
   else if AName = 'zlib' then
@@ -673,15 +680,11 @@ var
 begin
   Result := ctNone;
 
-  { the per-call TStringList is gone: besides the allocation, "Text :=
-    AEncoding" and reading it back through Strings[] converted the header from
-    UTF-8 to UTF-16 and back on Delphi. This loop splits on the comma straight
-    over the StringRAL. An empty run is skipped, which comes to the same thing:
-    it stood for ctNone, and ctNone is the neutral element in
-    BestCompressFromClass.
-    An entry with no ';' - what browsers send - is read in place (CodingAt);
-    only one with parameters is cut out and goes through RALSplitCoding, which
-    reads its q }
+  { split on the comma straight over the StringRAL, with no list and no
+    conversion to UTF-16 on Delphi; an empty run is skipped (ctNone is the
+    neutral element of BestCompressFromClass). An entry with no ';' - what
+    browsers send - is read in place (CodingAt); only one with parameters is
+    cut out and goes through RALSplitCoding, which reads its q }
   vTypes := [];
   vHigh := RALHighStr(AEncoding);
   vIni := POSINISTR;
@@ -711,9 +714,7 @@ begin
     Inc(vInt);
   end;
 
-  { through the class array, no GetClass: this loop ran on every read of
-    AcceptCompress or ContentCompress - several times per request - and each
-    turn took the global lock of the RTL's class registry }
+  // through the class array, which takes no lock
   vMax := -1;
   for vRegType := Low(TRALCompressType) to High(TRALCompressType) do
   begin

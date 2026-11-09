@@ -1,5 +1,5 @@
-/// Asymmetric keys of JSON Web Signature (RFC 7515/7518): RSA and ECDSA through
-/// OpenSSL, read from PEM or from a JWK (RFC 7517), and JWK sets
+{ Asymmetric keys of JSON Web Signature (RFC 7515/7518): RSA and ECDSA through
+  OpenSSL, read from PEM or from a JWK (RFC 7517), and JWK sets. }
 unit RALJWS;
 
 { Delphi mode matches the shared JSON and cryptography units. }
@@ -28,40 +28,50 @@ uses
   RALSHA2_32, RALOpenSSL;
 
 type
+  /// The kind of a JWS key.
   TRALJWSKeyType = (jktNone, jktRSA, jktEC);
+  /// The hash of a JWS signature.
   TRALJWSDigest = (jdSHA256, jdSHA384, jdSHA512);
-
-  { TRALJWSKey }
 
   /// One key: private (signs and verifies) or public (verifies)
   TRALJWSKey = class
   private
     FCurve: StringRAL;
+    /// RSA exponent.
     FE: TBytes;
     FKeyID: StringRAL;
     FKeyType: TRALJWSKeyType;
+    /// RSA modulus.
     FN: TBytes;
+    /// The OpenSSL key.
     FPKey: TRALOpenSSLKey;
     FPrivate: boolean;
+    /// EC point, x coordinate.
     FX: TBytes;
+    /// EC point, y coordinate.
     FY: TBytes;
 
+    /// Frees the key and empties every field.
     procedure Clear;
+    /// Bytes of a coordinate of the curve (32 or 48).
     function CurveSize: IntegerRAL;
+    /// Reads type, curve and public numbers out of the OpenSSL key.
     procedure ReadPublicKey;
+    /// Takes an OpenSSL key, freeing the one held.
     procedure SetPKey(APKey: TRALOpenSSLKey; APrivate: boolean);
   public
     constructor Create;
     destructor Destroy; override;
 
-    /// The public JWK of this key, with KeyID as kid, "use":"sig" and AAlg as
-    /// alg when given
+    { The public JWK of this key, with KeyID as kid, "use":"sig" and AAlg as
+      alg when given. }
     function AsJWK(const AAlg: StringRAL = ''): StringRAL;
     /// Whether OpenSSL 1.1.1 or later could be loaded
     class function Available: boolean;
-    /// Reads a public JWK (kty RSA or EC); kid becomes KeyID, the thumbprint
-    /// when the JWK has none
+    { Reads a public JWK (kty RSA or EC); kid becomes KeyID, the thumbprint
+      when the JWK has none. }
     procedure LoadFromJWK(AJWK: TRALJSONObject); overload;
+    /// Reads a public JWK from its JSON text.
     procedure LoadFromJWK(const AJSON: StringRAL); overload;
     /// A private key in PEM ("PRIVATE KEY", "RSA PRIVATE KEY", "EC PRIVATE KEY")
     procedure LoadPrivateKeyPEM(const APEM: StringRAL);
@@ -71,21 +81,24 @@ type
     function Sign(const AInput: StringRAL; ADigest: TRALJWSDigest): TBytes;
     /// JWK thumbprint (RFC 7638), base64url of SHA-256: a stable kid
     function Thumbprint: StringRAL;
+    /// Whether ASignature is the JWS signature of AInput by this key.
     function Verify(const AInput: StringRAL; const ASignature: TBytes;
       ADigest: TRALJWSDigest): boolean;
 
     /// 'P-256' or 'P-384' for an EC key
     property Curve: StringRAL read FCurve;
+    /// Whether the key can sign.
     property IsPrivate: boolean read FPrivate;
+    /// The kid of the key.
     property KeyID: StringRAL read FKeyID write FKeyID;
+    /// RSA, EC, or none when nothing is loaded.
     property KeyType: TRALJWSKeyType read FKeyType;
   end;
-
-  { TRALJWKSet }
 
   /// The keys of a JWK set document ({"keys":[...]}), as published at a jwks_uri
   TRALJWKSet = class
   private
+    /// The keys, owned.
     FKeys: TList;
 
     function GetCount: IntegerRAL;
@@ -94,13 +107,16 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    /// Frees every key.
     procedure Clear;
     /// The key with this kid; with AKeyID empty, the only key of the set
     function Find(const AKeyID: StringRAL): TRALJWSKey;
     /// Reads the set; a key of an unsupported type is skipped, not an error
     procedure LoadFromJSON(const AJSON: StringRAL);
 
+    /// Number of keys.
     property Count: IntegerRAL read GetCount;
+    /// The key at AIndex.
     property Keys[AIndex: IntegerRAL]: TRALJWSKey read GetKey;
   end;
 
@@ -112,15 +128,24 @@ function RALBase64UrlDecode(const AValue: StringRAL): TBytes;
 implementation
 
 const
+  /// DER of the rsaEncryption OID.
   cOidRSA: array[0..8] of Byte = ($2A, $86, $48, $86, $F7, $0D, $01, $01, $01);
+  /// DER of the id-ecPublicKey OID.
   cOidEC: array[0..6] of Byte = ($2A, $86, $48, $CE, $3D, $02, $01);
+  /// DER of the P-256 curve OID.
   cOidP256: array[0..7] of Byte = ($2A, $86, $48, $CE, $3D, $03, $01, $07);
+  /// DER of the P-384 curve OID.
   cOidP384: array[0..4] of Byte = ($2B, $81, $04, $00, $22);
 
+  /// DER tag of INTEGER.
   cTagInteger = $02;
+  /// DER tag of BIT STRING.
   cTagBitString = $03;
+  /// DER tag of NULL.
   cTagNull = $05;
+  /// DER tag of OBJECT IDENTIFIER.
   cTagOID = $06;
+  /// DER tag of SEQUENCE.
   cTagSequence = $30;
 
 function RALBase64UrlEncode(const AValue: TBytes): StringRAL;
@@ -135,6 +160,7 @@ end;
 
 { DER, only as much as a SubjectPublicKeyInfo and an ECDSA signature need }
 
+/// The parts one after the other.
 function Join(const AParts: array of TBytes): TBytes;
 var
   vInt, vPos, vLen: IntegerRAL;
@@ -152,6 +178,7 @@ begin
     end;
 end;
 
+/// A TBytes of the open array.
 function Bytes(const AValue: array of Byte): TBytes;
 var
   vInt: IntegerRAL;
@@ -161,6 +188,7 @@ begin
     Result[vInt] := AValue[vInt];
 end;
 
+/// A DER element of ATag holding AContent.
 function DERItem(ATag: Byte; const AContent: TBytes): TBytes;
 var
   vLen: IntegerRAL;
@@ -179,7 +207,7 @@ begin
   Result := Join([vHead, AContent]);
 end;
 
-{ an unsigned big-endian number without its leading zeros }
+/// An unsigned big-endian number without its leading zeros.
 function StripZeros(const AValue: TBytes): TBytes;
 var
   vInt: IntegerRAL;
@@ -190,7 +218,7 @@ begin
   Result := Copy(AValue, vInt, Length(AValue) - vInt);
 end;
 
-{ INTEGER is signed: a number whose first bit is set gets a zero in front }
+/// INTEGER is signed: a number whose first bit is set gets a zero in front.
 function DERInteger(const AValue: TBytes): TBytes;
 var
   vValue: TBytes;
@@ -203,6 +231,7 @@ begin
   Result := DERItem(cTagInteger, vValue);
 end;
 
+/// Reads the element at APos and moves past it; False when it does not fit.
 function DERRead(const AData: TBytes; var APos: IntegerRAL; out ATag: Byte;
   out AContent: TBytes): boolean;
 var
@@ -235,6 +264,7 @@ begin
   Result := True;
 end;
 
+/// Whether A holds exactly B.
 function SameBytes(const A: TBytes; const B: array of Byte): boolean;
 var
   vInt: IntegerRAL;
@@ -261,6 +291,7 @@ begin
     Move(vValue[0], Result[ASize - Length(vValue)], Length(vValue));
 end;
 
+/// The DER SubjectPublicKeyInfo of an RSA modulus and exponent.
 function SPKIForRSA(const AN, AE: TBytes): TBytes;
 var
   vAlg, vKey: TBytes;
@@ -272,6 +303,7 @@ begin
     DERItem(cTagBitString, Join([Bytes([0]), vKey]))]));
 end;
 
+/// The DER SubjectPublicKeyInfo of an EC point on ACurve.
 function SPKIForEC(const ACurve: StringRAL; const AX, AY: TBytes): TBytes;
 var
   vCurve, vAlg: TBytes;

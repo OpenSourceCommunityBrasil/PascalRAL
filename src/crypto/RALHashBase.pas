@@ -9,23 +9,29 @@ uses
   RALHexadecimal;
 
 type
+  /// How a digest is written as text: raw, hexadecimal, base64 or base64url.
   TRALHashOutputType = (rhotNone, rhotHex, rhotBase64, rhotBase64Url);
 
-  { TRALHashBase }
-
+  /// Base of the block hashes: buffering, HMAC and the text forms of a digest.
   TRALHashBase = class
   private
+    { Whether the digest was taken; updates are ignored until the next
+    Initialize }
     FFinalized: boolean;
+    /// The outer key pad of an incremental HMAC.
     FHMACOuter: TBytes;
+    /// Bytes held in the current block.
     FIndex: IntegerRAL;
+    /// Whether the state was reset for the current hash.
     FInitialized: boolean;
+    /// Message length so far, in bits.
     FLenBit: UInt64RAL;
     FOutputType: TRALHashOutputType;
 
     /// the key padded to the block, for HMACBegin
     function HMACKey(const AKey: TBytes): TBytes;
   protected
-    /// Used to compress the content, generating the hash
+    /// Hashes the full block in the buffer
     procedure Compress; virtual;
     /// Convert hash (return Finalize) to base64
     function DigestToBase64(AValue: TBytes): StringRAL;
@@ -51,15 +57,16 @@ type
     function GetLenBit: UInt64RAL;
     /// Picks up incoming and compact content according to buffer length
     procedure HashBytes(AData: pbyte; ALength: IntegerRAL); virtual;
-    /// Used to initialize the hash
+    /// Resets the state for a new hash
     procedure Initialize; virtual;
-    /// Used to insert more content that will generate the hash
+    /// Feeds the content of a stream to the hash
     procedure UpdateBuffer(AValue: TStream); overload; virtual;
-    /// Used to insert more content that will generate the hash
+    /// Feeds a string to the hash
     procedure UpdateBuffer(const AValue: StringRAL); overload; virtual;
-    /// Used to insert more content that will generate the hash
+    /// Feeds a byte array to the hash
     procedure UpdateBuffer(AValue: TBytes); overload; virtual;
   public
+    /// Creates the hash with the text form its string methods return.
     constructor Create(AOutputType: TRALHashOutputType = rhotHex);
 
     /// Returns a stream hash from a stream
@@ -72,11 +79,13 @@ type
       HashBegin, HashUpdate as many times as needed, HashEnd. The same digest
       as HashAsStream of all the pieces together }
     procedure HashBegin;
+    /// Ends an incremental hash and returns the digest.
     function HashEnd: TBytes;
+    /// Feeds ALength bytes at AData to an incremental hash.
     procedure HashUpdate(AData: Pointer; ALength: IntegerRAL);
-    /// Raw HMAC digest with a binary key. Public because a binary key must
-    /// not pass through StringRAL: StringToBytesUTF8 rewrites bytes that are
-    /// not valid UTF-8, and a derived key is full of those
+    { Raw HMAC digest with a binary key. Public because a binary key must
+      not pass through StringRAL: StringToBytesUTF8 rewrites bytes that are
+      not valid UTF-8, and a derived key is full of those. }
     function HMACAsDigest(AValue: TStream; AKey: TBytes): TBytes; virtual;
     /// Returns a string of a HMAC generated given an UTF8String
     function HMACAsString(const AValue: StringRAL; const AKey: StringRAL): StringRAL; overload; virtual;
@@ -89,7 +98,9 @@ type
       signs its ciphertext this way, while writing it, instead of reading the
       whole message back }
     procedure HMACBegin(const AKey: TBytes);
+    /// Ends an incremental HMAC and returns the digest.
     function HMACEnd: TBytes;
+    /// Feeds ALength bytes at AData to an incremental HMAC.
     procedure HMACUpdate(AData: Pointer; ALength: IntegerRAL);
   published
     /// Identifies the formatting of the hash
@@ -222,16 +233,10 @@ begin
     Move(AData^, vBuffer^, vBufSize);
     Inc(AData, vBufSize);
 
-    { adds to what the block already holds: it used to REPLACE the index, so a
-      piece that did not fill the block was overwritten by the next one - 16 +
-      16 bytes hashed differently from 32 at once. Every caller fed whole
-      blocks or one single piece until the incremental HashUpdate/HMACUpdate,
-      and for those the two are the same }
+    // a piece that does not fill the block adds to what the block holds
     if vBufSize + FIndex = vBufLength then
       Compress
     else
-      { past what the block already held: a second piece shorter than a
-        block went over the first, and the digest came out wrong }
       FIndex := FIndex + vBufSize;
 
     Dec(ALength, vBufSize);

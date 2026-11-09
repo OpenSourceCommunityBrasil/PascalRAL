@@ -1,5 +1,5 @@
-/// RSA keys in Pascal: generation, PKCS#1 v1.5 signatures with SHA-256, and the
-/// key formats (PKCS#1, PKCS#8, SubjectPublicKeyInfo, PEM)
+{ RSA keys in Pascal: generation, PKCS#1 v1.5 signatures with SHA-256, and the
+  key formats (PKCS#1, PKCS#8, SubjectPublicKeyInfo, PEM). }
 unit RALRSA;
 
 {$IFDEF FPC}
@@ -25,44 +25,60 @@ uses
   RALHashBase, RALSHA1, RALSHA2_32, RALSHA2_64;
 
 const
+  /// rsaEncryption.
   OID_RSA_ENCRYPTION = '1.2.840.113549.1.1.1';
+  /// sha256WithRSAEncryption.
   OID_SHA256_WITH_RSA = '1.2.840.113549.1.1.11';
+  /// SHA-1.
   OID_SHA1 = '1.3.14.3.2.26';
+  /// SHA-256.
   OID_SHA256 = '2.16.840.1.101.3.4.2.1';
+  /// SHA-384.
   OID_SHA384 = '2.16.840.1.101.3.4.2.2';
+  /// SHA-512.
   OID_SHA512 = '2.16.840.1.101.3.4.2.3';
+  /// sha1WithRSAEncryption.
   OID_SHA1_WITH_RSA = '1.2.840.113549.1.1.5';
+  /// sha384WithRSAEncryption.
   OID_SHA384_WITH_RSA = '1.2.840.113549.1.1.12';
+  /// sha512WithRSAEncryption.
   OID_SHA512_WITH_RSA = '1.2.840.113549.1.1.13';
+  /// Public exponent of a generated key.
   RALRSADefaultExponent = 65537;
+  /// Size of a generated key.
   RALRSADefaultBits = 2048;
 
 type
+  /// Error reading, generating or using an RSA key.
   ERALRSA = class(ERALException);
 
-  { TRALRSAKey }
-
+  /// An RSA key in pure Pascal: generation, PKCS#1/PKCS#8, PKCS#1 v1.5 signatures.
   TRALRSAKey = class
   private
     FD: TRALBigNum;
+    /// D mod (P - 1).
     FDP: TRALBigNum;
+    /// D mod (Q - 1).
     FDQ: TRALBigNum;
     FE: TRALBigNum;
     FN: TRALBigNum;
     FP: TRALBigNum;
     FQ: TRALBigNum;
+    /// Q^-1 mod P.
     FQInv: TRALBigNum;
 
+    /// Raises unless the numbers make a consistent key; rebuilds missing CRT values.
     procedure CheckKey;
     function GetBits: IntegerRAL;
     function GetIsPrivate: boolean;
     /// the private operation, by the CRT
     function PrivateOp(const AValue: TRALBigNum): TRALBigNum;
   public
+    /// Reads a PEM or DER key file; the caller frees the key.
     class function FromFile(const AFileName: string): TRALRSAKey;
-    /// the first key of the text: 'PRIVATE KEY', 'RSA PRIVATE KEY', 'PUBLIC KEY'
-    /// or 'RSA PUBLIC KEY'. 'ENCRYPTED PRIVATE KEY' raises: this unit does not
-    /// decrypt keys
+    { the first key of the text: 'PRIVATE KEY', 'RSA PRIVATE KEY', 'PUBLIC KEY'
+      or 'RSA PUBLIC KEY'. 'ENCRYPTED PRIVATE KEY' raises: this unit does not
+      decrypt keys. }
     class function FromPEM(const APEM: StringRAL): TRALRSAKey;
     /// RSAPrivateKey (PKCS#1)
     class function FromPKCS1(const ADER: TBytes): TRALRSAKey;
@@ -73,8 +89,8 @@ type
     /// a new key of ABits bits (at least 1024) and public exponent AExponent
     class function Generate(ABits: IntegerRAL = RALRSADefaultBits;
       AExponent: Cardinal = RALRSADefaultExponent): TRALRSAKey;
-    /// 'PRIVATE KEY' (PKCS#8, what OpenSSL 3 writes) or, with APKCS1,
-    /// 'RSA PRIVATE KEY'
+    { 'PRIVATE KEY' (PKCS#8, what OpenSSL 3 writes) or, with APKCS1,
+      'RSA PRIVATE KEY' }
     function PrivateKeyPEM(APKCS1: boolean = False): StringRAL;
     /// RSAPrivateKey (PKCS#1)
     function PrivateKeyPKCS1: TBytes;
@@ -82,6 +98,7 @@ type
     function PrivateKeyPKCS8: TBytes;
     /// SubjectPublicKeyInfo, the public key of a certificate
     function PublicKeyInfo: TBytes;
+    /// The public key as a PEM "PUBLIC KEY".
     function PublicKeyPEM: StringRAL;
     /// RSAPublicKey (PKCS#1)
     function PublicKeyPKCS1: TBytes;
@@ -91,18 +108,27 @@ type
     function Sign(const AData: TBytes): TBytes;
     /// PKCS#1 v1.5 signature of a SHA-256 digest
     function SignDigest(const ADigest: TBytes): TBytes;
+    /// Whether ASignature is the PKCS#1 v1.5 SHA-256 signature of AData.
     function Verify(const AData, ASignature: TBytes): boolean;
+    /// Whether ASignature is the PKCS#1 v1.5 signature of a SHA-256 ADigest.
     function VerifyDigest(const ADigest, ASignature: TBytes): boolean;
-    /// PKCS#1 v1.5 check against a whole DigestInfo (any hash): what a
-    /// certificate signed with SHA-1, SHA-384 or SHA-512 needs
+    { PKCS#1 v1.5 check against a whole DigestInfo (any hash): what a
+      certificate signed with SHA-1, SHA-384 or SHA-512 needs. }
     function VerifyDigestInfo(const ADigestInfo, ASignature: TBytes): boolean;
 
+    /// Size of the modulus, in bits.
     property Bits: IntegerRAL read GetBits;
+    /// The private exponent.
     property D: TRALBigNum read FD;
+    /// The public exponent.
     property E: TRALBigNum read FE;
+    /// Whether the private numbers are present.
     property IsPrivate: boolean read GetIsPrivate;
+    /// The modulus.
     property N: TRALBigNum read FN;
+    /// The first prime.
     property P: TRALBigNum read FP;
+    /// The second prime.
     property Q: TRALBigNum read FQ;
   end;
 
@@ -110,9 +136,9 @@ type
 function RALSHA256Bytes(const AData: TBytes): TBytes;
 /// SHA-1 of AData
 function RALSHA1Bytes(const AData: TBytes): TBytes;
-/// the digest of AData by the hash of a signature algorithm OID
-/// (sha1/256/384/512WithRSAEncryption) and the DigestInfo that carries it;
-/// False when the algorithm is none of those
+{ the digest of AData by the hash of a signature algorithm OID
+  (sha1/256/384/512WithRSAEncryption) and the DigestInfo that carries it;
+  False when the algorithm is none of those. }
 function RALDigestInfoFor(const ASignatureOID: StringRAL; const AData: TBytes;
   out ADigestInfo: TBytes): boolean;
 
@@ -124,6 +150,7 @@ const
   cSHA256DigestInfo: array[0..18] of Byte = ($30, $31, $30, $0D, $06, $09, $60,
     $86, $48, $01, $65, $03, $04, $02, $01, $05, $00, $04, $20);
 
+/// The digest of AData by AHash.
 function HashWith(AHash: TRALHashBase; const AData: TBytes): TBytes;
 begin
   try

@@ -1,5 +1,5 @@
-﻿/// Token structures of the authenticators: Basic credentials, JWT and Digest,
-/// and the parser of the auth-params they travel in
+﻿{ Token structures of the authenticators: Basic credentials, JWT and Digest,
+  and the parser of the auth-params they travel in. }
 unit RALToken;
 
 interface
@@ -10,17 +10,17 @@ uses
   RALBase64, RALMD5, RALJson, RALTools, RALJWS;
 
 type
-  /// Digest hashes: MD5, SHA-256 and SHA-512-256 (tdaSHA2_512, the name it
-  /// always had). Each also has a -sess variant, TRALDigestParams.SessAlgorithm
+  { Digest hashes: MD5, SHA-256 and SHA-512-256 (tdaSHA2_512, the name it
+    always had). Each also has a -sess variant, TRALDigestParams.SessAlgorithm. }
   TRALDigestAlgorithm = (tdaMD5, tdaSHA2_256, tdaSHA2_512);
+  /// A set of Digest algorithms.
   TRALDigestAlgorithms = set of TRALDigestAlgorithm;
-  /// HS* are HMAC with SignSecretKey; RS* (RSA) and ES* (ECDSA) sign with the
-  /// private key of TRALJWT.SignKey and verify with its public key
+  { HS* are HMAC with SignSecretKey; RS* (RSA) and ES* (ECDSA) sign with the
+    private key of TRALJWT.SignKey and verify with its public key. }
   TRALJWTAlgorithm = (tjaHSHA256, tjaHSHA384, tjaHSHA512, tjaRS256, tjaRS384,
     tjaRS512, tjaES256, tjaES384);
 
-  { TRALAuthBasic }
-
+  /// The user name and password of a Basic credential and their base64 form.
   TRALAuthBasic = class
   private
     FAuthString: StringRAL;
@@ -29,12 +29,13 @@ type
   protected
     procedure SetAuthString(const AValue: StringRAL);
   published
+    /// The base64 of user:password; assigning it decodes both.
     property AuthString: StringRAL read FAuthString write SetAuthString;
+    /// The password.
     property Password: StringRAL read FPassword write FPassword;
+    /// The user name.
     property UserName: StringRAL read FUserName write FUserName;
   end;
-
-  { TRALJWTHeader }
 
   /// Class for header definitions of JWT Token
   TRALJWTHeader = class(TPersistent)
@@ -46,29 +47,34 @@ type
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetAsJSON: StringRAL;
+    /// Back to the defaults: typ JWT, HS256, no kid.
     procedure Initialize;
     procedure SetAsJSON(const AValue: StringRAL);
   public
     constructor Create;
 
+    /// Sets a random kid.
     procedure createKeyID;
 
-    /// False when the alg of a token read is none this class knows: such a
-    /// token is never valid
+    { False when the alg of a token read is none this class knows: such a
+      token is never valid. }
     property AlgorithmKnown: boolean read FAlgorithmKnown;
+    /// The header as JSON; assigning it reads alg, typ and kid.
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
   published
+    /// The signing algorithm (alg).
     property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
+    /// The token type (typ).
     property HeaderType: StringRAL read FHeaderType;
+    /// The key identifier (kid).
     property KeyID: StringRAL read FKeyID write FKeyID;
   end;
-
-  { TRALJWTParams }
 
   /// Class for "body" or Param part definitions of JWT Token
   TRALJWTParams = class(TPersistent)
   private
     FAudience: StringRAL;
+    /// Claims other than the registered ones, as name=JSON value.
     FCustomClaims: TStringList;
     FExpiration: TDateTime;
     FId: StringRAL;
@@ -86,28 +92,39 @@ type
 
     /// Sets a custom claim; one already there with the same key is replaced
     procedure AddClaim(const AKey: StringRAL; const AValue: StringRAL);
+    /// Removes every claim.
     procedure Clear;
-    /// Adds every custom claim to AList as name=value lines (the registered ones are fields).
+    { Adds every custom claim to AList as name=value lines (the registered ones are
+      fields). }
     procedure CopyClaimsTo(AList: TStrings);
+    /// Sets a random jti.
     procedure createNewId;
+    /// Removes a custom claim.
     procedure DelClaim(const AKey: StringRAL);
+    /// The JSON value of a custom claim, or empty.
     function GetClaim(const AKey: StringRAL): StringRAL;
-    /// Whether the aud claim names AAudience - aud may be one string or a
-    /// JSON array of them
+    { Whether the aud claim names AAudience - aud may be one string or a
+      JSON array of them. }
     function HasAudience(const AAudience: StringRAL): boolean;
 
+    /// The claims as JSON; assigning it reads them all.
     property AsJSON: StringRAL read GetAsJSON write SetAsJSON;
   published
+    /// The aud claim.
     property Audience: StringRAL read FAudience write FAudience;
+    /// The exp claim, in UTC; 0 when absent.
     property Expiration: TDateTime read FExpiration write FExpiration;
+    /// The jti claim.
     property Id: StringRAL read FId write FId;
+    /// The iat claim, in UTC; 0 when absent.
     property IssuedAt: TDateTime read FIssuedAt write FIssuedAt;
+    /// The iss claim.
     property Issuer: StringRAL read FIssuer write FIssuer;
+    /// The nbf claim, in UTC; 0 when absent.
     property NotBefore: TDateTime read FNotBefore write FNotBefore;
+    /// The sub claim.
     property Subject: StringRAL read FSubject write FSubject;
   end;
-
-  { TRALJWT }
 
   /// Class for the JWT structure definition
   TRALJWT = class
@@ -121,11 +138,13 @@ type
     FSigningInput: StringRAL;
     FSignKey: TRALJWSKey;
     FSignSecretKey: StringRAL;
+    /// The token text, when one was assigned.
     FToken: StringRAL;
 
     procedure SetHeader(const AValue: TRALJWTHeader);
     procedure SetPayload(const AValue: TRALJWTParams);
   protected
+    /// The signed token of AHeader and APayload; ASignature receives its signature.
     function CreateToken(AHeader, APayload: StringRAL;
       var ASignature: StringRAL): StringRAL;
     function GetToken: StringRAL;
@@ -140,9 +159,9 @@ type
     class function AlgorithmName(AAlgorithm: TRALJWTAlgorithm): StringRAL;
     /// Whether the signature of the token read is good, dates aside
     function IsValidSignature: boolean;
-    /// Checks the token: the algorithm is the one this instance is set to (a
-    /// token cannot choose it), the signature is over the token's own bytes,
-    /// and exp/nbf hold, give or take Leeway
+    { Checks the token: the algorithm is the one this instance is set to (a
+      token cannot choose it), the signature is over the token's own bytes,
+      and exp/nbf hold, give or take Leeway. }
     function IsValidToken(const AValue: StringRAL = ''): boolean;
   published
     { both copy what they are given (RALAssignOwned): the objects are the
@@ -150,16 +169,18 @@ type
     property Header: TRALJWTHeader read FHeader write SetHeader;
     /// Seconds of clock difference tolerated on exp and nbf
     property Leeway: IntegerRAL read FLeeway write FLeeway;
+    /// The claims; assigning copies them.
     property Payload: TRALJWTParams read FPayload write SetPayload;
+    /// The signature segment of the token.
     property Signature: StringRAL read FSignature;
-    /// The key of RS*/ES* tokens: private to sign, public (or private) to
-    /// verify. Not owned
+    { The key of RS*/ES* tokens: private to sign, public (or private) to
+      verify. Not owned. }
     property SignKey: TRALJWSKey read FSignKey write FSignKey;
+    /// The secret of the HMAC algorithms.
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
+    /// The signed token; assigning it reads header, claims and signature.
     property Token: StringRAL read GetToken write SetToken;
   end;
-
-  { TRALDigestParams }
 
   /// What a Digest challenge says (RFC 7616), and the client's counters
   TRALDigestParams = class(TPersistent)
@@ -179,28 +200,36 @@ type
   protected
     procedure AssignTo(Dest: TPersistent); override;
   public
+    /// Empties every parameter.
     procedure Clear;
   published
+    /// The hash of the challenge.
     property Algorithm: TRALDigestAlgorithm read FAlgorithm write FAlgorithm;
+    /// The charset parameter (UTF-8 or empty).
     property Charset: StringRAL read FCharset write FCharset;
+    /// The client nonce.
     property CNonce: StringRAL read FCNonce write FCNonce;
+    /// The URIs of the protection space.
     property Domain: StringRAL read FDomain write FDomain;
     /// Requests already sent with this nonce
     property NC: integer read FNC write FNC;
+    /// The server nonce.
     property Nonce: StringRAL read FNonce write FNonce;
+    /// The opaque value the client sends back as it came.
     property Opaque: StringRAL read FOpaque write FOpaque;
-    /// The ONE qop chosen from what the challenge offered: 'auth', or '' when
-    /// the server offered none (RFC 2069)
+    { The one qop chosen from what the challenge offered: 'auth', or '' when
+      the server offered none (RFC 2069). }
     property Qop: StringRAL read FQop write FQop;
+    /// The realm.
     property Realm: StringRAL read FRealm write FRealm;
+    /// Whether the algorithm is the -sess variant.
     property SessAlgorithm: boolean read FSessAlgorithm write FSessAlgorithm;
-    /// The challenge said stale=true: the credentials were right, the nonce
-    /// had expired
+    { The challenge said stale=true: the credentials were right, the nonce
+      had expired. }
     property Stale: boolean read FStale write FStale;
+    /// Whether the user name travels hashed (RFC 7616 userhash).
     property UserHash: boolean read FUserHash write FUserHash;
   end;
-
-  { TRALDigest }
 
   /// Digest computations (RFC 7616, answers RFC 2617 and 2069 servers too)
   TRALDigest = class
@@ -218,25 +247,25 @@ type
     /// 'MD5', 'SHA-256', 'SHA-512-256', with '-sess' when ASess
     class function AlgorithmName(AAlgorithm: TRALDigestAlgorithm;
       ASess: boolean = False): StringRAL;
-    /// The Authorization value ("Digest username=..., response=...") of the
-    /// request in Method and URL, answering Params with Params.NC as nc and a
-    /// new random cnonce
+    { The Authorization value ("Digest username=..., response=...") of the
+      request in Method and URL, answering Params with Params.NC as nc and a
+      new random cnonce. }
     function Authorization: StringRAL;
     /// Lowercase hex hash of AValue
     class function Hash(AAlgorithm: TRALDigestAlgorithm;
       const AValue: StringRAL): StringRAL;
-    /// H(A1) = H(user:realm:password) - what a server may keep instead of the
-    /// password
+    { H(A1) = H(user:realm:password) - what a server may keep instead of the
+      password. }
     class function HashA1(AAlgorithm: TRALDigestAlgorithm; const AUser, ARealm,
       APassword: StringRAL): StringRAL;
-    /// Reads a Digest challenge - with or without the "Digest" in front; False
-    /// when it is not a Digest challenge this class can answer
+    { Reads a Digest challenge - with or without the "Digest" in front; False
+      when it is not a Digest challenge this class can answer. }
     function Load(const AChallenge: StringRAL): boolean;
     /// Reads an algorithm name; False for one not supported
     class function ParseAlgorithm(const AName: StringRAL;
       out AAlgorithm: TRALDigestAlgorithm; out ASess: boolean): boolean;
-    /// The response value. AHA1 is H(A1) of the plain algorithm; the -sess
-    /// variant is derived here. AQop '' is the RFC 2069 form
+    { The response value. AHA1 is H(A1) of the plain algorithm; the -sess
+      variant is derived here. AQop '' is the RFC 2069 form. }
     class function ResponseFor(AAlgorithm: TRALDigestAlgorithm; ASess: boolean;
       const AHA1, ANonce, ANC, ACNonce, AQop, AMethod, AURI: StringRAL): StringRAL;
     /// The username a userhash challenge wants: H(user:realm)
@@ -245,21 +274,25 @@ type
   published
     /// The body, for qop=auth-int (not offered yet by TRALServerDigest)
     property EntityBody: StringRAL read FEntityBody write FEntityBody;
+    /// The HTTP method the response covers.
     property Method: StringRAL read FMethod write FMethod;
+    /// The challenge and response parameters.
     property Params: TRALDigestParams read FParams write FParams;
+    /// The password.
     property Password: StringRAL read FPassword write FPassword;
     /// The request-target: path and query, as it goes in the request line
     property URL: StringRAL read FURL write FURL;
+    /// The user name.
     property UserName: StringRAL read FUserName write FUserName;
   end;
 
-/// Reads the auth-params of an Authorization or WWW-Authenticate value into
-/// AList as name=value, quoted-strings unquoted and unescaped (RFC 9110 11.2).
-/// Returns the scheme when the value starts with one ('Digest'), else ''
+{ Reads the auth-params of an Authorization or WWW-Authenticate value into
+  AList as name=value, quoted-strings unquoted and unescaped (RFC 9110 11.2).
+  Returns the scheme when the value starts with one ('Digest'), else '' }
 function RALParseAuthParams(const AValue: StringRAL; AList: TStrings): StringRAL;
-/// A WWW-Authenticate value may carry several challenges ("Basic realm=x,
-/// Digest realm=y, nonce=z"): one per line of AList, each starting with its
-/// scheme
+{ A WWW-Authenticate value may carry several challenges ("Basic realm=x,
+  Digest realm=y, nonce=z"): one per line of AList, each starting with its
+  scheme. }
 procedure RALSplitChallenges(const AValue: StringRAL; AList: TStrings);
 /// AValue as a quoted-string: in quotes, with '\' before '"' and '\'
 function RALQuoteString(const AValue: StringRAL): StringRAL;
@@ -268,6 +301,7 @@ implementation
 
 { auth-params }
 
+/// Whether AChar may appear in an HTTP token of an auth header.
 function IsTokenChar(AChar: AnsiChar): boolean;
 begin
   Result := not CharInSet(AChar, [#0..' ', '"', ',', '=', ';', #127]);
@@ -277,13 +311,17 @@ type
   { one piece of an auth header: a bare token (a scheme, or a token68) or a
     name=value pair }
   TRALAuthPiece = record
+    /// Where the piece starts in the header.
     First: IntegerRAL;
+    /// The token, or the name of a pair.
     Name: StringRAL;
+    /// The value of a pair, unquoted.
     Value: StringRAL;
+    /// Whether the piece is name=value.
     IsPair: boolean;
   end;
 
-{ the next piece from AIndex on; False at the end }
+/// The next piece from AIndex on; False at the end.
 function NextPiece(const AValue: StringRAL; var AIndex: IntegerRAL;
   out APiece: TRALAuthPiece): boolean;
 var
@@ -498,7 +536,7 @@ var
 begin
   vNC := LowerCase(IntToHex(FParams.NC, 8));
   { a cnonce the server cannot predict: it is what makes the client's half of
-    the response fresh. It used to be the hash of nc - the same for everyone }
+    the response fresh }
   FParams.CNonce := RALBase64UrlEncode(RandomBytes(16));
 
   vHA1 := HashA1(FParams.Algorithm, FUserName, FParams.Realm, FPassword);
@@ -590,7 +628,7 @@ begin
     FParams.Stale := SameText(vList.Values['stale'], 'true');
     FParams.UserHash := SameText(vList.Values['userhash'], 'true');
 
-    { qop is a list the server offers; the response names ONE. auth is the
+    { qop is a list the server offers; the response names one. auth is the
       one this client does - auth-int needs the body as it goes on the wire }
     vQop := vList.Values['qop'];
     if vQop <> '' then
@@ -723,12 +761,9 @@ var
 begin
   vParsed := TRALJSON.ParseJSON(AValue);
   try
-    { only an object is a header. Anything else - an array, a string, a
-      number - used to be cast to TRALJSONObject all the same and walked with
-      the object's Count/GetName/Get: type confusion, reachable by any Bearer
-      before its signature is checked, since TRALRequest parses the header of
-      every request that carries one. It leaves the header as it was, like
-      text that does not parse at all }
+    { only an object is a header: anything else (reachable by any Bearer,
+      before its signature is checked) leaves the header as it was, like text
+      that does not parse at all }
     if vParsed is TRALJSONObject then
     begin
       vJson := TRALJSONObject(vParsed);
@@ -996,9 +1031,7 @@ begin
         else
         begin
           { an object or an array as its JSON text, the same on both
-            compilers: AsString handed it to fpjson on FPC, which raises for
-            an object - a token from another library with one in its claims
-            was no token there, while Delphi's backend answered the text }
+            compilers }
           if vValue.JsonType in [rjtObject, rjtArray] then
             AddClaim(vName, vValue.ToJSON)
           else
@@ -1037,8 +1070,10 @@ end;
   literal is a new copy of it on every call on Delphi, and SetAsJSON asks for
   all eight to recognise the header of every token received }
 var
+  /// The alg name of each algorithm, filled once at initialization.
   gJWTAlgorithmNames: array[TRALJWTAlgorithm] of StringRAL;
 
+/// Fills gJWTAlgorithmNames.
 procedure FillJWTAlgorithmNames;
 var
   vAlg: TRALJWTAlgorithm;
@@ -1069,9 +1104,8 @@ var
 begin
   FToken := '';
   FSigningInput := '';
-  { the three segments, found where the old split - a TStringList and a
-    Delete per segment - found them: on every dot, except that one dot at the
-    very end closes the last segment instead of opening a fourth, empty one.
+  { the three segments, split on every dot, except that one dot at the very
+    end closes the last segment instead of opening a fourth, empty one.
     Positions here count from 1 }
   vLen := Length(AValue);
   vEnd := vLen;
@@ -1105,9 +1139,7 @@ begin
     FSignature := Copy(AValue, POSINISTR + vDot2, vEnd - vDot2);
   except
     { a segment that is not base64, or not JSON: not a token, like a text
-      without its three segments. It raised - on FPC whatever the JSON was,
-      whose parser raises where Delphi's answers nil - and a Bearer of
-      garbage turned into a 500 before any authentication had a say }
+      without its three segments (a Bearer of garbage is a 401, not a 500) }
     vOk := False;
   end;
 
@@ -1199,7 +1231,7 @@ function TRALJWT.CreateToken(AHeader, APayload: StringRAL;
 var
   vStr: StringRAL;
 begin
-  // json codifica / para \/
+  // JSON writers may escape / as \/
   AHeader := StringReplace(AHeader, '\/', '/', [rfReplaceAll]);
   APayload := StringReplace(APayload, '\/', '/', [rfReplaceAll]);
 
@@ -1300,9 +1332,8 @@ begin
   FAuthString := AValue;
   FUserName := '';
   FPassword := '';
-  { credentials that are not base64 are no credentials - a 401, as for a
-    wrong password. The decoder raises on them now, where it used to answer
-    garbage, and raised here they came out of the engine as a 500 }
+  { credentials that are not base64 are no credentials: a 401, as for a
+    wrong password, and not the 500 the decoder's exception would give }
   try
     vString := TRALBase64.DecodeText(FAuthString);
   except

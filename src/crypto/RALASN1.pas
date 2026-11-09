@@ -1,5 +1,5 @@
-/// ASN.1 in DER: the writer that builds keys and certificates, and a reader that
-/// walks them
+{ ASN.1 in DER: the writer that builds keys and certificates, and a reader that
+  walks them. }
 unit RALASN1;
 
 {$IFDEF FPC}
@@ -20,19 +20,33 @@ uses
   RALExceptions, RALErrorCodes, RALTypes, RALConsts, RALBase64, RALBigInt;
 
 const
+  /// Tag of BOOLEAN.
   ASN1_BOOLEAN = $01;
+  /// Tag of INTEGER.
   ASN1_INTEGER = $02;
+  /// Tag of BIT STRING.
   ASN1_BIT_STRING = $03;
+  /// Tag of OCTET STRING.
   ASN1_OCTET_STRING = $04;
+  /// Tag of NULL.
   ASN1_NULL = $05;
+  /// Tag of OBJECT IDENTIFIER.
   ASN1_OID = $06;
+  /// Tag of UTF8String.
   ASN1_UTF8_STRING = $0C;
+  /// Tag of PrintableString.
   ASN1_PRINTABLE_STRING = $13;
+  /// Tag of IA5String.
   ASN1_IA5_STRING = $16;
+  /// Tag of UTCTime.
   ASN1_UTC_TIME = $17;
+  /// Tag of GeneralizedTime.
   ASN1_GENERALIZED_TIME = $18;
+  /// Tag of BMPString.
   ASN1_BMP_STRING = $1E;
+  /// Tag of SEQUENCE (constructed).
   ASN1_SEQUENCE = $30;
+  /// Tag of SET (constructed).
   ASN1_SET = $31;
   /// context-specific class, primitive; add the tag number
   ASN1_CONTEXT = $80;
@@ -40,17 +54,21 @@ const
   ASN1_CONTEXT_CONSTRUCTED = $A0;
 
 type
+  /// Error reading DER.
   ERALASN1 = class(ERALException);
 
+  /// A list of byte arrays.
   TRALBytesArray = array of TBytes;
 
   /// one element read: where it is in the buffer and what it holds
   TRALASN1Element = record
+    /// The tag byte.
     Tag: Byte;
     /// offset of the tag byte
     Start: IntegerRAL;
     /// offset of the first byte of the contents
     ContentStart: IntegerRAL;
+    /// Length of the contents.
     ContentLength: IntegerRAL;
     /// offset right after the element
     Next: IntegerRAL;
@@ -58,39 +76,50 @@ type
 
 { writer }
 
+/// An element of ATag holding AContent.
 function DerElement(ATag: Byte; const AContent: TBytes): TBytes;
+/// The parts one after the other.
 function DerConcat(const AParts: array of TBytes): TBytes;
+/// A SEQUENCE of the parts.
 function DerSequence(const AParts: array of TBytes): TBytes;
 /// a SET OF; DER wants the elements sorted by their encoding, and they are
 function DerSet(const AParts: array of TBytes): TBytes;
+/// A non-negative INTEGER.
 function DerInteger(const AValue: TRALBigNum): TBytes;
+/// An INTEGER of AValue.
 function DerIntegerValue(AValue: Int64RAL): TBytes;
 /// an INTEGER from big-endian unsigned bytes (a serial number)
 function DerIntegerBytes(const AValue: TBytes): TBytes;
+/// A BOOLEAN.
 function DerBoolean(AValue: boolean): TBytes;
+/// A NULL.
 function DerNull: TBytes;
 /// an OBJECT IDENTIFIER from its dotted text: '1.2.840.113549.1.1.11'
 function DerOID(const ADotted: StringRAL): TBytes;
+/// An OCTET STRING.
 function DerOctetString(const AValue: TBytes): TBytes;
 /// a BIT STRING of whole bytes (no unused bits)
 function DerBitString(const AValue: TBytes): TBytes;
-/// a BIT STRING of named bits (KeyUsage): bit 0 is the most significant bit of
-/// the first byte, and the trailing zero bits are dropped as DER requires
+{ a BIT STRING of named bits (KeyUsage): bit 0 is the most significant bit of
+  the first byte, and the trailing zero bits are dropped as DER requires. }
 function DerNamedBits(ABits: Cardinal): TBytes;
+/// A UTF8String.
 function DerUTF8String(const AValue: StringRAL): TBytes;
+/// A PrintableString.
 function DerPrintableString(const AValue: StringRAL): TBytes;
+/// An IA5String.
 function DerIA5String(const AValue: StringRAL): TBytes;
 /// a BMPString (UTF-16 big-endian)
 function DerBMPString(const AValue: StringRAL): TBytes;
-/// UTCTime until 2049, GeneralizedTime from 2050 on (RFC 5280 4.1.2.5); the
-/// time is taken as UTC
+{ UTCTime up to 2049, GeneralizedTime from 2050 on (RFC 5280 4.1.2.5); the
+  time is taken as UTC. }
 function DerTime(AValueUTC: TDateTime): TBytes;
 /// [ATagNo] EXPLICIT: the element wrapped in a constructed context tag
 function DerExplicit(ATagNo: Byte; const AContent: TBytes): TBytes;
 /// [ATagNo] IMPLICIT over primitive contents
 function DerImplicit(ATagNo: Byte; const AContent: TBytes): TBytes;
-/// AlgorithmIdentifier; AParams empty means none, use DerNull where the
-/// algorithm wants NULL
+{ AlgorithmIdentifier; AParams empty means none, use DerNull where the
+  algorithm wants NULL. }
 function DerAlgorithm(const AOID: StringRAL; const AParams: TBytes): TBytes;
 
 { reader }
@@ -110,7 +139,9 @@ function DerBytes(const AData: TBytes; const AElement: TRALASN1Element): TBytes;
 function DerContent(const AData: TBytes; const AElement: TRALASN1Element): TBytes;
 /// the element's contents read as an INTEGER (must be non-negative)
 function DerAsBigNum(const AData: TBytes; const AElement: TRALASN1Element): TRALBigNum;
+/// The element's contents read as an INTEGER that fits in 64 bits.
 function DerAsInt64(const AData: TBytes; const AElement: TRALASN1Element): Int64RAL;
+/// The element's contents read as an OBJECT IDENTIFIER, in dotted form.
 function DerAsOID(const AData: TBytes; const AElement: TRALASN1Element): StringRAL;
 /// UTF8String, PrintableString, IA5String, BMPString and the like, as UTF-8
 function DerAsString(const AData: TBytes; const AElement: TRALASN1Element): StringRAL;
@@ -124,19 +155,21 @@ function DerRoot(const AData: TBytes): TRALASN1Element;
 
 { PEM (RFC 7468) }
 
-/// '-----BEGIN <ALabel>-----', the base64 in lines of 64, '-----END ...', each
-/// line ended by LF
+{ '-----BEGIN <ALabel>-----', the base64 in lines of 64, '-----END ...', each
+  line ended by LF. }
 function PemEncode(const ALabel: StringRAL; const ADER: TBytes): StringRAL;
-/// the DER of the first block labelled ALabel ('' = the first block of any
-/// label); ALabelFound receives the label. Empty when there is none
+{ the DER of the first block labelled ALabel ('' = the first block of any
+  label); ALabelFound receives the label. Empty when there is none. }
 function PemDecode(const APEM: StringRAL; const ALabel: StringRAL;
   out ALabelFound: StringRAL): TBytes; overload;
+/// The DER of the first block labelled ALabel (empty: any label), or empty.
 function PemDecode(const APEM: StringRAL; const ALabel: StringRAL = ''): TBytes; overload;
 /// whether the text holds at least one PEM block
 function IsPem(const AText: StringRAL): boolean;
 
 implementation
 
+/// The bytes of a UTF-8 string.
 function Utf8Bytes(const AValue: StringRAL): TBytes;
 begin
   SetLength(Result, Length(AValue));
@@ -144,6 +177,7 @@ begin
     Move(AValue[POSINISTR], Result[0], Length(AValue));
 end;
 
+/// A UTF-8 string of the bytes.
 function BytesUtf8(const AValue: TBytes): StringRAL;
 begin
   SetLength(Result, Length(AValue));
@@ -151,6 +185,7 @@ begin
     Move(AValue[0], Result[POSINISTR], Length(AValue));
 end;
 
+/// The DER length octets of ALength.
 function DerLength(ALength: IntegerRAL): TBytes;
 var
   vCount, vInt: IntegerRAL;
@@ -212,6 +247,7 @@ begin
   Result := DerElement(ASN1_SEQUENCE, DerConcat(AParts));
 end;
 
+/// Compares two byte arrays as DER orders a SET OF: negative, zero or positive.
 function CompareBytes(const A, B: TBytes): IntegerRAL;
 var
   vInt, vLen: IntegerRAL;

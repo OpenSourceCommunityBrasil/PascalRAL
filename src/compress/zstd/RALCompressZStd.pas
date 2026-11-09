@@ -1,7 +1,6 @@
-/// Unit that stores Compression ZStd algorithms
-// Links
-// https://github.com/facebook/zstd/releases
-// https://github.com/DenisAnisimov/ZSTD.pas
+{ Zstandard compression (RFC 8878) over the ZSTD submodule
+  (https://github.com/DenisAnisimov/ZSTD.pas; the library is
+  https://github.com/facebook/zstd/releases) }
 unit RALCompressZStd;
 
 interface
@@ -11,7 +10,6 @@ uses
   RALExceptions, RALErrorCodes, RALCompress, RALTypes, RALConsts;
 
 type
-  { TRALCompressZStd }
 
   /// Compression class ZStd for PascalRAL
   TRALCompressZStd = class(TRALCompress)
@@ -110,8 +108,7 @@ initialization
 
 finalization
   { RALCompress keeps the class pointer, and this package can be unloaded
-    without it: reinstalled with the IDE open, it left a dangling class
-    behind, and the next request made at design time crashed the IDE }
+    without it (the IDE reloads packages) }
   UnregisterCompress(TRALCompressZStd);
 
 end.

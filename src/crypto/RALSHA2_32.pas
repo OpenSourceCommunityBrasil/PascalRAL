@@ -8,12 +8,17 @@ uses
   RALHashBase, RALTypes, RALTools, RALBase64;
 
 type
+  /// The SHA-2 variants of 32-bit words.
   TRALSHA32Versions = (rsv224, rsv256);
 
+  /// SHA-224 and SHA-256 (FIPS 180-4).
   TRALSHA2_32 = class(TRALHashBase)
   private
+    /// The block being filled.
     FBuffer: array[0..63] of byte;
+    /// The running state (H0 to H7).
     FHash: array[0..7] of cardinal;
+    /// Size of the digest, in bytes.
     FHashSize: byte;
     FVersion: TRALSHA32Versions;
   protected
@@ -28,24 +33,24 @@ type
   public
     constructor Create;
   published
+    /// Which variant the hash computes.
     property Version: TRALSHA32Versions read FVersion write SetVersion;
   end;
 
-/// PBKDF2 with HMAC-SHA256 (RFC 8018): ALength bytes stretched out of
-/// APassword and ASalt in AIterations rounds, each round one HMAC
+{ PBKDF2 with HMAC-SHA256 (RFC 8018): ALength bytes stretched out of
+  APassword and ASalt in AIterations rounds, each round one HMAC. }
 function RALPBKDF2SHA256(const APassword, ASalt: TBytes;
   AIterations, ALength: IntegerRAL): TBytes;
 
 implementation
 
-{ Hashing is arithmetic modulo 2^32 by definition: overflow and range checks
-  have nothing to find here and only slow it down. Off for the whole unit -
-  the Q-/Q+ switches it used to carry turned overflow checks ON after each
-  block, whatever the project had chosen }
+{ Hashing is arithmetic modulo 2^32: overflow and range checks have nothing
+  to find here, so they are off for the whole unit }
 {$Q-}
 {$R-}
 
 const
+  /// The round constants of SHA-224/256.
   K: array[0..63] of cardinal = (
     $428a2f98, $71374491, $b5c0fbcf, $e9b5dba5, $3956c25b, $59f111f1,
     $923f82a4, $ab1c5ed5, $d807aa98, $12835b01, $243185be, $550c7dc3,

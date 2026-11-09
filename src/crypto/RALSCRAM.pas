@@ -1,9 +1,9 @@
-/// SCRAM (RFC 5802, RFC 7677): the Salted Challenge Response Authentication
-/// Mechanism of SASL, on both sides, over SHA-1, SHA-256 and SHA-512, with the
-/// HMAC and PBKDF2 it is made of. The password never travels and the client
-/// checks that the server knows it too. Pure calculation, no network: MQTT 5.0
-/// enhanced authentication, SMTP, IMAP and POP3 (AUTH SCRAM-SHA-256) carry the
-/// messages each in its own way.
+{ SCRAM (RFC 5802, RFC 7677): the Salted Challenge Response Authentication
+  Mechanism of SASL, on both sides, over SHA-1, SHA-256 and SHA-512, with the
+  HMAC and PBKDF2 it is made of. The password never travels and the client
+  checks that the server knows it too. Pure calculation, no network: MQTT 5.0
+  enhanced authentication, SMTP, IMAP and POP3 (AUTH SCRAM-SHA-256) carry the
+  messages each in its own way. }
 unit RALSCRAM;
 
 {$I ..\core\PascalRAL.inc}
@@ -52,10 +52,14 @@ type
   TRALSCRAMClient = class
   private
     FAlg: TRALSCRAMAlg;
+    /// The client-first-message without the GS2 header.
     FClientFirstBare: StringRAL;
     FNonce: StringRAL;
+    /// The password the proof is computed from.
     FPassword: StringRAL;
+    /// The signature the server-final-message must carry.
     FServerSignature: TBytes;
+    /// The user name sent in the first message.
     FUserName: StringRAL;
   public
     { An exchange for AUserName and APassword; AClientNonce empty makes a random
@@ -86,14 +90,22 @@ type
   private
     FAccepted: boolean;
     FAlg: TRALSCRAMAlg;
+    /// The AuthMessage both signatures are computed over.
     FAuthMessage: StringRAL;
+    /// The client-first-message without the GS2 header.
     FClientFirstBare: StringRAL;
+    /// The stored credential of the user.
     FCredential: TRALSCRAMCredential;
     FDone: boolean;
+    /// Finds the stored credential of a user.
     FLookup: TRALSCRAMLookup;
+    /// The whole nonce: the client part and the server part.
     FNonce: StringRAL;
+    /// The server-first-message sent.
     FServerFirst: StringRAL;
+    /// The server part of the nonce.
     FServerNonce: StringRAL;
+    /// Messages handled so far: 0, 1 or 2.
     FStage: IntegerRAL;
     FUserName: StringRAL;
   public
@@ -147,10 +159,14 @@ uses
   RALHashBase, RALSHA1, RALSHA2_32, RALSHA2_64, RALBase64, RALTools;
 
 const
+  /// PBKDF2 rounds of a new credential.
   cIterations = 4096;
+  /// Bytes of the random salt of a new credential.
   cSaltSize = 16;
+  /// Random bytes of a nonce, before base64.
   cNonceSize = 18;
 
+/// A hash object of AAlg, owned by the caller.
 function NewHash(AAlg: TRALSCRAMAlg): TRALHashBase;
 begin
   case AAlg of
@@ -306,25 +322,27 @@ begin
   ACredential.ServerKey := RALSCRAMHMAC(AAlg, vSalted, RALSCRAMBytes('Server Key'));
 end;
 
+/// Raises ERALSCRAMError with AWhat.
 procedure Fail(const AWhat: string);
 begin
   raise ERALSCRAMError.Create('SCRAM: ' + AWhat);
 end;
 
-{ a SCRAM saslname: ',' and '=' escaped (RFC 5802 5.1) }
+/// A SCRAM saslname: ',' and '=' escaped (RFC 5802 5.1).
 function SaslName(const AName: StringRAL): StringRAL;
 begin
   Result := StringRAL(StringReplace(StringReplace(string(AName), '=', '=3D', [rfReplaceAll]),
     ',', '=2C', [rfReplaceAll]));
 end;
 
+/// Reverts the =2C and =3D escapes of a SASL name.
 function UnSaslName(const AName: StringRAL): StringRAL;
 begin
   Result := StringRAL(StringReplace(StringReplace(string(AName), '=2C', ',', [rfReplaceAll]),
     '=3D', '=', [rfReplaceAll]));
 end;
 
-{ the value of attribute AName ('r', 's') in a SCRAM message }
+/// The value of attribute AName ('r', 's') in a SCRAM message.
 function Attribute(const AMessage: StringRAL; AName: AnsiChar): StringRAL;
 var
   vStart, vEnd, vLen: IntegerRAL;
@@ -347,6 +365,7 @@ begin
   end;
 end;
 
+/// A xor B, byte by byte.
 function XorBytes(const A, B: TBytes): TBytes;
 var
   vInt: IntegerRAL;

@@ -8,11 +8,11 @@ uses
   RALCripto, RALBase64, RALStream;
 
 type
+  /// The SHA-2 variants GetHash computes.
   THashType = (htSHA224, htSHA256, htSHA384, htSHA512, htSHA512_224, htSHA512_256);
 
-  { The cipher is chosen by TRALCriptoType, the same enum TRALCriptoOptions
-    publishes - there used to be a private copy of it here (ctAES128..), and
-    every method existed twice to accept both.
+  { The cipher is chosen by TRALCriptoType, the enum TRALCriptoOptions
+    publishes.
 
     String in, string out is base64 of the ciphertext: the raw bytes of an
     AES stream are not text, and pushing them through a StringRAL loses bytes
@@ -22,15 +22,24 @@ type
     request body goes through. crNone is a pass-through on both. }
   TRALHashes = class
   private
+    /// A memory copy of AInput, rewound (empty for nil), owned by the caller.
     class function CopyOf(AInput: TStream): TStream;
+    /// An AES cipher for AAlgorithm and AKey, or nil for crNone.
     class function CreateCipher(const AKey: StringRAL; AAlgorithm: TRALCriptoType): TRALCriptoAES;
   public
+    /// Decrypts the base64 that Encrypt(string) returns.
     class function Decrypt(AText, AKey: StringRAL; AAlgorithm: TRALCriptoType): StringRAL; overload;
+    /// Decrypts a binary stream into a new one, owned by the caller.
     class function Decrypt(AInput: TStream; AKey: StringRAL; AAlgorithm: TRALCriptoType): TStream; overload;
+    /// Encrypts AText and returns the ciphertext in base64.
     class function Encrypt(AText, AKey: StringRAL; AAlgorithm: TRALCriptoType): StringRAL; overload;
+    /// Encrypts a stream into a new binary one, owned by the caller.
     class function Encrypt(AInput: TStream; AKey: StringRAL; AAlgorithm: TRALCriptoType): TStream; overload;
+    /// Decodes base64 text.
     class function fromBase64(AText: StringRAL): StringRAL;
+    /// The HMAC of AText with AKey, in base64, by the SHA-2 variant AHashType.
     class function GetHash(AText, AKey: StringRAL; AHashType: THashType): StringRAL;
+    /// Encodes text as base64.
     class function toBase64(AText: StringRAL): StringRAL;
   end;
 

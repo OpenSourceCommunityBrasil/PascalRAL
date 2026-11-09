@@ -1,5 +1,5 @@
-/// X.509 certificates in Pascal: build one (self-signed or signed by another),
-/// read one back, and pack a certificate and its key into PKCS#12 (.pfx)
+{ X.509 certificates in Pascal: build one (self-signed or signed by another),
+  read one back, and pack a certificate and its key into PKCS#12 (.pfx). }
 unit RALX509;
 
 {$IFDEF FPC}
@@ -16,7 +16,7 @@ unit RALX509;
   answer to "which self-signed certificate do OpenSSL, SChannel, Chrome and
   Firefox all accept once trusted": a self-signed certificate that says cA
   TRUE is refused by Firefox as a server certificate, and one without
-  subjectAltName by every browser since 2017.
+  subjectAltName by every current browser.
 
   The PKCS#12 is what OpenSSL 3 writes by default - PBES2 with PBKDF2-HMAC-
   SHA256 and AES-256-CBC for both bags, and an HMAC-SHA256 MAC keyed by the
@@ -31,28 +31,40 @@ uses
   RALHashBase, RALSHA2_32;
 
 const
+  /// commonName (CN).
   OID_COMMON_NAME = '2.5.4.3';
+  /// organizationName (O).
   OID_ORGANIZATION = '2.5.4.10';
+  /// The subjectKeyIdentifier extension.
   OID_SUBJECT_KEY_ID = '2.5.29.14';
+  /// The keyUsage extension.
   OID_KEY_USAGE = '2.5.29.15';
+  /// The subjectAltName extension.
   OID_SUBJECT_ALT_NAME = '2.5.29.17';
+  /// The basicConstraints extension.
   OID_BASIC_CONSTRAINTS = '2.5.29.19';
+  /// The authorityKeyIdentifier extension.
   OID_AUTHORITY_KEY_ID = '2.5.29.35';
+  /// The extKeyUsage extension.
   OID_EXT_KEY_USAGE = '2.5.29.37';
+  /// The serverAuth key purpose.
   OID_SERVER_AUTH = '1.3.6.1.5.5.7.3.1';
 
   /// KeyUsage bits (RFC 5280 4.2.1.3)
   RAL_KU_DIGITAL_SIGNATURE = $01;
+  /// keyEncipherment.
   RAL_KU_KEY_ENCIPHERMENT = $04;
+  /// keyCertSign.
   RAL_KU_KEY_CERT_SIGN = $20;
+  /// cRLSign.
   RAL_KU_CRL_SIGN = $40;
 
+  /// PBKDF2 and MAC rounds of a PKCS#12 written.
   RALPKCS12DefaultIterations = 2048;
 
 type
+  /// Error reading or building a certificate.
   ERALX509 = class(ERALException);
-
-  { TRALX509Certificate }
 
   /// A certificate read from DER or PEM. Dates are UTC
   TRALX509Certificate = class
@@ -60,33 +72,41 @@ type
     FAuthorityKeyId: TBytes;
     FCommonName: StringRAL;
     FDER: TBytes;
+    /// The DNS names and IP addresses of subjectAltName.
     FHostNames: TStringList;
     FIsCA: boolean;
     FIssuer: StringRAL;
+    /// The DER of the issuer name.
     FIssuerDER: TBytes;
     FNotAfter: TDateTime;
     FNotBefore: TDateTime;
     FPublicKeyInfo: TBytes;
     FPublicKeyOID: StringRAL;
     FSerial: TBytes;
+    /// The signature, without the unused-bits byte.
     FSignature: TBytes;
     FSignatureOID: StringRAL;
     FSubject: StringRAL;
+    /// The DER of the subject name.
     FSubjectDER: TBytes;
     FSubjectKeyId: TBytes;
+    /// The DER of the signed part (tbsCertificate).
     FTBS: TBytes;
 
     function GetHostNames: TStrings;
+    /// Reads every field out of the DER.
     procedure Parse;
+    /// Reads the extensions RAL uses: key identifiers, basicConstraints, subjectAltName.
     procedure ParseExtensions(const AData: TBytes; const AExts: TRALASN1Element);
   public
+    /// Reads a DER certificate; raises ERALX509 when it does not parse.
     constructor Create(const ADER: TBytes);
     destructor Destroy; override;
 
     /// SHA-1 of the DER, the "thumbprint" of Windows (certificate store, netsh)
     function FingerprintSHA1: StringRAL;
-    /// SHA-256 of the DER, uppercase hex without separators - the format of
-    /// TRALCertInfo.Fingerprint and of SSL.Pins
+    { SHA-256 of the DER, uppercase hex without separators - the format of
+      TRALCertInfo.Fingerprint and of SSL.Pins. }
     function FingerprintSHA256: StringRAL;
     /// PEM or DER, told apart by the content
     class function FromFile(const AFileName: string): TRALX509Certificate;
@@ -94,8 +114,8 @@ type
     class function FromPEM(const APEM: StringRAL): TRALX509Certificate;
     /// issuer and subject are the same name
     function IsSelfIssued: boolean;
-    /// self-issued and signed by its own key. For an RSA key the signature is
-    /// checked; for another key type (EC) the key identifiers decide
+    { self-issued and signed by its own key. For an RSA key the signature is
+      checked; for another key type (EC) the key identifiers decide. }
     function IsSelfSigned: boolean;
     /// NotBefore <= AWhenUTC <= NotAfter
     function IsValidAt(AWhenUTC: TDateTime): boolean;
@@ -103,33 +123,46 @@ type
     function MatchesKey(AKey: TRALRSAKey): boolean;
     /// the RSA public key, a new object the caller frees; nil when not RSA
     function PublicKey: TRALRSAKey;
+    /// The certificate in PEM.
     function ToPEM: StringRAL;
     /// whether AIssuerKey produced the signature (RSA with SHA-1/256/384/512)
     function VerifySignature(AIssuerKey: TRALRSAKey): boolean;
 
+    /// The authorityKeyIdentifier, empty when absent.
     property AuthorityKeyId: TBytes read FAuthorityKeyId;
+    /// The first CN of the subject.
     property CommonName: StringRAL read FCommonName;
+    /// The certificate as read.
     property DER: TBytes read FDER;
     /// subjectAltName: DNS names as they are, IP addresses as text
     property HostNames: TStrings read GetHostNames;
+    /// Whether basicConstraints says cA TRUE.
     property IsCA: boolean read FIsCA;
     /// 'CN=..., O=...' in the order of the certificate
     property Issuer: StringRAL read FIssuer;
+    /// End of validity, in UTC.
     property NotAfter: TDateTime read FNotAfter;
+    /// Start of validity, in UTC.
     property NotBefore: TDateTime read FNotBefore;
+    /// The OID of the public key algorithm.
     property PublicKeyAlgorithm: StringRAL read FPublicKeyOID;
+    /// The DER SubjectPublicKeyInfo.
     property PublicKeyInfo: TBytes read FPublicKeyInfo;
+    /// The serial number bytes.
     property SerialNumber: TBytes read FSerial;
+    /// The OID of the signature algorithm.
     property SignatureAlgorithm: StringRAL read FSignatureOID;
+    /// The subject as text ('CN=a, O=b').
     property Subject: StringRAL read FSubject;
+    /// The subjectKeyIdentifier, empty when absent.
     property SubjectKeyId: TBytes read FSubjectKeyId;
   end;
 
-/// Builds a certificate for ASubjectKey and returns its DER. AHostNames go to
-/// subjectAltName: an IPv4 or IPv6 address as an iPAddress, anything else as a
-/// dNSName ('DNS:' and 'IP:' prefixes force the kind). With AIssuer and
-/// AIssuerKey nil the certificate is self-signed; otherwise AIssuerKey signs
-/// it and AIssuer names the issuer. AIsCA makes a CA (cA TRUE, keyCertSign)
+{ Builds a certificate for ASubjectKey and returns its DER. AHostNames go to
+  subjectAltName: an IPv4 or IPv6 address as an iPAddress, anything else as a
+  dNSName ('DNS:' and 'IP:' prefixes force the kind). With AIssuer and
+  AIssuerKey nil the certificate is self-signed; otherwise AIssuerKey signs
+  it and AIssuer names the issuer. AIsCA makes a CA (cA TRUE, keyCertSign). }
 function RALCreateCertificate(ASubjectKey: TRALRSAKey; const ACommonName: StringRAL;
   AHostNames: TStrings; ANotBeforeUTC, ANotAfterUTC: TDateTime;
   AIssuer: TRALX509Certificate = nil; AIssuerKey: TRALRSAKey = nil;
@@ -157,7 +190,9 @@ function RALNowUTC: TDateTime;
 function RALReadFileBytes(const AFileName: string): TBytes;
 /// writes the file at once, replacing it
 procedure RALWriteFileBytes(const AFileName: string; const AData: TBytes);
+/// The bytes of a string, as they are.
 function RALStringToBytes(const AValue: StringRAL): TBytes;
+/// A string holding the bytes, as they are.
 function RALBytesToString(const AValue: TBytes): StringRAL;
 
 { the pieces of PKCS#12, public for the tests that check them against the
@@ -166,8 +201,8 @@ function RALBytesToString(const AValue: TBytes): StringRAL;
 /// PBKDF2 with HMAC-SHA256 (RFC 8018 5.2)
 function RALPBKDF2SHA256(const APassword, ASalt: TBytes; AIterations,
   AKeyLength: IntegerRAL): TBytes;
-/// the key derivation of PKCS#12 (RFC 7292 B.2) with SHA-256; APassword is
-/// the BMPString with its two zero bytes at the end
+{ the key derivation of PKCS#12 (RFC 7292 B.2) with SHA-256; APassword is
+  the BMPString with its two zero bytes at the end. }
 function RALPKCS12KDFSHA256(const APassword, ASalt: TBytes; AID: Byte;
   AIterations, AKeyLength: IntegerRAL): TBytes;
 /// AES-256-CBC with PKCS#7 padding
@@ -176,16 +211,27 @@ function RALAES256CBCEncrypt(const AKey, AIV, AData: TBytes): TBytes;
 implementation
 
 const
+  /// PKCS#7 data.
   OID_PKCS7_DATA = '1.2.840.113549.1.7.1';
+  /// PKCS#7 encryptedData.
   OID_PKCS7_ENCRYPTED_DATA = '1.2.840.113549.1.7.6';
+  /// The PKCS#12 pkcs8ShroudedKeyBag.
   OID_PKCS12_KEY_BAG_SHROUDED = '1.2.840.113549.1.12.10.1.2';
+  /// The PKCS#12 certBag.
   OID_PKCS12_CERT_BAG = '1.2.840.113549.1.12.10.1.3';
+  /// The x509Certificate type of a certBag.
   OID_PKCS9_X509_CERT = '1.2.840.113549.1.9.22.1';
+  /// The friendlyName attribute.
   OID_PKCS9_FRIENDLY_NAME = '1.2.840.113549.1.9.20';
+  /// The localKeyId attribute.
   OID_PKCS9_LOCAL_KEY_ID = '1.2.840.113549.1.9.21';
+  /// PBES2 (RFC 8018).
   OID_PBES2 = '1.2.840.113549.1.5.13';
+  /// PBKDF2 (RFC 8018).
   OID_PBKDF2 = '1.2.840.113549.1.5.12';
+  /// HMAC with SHA-256.
   OID_HMAC_SHA256 = '1.2.840.113549.2.9';
+  /// AES-256 in CBC mode.
   OID_AES256_CBC = '2.16.840.1.101.3.4.1.42';
 
 { general helpers }
@@ -284,6 +330,7 @@ end;
 
 { IP addresses }
 
+/// Whether AText is a dotted IPv4 address; AAddress gets its 4 bytes.
 function ParseIPv4(const AText: StringRAL; out AAddress: TBytes): boolean;
 var
   vParts: IntegerRAL;
@@ -323,6 +370,7 @@ begin
   Result := True;
 end;
 
+/// Whether AText is an IPv6 address; AAddress gets its 16 bytes.
 function ParseIPv6(AText: StringRAL; out AAddress: TBytes): boolean;
 var
   vGroups: array[0..7] of Word;
@@ -524,6 +572,7 @@ end;
 
 { names }
 
+/// The short name of a name attribute (CN, O, OU...), or the OID itself.
 function OIDShortName(const AOID: StringRAL): StringRAL;
 begin
   if AOID = '2.5.4.3' then
@@ -544,7 +593,7 @@ begin
     Result := AOID;
 end;
 
-{ 'CN=a, O=b' and the first CN }
+/// 'CN=a, O=b' and the first CN.
 procedure ReadName(const AData: TBytes; const AName: TRALASN1Element;
   out AText, ACommonName: StringRAL);
 var
@@ -833,12 +882,14 @@ end;
 
 { builder }
 
+/// A distinguished name with only ACommonName.
 function BuildName(const ACommonName: StringRAL): TBytes;
 begin
   Result := DerSequence([
     DerSet([DerSequence([DerOID(OID_COMMON_NAME), DerUTF8String(ACommonName)])])]);
 end;
 
+/// One Extension: the OID, the critical flag when set, and AValue.
 function BuildExtension(const AOID: StringRAL; ACritical: boolean;
   const AValue: TBytes): TBytes;
 begin
@@ -848,6 +899,8 @@ begin
     Result := DerSequence([DerOID(AOID), DerOctetString(AValue)]);
 end;
 
+{ The subjectAltName value: DNS names, and IP addresses for the entries that parse as
+  one. }
 function BuildAltNames(AHostNames: TStrings): TBytes;
 var
   vInt: IntegerRAL;
@@ -982,6 +1035,7 @@ end;
 { AES-256, encryption only (FIPS 197) }
 
 const
+  /// The AES S-box.
   cSBox: array[0..255] of Byte = (
     $63, $7C, $77, $7B, $F2, $6B, $6F, $C5, $30, $01, $67, $2B, $FE, $D7, $AB, $76,
     $CA, $82, $C9, $7D, $FA, $59, $47, $F0, $AD, $D4, $A2, $AF, $9C, $A4, $72, $C0,
@@ -999,12 +1053,16 @@ const
     $70, $3E, $B5, $66, $48, $03, $F6, $0E, $61, $35, $57, $B9, $86, $C1, $1D, $9E,
     $E1, $F8, $98, $11, $69, $D9, $8E, $94, $9B, $1E, $87, $E9, $CE, $55, $28, $DF,
     $8C, $A1, $89, $0D, $BF, $E6, $42, $68, $41, $99, $2D, $0F, $B0, $54, $BB, $16);
+  /// The AES key schedule round constants.
   cRcon: array[1..7] of Byte = ($01, $02, $04, $08, $10, $20, $40);
 
 type
+  /// The expanded AES-256 key: 15 round keys.
   TAES256RoundKeys = array[0..239] of Byte;
+  /// One AES block.
   TAESBlock = array[0..15] of Byte;
 
+/// Expands an AES-256 key into its round keys.
 procedure AES256Expand(const AKey: TBytes; out ARoundKeys: TAES256RoundKeys);
 var
   vInt, vRcon: IntegerRAL;
@@ -1047,6 +1105,7 @@ begin
   end;
 end;
 
+/// Multiplication by x in GF(2^8).
 function XTime(AValue: Byte): Byte;
 begin
   if AValue and $80 <> 0 then
@@ -1055,6 +1114,7 @@ begin
     Result := Byte(AValue shl 1);
 end;
 
+/// Encrypts one block in place.
 procedure AES256EncryptBlock(const ARoundKeys: TAES256RoundKeys; var AState: TAESBlock);
 var
   vRound, vInt, vCol: IntegerRAL;
@@ -1127,6 +1187,7 @@ end;
 
 { key derivation }
 
+/// HMAC-SHA256 of AData with a binary AKey, on the hash object AHash.
 function HMACSHA256(AHash: TRALSHA2_32; const AKey, AData: TBytes): TBytes;
 begin
   AHash.HMACBegin(AKey);
@@ -1228,7 +1289,7 @@ begin
       if vPos >= AKeyLength then
         Break;
 
-      { I_j := (I_j + B + 1) mod 2^(8v), B = A repeated to v bytes }
+      { I_j becomes (I_j + B + 1) mod 2^(8v), B being A repeated to v bytes }
       SetLength(vB, cV);
       for vInt := 0 to cV - 1 do
         vB[vInt] := vA[vInt mod cU];
@@ -1252,6 +1313,8 @@ end;
 
 { PKCS#12 }
 
+{ The password as a big-endian BMPString with its two zero bytes at the end (RFC 7292
+  B.1). }
 function BMPPassword(const APassword: StringRAL): TBytes;
 var
   vWide: UnicodeString;
@@ -1268,7 +1331,7 @@ begin
   Result[High(Result)] := 0;
 end;
 
-{ AlgorithmIdentifier of PBES2 and the ciphertext of AData under it }
+/// AlgorithmIdentifier of PBES2 and the ciphertext of AData under it.
 procedure PBES2Encrypt(const APassword: StringRAL; AIterations: IntegerRAL;
   const AData: TBytes; out AAlgorithm, ACipher: TBytes);
 var

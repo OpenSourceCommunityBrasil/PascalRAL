@@ -1,10 +1,7 @@
-/// Unit for AES Criptography functions
-/// AES-CBC with PKCS#7 padding. The wire format is IV (16 bytes, random per
-/// message) followed by the ciphertext, which is what the Content-Encription
-/// header (aesNNNcbc_pkcs7) has always announced. Until 04/09/2026 this was
-/// ECB without IV under the same header: equal blocks ciphered identically
-/// and nothing outside RAL could read it as CBC. A client and a server on
-/// opposite sides of that change cannot talk to each other.
+{ Unit for AES Criptography functions
+  AES-CBC with PKCS#7 padding. The wire format is IV (16 bytes, random per
+  message) followed by the ciphertext, as the Content-Encription header
+  (aesNNNcbc_pkcs7) announces. }
 unit RALCriptoAES;
 
 {$I ..\core\PascalRAL.inc}
@@ -16,67 +13,72 @@ uses
   RALExceptions, RALErrorCodes, RALCripto, RALTypes, RALConsts, RALTools, RALStream, RALHashBase, RALSHA2_32;
 
 type
+  /// The AES key size.
   TRALAESType = (tAES128, tAES192, tAES256);
 
   /// How the AES key comes out of the text key - see RALCriptoKeyDerivation
   TRALKeyDerivation = (rkdNone, rkdPBKDF2);
 
-  { TRALCriptoAESCipher }
-
   { The block cipher itself, chained in CBC. One instance carries the chain -
     the IV, then the last ciphertext block - across successive buffers, so a
-    stream is ciphered in pieces without breaking it.
-
-    It used to be a TThread, and a stream was split among RALCPUCount of them.
-    CBC cannot be parallelised on the way in, each block needs the one before,
-    and the threads never paid for themselves anyway: a hundred-byte body
-    spawned seven threads of sixteen bytes and a Sleep(1) polling loop. }
+    stream is ciphered in pieces without breaking it. }
   TRALCriptoAESCipher = class
   private
     FInput: PByte;
     FInputLen: IntegerRAL;
     FOutput: PByte;
     FOutputLen: IntegerRAL;
+    /// The previous ciphertext block: the CBC chain.
     FPrev: array [0 .. 15] of Byte;
     FWordKeys: PCardinal;
     FWordKeysLen: IntegerRAL;
   protected
     /// Decrypt cipher
     procedure DecMixColumns(AInput, AOutput: PByte);
+    /// InvSubBytes and InvShiftRows of one block.
     procedure DecSubShiftRows(AInput, AOutput: PByte);
     /// Encrypt cipher
     procedure EncMixColumns(AInput, AOutput: PByte);
+    /// SubBytes and ShiftRows of one block.
     procedure EncSubShiftRows(AInput, AOutput: PByte);
     /// Encrypt and Decrypt
     procedure RoundKey(AInput, AOutput: PByte; AKey: PCardinal);
     /// XORs a block in place with the previous ciphertext block (the chain)
     procedure XorPrev(ABlock: PByte);
   public
+    /// Decrypts InputLen bytes of Input into Output, in CBC.
     procedure DecryptAES;
+    /// Encrypts InputLen bytes of Input into Output, in CBC.
     procedure EncryptAES;
     /// starts the chain: the IV of the message
     procedure SetIV(const AIV: TBytes);
 
+    /// The bytes to cipher; whole blocks.
     property Input: PByte read FInput write FInput;
+    /// Bytes at Input.
     property InputLen: IntegerRAL read FInputLen write FInputLen;
+    /// Where the result goes.
     property Output: PByte read FOutput write FOutput;
+    /// Bytes written to Output.
     property OutputLen: IntegerRAL read FOutputLen write FOutputLen;
+    /// The expanded key.
     property WordKeys: PCardinal read FWordKeys write FWordKeys;
+    /// Words of the expanded key.
     property WordKeysLen: IntegerRAL read FWordKeysLen write FWordKeysLen;
   end;
-
-  { TRALCriptoAES }
 
   /// AES Criptography class
   TRALCriptoAES = class(TRALCripto)
   private
     FAESType: TRALAESType;
+    /// The expanded key.
     FWordKeys: array of Cardinal; // UInt32;
 
     { the bytes the cipher and the MAC are keyed from: the text key's own, or
       what RALCriptoKeyDerivation stretches out of it }
     function KeyBytes: TBytes;
   protected
+    /// Raises ecCryptEmptyKey when no key was set.
     function CheckKey: boolean;
     { The MAC over AStream[AStart, AEnd) - IV and ciphertext - read in pieces,
       compared in constant time with the 32 bytes at AEnd. Raises when they
@@ -89,8 +91,11 @@ type
       answers the plaintext size. Shared by DecryptTo and DecryptInPlace }
     function DecryptRange(AStream: TStream; AStart, AEnd: Int64RAL;
       AOutput: TStream; AWriteAt: Int64RAL): Int64RAL;
+    /// Fills FRCON.
     class procedure GenerateRCON;
+    /// Fills the S-boxes and the multiplication tables.
     class procedure GenerateSBox;
+    /// Fills the tables once.
     class procedure InitializeAES;
     /// Cypher Encrypt and Decrypt
     procedure KeyExpansion;
@@ -98,18 +103,24 @@ type
     function Mac(AData: TStream): TBytes;
     /// the HMAC key, derived from the cipher key
     function MacKey: TBytes;
+    /// AByte times AMult in GF(2^8).
     class function Multi(AMult: integer; AByte: byte): byte;
+    /// AValue times 2 in GF(2^8).
     class function Multi02(AValue: byte): byte;
     /// Key expansion
     function RotWord(AInt: Cardinal): Cardinal;
     procedure SetAESType(AValue: TRALAESType);
     procedure SetKey(const AValue: StringRAL); override;
+    /// The S-box applied to each byte of a word.
     function SubWord(AInt: Cardinal): Cardinal;
+    /// The four bytes of a word, most significant first.
     function WordToBytes(AInt: Cardinal): TBytes;
   public
     constructor Create;
 
+    /// The round key AIndex, in bytes.
     function AESKeys(AIndex: integer): TBytes;
+    /// Round keys of the key size (Nr + 1).
     function CountKeys: integer;
     function DecryptAsStream(AValue: TStream): TStream; override;
     { In place: the plaintext overwrites the ciphertext of AStream, which holds
@@ -117,36 +128,37 @@ type
       plaintext is at AStart + 16 - read it through RALStreamSlice. For a stream
       nobody else reads afterwards }
     function DecryptInPlace(AStream: TStream; AStart: Int64RAL = 0): Int64RAL;
-    /// The plaintext of the whole AInput (IV, ciphertext, MAC), written to
-    /// AOutput. An empty AInput is an empty body, not an error
+    { The plaintext of the whole AInput (IV, ciphertext, MAC), written to
+      AOutput. An empty AInput is an empty body, not an error. }
     procedure DecryptTo(AInput, AOutput: TStream);
     function EncryptAsStream(AValue: TStream): TStream; override;
     { In place: AStream holds, from AStart, 16 bytes reserved for the IV and
       then the plaintext; on return it holds IV, ciphertext and MAC there. The
       padding and the MAC make it grow by up to 48 bytes }
     procedure EncryptInPlace(AStream: TStream; AStart: Int64RAL = 0);
-    { The four ways the body goes through the cipher (.agents/
-      PLANO_STREAM_UNICO.md, D6). All of them work with two buffers of
-      DEFAULTBUFFERSTREAMSIZE and sign with an incremental HMAC, so none of
-      them holds a second copy of the message; the wire format is the one
-      EncryptAsStream always wrote: IV (16), ciphertext with PKCS#7 padding,
-      HMAC-SHA256 (32) over IV and ciphertext. }
+    { The four ways the body goes through the cipher. All of them work with
+      two buffers of DEFAULTBUFFERSTREAMSIZE and sign with an incremental
+      HMAC, so none holds a second copy of the message; the wire format is IV
+      (16), ciphertext with PKCS#7 padding, HMAC-SHA256 (32) over IV and
+      ciphertext. }
     /// IV, ciphertext and MAC of the whole AInput, written to AOutput
     procedure EncryptTo(AInput, AOutput: TStream);
+    /// The round keys in hexadecimal, one per line; the caller frees the list.
     function KeysToList: TStringList;
   published
+    /// The key size; assigning it expands the key again.
     property AESType: TRALAESType read FAESType write SetAESType;
   end;
 
 var
-  /// How every client and server of the process turns CriptoOptions.Key into
-  /// the AES key. rkdNone, the default, uses the key's bytes as they are, cut
-  /// or zero-padded to the AES size - what RAL always did, so a short key is
-  /// tried by anyone holding one captured message in well under a second.
-  /// rkdPBKDF2 stretches it first with PBKDF2-HMAC-SHA256, 100 000 rounds,
-  /// worked out once per key and kept: every guess then costs those rounds.
-  /// A key of any size is still accepted either way. Both ends have to agree,
-  /// or every body fails its MAC; nothing on the wire changes otherwise
+  { How every client and server of the process turns CriptoOptions.Key into
+    the AES key. rkdNone, the default, uses the key's bytes as they are, cut
+    or zero-padded to the AES size, so a short key is
+    tried by anyone holding one captured message in well under a second.
+    rkdPBKDF2 stretches it first with PBKDF2-HMAC-SHA256, 100 000 rounds,
+    worked out once per key and kept: every guess then costs those rounds.
+    A key of any size is still accepted either way. Both ends have to agree,
+    or every body fails its MAC; nothing on the wire changes otherwise. }
   RALCriptoKeyDerivation: TRALKeyDerivation = rkdNone;
 
 implementation
@@ -155,27 +167,31 @@ uses
   SyncObjs;
 
 const
-  { fixed on both ends: changing either breaks every peer }
+  /// The PBKDF2 salt; both ends must use the same.
   cKDFSalt: StringRAL = 'ral-kdf';
+  /// PBKDF2 rounds of rkdPBKDF2.
   cKDFRounds = 100000;
   { distinct keys kept derived; past that the list starts over instead of
     growing with a process that keeps changing keys }
   cKDFKept = 16;
 
 type
+  /// A key text and the key PBKDF2 derived from it.
   TRALDerivedKey = record
+    /// The key text.
     Text: StringRAL;
+    /// The derived key.
     Bytes: TBytes;
   end;
 
 var
+  /// The keys derived so far.
   gDerived: array of TRALDerivedKey;
+  /// Guards gDerived.
   gDerivedLock: TCriticalSection = nil;
 
-{ PBKDF2 of AKey, once per key: a cipher is built for every body, and the
-  rounds are the expensive part on purpose. Worked out outside the lock - two
-  threads meeting a new key at once both derive it, which costs time and
-  nothing else }
+{ PBKDF2 of AKey, cached per key, since a cipher is built for every body.
+  Derived outside the lock: two threads meeting a new key may both derive it }
 function DerivedKey(const AKey: StringRAL): TBytes;
 var
   vInt: IntegerRAL;
@@ -209,20 +225,33 @@ begin
 end;
 
 const
+  /// Rounds per key size (Nr).
   cNumberRounds: array [TRALAESType] of integer = (10, 12, 14); // nr
+  /// Key length in 32-bit words (Nk).
   cKeyLength: array [TRALAESType] of integer = (4, 6, 8); // nk
+  /// Block length in 32-bit words (Nb).
   cBlockSize: integer = 4; // nb
+  /// Bytes of the HMAC-SHA256 after the ciphertext.
   cMacSize = 32; // HMAC-SHA256
 
 var
+  /// The inverse S-box.
   FDecSBOX: array [0 .. 255] of byte;
+  /// The S-box.
   FEncSBOX: array [0 .. 255] of byte;
+  /// Multiplication by 2 in GF(2^8).
   FMulti02: array [0 .. 255] of byte;
+  /// Multiplication by 3 in GF(2^8).
   FMulti03: array [0 .. 255] of byte;
+  /// Multiplication by 9 in GF(2^8).
   FMulti09: array [0 .. 255] of byte; // 09
+  /// Multiplication by 11 in GF(2^8).
   FMulti11: array [0 .. 255] of byte; // 0b
+  /// Multiplication by 13 in GF(2^8).
   FMulti13: array [0 .. 255] of byte; // 0d
+  /// Multiplication by 14 in GF(2^8).
   FMulti14: array [0 .. 255] of byte; // 0e
+  /// The key schedule round constants.
   FRCON: array [0 .. 255] of byte;
 
   { TRALCriptoAESCipher }
@@ -456,26 +485,26 @@ begin
     // CBC: the plaintext block is chained with the previous ciphertext block
     // (the IV for the first one) before the rounds
     XorPrev(FInput);
-    // mexe somente no input
+    // changes only the input
     RoundKey(FInput, FOutput, FWordKeys);
 
     vPosKey := 4;
     while vPosKey < FWordKeysLen do
     begin
       Inc(FWordKeys, 4);
-      // mexe no output , input se mantem
+      // changes the output, the input stays
       EncSubShiftRows(FInput, FOutput);
-      // pega o output do shit e joga no input
+      // takes the output of the shift into the input
       EncMixColumns(FOutput, FInput);
-      // mexe somente no input
+      // changes only the input
       RoundKey(FInput, FOutput, FWordKeys);
       vPosKey := vPosKey + 4;
     end;
 
     Inc(FWordKeys, 4);
-    // mexe no output , input se mantem
+    // changes the output, the input stays
     EncSubShiftRows(FInput, FOutput);
-    // mexe somente no output
+    // changes only the output
     RoundKey(FOutput, FInput, FWordKeys);
 
     // the ciphertext just written is the chain for the next block
@@ -497,27 +526,27 @@ begin
   while FInputLen > 0 do
   begin
     // the rounds below work on the input in place; the ciphertext block is
-    // kept aside because it is the chain of the NEXT block
+    // kept aside because it is the chain of the next block
     Move(FInput^, vCipher[0], 16);
-    // mexe somente no input
+    // changes only the input
     RoundKey(FInput, FOutput, FWordKeys);
 
     vPosKey := FWordKeysLen - 4;
     while vPosKey > 0 do
     begin
       Dec(FWordKeys, 4);
-      // pega o input e joga no output
+      // takes the input into the output
       DecSubShiftRows(FInput, FOutput);
-      // mexe somente no output
+      // changes only the output
       RoundKey(FOutput, FInput, FWordKeys);
 
-      // pega o output e joga pro input
+      // takes the output into the input
       DecMixColumns(FOutput, FInput);
       vPosKey := vPosKey - 4;
     end;
 
     Dec(FWordKeys, 4);
-    // pega o input e joga no output
+    // takes the input into the output
     DecSubShiftRows(FInput, FOutput);
     RoundKey(FOutput, FInput, FWordKeys);
 
@@ -625,8 +654,7 @@ begin
   vNr := cNumberRounds[FAESType];
 
   { cut or zero-padded to the AES size. Only a shorter key is padded:
-    vKey[Length] is past the end, which $R+ refuses even for a count of 0 -
-    every key from the AES size up, and every derived one, raised there }
+    vKey[Length] is past the end, which $R+ refuses even for a count of 0 }
   vKey := KeyBytes;
   vInt := Length(vKey);
   SetLength(vKey, 4 * vNk);
@@ -708,7 +736,7 @@ begin
   end;
 end;
 
-{ reads until ACount bytes or the end of the stream: TStream.Read may stop short }
+/// Reads until ACount bytes or the end of the stream: TStream.Read may stop short.
 function ReadFull(AStream: TStream; ABuffer: PByte; ACount: IntegerRAL): IntegerRAL;
 var
   vRead: IntegerRAL;
@@ -723,7 +751,7 @@ begin
   end;
 end;
 
-{ the size of the working buffers: whole blocks }
+/// The size of the working buffers: whole blocks.
 function CipherBufferSize: IntegerRAL;
 begin
   Result := (DEFAULTBUFFERSTREAMSIZE div 16) * 16;
@@ -993,8 +1021,8 @@ begin
 
   vEnd := AStream.Size - cMacSize;
   CheckMac(AStream, AStart, vEnd);
-  { each plaintext piece lands on the ciphertext it came from, which the next
-    read no longer needs: the reading position is always ahead of the writing }
+  { each plaintext piece lands on the ciphertext it came from, which later
+    reads do not need: the reading position is always ahead of the writing }
   Result := DecryptRange(AStream, AStart, vEnd, AStream, AStart + 16);
 end;
 
@@ -1002,9 +1030,7 @@ function TRALCriptoAES.EncryptAsStream(AValue: TStream): TStream;
 var
   vBody: TRALBodyStream;
 begin
-  { through EncryptTo: the old body allocated two buffers the size of the input
-    (up to 50 MB), and signed by reading the whole result back - 3 to 4 times
-    the message in memory, measured on 27/09/2026 }
+  { through EncryptTo, which holds no second copy of the message }
   vBody := TRALBodyStream.Create(AValue.Size + 64);
   try
     EncryptTo(AValue, vBody);

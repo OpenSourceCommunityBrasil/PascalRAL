@@ -9,8 +9,6 @@ uses
 
 type
 
-  { TRALCriptoOptions }
-
   /// Class for the cryptographic definitions
   TRALCriptoOptions = class(TPersistent)
   private
@@ -21,13 +19,14 @@ type
   public
     constructor Create;
   published
+    /// The cipher.
     property CriptType: TRALCriptoType read FCriptType write FCriptType;
+    /// The key text both ends share.
     property Key: StringRAL read FKey write FKey;
   end;
 
+  /// How the input or output of a cipher is written: raw, base64 or hexadecimal.
   TRALCriptoInOutType = (cotNone, cotBase64, cotHEX);
-
-  { TRALCripto }
 
   /// Base class for all crypto functions
   TRALCripto = class
@@ -36,30 +35,50 @@ type
     FKey: StringRAL;
     FOutputType : TRALCriptoInOutType;
   protected
+    /// Decodes AValue by IntputType, decrypts it and encodes the result by OutputType.
     function BeforeDecrypt(AValue: TStream): TStream;
+    /// Decodes AValue by IntputType, encrypts it and encodes the result by OutputType.
     function BeforeEncrypt(AValue: TStream): TStream;
+    /// Whether the cipher is ready to run.
     function CanCript : boolean; virtual;
     procedure SetKey(const AValue: StringRAL); virtual;
   public
     constructor Create;
 
+    /// Decrypts a string (raw bytes with ABinary, else UTF-8).
     function Decrypt(const AValue: StringRAL; ABinary : boolean = false): StringRAL; overload;
+    /// Decrypts a byte array.
     function Decrypt(AValue: TBytes): StringRAL; overload;
+    /// Decrypts a stream.
     function Decrypt(AValue: TStream): StringRAL; overload;
+    /// Decrypts a string into bytes.
     function DecryptAsBytes(const AValue: StringRAL): TBytes; overload;
+    /// Decrypts a byte array into bytes.
     function DecryptAsBytes(AValue: TBytes): TBytes; overload;
+    /// Decrypts a stream into bytes.
     function DecryptAsBytes(AValue: TStream): TBytes; overload;
+    /// Decrypts AValue into a new stream, owned by the caller.
     function DecryptAsStream(AValue: TStream): TStream; virtual; abstract;
+    /// Encrypts a string (raw bytes with ABinary, else UTF-8).
     function Encrypt(const AValue: StringRAL; ABinary : boolean = false): StringRAL; overload;
+    /// Encrypts a byte array.
     function Encrypt(AValue: TBytes): StringRAL; overload;
+    /// Encrypts a stream.
     function Encrypt(AValue: TStream): StringRAL; overload;
+    /// Encrypts a string into bytes.
     function EncryptAsBytes(const AValue: StringRAL): TBytes; overload;
+    /// Encrypts a byte array into bytes.
     function EncryptAsBytes(AValue: TBytes): TBytes; overload;
+    /// Encrypts a stream into bytes.
     function EncryptAsBytes(AValue: TStream): TBytes; overload;
+    /// Encrypts AValue into a new stream, owned by the caller.
     function EncryptAsStream(AValue: TStream): TStream; virtual; abstract;
   published
+    /// How the input is written.
     property IntputType: TRALCriptoInOutType read FIntputType write FIntputType;
+    /// The key text.
     property Key: StringRAL read FKey write SetKey;
+    /// How the output is written.
     property OutputType: TRALCriptoInOutType read FOutputType write FOutputType;
   end;
 
@@ -136,7 +155,7 @@ function TRALCripto.Encrypt(AValue: TStream): StringRAL;
 var
   vStream: TStream;
 begin
-  { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
+  { TODO -cCompatibility : make this work on older Delphi versions }
   vStream := nil;
   try
     vStream := BeforeEncrypt(AValue);
@@ -252,7 +271,7 @@ function TRALCripto.Decrypt(AValue: TStream): StringRAL;
 var
   vStream: TStream;
 begin
-  { TODO -cCompatibilidade : Melhorar esse código pra compatibilizar com versões antigas do Delphi }
+  { TODO -cCompatibility : make this work on older Delphi versions }
   vStream := nil;
   try
     vStream := BeforeDecrypt(AValue);

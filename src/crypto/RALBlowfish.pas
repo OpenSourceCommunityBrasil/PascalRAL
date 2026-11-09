@@ -1,6 +1,6 @@
-/// Blowfish (Schneier, 1993) and the expensive key schedule of bcrypt
-/// (EksBlowfish, Provos and Mazieres, 1999). Pure Pascal, no library. Blowfish
-/// is here for bcrypt; new designs should prefer AES.
+{ Blowfish (Schneier, 1993) and the expensive key schedule of bcrypt
+  (EksBlowfish, Provos and Mazieres, 1999). Pure Pascal, no library. Blowfish
+  is here for bcrypt; new designs should prefer AES. }
 unit RALBlowfish;
 
 {$I ..\core\PascalRAL.inc}
@@ -24,7 +24,9 @@ type
     in. }
   TRALBlowfish = class
   private
+    /// The P-array of the expanded key.
     FP: array[0..17] of Cardinal;
+    /// The four S-boxes of the expanded key.
     FS: array[0..3, 0..255] of Cardinal;
 
     /// The round function.
@@ -63,10 +65,12 @@ function RALBcryptDecode64(const AText: StringRAL; ALength: IntegerRAL;
 implementation
 
 const
+  /// The initial P-array (digits of pi).
   cBlowfishP: array[0..17] of Cardinal = (
     $243F6A88, $85A308D3, $13198A2E, $03707344, $A4093822, $299F31D0,
     $082EFA98, $EC4E6C89, $452821E6, $38D01377, $BE5466CF, $34E90C6C,
     $C0AC29B7, $C97C50DD, $3F84D5B5, $B5470917, $9216D5D9, $8979FB1B);
+  /// The initial S-box 0 (digits of pi).
   cBlowfishS0: array[0..255] of Cardinal = (
     $D1310BA6, $98DFB5AC, $2FFD72DB, $D01ADFB7, $B8E1AFED, $6A267E96,
     $BA7C9045, $F12C7F99, $24A19947, $B3916CF7, $0801F2E2, $858EFC16,
@@ -111,6 +115,7 @@ const
     $D60F573F, $BC9BC6E4, $2B60A476, $81E67400, $08BA6FB5, $571BE91F,
     $F296EC6B, $2A0DD915, $B6636521, $E7B9F9B6, $FF34052E, $C5855664,
     $53B02D5D, $A99F8FA1, $08BA4799, $6E85076A);
+  /// The initial S-box 1 (digits of pi).
   cBlowfishS1: array[0..255] of Cardinal = (
     $4B7A70E9, $B5B32944, $DB75092E, $C4192623, $AD6EA6B0, $49A7DF7D,
     $9CEE60B8, $8FEDB266, $ECAA8C71, $699A17FF, $5664526C, $C2B19EE1,
@@ -155,6 +160,7 @@ const
     $9E447A2E, $C3453484, $FDD56705, $0E1E9EC9, $DB73DBD3, $105588CD,
     $675FDA79, $E3674340, $C5C43465, $713E38D8, $3D28F89E, $F16DFF20,
     $153E21E7, $8FB03D4A, $E6E39F2B, $DB83ADF7);
+  /// The initial S-box 2 (digits of pi).
   cBlowfishS2: array[0..255] of Cardinal = (
     $E93D5A68, $948140F7, $F64C261C, $94692934, $411520F7, $7602D4F7,
     $BCF46B2E, $D4A20068, $D4082471, $3320F46A, $43B7D4B7, $500061AF,
@@ -199,6 +205,7 @@ const
     $ED545578, $08FCA5B5, $D83D7CD3, $4DAD0FC4, $1E50EF5E, $B161E6F8,
     $A28514D9, $6C51133C, $6FD5C7E7, $56E14EC4, $362ABFCE, $DDC6C837,
     $D79A3234, $92638212, $670EFA8E, $406000E0);
+  /// The initial S-box 3 (digits of pi).
   cBlowfishS3: array[0..255] of Cardinal = (
     $3A39CE37, $D3FAF5CF, $ABC27737, $5AC52D1B, $5CB0679E, $4FA33742,
     $D3822740, $99BC9BBE, $D5118E9D, $BF0F7315, $D62D1C7E, $C700C47B,
@@ -244,6 +251,7 @@ const
     $01C36AE4, $D6EBE1F9, $90D4F869, $A65CDEA0, $3F09252D, $C208E69F,
     $B74E6132, $CE77E25B, $578FDFE3, $3AC372E6);
 
+  /// bcrypt's own base64 alphabet.
   cBcryptAlphabet: StringRAL =
     './ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -319,7 +327,7 @@ begin
   AR := vL;
 end;
 
-{ the next 32-bit word of AData, read cyclically from APos }
+/// The next 32-bit word of AData, read cyclically from APos.
 function StreamWord(const AData: TBytes; var APos: IntegerRAL): Cardinal;
 var
   vInt: IntegerRAL;

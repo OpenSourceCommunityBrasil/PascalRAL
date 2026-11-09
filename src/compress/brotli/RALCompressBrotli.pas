@@ -1,3 +1,4 @@
+/// Brotli compression (RFC 7932) over the pascal_brotli submodule.
 unit RALCompressBrotli;
 
 interface
@@ -7,7 +8,6 @@ uses
   RALExceptions, RALErrorCodes, RALCompress, RALTypes, RALConsts;
 
 type
-  { TRALCompressBrotli }
 
   /// Compression class Brotli for PascalRAL
   TRALCompressBrotli = class(TRALCompress)
@@ -25,13 +25,9 @@ implementation
 { TRALCompressBrotli }
 
 { The encoder is driven here, one instance for the whole body, and not through
-  pascal_brotli's TBrotliCompressionStream: its Flush, which Destroy runs, takes
-  a GetMemory(1024) it never gives back, so every body compressed leaked 1 KB -
-  a server answering in brotli lost it on every response. The class also built
-  a new encoder for every Write, a 64 KB piece here, plus one more to finish:
-  an encoder is the costliest thing brotli makes, and pieces compressed apart
-  compress worse. What comes out is one standard brotli stream, which any
-  decoder reads - the RAL of before included. }
+  pascal_brotli's TBrotliCompressionStream, which leaks 1 KB per stream in its
+  Flush and builds an encoder per Write. The output is one standard brotli
+  stream. }
 procedure TRALCompressBrotli.InitCompress(AInStream, AOutStream: TStream);
 var
   vIn, vOut: TBytes;

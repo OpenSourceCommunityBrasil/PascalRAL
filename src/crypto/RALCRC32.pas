@@ -1,3 +1,4 @@
+/// CRC-32 (ISO 3309, the gzip trailer's checksum) on the hash base class.
 unit RALCRC32;
 
 interface
@@ -7,19 +8,22 @@ uses
   RALHashBase, RALTypes;
 
 type
+  /// CRC-32 checksum, the one the gzip trailer carries.
   TRALCRC32 = class(TRALHashBase)
   private
+    /// The block being filled.
     FBuffer: array[0..63] of Byte;
+    /// The running CRC.
     FCRC32 : LongWord;
   protected
     procedure Compress; override;
     function Finalize: TBytes; override;
     function GetBuffer(AIndex: IntegerRAL) : Pointer; override;
     function GetBufLength: IntegerRAL; override;
-    // calculate hash crc32 of content
+    /// Runs the CRC over the first AIndex bytes of the block
     procedure HashCRC32(AIndex : integer);
     procedure Initialize; override;
-    // update crc32 hash
+    /// Adds one byte to the running CRC
     procedure UpdateCRC32(AOctet: Byte);
   public
     constructor Create;
@@ -29,6 +33,7 @@ type
 implementation
 
 const
+  /// The CRC-32 table of the reflected polynomial $EDB88320.
   Crc_32_Tab : Array[0..255] of LongWord = (
     $00000000, $77073096, $ee0e612c, $990951ba, $076dc419, $706af48f, $e963a535,
     $9e6495a3, $0edb8832, $79dcb8a4, $e0d5e91e, $97d2d988, $09b64c2b, $7eb17cbd,
@@ -72,10 +77,8 @@ const
 
 procedure TRALCRC32.Compress;
 begin
-  { HashBytes only calls this with the block FULL, while the index still says
-    where the last piece started: taking the index as the count hashed only
-    part of a block that had been filled in more than one piece. Whole blocks
-    and single pieces (the only way this was ever fed) never showed it }
+  { HashBytes calls this with the block full, while the index still says
+    where the last piece started: the count is the block's length }
   HashCRC32(GetBufLength);
 
   FillChar(FBuffer, Sizeof(FBuffer), 0);
