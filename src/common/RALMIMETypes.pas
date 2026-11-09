@@ -189,11 +189,12 @@ type
       slots a power of two, kept at most half full }
     FExtKeys: TRALMIMEStrings;
     FExtTypes: TRALMIMEStrings;
-    class var FInstance: TRALMIMEType;
     FInternalMIMEList: TStringList;
 
     procedure ExtAdd(const AExt, AType: StringRAL);
     function ExtSlot(const AExt: StringRAL; out AFound: boolean): IntegerRAL;
+
+    class var FInstance: TRALMIMEType;
   protected
     function GetSystemTypes: boolean;
     // busca binaria
