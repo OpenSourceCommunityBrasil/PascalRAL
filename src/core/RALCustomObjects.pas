@@ -9,15 +9,13 @@ uses
 
 type
 
-  { TRALComponent }
-
   /// Base class of visual components
   TRALComponent = class(TComponent)
   private
     function GetVersion: string;
   public
     { Whether a published property still means anything with the component
-      configured as it is RIGHT NOW - the mORMot2 server's HttpSysDomain says
+      configured as it is now - the mORMot2 server's HttpSysDomain says
       nothing outside smHttpSys, and ShareConnection says nothing on an engine
       whose transport is one socket per object.
 
@@ -25,7 +23,7 @@ type
       RALRegister), and it lives here, on the component, so that the design
       package never has to know one engine from another.
 
-      HIDDEN IS NOT FORBIDDEN, and nothing may be built on top of this: a
+      Hidden is not forbidden, and nothing may be built on top of this: a
       property left over from another configuration has to stay harmless, so
       an irrelevant value is ignored and never raises. What does raise is an
       explicit choice that cannot work - a Mode this platform has no server
@@ -33,16 +31,16 @@ type
       hidden. }
     function IsPropertyRelevant(const AName: StringRAL): boolean; virtual;
   published
+    /// The RAL version.
     property Version: string read GetVersion;
   end;
-
-  { TRALHTTPHeaderInfo }
 
   /// Base class of REQUEST and RESPONSE classes
   TRALHTTPHeaderInfo = class
   private
     FAcceptEncoding: StringRAL;
     FAcceptEncription: StringRAL;
+    /// The compressor registration FAcceptValue was read under.
     FAcceptGen: IntegerRAL;
     { what AcceptCompress and ContentCompress answered last, for which text and
       under which set of registered compressors: a request reads each several
@@ -50,20 +48,26 @@ type
       compared by reference - kept here, it cannot be freed and its address
       taken by another string - so a hit costs two comparisons }
     FAcceptKey: StringRAL;
+    /// AcceptCompress, cached.
     FAcceptValue: TRALCompressType;
     FContentDisposition: StringRAL;
     FContentDispositionInline: Boolean;
     FContentEncoding: StringRAL;
     FContentEncription: StringRAL;
+    /// The compressor registration FContentValue was read under.
     FContentGen: IntegerRAL;
+    /// The ContentEncoding FContentValue was read from.
     FContentKey: StringRAL;
     FContentType: StringRAL;
+    /// ContentCompress, cached.
     FContentValue: TRALCompressType;
     FCriptoKey: StringRAL;
+    /// The params.
     FParams: TRALParams;
     FParent: TObject;
     FProtocolVersion: TRALHTTPVersion;
   protected
+    /// Hands the cipher (and with AKey the key) to the params.
     procedure ApplyCripto(AKey: boolean);
     /// Grabs the kind of compression that will be accepted on the traffic
     function GetAcceptCompress: TRALCompressType;
@@ -86,49 +90,70 @@ type
       response of a server may compress anything and gives its streams away,
       because the engine may send after the response is gone (Sagui does) }
     function WireCompressMultipart: boolean; virtual;
+    /// Whether TakeWire* gives the streams away (False on a client request).
     function WireConsume: boolean; virtual;
   public
+    /// Creates the object, owned by AOwner.
     constructor Create(AOwner : TObject); virtual;
     destructor Destroy; override;
 
+    /// Adds a body param with AText. Returns Self.
     function AddBody(const AText: StringRAL; const AContextType: StringRAL = rctAPPLICATIONJSON): TRALHTTPHeaderInfo; virtual;
+    /// Adds a cookie. Returns Self.
     function AddCookie(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; overload; virtual; deprecated 'use AddCookie(ACookie:TRALCookie) instead';
+    /// Adds a cookie with its attributes. Returns Self.
     function AddCookie(const ACookie: TRALCookie):TRALHTTPHeaderInfo; overload; virtual;
+    /// Adds the cookies of a Cookie header. Returns Self.
     function AddCookies(ACookies: StringRAL): TRALHTTPHeaderInfo; virtual;
+    /// Adds a form field. Returns Self.
     function AddField(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    /// Adds the file AFileName as a body param. Returns Self.
     function AddFile(const AFileName: StringRAL): TRALHTTPHeaderInfo; overload; virtual;
+    /// Adds a stream as a file body param. Returns Self.
     function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALHTTPHeaderInfo; overload; virtual;
+    /// Adds a header. Returns Self.
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
+    /// Adds a query param. Returns Self.
     function AddQuery(const AName: StringRAL; const AValue: StringRAL): TRALHTTPHeaderInfo; virtual;
-    /// The body of the request or the response, when it is ONE value - raw text,
-    /// JSON, a file (the param named 'ral_body'). A body the engine already split
-    /// into params is not here: form fields (x-www-form-urlencoded) and the parts
-    /// of a multipart are rpkFIELD/rpkBODY params, read them with ParamByName,
-    /// and Params.AssignParamsUrl(rpkFIELD) gives the form back as text. For such
-    /// a body this answers nil - Body.AsString is still safe and gives ''
+    { The body of the request or the response, when it is one value - raw text,
+      JSON, a file (the param named 'ral_body'). A body the engine already split
+      into params is not here: form fields (x-www-form-urlencoded) and the parts
+      of a multipart are rpkFIELD/rpkBODY params, read them with ParamByName,
+      and Params.AssignParamsUrl(rpkFIELD) gives the form back as text. For such
+      a body this answers nil - Body.AsString is still safe and gives '' }
     function Body: TRALParam;
+    /// Empties the params and the headers it keeps.
     procedure Clear; virtual;
+    /// Copies this object into ASource.
     procedure Clone(ASource: TRALHTTPHeaderInfo);
+    /// The body param at AIdx, or nil.
     function GetBody(AIdx: IntegerRAL): TRALParam; virtual;
+    /// The value of the cookie AName.
     function GetCookie(const AName: StringRAL): StringRAL; virtual; deprecated 'use GetRALCookie(AName): TRALCookie instead';
+    /// The value of the form field AName.
     function GetField(const AName: StringRAL): StringRAL; virtual;
+    /// The value of the header AName.
     function GetHeader(const AName: StringRAL): StringRAL; virtual;
+    /// The value of the query param AName.
     function GetQuery(const AName: StringRAL): StringRAL; virtual;
-    /// The cookie of that name, received (Name and Value; the attributes of a
-    /// Set-Cookie stay with the browser) or set with AddCookie(TRALCookie) on
-    /// this response (the whole record). An empty record when there is none.
+    { The cookie of that name, received (Name and Value; the attributes of a
+      Set-Cookie stay with the browser) or set with AddCookie(TRALCookie) on
+      this response (the whole record). An empty record when there is none. }
     function GetRALCookie(const AName: StringRAL): TRALCookie; virtual;
+    /// Whether the answer can go out in a coding the client accepts.
     function HasValidAcceptEncoding: boolean;
+    /// Whether this build can decode the body as Content-Encoding says.
     function HasValidContentEncoding: boolean;
-    /// True for the media types a charset parameter applies to (text/*, JSON, XML, JavaScript, forms)
+    { True for the media types a charset parameter applies to (text/*, JSON, XML,
+      JavaScript, forms) }
     class function IsTextualType(const AContentType: StringRAL): boolean;
-    /// The param with this name, of ANY kind - query string, header, cookie, form
-    /// field - and the first one added when there are several: the query string
-    /// and the headers come in before any authentication event runs, so a value
-    /// added later with AddParam does not override one the client sent under the
-    /// same name (use Params.ReplaceParam for that, or Params.GetKind to ask for
-    /// one kind). A JSON body is not split into params unless the server has
-    /// JSONBodyToParams on; read it from Body otherwise
+    { The param with this name, of any kind - query string, header, cookie, form
+      field - and the first one added when there are several: the query string
+      and the headers come in before any authentication event runs, so a value
+      added later with AddParam does not override one the client sent under the
+      same name (use Params.ReplaceParam for that, or Params.GetKind to ask for
+      one kind). A JSON body is not split into params unless the server has
+      JSONBodyToParams on; read it from Body otherwise. }
     function ParamByName(const AParamName: StringRAL): TRALParam;
     /// fills the body with the String AContent
     procedure SetBody(AContent: StringRAL); overload; virtual;
@@ -138,60 +163,72 @@ type
       encrypted as ContentEncoding/ContentEncription say - so those must be
       filled first; the key is the one already in Params.CriptoOptions (the
       crypto plugin's on a server, the client's own on a client). It is decoded
-      ONCE, into Params, and with AOwnership other than boCopy the engine's
+      once, into Params, and with AOwnership other than boCopy the engine's
       buffer is not copied at all: see TRALBodyOwnership for which to pass. An
-      empty body adds nothing (an owned one is freed).
-      This is what RequestStream := (server) and ResponseStream := (client)
-      used to be for; those still work, and copy }
+      empty body adds nothing (an owned one is freed). RequestStream (server)
+      and ResponseStream (client) are the assignments that copy }
     procedure SetWireBody(AStream: TStream; AOwnership: TRALBodyOwnership); overload; virtual;
-    /// The body as a string the engine holds: a view that keeps the reference, nothing copied
+    { The body as a string the engine holds: a view that keeps the reference, nothing
+      copied }
     procedure SetWireBody(const ABody: RawByteString); overload;
     { The body in memory the engine keeps for as long as this object lives
       (Sagui's payload, a QUIC frame): a read-only view, nothing copied }
     procedure SetWireBody(ABuffer: Pointer; ASize: Int64RAL); overload;
     { ENGINE API, sending: the body for the wire, compressed and/or encrypted
-      as ContentCompress/ContentCripto/CriptoKey ask, as ONE stream the engine
+      as ContentCompress/ContentCripto/CriptoKey ask, as one stream the engine
       frees; nil when there is no body. With no transform it is the body
       itself, nothing copied. ContentType, ContentDisposition and
       ContentCompress are set to what was really done - read ContentEncoding
-      AFTER this call: a type already compressed goes out as it is.
+      after this call: a type already compressed goes out as it is.
       On a server response the params give their streams away; call it once }
     function TakeWireStream: TStream; virtual;
     { TakeWireStream as a string, for the engines that send one (mORMot2): a
       lone text body with no transform is the handler's own string }
     function TakeWireString: RawByteString; virtual;
   published
+    /// The best coding of AcceptEncoding this build has.
     property AcceptCompress: TRALCompressType read GetAcceptCompress;
+    /// The cipher of AcceptEncription.
     property AcceptCripto: TRALCriptoType read GetAcceptCripto;
+    /// The Accept-Encoding header.
     property AcceptEncoding: StringRAL read FAcceptEncoding write FAcceptEncoding;
+    /// The Accept-Encription header.
     property AcceptEncription: StringRAL read FAcceptEncription write FAcceptEncription;
+    /// The coding of the body (Content-Encoding).
     property ContentCompress: TRALCompressType read GetContentCompress write SetContentCompress;
+    /// The cipher of the body (Content-Encription).
     property ContentCripto: TRALCriptoType read GetContentCripto write SetContentCripto;
+    /// The Content-Disposition header.
     property ContentDisposition: StringRAL read FContentDisposition write SetContentDisposition;
+    /// Whether Content-Disposition is inline rather than attachment.
     property ContentDispositionInline: boolean read FContentDispositionInline write FContentDispositionInline;
+    /// The Content-Encoding header.
     property ContentEncoding: StringRAL read FContentEncoding write FContentEncoding;
+    /// The Content-Encription header.
     property ContentEncription: StringRAL read FContentEncription write FContentEncription;
+    /// The Content-Type header; the charset is added for textual types.
     property ContentType: StringRAL read FContentType write SetContentType;
+    /// The key of the body cipher.
     property CriptoKey: StringRAL read FCriptoKey write FCriptoKey;
+    /// The params: query, headers, body, fields, cookies, files.
     property Params: TRALParams read GetParams;
+    /// The object that owns this one.
     property Parent: TObject read FParent;
-    /// The SAME fact as ProtocolVersion, spelled the way the wire spells it -
-    /// '1.0', '1.1', '2.0', or '' when the transport could not tell.
-    ///
-    /// There is ONE field behind the two, on purpose: an engine that fills
-    /// either one has filled both, and they can never disagree. Writing text
-    /// a version cannot be parsed out of leaves rhvDefault, so Protocol reads
-    /// back as '' - it is not a free-text field.
+    { The same fact as ProtocolVersion, spelled the way the wire spells it -
+      '1.0', '1.1', '2.0', or '' when the transport could not tell.
+      One field is behind the two: an engine that fills either one has filled
+      both, and they can never disagree. Writing text
+      a version cannot be parsed out of leaves rhvDefault, so Protocol reads
+      back as '' - it is not a free-text field. }
     property Protocol: StringRAL read GetProtocol write SetProtocol stored False;
-    /// Which HTTP version carried this message, as the transport REPORTS it -
-    /// never what was asked for, since ALPN settles that during the TLS
-    /// handshake. A transport that cannot tell leaves rhvDefault.
-    ///
-    /// On a RESPONSE it is what the client engine could read back. On a
-    /// REQUEST it is what the server saw the client arrive on, which is the
-    /// only place the answer is reliable: the http.sys server reads it from
-    /// the driver, while a client on Windows has to guess from the status
-    /// line - and an HTTP/2 response does not have one, so it under-reports.
+    { Which HTTP version carried this message, as the transport REPORTS it -
+      never what was asked for, since ALPN settles that during the TLS
+      handshake. A transport that cannot tell leaves rhvDefault.
+      On a RESPONSE it is what the client engine could read back. On a
+      REQUEST it is what the server saw the client arrive on, which is the
+      only place the answer is reliable: the http.sys server reads it from
+      the driver, while a client on Windows has to guess from the status
+      line - and an HTTP/2 response does not have one, so it under-reports. }
     property ProtocolVersion: TRALHTTPVersion read FProtocolVersion write FProtocolVersion;
   end;
 
@@ -225,8 +262,8 @@ end;
 
 function TRALHTTPHeaderInfo.GetContentCripto: TRALCriptoType;
 begin
-  { read where it is: LowerCase was a UTF-16 trip on Delphi, and this runs
-    for every request and every response }
+  { read where it is, with no lower-case copy (a UTF-16 trip on Delphi): this
+    runs for every request and every response }
   if FContentEncription = '' then
     Result := crNone
   else if RALPosText('aes256cbc_pkcs7', FContentEncription) > 0 then
@@ -253,27 +290,23 @@ end;
 var
   { The types every response and every param start with, and what
     SetContentType makes of each - computed once. On Delphi a literal assigned
-    to a field is copied to the heap every time, and the charset appended, the
-    lower-case copy and the trip to UTF-16 of IsTextualType made a dozen
-    allocations per request out of two assignments of a constant. A string
-    held here has a reference count, so handing it to a field costs none }
+    to a field is copied to the heap every time; a string held here has a
+    reference count, so handing it to a field costs none }
   gKnownGiven: array[0..5] of StringRAL;
+  /// The Content-Type SetContentType stores for each of gKnownGiven.
   gKnownFinal: array[0..5] of StringRAL;
 
+/// AValue as one header line, with the charset where it belongs.
 function SafeContentType(const AValue: StringRAL): StringRAL;
 begin
   Result := RALSafeHeaderText(AValue); // one header line, whatever AValue held
   { Never on a multipart container. RFC 2046 puts the charset on each part, so
     the parameter means nothing here - and appending anything after "boundary="
-    breaks every parser that reads the boundary as the rest of the header value.
-    libmicrohttpd, under the Sagui engine, is one of those: it took the boundary
-    as "ralNNN; charset=utf-8", matched no delimiter, and discarded the whole
-    body without an error - requests reached the handler with no params, no body
-    and no cookies, on a server that answered 200 and looked healthy. }
-  { and never on an empty type: "Content-Type: ; charset=utf-8" is what a
-    bodiless error answer used to carry }
+    breaks every parser that reads the boundary as the rest of the header value
+    (libmicrohttpd, under the Sagui engine, then drops the whole body). }
+  { and never on an empty type ("Content-Type: ; charset=utf-8") }
   { and only on textual types: a charset means nothing on image/png or
-    application/octet-stream, and "octet-stream; charset=utf-8" made browsers
+    application/octet-stream, and "octet-stream; charset=utf-8" makes browsers
     and proxies treat binary downloads as text. Multipart is not textual
     either, which keeps the boundary guard above. }
   if (Result <> '') and
@@ -297,8 +330,8 @@ end;
 
 class function TRALHTTPHeaderInfo.IsTextualType(const AContentType: StringRAL): boolean;
 begin
-  { compared where it is: a lower-case copy was a UTF-16 trip and three
-    allocations on Delphi, every time a content type was set }
+  { compared where it is, with no lower-case copy (a UTF-16 trip and three
+    allocations on Delphi): this runs every time a content type is set }
   Result := (RALPosText('text/', AContentType) = 1) or
             (RALPosText('json', AContentType) > 0) or
             (RALPosText('xml', AContentType) > 0) or
@@ -308,8 +341,8 @@ end;
 
 function TRALHTTPHeaderInfo.GetAcceptCripto: TRALCriptoType;
 begin
-  { read where it is: LowerCase was a UTF-16 trip on Delphi, and this runs
-    for every request and every response }
+  { read where it is, with no lower-case copy (a UTF-16 trip on Delphi): this
+    runs for every request and every response }
   if FAcceptEncription = '' then
     Result := crNone
   else if RALPosText('aes256cbc_pkcs7', FAcceptEncription) > 0 then
@@ -569,12 +602,10 @@ var
   end;
 
 begin
-  { Result first: this is a fluent method, and it never assigned it - the
-    caller got whatever the register held. Then ONE scan, a Copy per cookie:
-    it used to Trim and Delete off the front of the whole remaining header
-    once per cookie, quadratic in the number of cookies of a header that comes
-    straight from the network, before any authentication - mORMot2 and MsQuic
-    hand it over whole }
+  { Result first: this is a fluent method. Then one scan, a Copy per cookie:
+    linear in the number of cookies of a header that comes straight from the
+    network, before any authentication - mORMot2 and MsQuic hand it over
+    whole }
   Result := Self;
   vStart := 1;
   for vInt := 1 to Length(ACookies) do
@@ -670,7 +701,6 @@ var
   vInt: IntegerRAL;
 begin
   Result := nil;
-  { Pred: "0 to Count" read one item past the list on every body lookup }
   for vInt := 0 to Pred(FParams.Count) do
   begin
     vParam := FParams.Index[vInt];
@@ -708,10 +738,9 @@ end;
 
 procedure TRALHTTPHeaderInfo.SetContentCompress(const AValue: TRALCompressType);
 begin
-  { only a coding this program can produce. ContentCompress already reads back
-    ctNone for one whose unit is not linked, so the body went out as it was -
-    while Content-Encoding, written from here, still named it: a server with
-    CompressType = ctZStd and no zstd linked answered "zstd" over plain bytes }
+  { only a coding this program can produce: ContentCompress reads back ctNone
+    for one whose unit is not linked, and Content-Encoding must not name a
+    coding the body does not have }
   if GetCompressClass(AValue) <> nil then
     FContentEncoding := TRALCompress.CompressToString(AValue)
   else
@@ -763,8 +792,8 @@ begin
   begin
     { identity is "not encoded" (RFC 9110 8.4.1), so a body declared with it
       is one this server can read. A known coding whose compressor was not
-      linked in (br without RALCompressBrotli) is not: the body could not be
-      decoded, and it used to go on and vanish in the decoder - 415 says why }
+      linked in (br without RALCompressBrotli) is not: the body cannot be
+      decoded, and 415 says why }
     if (TRALCompress.StringToCompress(vEnc) in vSupported) or
        RALSameName(Copy(vEnc, 1, 8), 'identity') then
     begin
@@ -777,11 +806,10 @@ end;
 { RFC 9110 12.5.3: without the header, and with any list that does not refuse
   it, identity - the body as it is - stays acceptable. So "identity", "gzip;q=1"
   or a coding this build did not link are all fine: the answer simply goes out
-  uncompressed. The request is only unanswerable when identity is refused on
-  purpose ("identity;q=0", or "*;q=0" with no identity entry) and none of the
-  codings still accepted is one this server has. Everything else used to be
-  answered 415, which speaks of the request body and sent whoever was debugging
-  after the Content-Type. }
+  uncompressed. The request is only unanswerable when identity is refused
+  explicitly ("identity;q=0", or "*;q=0" with no identity entry) and none of the
+  codings still accepted is one this server has. A 415 would speak of the
+  request body, which is not the problem. }
 function TRALHTTPHeaderInfo.HasValidAcceptEncoding: boolean;
 var
   vStr, vEnc, vName: StringRAL;
@@ -823,6 +851,7 @@ begin
   Result := (not vRefused) or vHasCoding;
 end;
 
+/// Fills gKnownGiven and gKnownFinal.
 procedure FillKnownTypes;
 var
   vInt: IntegerRAL;

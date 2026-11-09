@@ -1,5 +1,5 @@
-/// A response sent in pieces while the handler runs (TRALResponse.Send): the channel
-/// that frames and serialises the pieces, and the writer each engine implements.
+{ A response sent in pieces while the handler runs (TRALResponse.Send): the channel
+  that frames and serialises the pieces, and the writer each engine implements. }
 unit RALResponseStream;
 
 {$I PascalRAL.inc}
@@ -14,7 +14,8 @@ uses
   RALExceptions, RALTypes, RALConsts, RALCustomObjects, RALSSE, RALCompress;
 
 type
-  /// Why a stream ended: as asked, the client left, a send timed out, the server stopped, or an error.
+  { Why a stream ended: as asked, the client left, a send timed out, the server stopped,
+    or an error. }
   TRALStreamCloseReason = (srEnded, srClientGone, srTimeout, srServerStopped, srError);
 
   { A response stream that outlives its handler (TRALResponse.Detach). Counted by
@@ -41,8 +42,6 @@ type
       const AId: StringRAL = ''; ARetry: IntegerRAL = -1): boolean;
   end;
 
-  { TRALStreamWriter }
-
   { What an engine implements to put a stream on its connection: the status line
     and headers once, then raw bytes, then the end. The channel frames the pieces
     (chunked) unless FramesItself; it calls the writer under its own lock, from the
@@ -68,9 +67,11 @@ type
     /// Writes ASize bytes as they are; False when the connection failed.
     function WriteRaw(const ABuffer; ASize: IntegerRAL): boolean; virtual; abstract;
 
-    /// The body goes as Transfer-Encoding: chunked (HTTP/1.1); False, delimited by close (HTTP/1.0).
+    { The body goes as Transfer-Encoding: chunked (HTTP/1.1); False, delimited by close
+      (HTTP/1.0). }
     property Chunked: boolean read FChunked write FChunked;
-    /// The library frames the body itself (HTTP/2, a pull engine): the channel writes the bare data.
+    { The library frames the body itself (HTTP/2, a pull engine): the channel writes the
+      bare data. }
     property FramesItself: boolean read FFramesItself write FFramesItself;
     /// A HEAD request: the headers alone, the pieces are not sent.
     property HeadOnly: boolean read FHeadOnly write FHeadOnly;
@@ -84,8 +85,6 @@ type
   TRALStreamClosedEvent = procedure(AStream: TRALResponseStream;
     AReason: TRALStreamCloseReason) of object;
 
-  { TRALResponseStream }
-
   { The channel of one streamed response: its state, the lock that serialises the
     pieces, the chunked framing and the engine's writer. It keeps no request nor
     response - everything it needs became bytes at the commit - so it is safe to
@@ -93,15 +92,21 @@ type
   TRALResponseStream = class(TInterfacedObject, IRALResponseStream)
   private
     FBytes: Int64RAL;
+    /// Whether the stream ended.
     FClosed: boolean;
+    /// Set when the stream ends, for Detach.
     FClosedEvent: TEvent;
     /// What the encoder produced for the piece being sent.
     FEncoded: TMemoryStream;
+    /// Compresses the pieces, when CompressStreams is on.
     FEncoder: TRALStreamCoder;
+    /// Whether it is a server-sent events stream.
     FEventStream: boolean;
+    /// Guards the stream.
     FLock: TCriticalSection;
     FOnClosed: TRALStreamClosedEvent;
     FReason: TRALStreamCloseReason;
+    /// The writer of the engine.
     FWriter: TRALStreamWriter;
 
     /// Ends the stream under the lock, with AReason; AAborted skips the last chunk.
@@ -117,13 +122,21 @@ type
     { Ends the stream as a failure: no last chunk, the connection closes. Does
       nothing when it is closed already }
     procedure Abort(AReason: TRALStreamCloseReason = srError);
+    /// Ends the stream.
     procedure Close;
+    /// Whether the stream ended.
     function Closed: boolean;
+    /// Whether the client is still there.
     function Connected: boolean;
+    /// Whether it is a server-sent events stream.
     function IsEventStream: boolean;
+    /// Sends AText; False when the client is gone.
     function Send(const AText: StringRAL): boolean;
+    /// Sends ASize bytes of ABuffer; False when the client is gone.
     function SendBuffer(const ABuffer; ASize: IntegerRAL): boolean;
+    /// Sends an SSE comment (a keep-alive); False when the client is gone.
     function SendComment(const AText: StringRAL = 'ping'): boolean;
+    /// Sends an SSE event; False when the client is gone.
     function SendEvent(const AData: StringRAL; const AEvent: StringRAL = '';
       const AId: StringRAL = ''; ARetry: IntegerRAL = -1): boolean;
     { Sends AStream from its start in blocks; False when the stream is closed or the
@@ -144,7 +157,8 @@ type
     property Reason: TRALStreamCloseReason read FReason;
   end;
 
-  /// A response committed by Send can no longer have its status, headers or body changed.
+  { Raised when the status, headers or body of a response are changed after Send
+    committed it }
   ERALResponseCommitted = class(ERALException);
   /// A stream refused: the RAL cipher of the body has no piece a client can read.
   ERALStreamCipher = class(ERALException);

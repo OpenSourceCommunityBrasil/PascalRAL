@@ -14,10 +14,10 @@ const
   RALSelfSignedFriendlyName = 'PascalRAL self-signed';
 
 var
-  /// Free Pascal only: the least MaxKeptOSChunks FPC's own heap gets when a
-  /// server becomes active; 0 leaves it alone. With the RTL's 4, a thread whose
-  /// requests empty more size classes than that maps and unmaps memory on
-  /// every request (5 to 15 times slower). Never lowered; Delphi ignores it.
+  { Free Pascal only: the least MaxKeptOSChunks FPC's own heap gets when a
+    server becomes active; 0 leaves it alone. With the RTL's 4, a thread whose
+    requests empty more size classes than that maps and unmaps memory on
+    every request (5 to 15 times slower). Never lowered; Delphi ignores it. }
   RALHeapKeptChunks: Cardinal = 16;
 
 type
@@ -109,7 +109,8 @@ type
   /// Event fired with an exception the server caught.
   TRALOnServerError = procedure(Error: Exception) of object;
 
-  /// Fired once when a streamed response closes, with why (an MCP session cleans up here).
+  { Fired once when a streamed response closes, with why (an MCP session cleans up
+    here). }
   TRALOnStreamClosed = procedure(Sender: TObject; AStream: TRALResponseStream;
     AReason: TRALStreamCloseReason) of object;
 
@@ -167,6 +168,7 @@ type
   /// The exception classes a server maps to answers.
   TRALExceptionMap = class(TOwnedCollection)
   public
+    /// Creates the map, owned by AOwner.
     constructor Create(AOwner: TPersistent);
 
     /// Adds a mapping of AClassName to AStatusCode.
@@ -218,6 +220,8 @@ type
     property Source: TRALApiVersionSource read FSource write FSource default avPath;
   end;
 
+  { Base of the RAL servers: routes, modules, plugins and the request pipeline; the
+    engines descend from it. }
   TRALServer = class(TRALPluginHost)
   private
     FActive: boolean;
@@ -267,6 +271,7 @@ type
     /// The open streams, not held by reference: each leaves the list as it closes.
     FStreams: TList;
     FStreamSendTimeout: IntegerRAL;
+    /// Guards FStreams.
     FStreamsLock: TCriticalSection;
 
     /// First module of the modules loop: -1, the internal module, when it has work.
@@ -376,7 +381,8 @@ type
       go in the answer (an HTML page for a browser). }
     procedure FormatError(ARequest: TRALRequest; AResponse: TRALResponse;
       AStatusCode: IntegerRAL; const ADetail: StringRAL; AException: Exception);
-    /// Whether an error answered without a body is formatted (efProblemJSON or OnFormatError).
+    { Whether an error answered without a body is formatted (efProblemJSON or
+      OnFormatError). }
     function FormatsErrors: boolean;
     { IP address clients reach the server at: the bound address, or the machine's
       own for the default bind; '' for rimIPv6 while IPv6 is off. }
@@ -405,6 +411,7 @@ type
     function Shutdown(ATimeout: IntegerRAL = 30000): boolean;
     /// True when SSL is enabled.
     function SSLEnabled: boolean;
+    /// Sets Active.
     procedure Start;
     /// Stops the server.
     procedure Stop;
@@ -431,7 +438,8 @@ type
   published
     /// Starts and stops the server; read from a form, it is applied by Loaded.
     property Active: boolean read FActive write WriteActive;
-    /// Versions of the API: where a request says its version, the default, the deprecated ones.
+    { Versions of the API: where a request says its version, the default, the deprecated
+      ones. }
     property ApiVersioning: TRALApiVersioning read FApiVersioning write SetApiVersioning;
     /// Authentication plugin set up at design time; more can be added with AddPlugin.
     property Authentication: TRALAuthServer read FAuthentication write SetAuthentication;
@@ -475,6 +483,7 @@ type
       request path before anything else (a path outside it is 404) and put back
       on a relative Location the handlers answer; empty = none. }
     property PathBase: StringRAL read FPathBase write SetPathBase;
+    /// The port; 0 asks the system for a free one (see BoundPort).
     property Port: IntegerRAL read FPort write SetPort;
     /// Raises the exceptions of the handlers when OnServerError is not assigned.
     property RaiseError: boolean read FRaiseError write FRaiseError default false;
@@ -713,6 +722,7 @@ implementation
 uses
   RALNetwork, RALJson;
 
+/// AText with the HTML special characters escaped.
 function RALHtmlEscape(const AText: StringRAL): StringRAL; forward;
 procedure RALClearTLSCertificate(out ACertificate: TRALTLSCertificate);
 begin
@@ -744,8 +754,8 @@ type
     /// A route of the server.
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
       override;
-    /// The status page, when ARequest is for '/' and ShowServerStatus is on;
-    /// nil otherwise. Asked only after every module and plugin.
+    { The status page, when ARequest is for '/' and ShowServerStatus is on;
+      nil otherwise. Asked only after every module and plugin. }
     function StatusRoute(ARequest: TRALRequest): TRALRoute;
   end;
 
@@ -1911,7 +1921,7 @@ begin
   end;
 end;
 
-{ HTML-escapes AText, for the developer page. }
+/// HTML-escapes AText, for the developer page.
 function RALHtmlEscape(const AText: StringRAL): StringRAL;
 begin
   Result := StringRAL(StringReplace(StringReplace(StringReplace(StringReplace(string(AText),
@@ -1979,7 +1989,7 @@ begin
     end;
 end;
 
-{ The 'v2' of a path segment as '2', or '' when the segment is not a version. }
+/// The 'v2' of a path segment as '2', or '' when the segment is not a version.
 function VersionOfSegment(const ASegment: StringRAL): StringRAL;
 var
   vInt: IntegerRAL;

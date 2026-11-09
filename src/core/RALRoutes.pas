@@ -60,6 +60,7 @@ type
   private
     function GetRule(AIndex: IntegerRAL): TRALValidationRule;
   public
+    /// Creates the rules, owned by AOwner.
     constructor Create(AOwner: TPersistent);
 
     /// Adds a rule; returns it.
@@ -83,17 +84,22 @@ type
   TRALRouteParam = class(TCollectionItem)
   private
     FDescription: TStrings;
+    /// Whether MaxValue was set.
     FHasMax: boolean;
+    /// Whether MinValue was set.
     FHasMin: boolean;
+    /// MaxValue.
     FMax: Double;
     FMaxLength: IntegerRAL;
     FMaxValue: StringRAL;
+    /// MinValue.
     FMin: Double;
     FMinLength: IntegerRAL;
     FMinValue: StringRAL;
     FParamName: StringRAL;
     FParamType: TRALRouteParamType;
     FPattern: StringRAL;
+    /// Pattern, compiled.
     FRegex: TRALRegex;
     FRequired: boolean;
     FValues: TStrings;
@@ -201,13 +207,15 @@ type
     property Roles: StringRAL read FRoles write FRoles;
     /// Methods that skip authentication on every route of the group; amALL skips all.
     property SkipAuthMethods: TRALMethods read FSkipAuthMethods write FSkipAuthMethods;
-    /// API versions of the routes of the group that have none of their own ('1,2'); empty = any.
+    { API versions of the routes of the group that have none of their own ('1,2'); empty
+      = any. }
     property Versions: StringRAL read FVersions write FVersions;
   end;
 
   /// The groups of the routes of a server or module.
   TRALRouteGroups = class(TOwnedCollection)
   private
+    /// The routes the groups belong to.
     FRoutes: TRALRoutes;
 
     function GetGroup(AIndex: IntegerRAL): TRALRouteGroup;
@@ -449,8 +457,10 @@ type
     FIndex: TObject;
     /// Count of the routes when FIndex was built.
     FIndexCount: IntegerRAL;
+    /// Guards building the name index and the route tree.
     FIndexLock: TCriticalSection;
-    /// Trees replaced by a newer one, freed with the collection: a lookup may still read them.
+    { Trees replaced by a newer one, freed with the collection: a lookup may still read
+      them. }
     FOldIndexes: TList;
 
     /// The route tree for the routes as they are now; nil with few routes.
@@ -475,7 +485,8 @@ type
     function CanAnswerRoute(ARequest: TRALRequest): TRALRoute;
     /// Enumerator of the routes, for for..in loops.
     function GetEnumerator: TEnumerator; inline;
-    /// Drops the route tree: the next lookup builds it again. Called when a route changes.
+    { Drops the route tree: the next lookup builds it again. Called when a route
+      changes. }
     procedure InvalidateIndex;
 
     /// Route whose Name is ARoute (case-insensitive), or nil.
@@ -862,7 +873,7 @@ begin
         ApplyRouteConstraint(vParam, vConstraint);
       Inc(vOrder);
     end;
-    // the params of a path that no longer has them go
+    // the params the new path does not have go
     for vInt := FURIParams.Count - 1 downto vOrder do
       FURIParams.Delete(vInt);
   finally
@@ -1247,7 +1258,7 @@ begin
     Delete(Result, 1, 1);
 end;
 
-{ Whether AVersion is in AList ('1,2' or '1;2'); an empty list takes any. }
+/// Whether AVersion is in AList ('1,2' or '1;2'); an empty list takes any.
 function VersionInList(const AList, AVersion: StringRAL): boolean;
 var
   vInt, vStart: IntegerRAL;
@@ -1354,7 +1365,7 @@ begin
   end;
 end;
 
-{ The rest of the path from segment AFrom, joined by '/': what a wildcard takes. }
+/// The rest of the path from segment AFrom, joined by '/': what a wildcard takes.
 function JoinRest(const ARaw: TRALRouteSegments; AFrom: IntegerRAL): StringRAL;
 var
   vInt: IntegerRAL;
@@ -1590,10 +1601,15 @@ type
     take longer paths from here (AllowURIParams, a wildcard). }
   TRALRouteNode = class
   public
+    /// The literal children, by Keys.
     Children: array of TRALRouteNode;
+    /// Routes that end at this node.
     Ends: TIntegerRALArray;
+    /// The lower case text of each literal child, sorted.
     Keys: array of StringRAL;
+    /// The child of a param segment.
     Param: TRALRouteNode;
+    /// Routes that take longer paths from here (AllowURIParams, wildcard).
     Prefix: TIntegerRALArray;
 
     destructor Destroy; override;
@@ -1602,8 +1618,10 @@ type
   /// The tree of a collection, read by any thread; never changed once built.
   TRALRouteTree = class
   private
+    /// The root node.
     FRoot: TRALRouteNode;
   public
+    /// Builds the tree of ARoutes.
     constructor Create(ARoutes: TRALRoutes);
     destructor Destroy; override;
 
@@ -1641,7 +1659,7 @@ begin
       vP[vInt] := vP[vInt] + 32;
 end;
 
-{ Compares ASegment, folded on the fly, with AKey (already lower case): <0, 0, >0. }
+/// Compares ASegment, folded on the fly, with AKey (already lower case): <0, 0, >0.
 function CompareFolded(const ASegment, AKey: StringRAL): IntegerRAL;
 var
   vInt, vLen, vA, vB: IntegerRAL;
@@ -1664,18 +1682,21 @@ begin
   Result := Length(ASegment) - Length(AKey);
 end;
 
+/// Appends AValue to AList, which has room.
 procedure AppendInt(var AList: TRALRouteCandidates; var ACount: IntegerRAL; AValue: IntegerRAL);
 begin
   AList[ACount] := AValue;
   Inc(ACount);
 end;
 
+/// Appends AValue to AList.
 procedure AddTo(var AList: TIntegerRALArray; AValue: IntegerRAL);
 begin
   SetLength(AList, Length(AList) + 1);
   AList[High(AList)] := AValue;
 end;
 
+/// The literal child of ANode for AKey, created with ACreate; nil otherwise.
 function LiteralChild(ANode: TRALRouteNode; const AKey: StringRAL; ACreate: boolean): TRALRouteNode;
 var
   vLo, vHi, vMid, vCmp, vInt: IntegerRAL;
@@ -2115,6 +2136,7 @@ end;
 
 { Checks of a value by type, the same on every compiler and locale. }
 
+/// Whether AValue is digits from AFrom on.
 function IsDigits(const AValue: StringRAL; AFrom: IntegerRAL): boolean;
 var
   vInt: IntegerRAL;
@@ -2128,6 +2150,7 @@ begin
     end;
 end;
 
+/// Whether AValue is an integer.
 function IsIntegerText(const AValue: StringRAL): boolean;
 var
   vFrom: IntegerRAL;
@@ -2139,7 +2162,7 @@ begin
   Result := IsDigits(AValue, vFrom) and TryStrToInt64(string(AValue), vInt);
 end;
 
-{ [+-]digits[.digits][e[+-]digits], or .digits; ANumber holds the value. }
+/// [+-]digits[.digits][e[+-]digits], or .digits; ANumber holds the value.
 function IsNumberText(const AValue: StringRAL; AExponent: boolean; out ANumber: Double): boolean;
 var
   vInt, vLen, vDigits: IntegerRAL;
@@ -2184,6 +2207,7 @@ begin
   Result := vCode = 0;
 end;
 
+/// Whether AValue is a YYYY-MM-DD date.
 function IsDateText(const AValue: StringRAL): boolean;
 var
   vDate: TDateTime;
@@ -2196,6 +2220,7 @@ begin
       StrToInt(string(Copy(AValue, 9, 2))), vDate);
 end;
 
+/// Whether AValue is a hh:nn[:ss] time.
 function IsTimeText(const AValue: StringRAL): boolean;
 var
   vTime: TDateTime;
@@ -2220,12 +2245,14 @@ begin
     StrToInt(string(Copy(AValue, 4, 2))), vSec, 0, vTime);
 end;
 
+/// Whether AValue is true or false.
 function IsBooleanText(const AValue: StringRAL): boolean;
 begin
   Result := RALSameName(AValue, 'true') or RALSameName(AValue, 'false') or
     (AValue = '1') or (AValue = '0');
 end;
 
+/// Whether AValue is base64.
 function IsBase64Text(const AValue: StringRAL): boolean;
 var
   vInt, vLen, vPad: IntegerRAL;
@@ -2371,7 +2398,7 @@ var
 begin
   if AValue = FPattern then
     Exit;
-  // compiled first: a pattern that does not compile leaves the old one
+  // compiled first: a pattern that does not compile leaves the current one
   vRegex := nil;
   if AValue <> '' then
     vRegex := TRALRegex.Create(AValue, [roFullMatch]);

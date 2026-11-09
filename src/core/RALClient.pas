@@ -280,8 +280,6 @@ type
   /// Class of a client engine.
   TRALClientHTTPClass = class of TRALClientHTTP;
 
-  { TRALClientStreamSink }
-
   { What a client engine writes the body of an answer into when the call asked
     for it in pieces (OnReceiveData, OnServerEvent): the first piece reads the
     head of the answer (TRALClientHTTP.ReadStreamHead), a 2xx is decoded as it
@@ -294,22 +292,30 @@ type
     FBody: TStream;
     /// Pieces the decoder produced, handed over and emptied each time.
     FDecoded: TMemoryStream;
+    /// Decodes the pieces when the answer is compressed.
     FDecoder: TRALStreamCoder;
+    /// The engine that writes into the sink.
     FEngine: TRALClientHTTP;
     /// Keeps the decoded pieces in FBody (KeepStreamBody).
     FKeep: boolean;
     /// 0 not started, 1 the body as always, 2 streamed.
     FMode: IntegerRAL;
+    /// Gets each piece.
     FOnData: TRALOnReceiveData;
+    /// Gets each server-sent event.
     FOnEvent: TRALOnServerEvent;
+    /// Splits the pieces into events.
     FParser: TRALSSEParser;
+    /// Bytes delivered so far.
     FPosition: Int64RAL;
+    /// The response the pieces belong to.
     FResponse: TRALResponse;
 
     /// Fails the reading when a handler cancelled.
     procedure Cancel;
     /// Hands a decoded piece over: to the reader of events or to OnReceiveData.
     procedure Deliver(const ABuffer; ASize: IntegerRAL);
+    /// Hands an event of the parser to FOnEvent.
     procedure ParserEvent(ASender: TObject; const AEvent: TRALSSEEvent;
                           var ACancel: boolean);
     /// Reads the head of the answer and decides what the body is.
@@ -471,7 +477,8 @@ type
     property Backoff: TRALRetryBackoff read FBackoff write FBackoff default rbExponential;
     /// Milliseconds of the first wait.
     property Delay: IntegerRAL read FDelay write FDelay default 200;
-    /// Spreads the waits at random (half to the whole of each), so clients do not retry in step.
+    { Spreads the waits at random (half to the whole of each), so clients do not retry
+      in step. }
     property Jitter: boolean read FJitter write FJitter default True;
     /// Attempts in all, the first included; 1 = no retry.
     property MaxAttempts: IntegerRAL read FMaxAttempts write FMaxAttempts default 1;
@@ -511,6 +518,8 @@ type
     property OpenTime: IntegerRAL read FOpenTime write FOpenTime default 30000;
   end;
 
+  { The HTTP client of RAL: requests through an engine, with the engine, pool, retry and
+    TLS rules of the component. }
   TRALClient = class(TRALComponent)
   private
     FAcceptEncoding: StringRAL;
@@ -690,7 +699,8 @@ type
     /// Sends a PUT and hands the answer to AOnResponse.
     procedure Put(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
                   AExecBehavior: TRALExecBehavior = ebSingleThread); overload;
-    /// Sends a QUERY (a GET with a body) and returns the response, which the caller frees.
+    { Sends a QUERY (a GET with a body) and returns the response, which the caller
+      frees. }
     procedure Query(ARoute: StringRAL; var AResponse : TRALResponse); overload;
     /// Sends a QUERY and hands the answer to AOnResponse.
     procedure Query(ARoute: StringRAL; AOnResponse: TRALThreadClientResponse = nil;
@@ -3041,15 +3051,21 @@ end;
 
 { The circuits of the process, by scheme://host:port. }
 type
+  /// The state of one circuit breaker.
   TRALCircuit = class
   public
+    /// Failures in a row.
     Failures: IntegerRAL;
+    /// When the open circuit lets a probe through (ticks), 0 when closed.
     OpenUntil: Int64RAL;
+    /// Probes in flight while half open.
     Probes: IntegerRAL;
   end;
 
 var
+  /// The circuits of the process, by scheme://host:port.
   gCircuits: TStringList = nil;
+  /// Guards gCircuits.
   gCircuitLock: TCriticalSection = nil;
 
 /// scheme://host:port of AURL, the key of its circuit.
@@ -3472,7 +3488,7 @@ begin
   inherited Destroy;
 end;
 
-{ Frees the circuits of the process. }
+/// Frees the circuits of the process.
 procedure DoneCircuits;
 var
   vInt: IntegerRAL;

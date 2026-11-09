@@ -78,7 +78,8 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    /// Adds every role of AText, separated by commas or blanks; repeated ones are kept once.
+    { Adds every role of AText, separated by commas or blanks; repeated ones are kept
+      once. }
     procedure AddRoles(const AText: StringRAL);
     /// The value of the claim AName, or ''.
     function Claim(const AName: StringRAL): StringRAL;
@@ -128,6 +129,7 @@ type
     FFinishMore: array of TRALOnRequestFinish;
     FHost: StringRAL;
     FHttpVersion: StringRAL;
+    /// Who the request is, created on first read.
     FIdentity: TRALIdentity;
     FMethod: TRALMethod;
     /// The path FPathRaw and FPathTrimmed were split from.

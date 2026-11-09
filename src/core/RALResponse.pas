@@ -19,6 +19,8 @@ type
   /// A list of wire handlers.
   TRALOnResponseWireList = array of TRALOnResponseWire;
 
+  { The answer of a request: status, headers, cookies and body, on the server and on the
+    client. }
   TRALResponse = class(TRALHTTPHeaderInfo)
   private
     /// Stream handed out by BodyStream while it is the body.
@@ -35,6 +37,7 @@ type
     { while True, a change to a committed response raises: on from the commit until
       the handler returns (TRALServer.ProcessCommands turns it off) }
     FGuarded: boolean;
+    /// Whether OnResponse fired for this answer.
     FResponseNotified: boolean;
     FStatusCode: IntegerRAL;
     FStreamCompress: TRALCompressType;
@@ -117,7 +120,8 @@ type
       on (an MCP GET, a notification feed); commits first. Raises on an engine that
       does not stream live (TRALServer.SupportsLiveStream) }
     function Detach: IRALResponseStream;
-    /// Ends the body now (the last chunk); implicit when the handler returns, unless Detach.
+    { Ends the body now (the last chunk); implicit when the handler returns, unless
+      Detach. }
     procedure EndStream;
     /// Adds the Set-Cookie values to ADest; ADateTime expires the plain cookies.
     procedure GetParamsCookies(ADest: TStringList; ADateTime: TDateTime);
@@ -134,6 +138,7 @@ type
       normal in a stream and never raises. On an engine that does not stream live
       the pieces are kept and go out together when the handler returns }
     function Send(const AText: StringRAL): boolean; overload;
+    /// Sends ASize bytes of ABuffer; the first Send commits the response.
     function Send(const ABuffer; ASize: IntegerRAL): boolean; overload;
     /// Sends AStream from its start; with AOwnsStream it is freed afterwards.
     function Send(AStream: TStream; AOwnsStream: boolean = True): boolean; overload;

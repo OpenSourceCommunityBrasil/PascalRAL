@@ -1,7 +1,7 @@
-/// State with a time to live that plugins and modules share: request counters of
-/// a rate limit, cached answers, revoked tokens. A store is a component: drop one
-/// on the form and link it from every plugin that keeps state, or leave the link
-/// empty and each plugin keeps its own in memory.
+{ State with a time to live that plugins and modules share: request counters of
+  a rate limit, cached answers, revoked tokens. A store is a component: drop one
+  on the form and link it from every plugin that keeps state, or leave the link
+  empty and each plugin keeps its own in memory. }
 unit RALKeyValueStore;
 
 {$I PascalRAL.inc}
@@ -66,9 +66,12 @@ type
     a shard prunes itself every PruneEvery writes. }
   TRALMemoryStore = class(TRALKeyValueStore)
   private
+    /// The lock of each shard.
     FLocks: array[0..15] of TCriticalSection;
     FPruneEvery: IntegerRAL;
+    /// The entries, in 16 shards by key hash.
     FShards: array[0..15] of TStringList;
+    /// Writes of each shard since it was last pruned.
     FWrites: array[0..15] of IntegerRAL;
 
     /// Entry of AKey in shard AShard, nil when missing or expired (which it removes).
@@ -112,6 +115,7 @@ type
 
     /// File of AKey (its bytes in hexadecimal, so any key is a valid name).
     function FileOf(const AKey: StringRAL): string;
+    /// Folder, or ralstore in the temporary folder when empty.
     function GetFolder: string;
     /// Takes the lock of AKey, waiting up to LockTimeout; raises when it cannot.
     function Lock(const AKey: StringRAL): THandleStream;
@@ -515,6 +519,7 @@ begin
   end;
 end;
 
+/// Closes the locked file AStream.
 procedure UnlockStore(AStream: THandleStream);
 begin
   FileClose(AStream.Handle);

@@ -1,6 +1,6 @@
-/// Routes with anonymous handlers: Server.Get('/ping', procedure(...) begin ... end).
-/// Sugar over CreateRoute; the whole unit is empty where the compiler has no
-/// anonymous methods (FPC 3.2), and the handlers of object stay the RAD way.
+{ Routes with anonymous handlers: Server.Get('/ping', procedure(...) begin ... end).
+  Sugar over CreateRoute; the whole unit is empty where the compiler has no
+  anonymous methods (FPC 3.2), and the handlers of object stay the RAD way. }
 unit RALRoutesAnon;
 
 {$I PascalRAL.inc}

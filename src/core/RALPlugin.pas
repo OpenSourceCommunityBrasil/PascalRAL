@@ -86,6 +86,7 @@ type
     FPathFilter: boolean;
     FPriority: IntegerRAL;
 
+    /// Splits IncludePaths and ExcludePaths once, when they change.
     procedure PathsChanged(Sender: TObject);
     procedure SetEnabled(AValue: boolean);
     procedure SetExcludePaths(const AValue: TStrings);
@@ -267,7 +268,7 @@ begin
   inherited Destroy;
 end;
 
-{ Whether APath falls under one of APatterns. }
+/// Whether APath falls under one of APatterns.
 function PathInList(const APath: TRALRouteSegments; const APatterns: TRALPathPatterns): boolean;
 var
   vInt: IntegerRAL;
@@ -281,7 +282,7 @@ begin
     end;
 end;
 
-{ The lines of AList in segments, the blank ones left out. }
+/// The lines of AList in segments, the blank ones left out.
 function PatternsOf(AList: TStrings): TRALPathPatterns;
 var
   vInt, vCount: IntegerRAL;
