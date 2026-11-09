@@ -1,3 +1,4 @@
+/// The options form of the Delphi wizard.
 unit RALWizardForm;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -9,48 +10,83 @@ uses
   Dialogs, ExtCtrls, StdCtrls, Buttons, FileCtrl;
 
 type
+  /// The options of the new application.
   TfRALWizardForm = class(TForm)
+    /// Layout panel.
     Panel1: TPanel;
+    /// The RAL logo.
     imLogo: TImage;
+    /// Layout panel.
     Panel2: TPanel;
+    /// Layout panel.
     Panel3: TPanel;
+    /// Layout panel.
     Panel4: TPanel;
+    /// Layout panel.
     Panel6: TPanel;
+    /// Caption of the folder.
     Label1: TLabel;
+    /// Layout panel.
     Panel7: TPanel;
+    /// Layout panel.
     Panel8: TPanel;
+    /// Caption of the application type.
     Label2: TLabel;
+    /// Folder of the new application.
     eDirAplicacao: TEdit;
+    /// Picks the folder.
     bDirectory: TSpeedButton;
+    /// Layout panel.
     Panel9: TPanel;
+    /// Type of the application: stand-alone, console, CGI.
     cbTipoAplicacao: TComboBox;
+    /// Caption of the engine.
     Label3: TLabel;
+    /// Layout panel.
     Panel10: TPanel;
+    /// Engine of the server.
     cbTipoMotor: TComboBox;
+    /// Caption of the authentication.
     Label4: TLabel;
+    /// Layout panel.
     Panel11: TPanel;
+    /// Authentication of the server.
     cbAutenticacao: TComboBox;
+    /// Layout panel.
     Panel5: TPanel;
+    /// Separator.
     Bevel1: TBevel;
+    /// Creates the application.
     bCriarAplicacao: TSpeedButton;
+    /// The optional modules.
     GroupBox1: TGroupBox;
+    /// Adds the Swagger module.
     ckSwagger: TCheckBox;
+    /// Adds the web module.
     ckWebModule: TCheckBox;
+    /// Decorative image.
     Image1: TImage;
+    /// Checks the options and closes the form with mrOk.
     procedure bCriarAplicacaoClick(Sender: TObject);
+    /// Proposes the projects folder of the IDE.
     procedure FormShow(Sender: TObject);
+    /// Starts with mrCancel as the result.
     procedure FormCreate(Sender: TObject);
+    /// Frees the form and closes with the result set.
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    /// Picks the folder of the application.
     procedure bDirectoryClick(Sender: TObject);
+    /// Enables the options of the chosen type.
     procedure cbTipoAplicacaoSelect(Sender: TObject);
   private
-    { Private declarations }
+    /// Private declarations.
     FResModal : TModalResult;
   public
     { Public declarations }
   end;
 
 var
+  /// The form instance.
   fRALWizardForm: TfRALWizardForm;
 
 implementation

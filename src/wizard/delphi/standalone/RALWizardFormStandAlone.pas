@@ -1,3 +1,4 @@
+/// The main form and unit of the stand-alone project the Delphi wizard creates.
 unit RALWizardFormStandAlone;
 
 interface
@@ -7,49 +8,72 @@ uses
   RALWizardObjects;
 
 type
-  { TRALWizardFormStandAloneCreator }
 
+  /// Creates the main form of the stand-alone project.
   TRALWizardFormStandAloneCreator = class(TNotifierObject, IOTACreator, IOTAModuleCreator)
   private
+    /// Authentication chosen.
     FAuth: integer;
+    /// Engine chosen.
     FEngine : integer;
+    /// File of the main unit.
     FFileName: string;
+    /// Class of the main form or module.
     FFormClass: string;
+    /// Whether it is the main form.
     FIsMainForm: Boolean;
+    /// Optional modules chosen (bits).
     FOptions: integer;
+    /// The project.
     FOwner: IOTAModule;
+    /// Name of the main unit.
     FUnitName: string;
   public
+    /// Keeps the owner, the names and the options chosen.
     constructor Create(AOwner: IOTAModule; AUnitName, AFormClass, AFileName : string;
                        AEngine, AAuth, AOptions : integer; AIsMainForm: Boolean = False);
 
+    /// IOTAModuleCreator: nothing to do after the form is created.
     procedure FormCreated(const FormEditor: IOTAFormEditor);
+    /// IOTAModuleCreator: TForm.
     function GetAncestorName: string;
+    /// IOTACreator: a form.
     function GetCreatorType: string;
+    /// IOTACreator: False, a new module.
     function GetExisting: Boolean;
+    /// IOTACreator: the default file system.
     function GetFileSystem: string;
+    /// IOTAModuleCreator: the name of the form.
     function GetFormName: string;
+    /// IOTAModuleCreator: the unit file in the projects folder.
     function GetImplFileName: string;
+    /// IOTAModuleCreator: no interface file.
     function GetIntfFileName: string;
+    /// IOTAModuleCreator: whether it is the main form.
     function GetMainForm: Boolean;
+    /// IOTACreator: the project.
     function GetOwner: IOTAModule;
+    /// IOTAModuleCreator: shows the form.
     function GetShowForm: Boolean;
+    /// IOTAModuleCreator: shows the source.
     function GetShowSource: Boolean;
+    /// IOTACreator: True, the IDE asks a name on save.
     function GetUnnamed: Boolean;
+    /// IOTAModuleCreator: the form source.
     function NewFormFile(const FormIdent, AncestorIdent: string): IOTAFile;
+    /// IOTAModuleCreator: the unit source.
     function NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile;
+    /// IOTAModuleCreator: no interface source.
     function NewIntfSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile;
   end;
 
-  { TRALWizardFormStandAloneFile }
-
+  /// The form (dfm) source of the stand-alone project.
   TRALWizardFormStandAloneFile = class(TRALWizardBaseFile)
   protected
     function GetSource: string; override;
   end;
 
-  { TRALWizardUnitStandAloneFile }
-
+  /// The unit source of the main form.
   TRALWizardUnitStandAloneFile = class(TRALWizardBaseFile)
   protected
     function GetSource: string; override;

@@ -1,3 +1,4 @@
+/// Helpers of the Delphi wizard: project group, names and paths.
 unit RALWizardTools;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -10,12 +11,19 @@ uses
   {$ENDIF}
   Classes, SysUtils, ToolsAPI;
 
+/// The first ProjectN not in AProjectGroup.
 function FindNewProjectName(const AProjectGroup: IOTAProjectGroup): string;
+/// Whether AProjectGroup has a project named AProject.
 function ProjectExists(const AProjectGroup: IOTAProjectGroup; AProject: string): Boolean;
+/// The project group open in the IDE, or nil.
 function GetActiveProjectGroup: IOTAProjectGroup;
+/// The default projects folder of the IDE.
 function GetIDEProjectPath: string;
+/// The active project, or nil.
 function GetCurrentProject: IOTAProject;
+/// The path of ABaseFileName.AExtension in AProjectDir.
 function MakeFileName(AProjectDir, ABaseFileName, AExtension: string): string;
+/// Appends AStr to wizard.txt (debugging).
 procedure WizardLogar(AStr: string);
 
 implementation
@@ -70,6 +78,7 @@ begin
   end;
 end;
 
+/// The registry key of this IDE.
 function GetDelphiGlobalKey : string;
 begin
   Result := '';
@@ -133,6 +142,7 @@ begin
 end;
 
 {$IFDEF MSWINDOWS}
+  /// The documents folder of the user.
   function GetMyDocuments: string;
   var
     vPItem: PItemIDList;

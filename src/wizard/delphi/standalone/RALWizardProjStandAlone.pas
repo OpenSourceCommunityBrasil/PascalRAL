@@ -1,3 +1,4 @@
+/// The stand-alone (VCL) project the Delphi wizard creates.
 unit RALWizardProjStandAlone;
 
 {$I ..\..\..\core\PascalRAL.inc}
@@ -8,8 +9,8 @@ uses
   Classes, SysUtils, ToolsAPI;
 
 type
-  {TRALWizardProjStandAloneCreator}
 
+  /// Creates the stand-alone project.
   TRALWizardProjStandAloneCreator = class(TNotifierObject, IOTACreator,
                                           IOTAProjectCreator, IOTAProjectCreator50
                                           {$IFDEF DELPHIXE5UP}
@@ -17,48 +18,76 @@ type
                                           {$ENDIF}
                                           )
   private
+    /// Authentication chosen.
     FAuth: integer;
+    /// Engine chosen.
     FEngine: integer;
+    /// File of the main unit.
     FFileName: string;
+    /// Class of the main form or module.
     FFormClass: string;
+    /// Optional modules chosen (bits).
     FOptions: integer;
+    /// Folder of the project.
     FProjectDir: string;
+    /// Name of the project.
     FProjectFile: string;
+    /// Name of the main unit.
     FUnitName: string;
   protected
+    /// IOTACreator: the kind of project.
     function GetCreatorType: string;
+    /// IOTACreator: False, a new project.
     function GetExisting: Boolean;
+    /// IOTAProjectCreator: the project file.
     function GetFileName: string;
+    /// IOTACreator: the default file system.
     function GetFileSystem: string;
+    /// IOTAProjectCreator: no option file.
     function GetOptionFileName: string;
+    /// IOTACreator: no owner.
     function GetOwner: IOTAModule;
+    /// IOTAProjectCreator: shows the project source.
     function GetShowSource: Boolean;
+    /// IOTACreator: True, the IDE asks a name on save.
     function GetUnnamed: Boolean;
+    /// IOTAProjectCreator: replaced by NewDefaultProjectModule.
     procedure NewDefaultModule; deprecated;
+    /// IOTAProjectCreator50: creates the modules of the project.
     procedure NewDefaultProjectModule(const Project: IOTAProject);
+    /// IOTAProjectCreator: no option source.
     function NewOptionSource(const ProjectName: string): IOTAFile;
+    /// IOTAProjectCreator: no resource.
     procedure NewProjectResource(const Project: IOTAProject);
+    /// IOTAProjectCreator: the project source.
     function NewProjectSource(const ProjectName: string): IOTAFile;
 
     {$IFDEF DELPHIXE5UP}
+      /// IOTAProjectCreator80: the Delphi personality.
       function GetProjectPersonality: string;
     {$ENDIF}
   public
+    /// Keeps the project and the options chosen.
     constructor Create(AProjectFile, AProjectDir: string;
                        AEngine, AAuth, AOptions: integer);
   end;
 
-  { TRALWizardProjStandAloneFile }
-
+  /// The source of the stand-alone project.
   TRALWizardProjStandAloneFile = class(TNotifierObject, IOTAFile)
   private
+    /// Class of the main form.
     FFormClass: string;
+    /// Name of the project.
     FProjectName: string;
+    /// Name of the main unit.
     FUnitName: string;
   public
+    /// Keeps the names of the project.
     constructor Create(AProjectName, AUnitName, AFormClass: string);
 
+    /// IOTAFile: -1, a new file.
     function GetAge: TDateTime;
+    /// IOTAFile: the source of the project.
     function GetSource: string;
   end;
 

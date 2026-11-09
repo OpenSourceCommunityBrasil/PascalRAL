@@ -1,3 +1,4 @@
+/// The "New RAL application" wizard of the Delphi IDE.
 unit RALWizard;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -8,6 +9,7 @@ uses
   Classes, SysUtils, ToolsAPI, Forms, Controls;
 
 Type
+  /// The repository wizard that creates a RAL application.
   TRALWizard = class(TNotifierObject, IUnknown, IOTAWizard, IOTAProjectWizard,
                      IOTARepositoryWizard, IOTARepositoryWizard80
                      {$IFDEF DELPHI10_3UP}
@@ -21,37 +23,56 @@ Type
                      {$ENDIF}
                      )
   private
+    /// Class of the main form or module.
     FClassName: string;
+    /// File of the main unit.
     FFileName: string;
+    /// Name of the main unit.
     FUnitIdent: string;
   public
+    /// Shows the options form and creates the project.
     procedure Execute;
+    /// IOTARepositoryWizard: the author.
     function GetAuthor: string;
+    /// IOTARepositoryWizard: the description in the gallery.
     function GetComment: string;
+    /// IOTAWizard: the unique id of the wizard.
     function GetIDString: string;
+    /// IOTAWizard: the name in the gallery.
     function GetName: string;
+    /// IOTARepositoryWizard: the gallery page.
     function GetPage: string;
+    /// IOTAWizard: always enabled.
     function GetState: TWizardState;
     {$IFDEF WIN64}
+    /// IOTARepositoryWizard: the icon (Win64 IDE).
     function GetGlyph: THandle;
     {$ELSE}
+    /// IOTARepositoryWizard: the icon.
     function GetGlyph: Cardinal;
     {$ENDIF}
 
+    /// IOTARepositoryWizard60: the VCL designer.
     function GetDesigner: string;
+    /// IOTARepositoryWizard80: none; the categories are given by GetGalleryCategories.
     function GetGalleryCategory: IOTAGalleryCategory;
+    /// IOTARepositoryWizard80: the Delphi personality.
     function GetPersonality: string;
 
     {$IFDEF DELPHI10_0UP}
+      /// IOTARepositoryWizard160: the frameworks the project may use.
       function GetFrameworkTypes: TArray<string>;
+      /// IOTARepositoryWizard160: the platforms of the new project.
       function GetPlatforms: TArray<string>;
     {$ENDIF}
 
     {$IFDEF DELPHI10_2UP}
+      /// IOTARepositoryWizard190: the platforms the project supports.
       function GetSupportedPlatforms: TArray<string>;
     {$ENDIF}
 
     {$IFDEF DELPHI10_3UP}
+      /// IOTARepositoryWizard260: the gallery categories.
       function GetGalleryCategories: TArray<IOTAGalleryCategory>;
     {$ENDIF}
   end;
@@ -174,11 +195,6 @@ end;
     Result[0] := cWin32Platform;
     Result[1] := cWin64Platform;
     Result[2] := cLinux64Platform;
-//    Result[3] := cOSX64Platform;
-//    Result[4] := ciOSSimulator64Platform;
-//    Result[5] := ciOSDevice64Platform;
-//    Result[6] := cAndroidArm32Platform;
-//    Result[7] := cAndroidArm64Platform;
   end;
 {$ENDIF}
 
@@ -190,10 +206,6 @@ end;
     Result[1] := cWin64Platform;
     Result[2] := cLinux64Platform;
     Result[3] := ciOSDevice64Platform;
-//    Result[3] := cOSX64Platform;
-//    Result[4] := ciOSSimulator64Platform;
-//    Result[6] := cAndroidArm32Platform;
-//    Result[7] := cAndroidArm64Platform;
   end;
 {$IFEND}
 
@@ -207,8 +219,6 @@ end;
     Result[3] := cOSX64Platform;
     Result[4] := ciOSSimulator64Platform;
     Result[5] := ciOSDevice64Platform;
-//    Result[6] := cAndroidArm32Platform;
-//    Result[7] := cAndroidArm64Platform;
   end;
 {$ENDIF}
 

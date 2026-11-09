@@ -1,3 +1,4 @@
+/// The "New RAL application" project descriptor of the Lazarus IDE.
 unit ralwizard;
 
 {$mode objfpc}{$H+}
@@ -8,19 +9,28 @@ uses
   Classes, SysUtils, ProjectIntf, Forms, LazIDEIntf, System.UITypes, Dialogs;
 
 type
-  { TRALWizard }
 
+  /// The project descriptor of a RAL application.
   TRALWizard = class(TProjectDescriptor)
   private
+    /// Type of the application chosen.
     FApplicationType : integer;
+    /// Authentication chosen.
     FAuthType : integer;
+    /// Engine chosen.
     FEngineType : integer;
+    /// Folder of the project.
     FProjectDir : string;
+    /// Whether the Swagger module is added.
     FSwagger : boolean;
+    /// Whether the web module is added.
     FWebModule : boolean;
   protected
+    /// Writes the CGI project.
     function CreateProjCGI(AProject: TLazProject) : TModalResult;
+    /// Writes the console project.
     function CreateProjConsole(AProject: TLazProject) : TModalResult;
+    /// Writes the stand-alone project.
     function CreateProjStandAlone(AProject: TLazProject) : TModalResult;
   public
     function CreateStartFiles(AProject: TLazProject): TModalResult; override;
@@ -30,10 +40,10 @@ type
     function InitProject(AProject: TLazProject): TModalResult; override;
   end;
 
-  { TRALWizardApplication }
-
+  /// The stand-alone application descriptor, with its main form.
   TRALWizardApplication = class(TRALWizard)
   protected
+    /// Writes the main form of the stand-alone project.
     function CreateFormStandAlone(AProject: TLazProject) : TModalResult;
   public
     constructor Create; override;
@@ -44,9 +54,11 @@ type
     function InitProject(AProject: TLazProject): TModalResult; override;
   end;
 
+/// Registers the project descriptor.
 procedure Register;
 
 var
+  /// The registered descriptor.
   RALWizardApplication : TRALWizardApplication;
 
 implementation
