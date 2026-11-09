@@ -1,6 +1,6 @@
-/// Traffic plugins: a rate limit by window or token bucket (TRALRateLimitPlugin),
-/// HTTPS forced (TRALHttpsRedirectPlugin), a maintenance switch
-/// (TRALMaintenancePlugin) and X-HTTP-Method-Override (TRALMethodOverridePlugin).
+{ Traffic plugins: a rate limit by window or token bucket (TRALRateLimitPlugin),
+  HTTPS forced (TRALHttpsRedirectPlugin), a maintenance switch
+  (TRALMaintenancePlugin) and X-HTTP-Method-Override (TRALMethodOverridePlugin). }
 unit RALTraffic;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -43,6 +43,7 @@ type
   private
     FLimit: IntegerRAL;
     FPath: StringRAL;
+    /// Path split into segments, for the match.
     FPattern: TRALRouteSegments;
     FWindow: IntegerRAL;
 
@@ -80,8 +81,10 @@ type
     FKey: TRALRateLimitKey;
     FKeyHeader: StringRAL;
     FLimit: IntegerRAL;
+    /// Serialises the read and write of a token bucket.
     FLock: TCriticalSection;
     FOnGetKey: TRALOnRateLimitKey;
+    /// Store used when Store is not assigned.
     FOwnStore: TRALMemoryStore;
     FPrefix: StringRAL;
     FRules: TRALRateLimitRules;
@@ -162,10 +165,12 @@ type
     FActive: boolean;
     FAllowIPs: TStrings;
     FAllowPaths: TStrings;
+    /// AllowPaths split into segments.
     FAllowSegs: TRALPathPatterns;
     FMessage: StringRAL;
     FRetryAfter: IntegerRAL;
 
+    /// Splits AllowPaths again.
     procedure PathsChanged(Sender: TObject);
     procedure SetAllowIPs(const AValue: TStrings);
     procedure SetAllowPaths(const AValue: TStrings);

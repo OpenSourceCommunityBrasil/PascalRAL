@@ -1,5 +1,5 @@
-﻿/// Security plugins of the server: address lists, brute force, flood and path
-/// traversal
+﻿{ Security plugins of the server: address lists, brute force, flood and path
+  traversal. }
 unit RALSecurity;
 
 { Each protection is a plugin of its own (see RALPlugin), acting before the body
@@ -21,7 +21,6 @@ uses
   RALTypes, RALConsts, RALTools, RALThreadSafe, RALPlugin, RALRequest, RALResponse;
 
 type
-  { TRALClientList }
 
   /// When an address was last seen, per address, by the flood protection
   TRALClientList = class
@@ -30,10 +29,9 @@ type
   public
     constructor Create; virtual;
   published
+    /// Moment of the client's last request.
     property LastAccess: TDateTime read FLastAccess write FLastAccess;
   end;
-
-  { TRALClientBlockList }
 
   /// Failed tries of an address, kept by the brute force protection
   TRALClientBlockList = class(TRALClientList)
@@ -42,17 +40,18 @@ type
   public
     constructor Create; override;
   published
+    /// Failed attempts counted for the client.
     property NumTry: IntegerRAL read FNumTry write FNumTry;
   end;
-
-  { TRALIPListPlugin }
 
   /// Base of the plugins that hold a list of addresses
   TRALIPListPlugin = class(TRALPlugin)
   private
     FIPList: TStringList;
+    /// IPList sorted, for the lookup of each request.
     FLookup: TRALStringListSafe;
 
+    /// Rebuilds the lookup list from IPList.
     procedure IPListChanged(Sender: TObject);
     procedure SetIPList(AValue: TStringList);
   protected
@@ -68,18 +67,14 @@ type
     property IPList: TStringList read FIPList write SetIPList;
   end;
 
-  { TRALWhiteListPlugin }
-
-  /// Addresses that are always answered and never blocked: the request is
-  /// marked Trusted, and the protections below leave it alone
+  { Addresses that are always answered and never blocked: the request is
+    marked Trusted, and the protections below leave it alone. }
   TRALWhiteListPlugin = class(TRALIPListPlugin)
   protected
     class function DefaultPriority: IntegerRAL; override;
   public
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); override;
   end;
-
-  { TRALBlackListPlugin }
 
   /// Addresses that are refused (403), unless a white list trusts them
   TRALBlackListPlugin = class(TRALIPListPlugin)
@@ -89,18 +84,18 @@ type
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); override;
   end;
 
-  { TRALBruteForcePlugin }
-
-  /// Counts failed authentications per address and refuses (403) an address
-  /// with MaxTry failures, until ExpirationTime after its last try. What a
-  /// failure is, the authenticator says (TRALServerPlugin.AttemptOf): a secret
-  /// that was checked and refused - a wrong password, the JWT login included.
-  /// No credentials at all, or a token that expired or was forged, count for
-  /// nothing; an accepted secret clears the count
+  { Counts failed authentications per address and refuses (403) an address
+    with MaxTry failures, until ExpirationTime after its last try. What a
+    failure is, the authenticator says (TRALServerPlugin.AttemptOf): a secret
+    that was checked and refused - a wrong password, the JWT login included.
+    No credentials at all, or a token that expired or was forged, count for
+    nothing; an accepted secret clears the count. }
   TRALBruteForcePlugin = class(TRALPlugin)
   private
+    /// Failed attempts per client address.
     FBlocked: TRALStringListSafe;
     FExpirationTime: IntegerRAL;
+    /// Tick of the last prune of FBlocked.
     FLastPrune: Cardinal;
     FMaxTry: IntegerRAL;
 
@@ -112,9 +107,8 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// ppAuthResult: an accepted secret clears the count, a refused one
-    /// counts. The verdict of the request is left as the authenticator gave
-    /// it: a 403 stays 403 - it used to turn into 401 below MaxTry
+    { ppAuthResult: an accepted secret clears the count, a refused one counts; the
+      verdict stays as the authenticator gave it (a 403 stays 403). }
     procedure AuthAttempt(ARequest: TRALRequest; AResponse: TRALResponse;
       AAttempt: TRALAuthAttempt); override;
     /// The count of AClientIP, or nil
@@ -125,8 +119,8 @@ type
     procedure Prune;
     /// Prune at most once a second - what every request calls
     procedure PruneOnRequest;
-    /// One more failed try for AClientIP; True when it is the one that blocks
-    /// the address
+    { One more failed try for AClientIP; True when it is the one that blocks
+      the address. }
     function RegisterFailure(const AClientIP: StringRAL): boolean;
     /// Failed tries of AClientIP, zero when none
     function Tries(const AClientIP: StringRAL): IntegerRAL;
@@ -137,20 +131,18 @@ type
     /// Addresses with a count, bounded by ExpirationTime
     property BlockedCount: IntegerRAL read GetBlockedCount;
   published
-    /// Milliseconds after the last failed try before the count is forgotten;
-    /// zero keeps it forever
+    { Milliseconds after the last failed try before the count is forgotten;
+      zero keeps it forever. }
     property ExpirationTime: IntegerRAL read FExpirationTime write FExpirationTime;
     /// Failed tries that block an address (below 1 behaves as 1)
     property MaxTry: IntegerRAL read FMaxTry write FMaxTry;
   end;
 
-  { TRALFloodPlugin }
-
   /// Refuses (403) an address that sends two requests closer than Interval
   TRALFloodPlugin = class(TRALPlugin)
   public const
-    /// The record of an address lives in one of this many lists, by a hash of
-    /// the address: every request takes the lock of its own list only
+    { The record of an address lives in one of this many lists, by a hash of
+      the address: every request takes the lock of its own list only. }
     FloodStripes = 16;
   private
     { one lock for every request of every thread was the plugin's cost under
@@ -159,6 +151,7 @@ type
       share a list }
     FFlood: array[0..FloodStripes - 1] of TRALStringListSafe;
     FInterval: IntegerRAL;
+    /// Tick of the last prune of the address list.
     FLastPrune: Cardinal;
 
     function GetFloodCount: IntegerRAL;
@@ -188,8 +181,6 @@ type
     property Interval: IntegerRAL read FInterval write FInterval;
   end;
 
-  { TRALPathTraversalPlugin }
-
   /// Refuses (403) a route that tries to climb out of its folder ('../')
   TRALPathTraversalPlugin = class(TRALPlugin)
   protected
@@ -199,15 +190,13 @@ type
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); override;
   end;
 
-  { TRALSecurityHeadersPlugin }
-
-  /// Security headers every answer carries - see TRALSecurityHeader for the
-  /// values. It runs first of all the plugins, so a 401, 403, 404 or 413
-  /// carries them too; a route that sets one of them itself keeps its own
-  /// value, and OnResponse sees them and may change them.
-  /// rshContentSecurityPolicy forbids a page everything: leave it off on a
-  /// server whose WebModule or Swagger serves pages. A 500 an engine answers
-  /// for a body it could not decode carries none
+  { Security headers every answer carries - see TRALSecurityHeader for the
+    values. It runs first of all the plugins, so a 401, 403, 404 or 413
+    carries them too; a route that sets one of them itself keeps its own
+    value, and OnResponse sees them and may change them.
+    rshContentSecurityPolicy forbids a page everything: leave it off on a
+    server whose WebModule or Swagger serves pages. A 500 an engine answers
+    for a body it could not decode carries none. }
   TRALSecurityHeadersPlugin = class(TRALPlugin)
   private
     FHeaders: TRALSecurityHeaders;
@@ -223,11 +212,8 @@ type
 
 implementation
 
-{ Drops every entry idle for AIdle ms or more, under ONE acquisition of the
-  list's lock - the objects included. Walking the list taking the lock per
-  element, as Prune used to, raced: one thread asked for an index another had
-  just removed (EStringListError out of ValidateRequest), or removed the live
-  entry that had slid into it }
+{ Drops every entry idle for AIdle ms or more, the objects included, under a
+  single acquisition of the list's lock. }
 procedure PruneIdle(AList: TRALStringListSafe; AIdle: Int64RAL; ANow: TDateTime);
 var
   vList: TStringList;
@@ -261,7 +247,7 @@ begin
     ALast := vSecond;
 end;
 
-{ refuses the request and tells the server a client was blocked }
+/// Refuses the request and tells the server a client was blocked.
 procedure RefuseBlocked(APlugin: TRALServerPlugin; ARequest: TRALRequest;
   AResponse: TRALResponse);
 begin
@@ -396,10 +382,7 @@ procedure TRALBruteForcePlugin.AuthAttempt(ARequest: TRALRequest;
   AResponse: TRALResponse; AAttempt: TRALAuthAttempt);
 begin
   case AAttempt of
-    { an accepted secret clears the count. It used to be cleared on the way to
-      ANY route that answered, public ones included - so a guesser could
-      alternate a wrong password with a request to an open route and never
-      reach MaxTry }
+    { only an accepted secret clears the count: a request to an open route does not }
     raaPassed:
       Unblock(ARequest.ClientInfo.IP);
     { OnClientBlock says a client WAS blocked: once, on the try that does it }
@@ -472,9 +455,7 @@ begin
   vMax := FMaxTry;
   if vMax < 1 then
     vMax := 1;
-  { the whole check-and-insert under ONE lock: two threads finding nothing and
-    both inserting lost one of the counts, and the try that should have
-    crossed MaxTry did not }
+  { the whole check-and-insert under one lock, or two threads lose a count }
   vList := FBlocked.Lock;
   try
     vIndex := vList.IndexOf(AClientIP);
@@ -488,8 +469,8 @@ begin
 
     vBlock.NumTry := vBlock.NumTry + 1;
     Result := vBlock.NumTry = vMax;
-    { the expiration counts from the LAST failed try: an attacker that keeps
-      trying stays blocked, and a client that stopped is forgiven in time }
+    { the expiration counts from the last failed try: who keeps trying stays
+      blocked, who stopped is forgiven in time }
     vBlock.LastAccess := Now;
   finally
     FBlocked.Unlock;
@@ -595,9 +576,7 @@ begin
     begin
       vFlood := TRALClientList.Create;
       vList.AddObject(AClientIP, vFlood);
-      { an address seen for the first time has no interval to measure. It
-        used to measure one of zero against the stamp TRALClientList.Create
-        had just put in, so the FIRST request of every client was a flood }
+      { an address seen for the first time has no interval to measure }
       vLastAccess := 0;
     end;
     vFlood.LastAccess := vNow;
@@ -639,9 +618,8 @@ var
   vNow: TDateTime;
   vInt: IntegerRAL;
 begin
-  { an entry only matters for Interval after its last access; anything idle
-    for a minute (or a generous multiple of the interval) cannot be flooding
-    any more, and keeping it made a scan from random sources a leak }
+  { an entry matters for Interval after its last access: one idle for a minute
+    (or a generous multiple of the interval) is dropped }
   vIdle := 60000;
   if Int64RAL(FInterval) * 10 > vIdle then
     vIdle := Int64RAL(FInterval) * 10;
@@ -662,10 +640,8 @@ begin
   PruneOnRequest;
   if ARequest.Trusted then
     Exit;
-  { a flood refusal is a rate, not a guess: 403 and OnClientBlock, but nothing
-    counted toward brute force - counting it locked clients out for
-    ExpirationTime, back when the first request of every new address measured
-    as a flood too }
+  { a flood refusal is a rate, not a guess: 403 and OnClientBlock, nothing
+    counted toward brute force }
   if CheckFlood(ARequest.ClientInfo.IP) then
     RefuseBlocked(Self, ARequest, AResponse);
 end;

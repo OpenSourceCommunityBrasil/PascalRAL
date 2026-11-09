@@ -11,7 +11,9 @@ uses
   RALStream;
 
 const
+  /// Name of the cookie that carries the JWT (UseCookie).
   RALTOKENName = 'raltoken';
+  /// Name of the param that carries the claims of a JWT login.
   RALPAYLOADName = 'ral_payload';
   /// Route of the public keys of TRALServerJWTAuth.Keys (PublishJWKS).
   RALJWKSRoute = '/.well-known/jwks.json';
@@ -20,23 +22,16 @@ const
 
 
 type
+  /// Decides whether the request is accepted (AResult).
   TRALOnValidate = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
                              var AResult: boolean) of object;
-  { of object, like every other callback declared around it. OnGetToken decides
-    who gets a token and OnValidate says whether one still counts, so both need
-    to reach a database - that is, the object that owns the connection. Without
-    of object they can only be plain procedures, which have no Self and get at
-    their state through globals.
-
-    This was the only exception in the group: TRALOnValidate,
-    TRALOnBeforeGetToken, TRALOnResolve and TRALOnGetTokenSecret are all of
-    object. And TRALServerBasicAuth.OnValidate already took the of-object form
-    while TRALServerJWTAuth.OnValidate - same property name, same unit - did
-    not. Assigning a plain procedure to these two no longer compiles. }
+  /// Decides about a JWT whose claims are AParams; AResult False refuses.
   TRALOnTokenJWT = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
                              AParams: TRALJWTParams; var AResult: boolean) of object;
+  /// TRALOnTokenJWT for a plain procedure.
   TRALOnTokenJWTGen = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
                              AParams: TRALJWTParams; var AResult: boolean);
+  /// Resolves AToken, whose claims are AParams, into AResult.
   TRALOnResolve = procedure(AToken: StringRAL; AParams: TRALJWTParams;
                             var AResult: StringRAL) of object;
 
@@ -54,11 +49,9 @@ type
   /// Same as RALAuthBase.TRALOnGetRoles.
   TRALOnGetRoles = RALAuthBase.TRALOnGetRoles;
 
-  { One key of TRALServerJWTAuth.Keys: an HMAC secret (HS*) or an RSA/EC key pair
-    in PEM (RS*/ES*), with the kid that names it in the token header. Tokens are
-    signed with the newest active key and checked with any key not retired, so a
-    key is replaced without logging anybody out: add the new one, wait for the
-    tokens of the old one to expire, then set Retired. }
+  { One key of TRALServerJWTAuth.Keys: an HMAC secret (HS*) or an RSA/EC pair in PEM
+    (RS*/ES*), named by its kid; the newest active key signs, any key not retired
+    checks. }
   TRALJWTKeyItem = class(TCollectionItem)
   private
     FAlgorithm: TRALJWTAlgorithm;
@@ -71,6 +64,7 @@ type
     FRetired: boolean;
     FSecret: StringRAL;
 
+    /// Drops the loaded key when its PEM text changes.
     procedure KeyChanged(Sender: TObject);
     procedure SetPrivateKey(const AValue: TStrings);
     procedure SetPublicKey(const AValue: TStrings);
@@ -111,10 +105,12 @@ type
   /// The keys of TRALServerJWTAuth.
   TRALJWTKeys = class(TOwnedCollection)
   private
+    /// Guards the loaded keys.
     FLock: TCriticalSection;
 
     function GetKey(AIndex: IntegerRAL): TRALJWTKeyItem;
   public
+    /// The key collection of AOwner.
     constructor Create(AOwner: TPersistent);
     destructor Destroy; override;
 
@@ -128,7 +124,8 @@ type
     function Find(const AKeyID: StringRAL): TRALJWTKeyItem;
     /// The public keys of the RS*/ES* keys not retired, as a JWK set (RFC 7517).
     function JWKS: StringRAL;
-    /// The key that signs at ANow: the active one with the latest NotBefore (the last added on a tie).
+    { The key that signs at ANow: the active one with the latest NotBefore (the last
+      added on a tie). }
     function Signer(ANow: TDateTime): TRALJWTKeyItem;
 
     /// Keys by index.
@@ -142,13 +139,16 @@ type
     FUserName: StringRAL;
   public
     constructor Create(AOwner: TComponent); overload; override;
+    /// A Basic authenticator; the overload takes the user and password.
     constructor Create(AOwner: TComponent; const AUser: StringRAL;
                        const APassword: StringRAL); overload;
 
     function IsAuthenticated: boolean; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
   published
+    /// Password sent.
     property Password: StringRAL read FPassword write FPassword;
+    /// User sent.
     property UserName: StringRAL read FUserName write FUserName;
   end;
 
@@ -167,21 +167,26 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); overload; override;
+    /// A Basic authenticator; the overload takes the one user and password.
     constructor Create(AOwner: TComponent; const AUser: StringRAL;
                        const APassword: StringRAL); overload;
 
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
+    /// Sends the challenge, so a browser shows its login dialog.
     property AuthDialog: boolean read FAuthDialog write FAuthDialog;
     { Fired after the user was accepted, to fill the roles of ARequest.Identity
       (route Roles, policies); the name and scheme are already there. }
     property OnGetRoles: TRALOnGetRoles read FOnGetRoles write FOnGetRoles;
+    /// Decides the credentials itself; Passwords and UserName are then not asked.
     property OnValidate: TRALOnValidate read FOnValidate write FOnValidate;
+    /// Password of UserName.
     property Password: StringRAL read FPassword write FPassword;
     { Users and password hashes (Argon2id, bcrypt...) checked when OnValidate is
       not assigned; UserName and Password still accept their one user. }
     property Passwords: TRALPasswordList read FPasswords write SetPasswords;
+    /// The one user accepted besides Passwords.
     property UserName: StringRAL read FUserName write FUserName;
   end;
 
@@ -200,10 +205,10 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// Reads one claim of the token currently held, under the lock.
-    /// This is the thread-safe way in: the raw Payload below is an object this
-    /// class rewrites whenever a token arrives, so reading it while another
-    /// thread refreshes the token walks its lists mid-swap.
+    { Reads one claim of the token currently held, under the lock.
+      This is the thread-safe way in: the raw Payload below is an object this
+      class rewrites whenever a token arrives, so reading it while another
+      thread refreshes the token walks its lists mid-swap. }
     function GetClaim(const AKey: StringRAL): StringRAL;
     /// A 401: the token is dropped, and the request goes again with a new one
     function HandleChallenge(ARequest: TRALRequest; AResponse: TRALResponse): boolean; override;
@@ -213,28 +218,32 @@ type
       AResponse: TRALResponse): IntegerRAL; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
   published
+    /// Field of the login answer that holds the token ("token" by default).
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
     property OnBeforeGetToken;
-    /// The decoded claims of the current token. Held between requests and
-    /// REPLACED on every SetToken, so anything reading it from another thread
-    /// has to hold Lock for as long as it uses what it read - or call GetClaim,
-    /// which does that for a single claim.
+    { The decoded claims of the current token. Held between requests and
+      REPLACED on every SetToken, so anything reading it from another thread
+      has to hold Lock for as long as it uses what it read - or call GetClaim,
+      which does that for a single claim. }
     property Payload: TRALJWTParams read FPayload write SetPayload;
+    /// Route the token is asked from.
     property Route: StringRAL read FRoute write SetRoute;
+    /// Token sent; assigning one skips the login.
     property Token: StringRAL read FToken write SetToken;
   end;
-
-  { TRALServerJWTAuth }
 
   /// JWT Authenticator for server components
   TRALServerJWTAuth = class(TRALAuthServer)
   private
     FAlgorithm: TRALJWTAlgorithm;
+    /// Route that issues and renews tokens.
     FAuthToken: TRALBaseRoute;
+    /// Owner of FAuthToken.
     FCollectionAuth: TOwnedCollection;
     FCookieSameSite: TRALCookieSiteScope;
     FExpSecs: IntegerRAL;
     FJSONKey: StringRAL;
+    /// Route of the public keys (PublishJWKS).
     FJWKSRoute: TRALBaseRoute;
     FKeys: TRALJWTKeys;
     FOnGetToken: TRALOnTokenJWT;
@@ -249,27 +258,27 @@ type
     FSignSecretKey: StringRAL;
     FUseCookie: Boolean;
 
-    { RFC 6750 3: tells a client WHY it got the 401 - no credentials at all
-      (AError empty) or a token that was refused, and what was wrong with it }
+    { The 401 challenge of RFC 6750 3: no credentials at all (AError empty), or a
+      token refused and why. }
     procedure AnswerChallenge(AResponse: TRALResponse; const AError,
       ADescription: StringRAL);
-    { OnGetToken or OnGetTokenGen is assigned }
+    /// OnGetToken or OnGetTokenGen is assigned.
     function CanIssue: boolean;
     { Reads AToken into AJWT and checks it: signature (with the key its kid
       names, when there are Keys), dates and revocation. AReason says why not }
     function CheckToken(AJWT: TRALJWT; const AToken: StringRAL;
       out AReason: StringRAL): boolean;
-    { False, with the 500 already answered, when SignSecretKey is empty }
+    /// False, with the 500 already answered, when SignSecretKey is empty.
     function HasSecretKey(AResponse: TRALResponse): boolean;
-    { a first token from OnGetToken; '' when it refused }
+    /// A first token from OnGetToken; '' when it refused.
     function IssueToken(ARequest: TRALRequest; AResponse: TRALResponse;
       var AJSONParams: StringRAL): StringRAL;
-    { the token route logs in (OnGetToken) rather than renews - see BeforeValidate }
+    /// The token route logs in (OnGetToken) rather than renews - see BeforeValidate.
     function LogsIn(ARequest: TRALRequest): boolean;
     { Sets algorithm and key of AJWT for signing: the Signer of Keys, else
       Algorithm and SignSecretKey. False when Keys has no active key }
     function PrepareSigner(AJWT: TRALJWT): boolean;
-    { the work of RenewToken; with a request, OnRenewToken is consulted }
+    /// The work of RenewToken; with a request, OnRenewToken is consulted.
     function RenewTokenFor(ARequest: TRALRequest; AResponse: TRALResponse;
       const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
     procedure SetKeys(const AValue: TRALJWTKeys);
@@ -288,13 +297,14 @@ type
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); override;
     /// The raltoken cookie, when no Authorization header came
     procedure DecodeWithoutHeader(ARequest: TRALRequest); override;
+    /// A new token for the claims AJSONParams, signed by the current key.
     function GetToken(var AJSONParams: StringRAL): StringRAL;
     { Whether the claims AParams (of a valid token) were revoked: their jti, or
       every token of their sub issued up to RevokeAllFor. False without a
       RevocationStore. }
     function IsRevoked(AParams: TRALJWTParams): boolean;
-    /// A new token with the claims of AToken and a new expiration; '' when
-    /// AToken is not valid. Called directly it does not fire OnRenewToken
+    { A new token with the claims of AToken and a new expiration; '' when
+      AToken is not valid. Called directly it does not fire OnRenewToken. }
     function RenewToken(const AToken: StringRAL; var AJSONParams: StringRAL): StringRAL;
     /// The token route, or the JWKS route when PublishJWKS is on.
     function ResolveRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute; override;
@@ -304,39 +314,44 @@ type
     { Revokes every token of the user ASubject issued up to ABefore (0 = now),
       to the second: logs a user out everywhere. Needs RevocationStore. }
     procedure RevokeAllFor(const ASubject: StringRAL; ABefore: TDateTime = 0);
-    /// Revokes the token whose jti is AId until AExpires (0 = forever). Needs RevocationStore.
+    { Revokes the token whose jti is AId until AExpires (0 = forever). Needs
+      RevocationStore. }
     procedure RevokeId(const AId: StringRAL; AExpires: TDateTime = 0);
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
 
+    /// OnGetToken for a plain procedure.
     property OnGetTokenGen: TRALOnTokenJWTGen read FOnGetTokenGen write FOnGetTokenGen;
     /// OnRenewToken for a plain procedure
     property OnRenewTokenGen: TRALOnTokenJWTGen read FOnRenewTokenGen
       write FOnRenewTokenGen;
+    /// OnValidate for a plain procedure.
     property OnValidateGen: TRALOnTokenJWTGen read FOnValidateGen write FOnValidateGen;
   published
+    /// Signing algorithm when Keys is empty.
     property Algorithm: TRALJWTAlgorithm read FAlgorithm write FAlgorithm;
     property AuthRoute;
-    /// SameSite of the raltoken cookie UseCookie sends. cssDefault (the default)
-    /// writes none and leaves the browser's own rule, as it always did. cssLax
-    /// or cssStrict keep another site from sending it, which is what stops a
-    /// cross-site request riding on the login - and also what stops a page on
-    /// another site that calls this server on purpose, with credentials
+    { SameSite of the raltoken cookie: cssDefault writes none (the browser's rule);
+      cssLax or cssStrict keep other sites from sending it, legitimate ones too. }
     property CookieSameSite: TRALCookieSiteScope read FCookieSameSite
       write FCookieSameSite default cssDefault;
+    /// Seconds a token is valid.
     property ExpirationSecs: IntegerRAL read FExpSecs write FExpSecs;
+    /// Field of the login answer that holds the token ("token" by default).
     property JSONKey: StringRAL read FJSONKey write FJSONKey;
     { Signing keys with kid, for key rotation and RS*/ES*; empty = Algorithm
       and SignSecretKey, as always. }
     property Keys: TRALJWTKeys read FKeys write SetKeys;
+    /// Decides a login and fills the claims of the new token; unassigned, no token.
     property OnGetToken: TRALOnTokenJWT read FOnGetToken write FOnGetToken;
-    /// Fired when a valid token is posted to AuthRoute to be renewed, with its
-    /// claims in AParams - already checked, and with the new expiration set.
-    /// Change any claim there (permissions read again from the database, say),
-    /// or set AResult to False to refuse the renewal (the client gets 401 and
-    /// has to ask for a first token again). Unassigned, the claims are copied
-    /// as they were, which is what renewing always did
+    { Fired when a valid token is posted to AuthRoute to be renewed, with its
+      claims in AParams - already checked, and with the new expiration set.
+      Change any claim there (permissions read again from the database, say),
+      or set AResult to False to refuse the renewal (the client gets 401 and
+      has to ask for a first token again). Unassigned, the claims are copied
+      as they were, which is what renewing always did. }
     property OnRenewToken: TRALOnTokenJWT read FOnRenewToken write FOnRenewToken;
+    /// Decides whether a valid token still counts.
     property OnValidate: TRALOnTokenJWT read FOnValidate write FOnValidate;
     { Answers GET /.well-known/jwks.json with the public keys of Keys (RS*/ES*),
       for clients and other servers that verify the tokens. }
@@ -348,7 +363,9 @@ type
     { Claims (separated by commas) the roles of ARequest.Identity are read from:
       a JSON array, a scope (blanks) or a list (commas). }
     property RolesClaim: StringRAL read FRolesClaim write FRolesClaim;
+    /// HMAC secret when Keys is empty; empty answers 500.
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
+    /// Sends the token as the raltoken cookie and accepts it from there.
     property UseCookie: Boolean read FUseCookie write SetUseCookie;
   end;
 
@@ -391,7 +408,7 @@ end;
 
 procedure TRALJWTKeyItem.KeyChanged(Sender: TObject);
 begin
-  { the loaded key no longer matches the text; made again on the next use }
+  { the loaded key does not match the text: made again on the next use }
   FreeAndNil(FJWSKey);
 end;
 
@@ -640,20 +657,9 @@ begin
   end;
 end;
 
-{ The token route, in this order:
-  - credentials, or no token at all: OnGetToken decides (LogsIn). Credentials
-    used to lose to a Bearer - the cookie, with UseCookie - so a browser
-    holding a token could not log in as somebody else: the next user of a
-    shared machine got the previous one's token renewed;
-  - a Bearer alone renews itself, same claims and a new expiration, with
-    OnRenewToken consulted. Refused - expired, forged, OnRenewToken said no -
-    it is a 401 and nothing else. Handing that request to OnGetToken would
-    try a password sent in a header or in the query next to a dead token,
-    and such a refusal cannot be counted as a failed login: a browser whose
-    token expired sends one on every renewal. With UseCookie the browser is
-    told to drop the cookie, so its next login goes through;
-  - with neither, 401: without OnGetToken nobody checks who is asking, and a
-    client could post any claims and walk away with a signed token }
+{ The token route: credentials (or no token) go to OnGetToken; a Bearer alone is
+  renewed through OnRenewToken, and a refused one is a 401 that clears the cookie;
+  without OnGetToken, 401. }
 procedure TRALServerJWTAuth.BeforeValidate(ARequest: TRALRequest;
   AResponse: TRALResponse);
 var
@@ -1064,13 +1070,8 @@ var
   vInt: IntegerRAL;
   vParam: TRALParam;
 begin
-  { the Cookie header carries every cookie the browser has for the site,
-    in whatever order; only the one named raltoken is the bearer. This
-    used to take the first cookie, whatever its name, and any site cookie
-    ahead of the token made a logged-in browser fail with 401.
-    Every engine splits the cookies into rpkCOOKIE params, so the param
-    named raltoken is the first place to look; the raw header is the
-    fallback for an engine that kept it whole }
+  { only the cookie named raltoken is the bearer: its rpkCOOKIE param first, the
+    raw Cookie header for an engine that kept it whole }
   vAux := '';
   vParam := ARequest.Params.GetKind[RALTOKENName, rpkCOOKIE];
   if not vParam.IsNilOrEmpty then
@@ -1311,15 +1312,8 @@ function TRALClientJWTAuth.HandleChallenge(ARequest: TRALRequest;
 var
   vSent: TRALParam;
 begin
-  { the token was refused or expired: a new one is fetched before the request
-    goes again - what ResetToken always meant to do. But only the token this
-    request was refused with, compared under the lock (held by the caller):
-    one authenticator serves many clients, and when a token expires the 401s
-    of the requests already in flight arrive AFTER one of them has fetched the
-    next token. Clearing unconditionally threw that fresh token away, so every
-    client in turn went back to /gettoken - one after the other, since the
-    fetch holds the lock. The header is what was really sent, written by
-    SetAuthHeader }
+  { drops the token only if it is the one this request was refused with (the
+    caller holds the lock): another request may have fetched a fresh one }
   vSent := nil;
   if ARequest <> nil then
     vSent := ARequest.Params.GetKind['Authorization', rpkHEADER];
@@ -1462,18 +1456,8 @@ var
   vValue, vPayload: StringRAL;
   vOk: boolean;
 begin
-  { Not an assignment: this splits the token, decodes a segment and rewrites
-    FPayload, which is an OBJECT. Several clients share one authenticator, so
-    several threads reach here at once whenever a token expires - each 401
-    resets it and asks for another. Unguarded, that is a data race on a
-    refcounted string AND on FPayload's own lists.
-
-    Two rules here, and the second is not cosmetic:
-    - it all happens under Lock;
-    - nothing is published until it is known good. Clearing FToken first, the
-      way this used to, made every OTHER thread read IsAuthenticated = False
-      during the decode and go fetch a token of its own - so a single expiry
-      turned into one /gettoken per client. }
+  { decodes and rewrites FPayload under Lock, and publishes nothing until the
+    token is known good, so other threads never see it cleared }
   vValue := AValue;
   vPayload := '';
   vOk := False;

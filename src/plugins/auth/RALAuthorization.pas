@@ -1,5 +1,5 @@
-/// Authorization policies: what a route asks of an identity an authenticator
-/// already accepted (roles, claims, scopes, an event), by name.
+{ Authorization policies: what a route asks of an identity an authenticator
+  already accepted (roles, claims, scopes, an event), by name. }
 unit RALAuthorization;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -42,7 +42,8 @@ type
     /// Whether AIdentity passes the policy, for ARequest.
     function Evaluate(AIdentity: TRALIdentity; ARequest: TRALRequest): boolean;
   published
-    /// Claims the identity must carry, one 'name=value' per line ('*' = any value, '|' separates values).
+    { Claims the identity must carry, one 'name=value' per line ('*' = any value, '|'
+      separates values). }
     property Claims: TStrings read FClaims write SetClaims;
     /// Name routes and groups give in Policy.
     property Name: StringRAL read FName write FName;
@@ -61,6 +62,7 @@ type
   private
     function GetPolicy(AIndex: IntegerRAL): TRALAuthPolicy;
   public
+    /// The policy collection of AOwner.
     constructor Create(AOwner: TPersistent);
 
     /// Adds a policy named AName asking ARoles (any of them).

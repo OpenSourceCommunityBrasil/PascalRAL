@@ -1,13 +1,10 @@
-﻿/// Plugins of the body of a request and of its response: size limit,
-/// compression, encryption, and a JSON body as params
+﻿{ Plugins of the body of a request and of its response: size limit,
+  compression, encryption, and a JSON body as params. }
 unit RALContent;
 
-{ What used to be the server's MaxRequestSize, CompressType, CriptoOptions and
-  JSONBodyToParams. A server without them answers as it is asked: no size limit,
-  responses neither compressed nor encrypted, and a JSON body only in Body. A
-  compressed or encrypted request body is still read by the engines - that is
-  the protocol, not a choice of the server - but an encrypted one needs the key,
-  which only TRALCriptoPlugin has. }
+{ A server without them answers as it is asked: no size limit, responses neither
+  compressed nor encrypted, a JSON body only in Body. A compressed request body is
+  still read by the engines; an encrypted one needs the key of TRALCriptoPlugin. }
 
 interface
 
@@ -17,10 +14,9 @@ uses
   RALStream;
 
 type
-  { TRALLimitsPlugin }
 
-  /// Refuses (413) a request body larger than MaxRequestSize, before it is
-  /// decoded
+  { Refuses (413) a request body larger than MaxRequestSize, before it is
+    decoded. }
   TRALLimitsPlugin = class(TRALPlugin)
   private
     FMaxRequestSize: Int64RAL;
@@ -34,10 +30,10 @@ type
   public
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
-    /// Largest request body accepted, in bytes; zero means no limit. The check
-    /// runs after the engine has read the body, so it protects the handlers and
-    /// the decoders, not the engine's own buffer - msquic is the exception, it
-    /// also refuses while receiving
+    { Largest request body accepted, in bytes; zero means no limit. The check
+      runs after the engine has read the body, so it protects the handlers and
+      the decoders, not the engine's own buffer - msquic is the exception, it
+      also refuses while receiving. }
     property MaxRequestSize: Int64RAL read FMaxRequestSize write SetMaxRequestSize
       default 0;
     { A request body larger than this, in bytes, is kept in a temporary file
@@ -51,10 +47,8 @@ type
     property SpoolAbove: Int64RAL read FSpoolAbove write SetSpoolAbove default 0;
   end;
 
-  { TRALCompressPlugin }
-
-  /// Compresses the responses, and refuses the encodings the server cannot
-  /// read (415) or answer (406)
+  { Compresses the responses, and refuses the encodings the server cannot
+    read (415) or answer (406). }
   TRALCompressPlugin = class(TRALPlugin)
   private
     FCompressStreams: boolean;
@@ -73,8 +67,8 @@ type
     /// ppProcess: how the response will be compressed
     procedure ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse;
       var AHandled: boolean); override;
-    /// ppValidate: 415 for a body in an encoding the server cannot read, 406
-    /// for a client that refuses every encoding the server has
+    { ppValidate: 415 for a body in an encoding the server cannot read, 406
+      for a client that refuses every encoding the server has. }
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
     { Compresses streamed responses (Send) too, with gzip or deflate flushed at
@@ -84,9 +78,9 @@ type
       mixed with text an attacker controls leaks through the sizes (BREACH) }
     property CompressStreams: boolean read FCompressStreams write FCompressStreams
       default False;
-    /// A fixed compression for every response, which the client cannot opt out
-    /// of. ctNone (the default) follows the client's Accept-Encoding, limited
-    /// to what is registered
+    { A fixed compression for every response, which the client cannot opt out
+      of. ctNone (the default) follows the client's Accept-Encoding, limited
+      to what is registered. }
     property CompressType: TRALCompressType read FCompressType write FCompressType
       default ctNone;
     { A response whose type is already compressed - images (not SVG), audio,
@@ -96,16 +90,14 @@ type
       it either way. False compresses everything, as up to 1.2 }
     property SkipCompressedTypes: boolean read FSkipCompressedTypes
       write FSkipCompressedTypes default True;
-    /// More media types answered uncompressed: 'application/x-foo', or a
-    /// prefix ending in '/' ('model/'). Counted with or without
-    /// SkipCompressedTypes. Set it before the server runs: requests read it
+    { More media types answered uncompressed: 'application/x-foo', or a
+      prefix ending in '/' ('model/'). Counted with or without
+      SkipCompressedTypes. Set it before the server runs: requests read it. }
     property SkipContentTypes: TStrings read FSkipContentTypes write SetSkipContentTypes;
   end;
 
-  { TRALCriptoPlugin }
-
-  /// Reads encrypted request bodies and encrypts the responses of a client
-  /// that asks for it (Accept-Encription), with Key
+  { Reads encrypted request bodies and encrypts the responses of a client
+    that asks for it (Accept-Encription), with Key. }
   TRALCriptoPlugin = class(TRALPlugin)
   private
     FKey: StringRAL;
@@ -116,22 +108,20 @@ type
     /// ppProcess: the response is encrypted with the cipher the client accepts
     procedure ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse;
       var AHandled: boolean); override;
-    /// ppValidate: hands the key to the request, before the engine decodes the
-    /// body with it
+    { ppValidate: hands the key to the request, before the engine decodes the
+      body with it. }
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
     /// The key shared with the clients. Empty, nothing is encrypted
     property Key: StringRAL read FKey write FKey;
   end;
 
-  { TRALJSONBodyPlugin }
-
-  /// A request body that is a JSON object also becomes params: each member of
-  /// the first level is an rpkFIELD param, the same as a form field, so
-  /// ParamByName('field') reads a field posted as JSON too (a nested object or
-  /// array arrives as its JSON text). The body stays in Body. A name also
-  /// present in the query string keeps the query's value first, as it does
-  /// for a form
+  { A request body that is a JSON object also becomes params: each member of
+    the first level is an rpkFIELD param, the same as a form field, so
+    ParamByName('field') reads a field posted as JSON too (a nested object or
+    array arrives as its JSON text). The body stays in Body. A name also
+    present in the query string keeps the query's value first, as it does
+    for a form. }
   TRALJSONBodyPlugin = class(TRALPlugin)
   protected
     class function DefaultPriority: IntegerRAL; override;
@@ -253,19 +243,15 @@ procedure TRALCompressPlugin.ValidateRequest(ARequest: TRALRequest;
 begin
   if not ARequest.HasValidContentEncoding then
   begin
-    { the error page goes out as it is, so no Content-Encoding on it: this
-      used to echo the client's coding, and a client that sent br to a server
-      without brotli got a plain page labelled br - its decoder failed instead
-      of showing the 415. Accept-Encoding says what this server can read }
+    { the error page goes out unencoded, so no Content-Encoding on it;
+      Accept-Encoding says what this server can read }
     AResponse.Answer(HTTP_UnsupportedMedia);
     AResponse.AcceptEncoding := GetAcceptCompress;
   end
   else if not ARequest.HasValidAcceptEncoding then
   begin
-    { 406, not 415: the problem is what the client ACCEPTS, not the body it
-      sent - and it only happens when it refuses identity on purpose. Same as
-      above, the page is not encoded: the whole Accept-Encoding used to be
-      copied into its Content-Encoding }
+    { 406, not 415: the problem is what the client accepts (it refused identity),
+      not the body it sent; the page goes out unencoded }
     AResponse.Answer(HTTP_NotAcceptable);
     AResponse.AcceptEncoding := GetAcceptCompress;
   end;

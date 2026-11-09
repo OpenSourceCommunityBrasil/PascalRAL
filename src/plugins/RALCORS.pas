@@ -15,60 +15,50 @@ uses
   RALRoutes;
 
 type
-  { TRALCORSOptions }
-
-  /// Who may call the server from a browser, and with what
+  /// Who may call the server from a browser, and with which headers.
   TRALCORSOptions = class(TPersistent)
   private
     FAllowCredentials: boolean;
     FAllowHeaders: TStringList;
-    { AllowHeaders as the header carries it, rebuilt when the list changes:
-      it was rebuilt on every request a route answered, writing Delimiter on
-      the shared list. Published as a snapshot, so a request reading it while
-      the list changes is never left holding a text being freed }
+    /// AllowHeaders as the header carries it, rebuilt when the list changes.
     FAllowHeadersText: TRALSnapshots;
     FAllowOrigin: StringRAL;
     FMaxAge: IntegerRAL;
 
+    /// Rebuilds the header text of AllowHeaders.
     procedure AllowHeadersChanged(Sender: TObject);
   protected
     procedure AssignTo(Dest: TPersistent); override;
+    /// Copies AValue into AllowHeaders.
     procedure SetAllowHeaders(AValue: TStringList);
+    /// Fills AllowHeaders with the headers a browser asks for by default.
     procedure SetDefaultHeaders;
   public
     constructor Create;
     destructor Destroy; override;
 
+    /// Adds AValue to AllowHeaders.
     procedure AddAllowHeader(AValue: StringRAL);
+    /// AllowHeaders joined by commas, as the header carries it.
     function GetAllowHeaders: StringRAL;
-    /// The Access-Control-Allow-Origin to answer a request coming from
-    /// ARequestOrigin: '*', the configured origin, or the request's own origin
-    /// when it is one of a list. '' means "this origin is not allowed"
+    { The Access-Control-Allow-Origin for a request from ARequestOrigin: '*', the
+      configured origin, or the request's own one when it is in the list; '' refuses. }
     function OriginFor(const ARequestOrigin: StringRAL): StringRAL;
   published
-    /// Sends Access-Control-Allow-Credentials: true, which a browser needs to
-    /// let fetch(..., {credentials: 'include'}) through - cookies or an
-    /// Authorization header on a cross-origin call. Browsers refuse it next to
-    /// AllowOrigin = '*', and so does the server: with '*' the header is not
-    /// sent. Name the origins instead
+    { Sends Access-Control-Allow-Credentials: true (cookies or Authorization on a
+      cross-origin call); not sent with AllowOrigin '*', which browsers refuse. }
     property AllowCredentials: boolean read FAllowCredentials write FAllowCredentials
       default False;
-    /// List of headers that are allowed in the CORS configuration
+    /// Headers a browser may send on a cross-origin call.
     property AllowHeaders: TStringList read FAllowHeaders write SetAllowHeaders;
-    /// Who may call the server from a browser on another site: empty (the
-    /// default) is nobody, '*' is anyone, one origin
-    /// ('https://app.example.com') is that one, and several separated by
-    /// spaces or commas make the request's Origin be answered back when it is
-    /// one of them, with Vary: Origin. It was '*' by default until 03/10/2026;
-    /// a form saved before then keeps its '*', which the IDE wrote out
+    { Origins allowed: empty is nobody, '*' anyone, one origin that one; several,
+      separated by blanks or commas, answer the request's Origin with Vary: Origin. }
     property AllowOrigin: StringRAL read FAllowOrigin write FAllowOrigin;
-    /// Time in seconds a browser may keep the preflight answer
+    /// Seconds a browser may keep the preflight answer.
     property MaxAge: IntegerRAL read FMaxAge write FMaxAge;
   end;
 
-  { TRALCORSPlugin }
-
-  /// Answers the CORS headers of every route that accepts OPTIONS
+  /// Adds the CORS headers to every route that accepts OPTIONS.
   TRALCORSPlugin = class(TRALPlugin)
   private
     FOptions: TRALCORSOptions;
@@ -81,26 +71,26 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// Writes the CORS headers for a route that allows AAllowMethods
+    /// Writes the CORS headers for a route that allows AAllowMethods.
     procedure AnswerCORS(const AAllowMethods: StringRAL; ARequest: TRALRequest;
       AResponse: TRALResponse);
-    /// ppProcess: the headers for the route of the request, when it takes
-    /// OPTIONS. Never answers the request itself
+    /// Adds the headers when the route of the request takes OPTIONS; never answers.
     procedure ProcessRequest(ARequest: TRALRequest; AResponse: TRALResponse;
       var AHandled: boolean); override;
   published
+    /// Origins, headers, credentials and preflight cache of the answers.
     property Options: TRALCORSOptions read FOptions write SetOptions;
   end;
 
 implementation
 
 var
-  { the names and fixed values CORS writes on every answer, made once at
-    initialization: on Delphi a literal assigned into a param is a new copy of
-    it on every request }
+  { names and fixed values of the CORS headers, filled once at initialization
+    (no literal copied per request) }
   gHdrAllowOrigin, gHdrVary, gValOrigin, gHdrAllowCredentials, gValTrue,
   gHdrAllowMethods, gHdrAllowHeaders, gHdrMaxAge: StringRAL;
 
+/// Fills the header names and values.
 procedure FillCORSNames;
 begin
   gHdrAllowOrigin := 'Access-Control-Allow-Origin';
@@ -141,9 +131,10 @@ begin
 end;
 
 type
-  { one version of TRALCORSOptions' header text - see TRALSnapshots }
+  /// One version of the header text of TRALCORSOptions (see TRALSnapshots).
   TRALTextVersion = class
   public
+    /// The header text.
     Text: StringRAL;
   end;
 
@@ -152,9 +143,7 @@ var
   vInt: IntegerRAL;
   vVersion: TRALTextVersion;
 begin
-  { one line, the items joined by commas as they are. DelimitedText used to do
-    this, and it also wrapped in quotes any item holding a blank or a quote -
-    "X-A, X-B" written on one line went out as one quoted, unusable name }
+  // one line, the items joined by commas as they are (no quoting)
   vVersion := TRALTextVersion.Create;
   for vInt := 0 to Pred(FAllowHeaders.Count) do
   begin

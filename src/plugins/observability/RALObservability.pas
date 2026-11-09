@@ -1,7 +1,7 @@
-/// Observability plugins: a log line per request (TRALLogPlugin), the W3C trace
-/// context (TRALTracePlugin), Prometheus metrics (TRALMetricsPlugin) and health
-/// routes (TRALHealthPlugin). Each one is a component linked to the server; none
-/// of them changes the answer of a route.
+{ Observability plugins: a log line per request (TRALLogPlugin), the W3C trace
+  context (TRALTracePlugin), Prometheus metrics (TRALMetricsPlugin) and health
+  routes (TRALHealthPlugin). Each one is a component linked to the server; none
+  of them changes the answer of a route. }
 unit RALObservability;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -55,22 +55,39 @@ type
     and the finish handler is a method of the sink, not of the plugin. }
   TRALLogSink = class
   private
+    /// Writes the lines to the console.
     FConsole: boolean;
+    /// Log file; empty writes none.
     FFileName: string;
+    /// Text or JSON lines.
     FFormat: TRALLogFormat;
+    /// Serialises the writes and the snapshots.
     FLock: TCriticalSection;
+    /// Logs the bodies, up to FMaxBodyLog.
     FLogBodies: boolean;
+    /// Logs the headers.
     FLogHeaders: boolean;
+    /// Bytes of a body logged.
     FMaxBodyLog: IntegerRAL;
+    /// Rotated files kept.
     FMaxFiles: IntegerRAL;
+    /// Bytes of the file before it rotates; 0 = no limit.
     FMaxSize: Int64RAL;
+    /// Event that receives each line.
     FOnLog: TRALOnLogLine;
+    /// The plugin; nil once it went away.
     FOwner: TObject;
+    /// Header and field names whose values are hidden.
     FRedact: TStringList;
+    /// Holders of the sink; the last one frees it.
     FReferences: IntegerRAL;
+    /// Starts a new file every day.
     FRotateDaily: boolean;
+    /// What each request in flight carried, by its address.
     FSnapshots: TStringList;
+    /// The open log file.
     FStream: TFileStream;
+    /// Day FStream was opened, for daily rotation.
     FStreamDay: IntegerRAL;
 
     /// Opens (or rotates) the file for a line written now.
@@ -80,6 +97,7 @@ type
     /// Takes the snapshot of ARequest out of the list, or nil.
     function TakeSnapshot(ARequest: TRALRequest): TRALLogSnapshot;
   public
+    /// A sink of AOwner, held once.
     constructor Create(AOwner: TObject);
     destructor Destroy; override;
 
@@ -104,6 +122,7 @@ type
   TRALLogPlugin = class(TRALPlugin)
   private
     FRedactHeaders: TStrings;
+    /// Where the lines go, shared with the requests in flight.
     FSink: TRALLogSink;
 
     function GetConsole: boolean;
@@ -116,6 +135,7 @@ type
     function GetMaxFileSize: Int64RAL;
     function GetOnLog: TRALOnLogLine;
     function GetRotateDaily: boolean;
+    /// Copies Redact to the sink.
     procedure RedactChanged(Sender: TObject);
     procedure SetConsole(const AValue: boolean);
     procedure SetFileName(const AValue: string);
@@ -167,13 +187,19 @@ type
   TRALTraceSpan = record
     /// Microseconds since the Unix epoch.
     EndUnixMicro: Int64RAL;
+    /// HTTP method.
     Method: StringRAL;
+    /// Span name: method and route.
     Name: StringRAL;
+    /// Span of the caller, from traceparent; empty for a root.
     ParentSpanId: StringRAL;
+    /// Id of the span.
     SpanId: StringRAL;
     /// Microseconds since the Unix epoch.
     StartUnixMicro: Int64RAL;
+    /// Status of the answer.
     StatusCode: IntegerRAL;
+    /// Id of the trace.
     TraceId: StringRAL;
   end;
 
@@ -185,14 +211,22 @@ type
     finish handler is its method. }
   TRALTraceCollector = class
   private
+    /// Spans are queued for ExportURL.
     FExport: boolean;
+    /// Guards the states and the queue.
     FLock: TCriticalSection;
+    /// Event that receives each finished span.
     FOnSpan: TRALOnTraceSpan;
+    /// The plugin; nil once it went away.
     FOwner: TObject;
+    /// Finished spans waiting for the export.
     FPending: TList;
+    /// Holders of the collector; the last one frees it.
     FReferences: IntegerRAL;
+    /// Spans of the requests in flight, by their address.
     FStates: TStringList;
   public
+    /// A collector of AOwner, held once.
     constructor Create(AOwner: TObject);
     destructor Destroy; override;
 
@@ -215,8 +249,10 @@ type
     an OpenTelemetry collector (OTLP/HTTP, JSON) in batches, from a thread. }
   TRALTracePlugin = class(TRALPlugin)
   private
+    /// The spans, shared with the requests in flight.
     FCollector: TRALTraceCollector;
     FExportEngine: StringRAL;
+    /// Thread that sends the spans to ExportURL.
     FExporter: TThread;
     FExportInterval: IntegerRAL;
     FExportURL: StringRAL;
@@ -232,7 +268,8 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// Sends the pending spans to ExportURL now; the thread calls it every ExportInterval.
+    { Sends the pending spans to ExportURL now; the thread calls it every
+      ExportInterval. }
     procedure Flush;
     procedure ServerActivating; override;
     procedure ServerDeactivating; override;
@@ -256,11 +293,17 @@ type
     route, and the requests in flight. }
   TRALMetricsRegistry = class
   private
+    /// Upper bounds of the duration histogram, in seconds.
     FBuckets: array of Double;
+    /// Request counters by route, method and status.
     FCounts: TStringList;
+    /// Duration histograms by route and method.
     FDurations: TStringList;
+    /// Requests being answered.
     FInFlight: IntegerRAL;
+    /// Guards the counters.
     FLock: TCriticalSection;
+    /// Holders of the registry; the last one frees it.
     FReferences: IntegerRAL;
   public
     constructor Create;
@@ -283,15 +326,17 @@ type
   /// Lines a TRALMetricsPlugin adds to its output (each a full sample or a # comment).
   TRALOnMetricsCollect = procedure(Sender: TObject; AOutput: TStrings) of object;
 
-  /// Prometheus metrics at Path (GET, public): ral_http_requests_total by method,
-  /// route and status, ral_http_request_duration_seconds by method and route
-  /// (histogram) and ral_http_requests_in_flight. The route label is the route's
-  /// path (/users/:id), never the URL, so the number of series stays small.
+  { Prometheus metrics at Path (GET, public): ral_http_requests_total by method,
+    route and status, ral_http_request_duration_seconds by method and route
+    (histogram) and ral_http_requests_in_flight. The route label is the route's
+    path (/users/:id), never the URL, so the number of series stays small. }
   TRALMetricsPlugin = class(TRALPlugin)
   private
     FOnCollect: TRALOnMetricsCollect;
     FPath: StringRAL;
+    /// The counters, shared with the requests in flight.
     FRegistry: TRALMetricsRegistry;
+    /// The metrics route.
     FRoutes: TRALRoutes;
 
     procedure SetPath(const AValue: StringRAL);
@@ -350,6 +395,7 @@ type
     FChecks: TRALHealthChecks;
     FLivePath: StringRAL;
     FReadyPath: StringRAL;
+    /// The liveness and readiness routes.
     FRoutes: TRALRoutes;
 
     /// Builds the routes of LivePath and ReadyPath.
@@ -384,10 +430,12 @@ implementation
 
 {$IFNDEF FPC}
 type
+  /// Unsigned integer the size of a pointer.
   PtrUInt = NativeUInt;
 {$ENDIF}
 
 const
+  /// Lowercase hexadecimal digits.
   cHexDigits = '0123456789abcdef';
 
 function RALRandomHex(ABytes: IntegerRAL): StringRAL;
@@ -912,6 +960,7 @@ threadvar
   /// The traceparent the request on this thread passes on (a new span of it).
   gTraceParent: StringRAL;
 
+/// The traceparent of the request this thread is answering; empty when none.
 function CurrentTraceParent: StringRAL;
 begin
   Result := gTraceParent;
@@ -921,27 +970,35 @@ type
   /// The span a TRALTracePlugin keeps in the request until it finishes.
   TRALTraceState = class
   public
+    /// Span name.
     Name: StringRAL;
+    /// Span of the caller.
     ParentSpanId: StringRAL;
+    /// Id of the span.
     SpanId: StringRAL;
+    /// Start, in microseconds since the Unix epoch.
     StartUnixMicro: Int64RAL;
   end;
 
   /// The thread that exports the spans every ExportInterval.
   TRALTraceExporter = class(TThread)
   private
+    /// The plugin whose spans it sends.
     FPlugin: TRALTracePlugin;
+    /// Wakes the thread early (flush or stop).
     FWake: TEvent;
   protected
     procedure Execute; override;
   public
+    /// The export thread of APlugin, started.
     constructor Create(APlugin: TRALTracePlugin);
     destructor Destroy; override;
   end;
 
+  /// Pointer to a TRALTraceSpan.
   PRALTraceSpan = ^TRALTraceSpan;
 
-{ Whether AValue is ALength lower-case hexadecimal digits, not all zero. }
+/// Whether AValue is ALength lower-case hexadecimal digits, not all zero.
 function IsTraceHex(const AValue: StringRAL; ALength: IntegerRAL): boolean;
 var
   vInt: IntegerRAL;
@@ -1334,8 +1391,11 @@ type
   /// The histogram of one method and route: counts per bucket, sum and count.
   TRALHistogram = class
   public
+    /// Count per bucket.
     Buckets: array of Int64RAL;
+    /// Observations.
     Count: Int64RAL;
+    /// Sum of the observed seconds.
     Sum: Double;
   end;
 
@@ -1382,7 +1442,7 @@ begin
   RALAtomicInc(FInFlight);
 end;
 
-{ A label value as Prometheus escapes it: backslash, double quote, line feed. }
+/// A label value as Prometheus escapes it: backslash, double quote, line feed.
 function LabelValue(const AValue: StringRAL): StringRAL;
 begin
   Result := StringRAL(StringReplace(StringReplace(StringReplace(string(AValue), '\', '\\',

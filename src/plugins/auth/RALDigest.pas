@@ -1,22 +1,9 @@
-﻿/// Digest authentication (RFC 7616, compatible with RFC 2617): the server
-/// plugin and the client authenticator
+﻿{ Digest authentication (RFC 7616, compatible with RFC 2617): the server
+  plugin and the client authenticator. }
 unit RALDigest;
 
-{ The server keeps no state per nonce: a nonce is its own timestamp plus an
-  HMAC of it with a secret of the plugin, so any nonce it issued is checked by
-  recomputing, and one that is too old is still recognised as the server's -
-  which is what lets it answer stale=true (right credentials, old nonce) and
-  the client renew without counting a failure. The only state is the optional
-  replay cache: the last nc seen per nonce, pruned as the nonces expire.
-
-  The client reads the challenge from the 401 of its own request
-  (HandleChallenge) - there is no extra request just to learn the nonce - and
-  counts nc under the authenticator's lock, since one authenticator serves
-  several clients at once.
-
-  qop=auth-int (a hash of the body) is not offered: the server would need the
-  body as it came off the wire, before decoding, and each engine hands it over
-  at a different point. }
+{ The nonce is its own timestamp plus an HMAC with the plugin's secret: checked by
+  recomputing, recognised when old (stale=true). qop=auth-int is not offered. }
 
 interface
 
@@ -26,69 +13,79 @@ uses
   RALRequest, RALResponse, RALParams, RALPlugin, RALAuthBase;
 
 type
-  /// Credentials of AUserName (as sent; the hash of it when AUserHash). Fill
-  /// APassword, or AHA1 = TRALDigest.HashA1(...) to keep no password in clear
+  { Credentials of AUserName (as sent; the hash of it when AUserHash). Fill
+    APassword, or AHA1 = TRALDigest.HashA1(...) to keep no password in clear. }
   TRALOnDigestCredential = procedure(ARequest: TRALRequest; const AUserName,
     ARealm: StringRAL; AUserHash: boolean; var APassword, AHA1: StringRAL) of object;
 
-  { TRALServerDigest }
-
-  /// Digest authenticator of a server: one challenge per algorithm in
-  /// Algorithms, the strongest first
+  { Digest authenticator of a server: one challenge per algorithm in
+    Algorithms, the strongest first. }
   TRALServerDigest = class(TRALAuthServer)
   private
     FAlgorithms: TRALDigestAlgorithms;
+    /// Guards FUsed.
     FLock: TCriticalSection;
     FNonceLifetime: IntegerRAL;
     FOnGetCredential: TRALOnDigestCredential;
     FOnGetRoles: TRALOnGetRoles;
+    /// The opaque value of every challenge.
     FOpaque: StringRAL;
     FPassword: StringRAL;
     FRealm: StringRAL;
     FReplayProtection: boolean;
+    /// Random key of the nonce HMAC.
     FSecret: StringRAL;
     FSessionAlgorithms: boolean;
+    /// Last nc seen per nonce (ReplayProtection).
     FUsed: TStringList;
     FUserHash: boolean;
     FUserName: StringRAL;
 
-    { True when the nonce is one of ours; AStale when it is, but too old }
+    /// True when the nonce is one of ours; AStale when it is, but too old.
     function CheckNonce(const ANonce: StringRAL; out AStale: boolean): boolean;
-    { True when ANC is above the last one seen for ANonce; records it }
+    /// True when ANC is above the last one seen for ANonce; records it.
     function CheckReplay(const ANonce: StringRAL; ANC: Int64RAL): boolean;
+    /// A new nonce: timestamp and its HMAC.
     function NewNonce: StringRAL;
+    /// HMAC of ATimestamp with the secret.
     function NonceSignature(const ATimestamp: StringRAL): StringRAL;
+    /// Timestamp of ANonce; 0 when it is not one.
     function NonceTime(const ANonce: StringRAL): Int64RAL;
+    /// Drops the nonces of FUsed that expired.
     procedure PruneUsed;
+    /// Answers 401 with the challenges; AStale adds stale=true.
     procedure Refuse(AResponse: TRALResponse; AStale: boolean);
   public
     constructor Create(AOwner: TComponent); overload; override;
+    /// A Digest authenticator; the overload takes the one user and password.
     constructor Create(AOwner: TComponent; const AUser: StringRAL;
       const APassword: StringRAL); overload;
     destructor Destroy; override;
 
-    /// The base rule, except a stale nonce: the credentials were right, only
-    /// the nonce was old, and that is no guess
+    { The base rule, except a stale nonce: the credentials were right, only
+      the nonce was old, and that is no guess. }
     function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
       AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
     /// Validation process of the authentication is made here
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
   published
-    /// The hashes offered, one challenge each: SHA-512-256, SHA-256, MD5 in
-    /// that order of preference
+    { The hashes offered, one challenge each: SHA-512-256, SHA-256, MD5 in
+      that order of preference. }
     property Algorithms: TRALDigestAlgorithms read FAlgorithms write FAlgorithms
       default [tdaSHA2_256, tdaMD5];
     /// Seconds a nonce is good for; after it the client is told stale=true
     property NonceLifetime: IntegerRAL read FNonceLifetime write FNonceLifetime
       default 300;
+    /// Gives the password, or H(A1), of a user (see TRALOnDigestCredential).
     property OnGetCredential: TRALOnDigestCredential read FOnGetCredential
       write FOnGetCredential;
     { Fired after the user was accepted, to fill the roles of ARequest.Identity
       (route Roles, policies); the name and scheme are already there. }
     property OnGetRoles: TRALOnGetRoles read FOnGetRoles write FOnGetRoles;
-    /// Single-user shortcut, as in TRALServerBasicAuth; OnGetCredential takes
-    /// precedence
+    { Single-user shortcut, as in TRALServerBasicAuth; OnGetCredential takes
+      precedence. }
     property Password: StringRAL read FPassword write FPassword;
+    /// Realm of the challenges, part of the hash.
     property Realm: StringRAL read FRealm write FRealm;
     /// Refuses a request that repeats an nc already seen with its nonce
     property ReplayProtection: boolean read FReplayProtection write FReplayProtection
@@ -98,14 +95,14 @@ type
       write FSessionAlgorithms default False;
     /// Asks the client to send H(user:realm) instead of the user name
     property UserHash: boolean read FUserHash write FUserHash default False;
+    /// Single-user shortcut, with Password.
     property UserName: StringRAL read FUserName write FUserName;
   end;
-
-  { TRALClientDigest }
 
   /// Digest authenticator for client components
   TRALClientDigest = class(TRALAuthClient)
   private
+    /// The challenge answered and the nc count.
     FDigest: TRALDigest;
 
     function GetDigestParams: TRALDigestParams;
@@ -115,30 +112,33 @@ type
     procedure SetUserName(const AValue: StringRAL);
   public
     constructor Create(AOwner: TComponent); overload; override;
+    /// A Digest authenticator; the overload takes the user and password.
     constructor Create(AOwner: TComponent; const AUser: StringRAL;
       const APassword: StringRAL); overload;
     destructor Destroy; override;
 
-    /// Takes the nonce of the 401: the strongest Digest challenge this class
-    /// can answer. False when there is none, or when the same nonce came
-    /// back without stale=true - the credentials are wrong, and sending them
-    /// again would only count one more failure
+    { Takes the nonce of the 401: the strongest Digest challenge this class
+      can answer. False when there is none, or when the same nonce came
+      back without stale=true - the credentials are wrong, and sending them
+      again would only count one more failure. }
     function HandleChallenge(ARequest: TRALRequest; AResponse: TRALResponse): boolean; override;
     /// There is a nonce to answer
     function IsAuthenticated: boolean; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
 
-    /// The challenge being answered. The object is rewritten by every 401:
-    /// hold Lock while reading it from another thread
+    { The challenge being answered. The object is rewritten by every 401:
+      hold Lock while reading it from another thread. }
     property DigestParams: TRALDigestParams read GetDigestParams;
   published
+    /// Password of the user.
     property Password: StringRAL read GetPassword write SetPassword;
+    /// User sent.
     property UserName: StringRAL read GetUserName write SetUserName;
   end;
 
 implementation
 
-{ the request-target of a full URL: path and query, as the request line has it }
+/// The request-target of a full URL: path and query, as the request line has it.
 function RequestTarget(const AURL: StringRAL): StringRAL;
 var
   vInt: IntegerRAL;
@@ -158,6 +158,7 @@ begin
     Result := '/';
 end;
 
+/// Unix time in seconds (UTC).
 function UnixNow: Int64RAL;
 begin
   Result := DateTimeToUnix(RALDateTimeToGMT(Now));

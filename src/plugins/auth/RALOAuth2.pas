@@ -1,27 +1,9 @@
-﻿/// OAuth 2.0 (RFC 6749/6750): authorization server, resource server and
-/// client, plus the loopback redirect of native apps (RFC 8252)
+﻿{ OAuth 2.0 (RFC 6749/6750): authorization server, resource server and
+  client, plus the loopback redirect of native apps (RFC 8252). }
 unit RALOAuth2;
 
-{ TRALServerOAuth2 is two things, and either can be switched off:
-  - the authorization server (Issuing): the token endpoint with
-    client_credentials, refresh_token and authorization_code with PKCE S256
-    (RFC 7636, always required), introspection (RFC 7662), revocation
-    (RFC 7009), the JWK set and the metadata document (RFC 8414). Tokens are
-    JWTs - HS* with SignSecretKey, RS*/ES* with PrivateKey through OpenSSL;
-  - the resource server (Validate): it checks the bearer tokens of the routes
-    it protects, its own tokens (Validation = ovLocal), another issuer's
-    through its JWK set (ovJWKS - Keycloak, Entra ID), or opaque ones through an
-    introspection endpoint (ovIntrospection), and the scope each route needs
-    (RouteScopes).
-
-  Clients, secrets, users and consent are the application's, through events:
-  the plugin never decides who someone is. Codes, refresh tokens and revoked
-  token ids live in Store, in memory by default - an application that needs them
-  across restarts or servers gives it a TRALOAuth2Store of its own.
-
-  The grant type "password" is not there on purpose (RFC 9700, OAuth 2.1 drop
-  it; the JWT /gettoken already covers that case), nor are the implicit flow,
-  DPoP or mTLS. }
+{ TRALServerOAuth2 is the authorization server (Issuing) and the resource server
+  (Validate); clients, users and consent are the application's, through events. }
 
 interface
 
@@ -33,47 +15,58 @@ uses
   RALKeyValueStore;
 
 type
-  /// How a client proves itself to the token endpoint: HTTP Basic
-  /// (client_secret_basic) or fields in the body (client_secret_post)
+  { How a client proves itself to the token endpoint: HTTP Basic
+    (client_secret_basic) or fields in the body (client_secret_post). }
   TRALOAuth2ClientAuth = (ocaSecretBasic, ocaSecretPost);
   /// What a client asks for when it has no token
   TRALOAuth2GrantType = (ogtClientCredentials, ogtAuthorizationCode);
+  /// A grant the token endpoint accepts.
   TRALOAuth2Grant = (ogClientCredentials, ogAuthorizationCode, ogRefreshToken);
+  /// Set of TRALOAuth2Grant.
   TRALOAuth2Grants = set of TRALOAuth2Grant;
-  /// Where the resource server checks a token: its own keys, the issuer's JWK
-  /// set, or the issuer's introspection endpoint
+  { Where the resource server checks a token: its own keys, the issuer's JWK
+    set, or the issuer's introspection endpoint. }
   TRALOAuth2Validation = (ovLocal, ovJWKS, ovIntrospection);
-  /// What the application decided in OnAuthorize: ocPending when it wrote a
-  /// page (a login form) into the response and the user has not answered yet
+  { What the application decided in OnAuthorize: ocPending when it wrote a
+    page (a login form) into the response and the user has not answered yet. }
   TRALOAuth2Consent = (ocPending, ocApproved, ocDenied);
-
-  { TRALOAuth2Ticket }
 
   /// What a code or a refresh token stands for
   TRALOAuth2Ticket = class
   public
+    /// Client the ticket was issued to.
     ClientID: StringRAL;
+    /// PKCE challenge of a code.
     CodeChallenge: StringRAL;
+    /// When it expires (local time).
     Expires: TDateTime;
+    /// Redirect URI of a code.
     RedirectURI: StringRAL;
+    /// Scope granted.
     Scope: StringRAL;
+    /// User the ticket stands for; empty for client_credentials.
     Subject: StringRAL;
 
+    /// A copy of the ticket.
     function Clone: TRALOAuth2Ticket;
   end;
 
-  { TRALOAuth2Store }
-
-  /// Codes, refresh tokens and revoked access tokens, in memory and safe for
-  /// several threads. Descend and override to keep them elsewhere
+  { Codes, refresh tokens and revoked access tokens, in memory and safe for
+    several threads. Descend and override to keep them elsewhere. }
   TRALOAuth2Store = class
   private
+    /// Codes and their tickets.
     FCodes: TStringList;
+    /// Guards the three lists.
     FLock: TCriticalSection;
+    /// Refresh tokens and their tickets.
     FRefresh: TStringList;
+    /// Revoked jti and their expiration.
     FRevoked: TStringList;
 
+    /// Drops expired entries; the lock taken.
     procedure Prune;
+    /// Takes AKey out of AList with its ticket; nil when unknown or expired.
     function Take(AList: TStringList; const AKey: StringRAL): TRALOAuth2Ticket;
   public
     constructor Create; virtual;
@@ -81,8 +74,8 @@ type
 
     /// Whether the access token with this jti was revoked
     function IsRevoked(const AJTI: StringRAL): boolean; virtual;
-    /// A copy of the ticket of a refresh token still valid, or nil. The caller
-    /// frees it
+    { A copy of the ticket of a refresh token still valid, or nil. The caller
+      frees it. }
     function PeekRefreshToken(const AToken: StringRAL): TRALOAuth2Ticket; virtual;
     /// Revokes the access token with this jti until it expires anyway
     procedure Revoke(const AJTI: StringRAL; AExpires: TDateTime); virtual;
@@ -90,29 +83,34 @@ type
     procedure SaveCode(const ACode: StringRAL; ATicket: TRALOAuth2Ticket); virtual;
     /// Keeps a refresh token; the store owns ATicket
     procedure SaveRefreshToken(const AToken: StringRAL; ATicket: TRALOAuth2Ticket); virtual;
-    /// Takes a code out - it is single use - with its ticket, or nil when it is
-    /// unknown or expired. The caller frees it
+    { Takes a code out - it is single use - with its ticket, or nil when it is
+      unknown or expired. The caller frees it. }
     function TakeCode(const ACode: StringRAL): TRALOAuth2Ticket; virtual;
-    /// Takes a refresh token out - a refresh token is used once, and a new one
-    /// comes with the new access token - or nil. The caller frees it
+    { Takes a refresh token out - a refresh token is used once, and a new one
+      comes with the new access token - or nil. The caller frees it. }
     function TakeRefreshToken(const AToken: StringRAL): TRALOAuth2Ticket; virtual;
   end;
 
+  { Login and consent: fills ASubject and AConsent, or writes a page and leaves
+    ocPending. }
   TRALOnOAuth2Authorize = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
     const AClientID, AScope: StringRAL; var ASubject: StringRAL;
     var AConsent: TRALOAuth2Consent) of object;
+  /// Adds claims of the application to an access token being issued.
   TRALOnOAuth2Claims = procedure(ARequest: TRALRequest; const AClientID, ASubject,
     AScope: StringRAL; AClaims: TRALJWTParams) of object;
+  /// Says whether AClientSecret is the secret of AClientID.
   TRALOnOAuth2Client = procedure(ARequest: TRALRequest; const AClientID,
     AClientSecret: StringRAL; var AValid: boolean) of object;
+  /// Says whether ARedirectURI is allowed for AClientID.
   TRALOnOAuth2Redirect = procedure(const AClientID, ARedirectURI: StringRAL;
     var AValid: boolean) of object;
+  /// Narrows AScope or refuses it (AValid False).
   TRALOnOAuth2Scope = procedure(ARequest: TRALRequest; const AClientID,
     ASubject: StringRAL; var AScope: StringRAL; var AValid: boolean) of object;
+  /// A last say over a checked token, with its claims.
   TRALOnOAuth2Token = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
     AClaims: TRALJWTParams; var AValid: boolean) of object;
-
-  { TRALServerOAuth2 }
 
   /// OAuth2 authorization server and resource server
   TRALServerOAuth2 = class(TRALAuthServer)
@@ -120,26 +118,34 @@ type
     FAccessTokenLifetime: IntegerRAL;
     FAlgorithm: TRALJWTAlgorithm;
     FAudience: StringRAL;
+    /// Route of the authorization endpoint.
     FAuthorizeRoute: TRALRoute;
     FClientCredentialsRefresh: boolean;
     FClockSkew: IntegerRAL;
     FCodeLifetime: IntegerRAL;
     FFetchEngine: StringRAL;
     FGrants: TRALOAuth2Grants;
+    /// Introspection answers reused for IntrospectionCache seconds.
     FIntrospectCache: TStringList;
     FIntrospectCacheSecs: IntegerRAL;
     FIntrospectionClientID: StringRAL;
     FIntrospectionClientSecret: StringRAL;
     FIntrospectionURL: StringRAL;
+    /// Route of the introspection endpoint.
     FIntrospectRoute: TRALRoute;
     FIssuer: StringRAL;
     FIssuing: boolean;
+    /// Route of the JWK set.
     FJWKSRoute: TRALRoute;
     FJWKSURL: StringRAL;
+    /// Key loaded from PrivateKey.
     FKey: TRALJWSKey;
     FKeyID: StringRAL;
+    /// PEM text FKey was loaded from.
     FKeyText: StringRAL;
+    /// Guards the keys and the caches.
     FLock: TCriticalSection;
+    /// Route of the metadata document.
     FMetadataRoute: TRALRoute;
     FOnAuthorize: TRALOnOAuth2Authorize;
     FOnClaims: TRALOnOAuth2Claims;
@@ -150,44 +156,65 @@ type
     FPrivateKey: TStrings;
     FRedirectURIs: TStrings;
     FRefreshTokenLifetime: IntegerRAL;
+    /// JWK set fetched from JWKSURL.
     FRemoteKeys: TRALJWKSet;
+    /// When FRemoteKeys was fetched.
     FRemoteKeysAt: TDateTime;
+    /// Keys replaced, kept until the plugin is freed.
     FRetired: TList;
     FRevocationStore: TRALKeyValueStore;
+    /// Route of the revocation endpoint.
     FRevokeRoute: TRALRoute;
     FRolesClaim: StringRAL;
+    /// The plugin's own routes.
     FRoutes: TRALRoutes;
     FRouteScopes: TStrings;
     FSignSecretKey: StringRAL;
     FStore: TRALOAuth2Store;
+    /// Route of the token endpoint.
     FTokenRoute: TRALRoute;
     FValidation: TRALOAuth2Validation;
 
+    /// Answers the authorization endpoint (authorization_code flow).
     procedure AnswerAuthorize(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers an OAuth2 error (RFC 6749 5.2); ABasicChallenge adds the Basic challenge.
     procedure AnswerError(AResponse: TRALResponse; AStatus: IntegerRAL;
       const AError, ADescription: StringRAL; ABasicChallenge: boolean = False);
+    /// Answers the introspection endpoint (RFC 7662).
     procedure AnswerIntrospect(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers the JWK set of the signing key.
     procedure AnswerJWKS(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers the metadata document (RFC 8414).
     procedure AnswerMetadata(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers the revocation endpoint (RFC 7009).
     procedure AnswerRevoke(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers the token endpoint, by grant type.
     procedure AnswerToken(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Issues the access token, and a refresh token when ARefresh.
     procedure AnswerTokens(ARequest: TRALRequest; AResponse: TRALResponse;
       const AClientID, ASubject, AScope: StringRAL; ARefresh: boolean);
+    /// Issuer, else the scheme and host of ARequest.
     function BaseURL(ARequest: TRALRequest): StringRAL;
     { the client of a request to the token, introspection or revocation
       endpoint: Basic or the fields; False, with the error already answered,
       when it does not authenticate }
     function CheckClient(ARequest: TRALRequest; AResponse: TRALResponse;
       out AClientID: StringRAL): boolean;
+    /// Whether ARedirectURI is allowed for AClientID.
     function CheckRedirect(const AClientID, ARedirectURI: StringRAL): boolean;
+    /// Lets OnValidateScope narrow AScope; False refuses it.
     function CheckScope(ARequest: TRALRequest; const AClientID, ASubject: StringRAL;
       var AScope: StringRAL): boolean;
+    /// An outbound request with FetchEngine (see RALOAuth2Fetch).
     function Fetch(const AURL: StringRAL; AFields: TStrings; const AUser,
       APassword: StringRAL; out AStatus: IntegerRAL): StringRAL;
     function GetPath(AIndex: IntegerRAL): StringRAL;
+    /// Asks IntrospectionURL about AToken and fills AClaims; AReason when refused.
     function Introspect(const AToken: StringRAL; AClaims: TRALJWTParams;
       out AReason: StringRAL): boolean;
+    /// Key AKeyID of the issuer's JWK set, fetched again when unknown or old.
     function RemoteKey(const AKeyID: StringRAL): TRALJWSKey;
+    /// Scopes RouteScopes asks for the route of ARequest.
     function RequiredScope(ARequest: TRALRequest): StringRAL;
     procedure SetPath(AIndex: IntegerRAL; const AValue: StringRAL);
     procedure SetPrivateKey(AValue: TStrings);
@@ -195,9 +222,11 @@ type
     procedure SetRevocationStore(const AValue: TRALKeyValueStore);
     procedure SetRouteScopes(AValue: TStrings);
     procedure SetStore(AValue: TRALOAuth2Store);
+    /// Key that signs: loaded from PrivateKey, or the HMAC secret.
     function SigningKey: TRALJWSKey;
     /// Whether the token id AJTI was revoked, in Store or in RevocationStore.
     function TokenRevoked(const AJTI: StringRAL): boolean;
+    /// Checks AToken with AKey (signature, dates, iss, aud) and fills AClaims.
     function VerifyJWT(const AToken: StringRAL; AKey: TRALJWSKey;
       AClaims: TRALJWTParams; out AReason: StringRAL): boolean;
   protected
@@ -207,15 +236,15 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// The token endpoint checks the client's secret: a refusal there
-    /// (invalid_client, 401) is a guess, a token issued is proof. A bearer
-    /// refused elsewhere is not - nobody guesses a token
+    { The token endpoint checks the client's secret: a refusal there
+      (invalid_client, 401) is a guess, a token issued is proof. A bearer
+      refused elsewhere is not - nobody guesses a token. }
     function AttemptOf(ARequest: TRALRequest; AResponse: TRALResponse;
       AResult: TRALAuthResult; AOnOwnRoute: boolean): TRALAuthAttempt; override;
     /// Answers the plugin's own routes (token, authorize, introspection...)
     procedure BeforeValidate(ARequest: TRALRequest; AResponse: TRALResponse); override;
-    /// Checks an access token as the resource server does - signature,
-    /// dates, iss, aud, revocation - and fills AClaims; AReason says why not
+    { Checks an access token as the resource server does - signature,
+      dates, iss, aud, revocation - and fills AClaims; AReason says why not. }
     function CheckAccessToken(const AToken: StringRAL; AClaims: TRALJWTParams;
       out AReason: StringRAL): boolean;
     /// An access token as the token endpoint issues it
@@ -225,12 +254,12 @@ type
     class function PKCEChallenge(const AVerifier: StringRAL): StringRAL;
     function ResolveRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
       override;
-    /// The resource server: the bearer token of the request, and the scope of
-    /// its route
+    { The resource server: the bearer token of the request, and the scope of
+      its route. }
     procedure Validate(ARequest: TRALRequest; AResponse: TRALResponse); override;
 
-    /// Where codes, refresh tokens and revocations are kept. In memory by
-    /// default; an object assigned here becomes the plugin's and is freed with it
+    { Where codes, refresh tokens and revocations are kept. In memory by
+      default; an object assigned here becomes the plugin's and is freed with it. }
     property Store: TRALOAuth2Store read FStore write SetStore;
   published
     /// Seconds an access token is good for
@@ -241,9 +270,10 @@ type
       default tjaHSHA256;
     /// aud of the tokens issued; when set, a token without it is refused
     property Audience: StringRAL read FAudience write FAudience;
+    /// Path of the authorization endpoint.
     property AuthorizePath: StringRAL index 1 read GetPath write SetPath;
-    /// Issues a refresh token with client_credentials too (RFC 6749 4.4.3 says
-    /// it should not, hence off)
+    { Issues a refresh token with client_credentials too (RFC 6749 4.4.3 says
+      it should not, hence off). }
     property ClientCredentialsRefresh: boolean read FClientCredentialsRefresh
       write FClientCredentialsRefresh default False;
     /// Seconds of clock difference tolerated on exp and nbf
@@ -251,42 +281,49 @@ type
     /// Seconds an authorization code is good for
     property CodeLifetime: IntegerRAL read FCodeLifetime write FCodeLifetime
       default 60;
-    /// The client engine of the requests the plugin makes itself (JWK set,
-    /// introspection). Empty takes the first HTTP engine linked
+    { The client engine of the requests the plugin makes itself (JWK set,
+      introspection). Empty takes the first HTTP engine linked. }
     property FetchEngine: StringRAL read FFetchEngine write FFetchEngine;
+    /// Grant types the token endpoint accepts.
     property Grants: TRALOAuth2Grants read FGrants write FGrants
       default [ogClientCredentials, ogAuthorizationCode, ogRefreshToken];
     /// Seconds an introspection answer is reused
     property IntrospectionCache: IntegerRAL read FIntrospectCacheSecs
       write FIntrospectCacheSecs default 60;
+    /// Client this server introspects as.
     property IntrospectionClientID: StringRAL read FIntrospectionClientID
       write FIntrospectionClientID;
+    /// Secret of IntrospectionClientID.
     property IntrospectionClientSecret: StringRAL read FIntrospectionClientSecret
       write FIntrospectionClientSecret;
     /// The introspection endpoint of the issuer, for Validation = ovIntrospection
     property IntrospectionURL: StringRAL read FIntrospectionURL write FIntrospectionURL;
+    /// Path of the introspection endpoint.
     property IntrospectPath: StringRAL index 2 read GetPath write SetPath;
-    /// iss of the tokens issued and required of the tokens checked, and the
-    /// base of the URLs of the metadata. Usually the server's public URL
+    { iss of the tokens issued and required of the tokens checked, and the
+      base of the URLs of the metadata. Usually the server's public URL. }
     property Issuer: StringRAL read FIssuer write FIssuer;
-    /// Answers the authorization server routes. Off, the plugin only checks
-    /// tokens (a resource server)
+    { Answers the authorization server routes. Off, the plugin only checks
+      tokens (a resource server). }
     property Issuing: boolean read FIssuing write FIssuing default True;
+    /// Path of the JWK set.
     property JWKSPath: StringRAL index 3 read GetPath write SetPath;
     /// The JWK set of the issuer, for Validation = ovJWKS
     property JWKSURL: StringRAL read FJWKSURL write FJWKSURL;
     /// kid of the tokens issued; empty takes the key's thumbprint (RS*/ES*)
     property KeyID: StringRAL read FKeyID write FKeyID;
+    /// Path of the metadata document.
     property MetadataPath: StringRAL index 4 read GetPath write SetPath;
-    /// Login and consent of the authorization_code flow. Unassigned, every
-    /// authorization is denied
+    { Login and consent of the authorization_code flow. Unassigned, every
+      authorization is denied. }
     property OnAuthorize: TRALOnOAuth2Authorize read FOnAuthorize write FOnAuthorize;
     /// Claims of your own in the access tokens issued
     property OnClaims: TRALOnOAuth2Claims read FOnClaims write FOnClaims;
-    /// Whether AClientSecret is the secret of AClientID - empty for a public
-    /// client in the authorization_code flow. Unassigned, no client is valid
+    { Whether AClientSecret is the secret of AClientID - empty for a public
+      client in the authorization_code flow. Unassigned, no client is valid. }
     property OnValidateClient: TRALOnOAuth2Client read FOnValidateClient
       write FOnValidateClient;
+    /// Says whether a redirect URI is allowed; unassigned, RedirectURIs decides.
     property OnValidateRedirect: TRALOnOAuth2Redirect read FOnValidateRedirect
       write FOnValidateRedirect;
     /// Narrow or refuse the scope asked for. Unassigned, any scope is granted
@@ -297,8 +334,8 @@ type
       write FOnValidateToken;
     /// The private key in PEM, for Algorithm RS*/ES*
     property PrivateKey: TStrings read FPrivateKey write SetPrivateKey;
-    /// "client_id=redirect_uri" lines allowed when OnValidateRedirect is not
-    /// assigned
+    { "client_id=redirect_uri" lines allowed when OnValidateRedirect is not
+      assigned. }
     property RedirectURIs: TStrings read FRedirectURIs write SetRedirectURIs;
     /// Seconds a refresh token is good for; zero issues none
     property RefreshTokenLifetime: IntegerRAL read FRefreshTokenLifetime
@@ -307,25 +344,27 @@ type
       TRALServerJWTAuth), so servers sharing one store refuse a token revoked
       on any of them. Unlinked, Store alone keeps them. }
     property RevocationStore: TRALKeyValueStore read FRevocationStore write SetRevocationStore;
+    /// Path of the revocation endpoint.
     property RevokePath: StringRAL index 5 read GetPath write SetPath;
     { Claims (separated by commas) the roles of ARequest.Identity are read from;
       the scope is one of them by default, so a policy can ask for a scope. }
     property RolesClaim: StringRAL read FRolesClaim write FRolesClaim;
-    /// "route=scope1 scope2" lines: the scopes a token needs for a route (its
-    /// full route, as declared: /users/:id)
+    { "route=scope1 scope2" lines: the scopes a token needs for a route (its
+      full route, as declared: /users/:id). }
     property RouteScopes: TStrings read FRouteScopes write SetRouteScopes;
     /// The HMAC key of Algorithm HS*
     property SignSecretKey: StringRAL read FSignSecretKey write FSignSecretKey;
+    /// Path of the token endpoint.
     property TokenPath: StringRAL index 0 read GetPath write SetPath;
+    /// Where bearer tokens are checked: own keys, JWKSURL or IntrospectionURL.
     property Validation: TRALOAuth2Validation read FValidation write FValidation
       default ovLocal;
   end;
 
-  { TRALClientOAuth2 }
-
   /// OAuth2 client: gets, renews and sends the access token
   TRALClientOAuth2 = class(TRALAuthClient)
   private
+    /// Access token held.
     FAccessToken: StringRAL;
     FAudience: StringRAL;
     FClientAuth: TRALOAuth2ClientAuth;
@@ -333,11 +372,16 @@ type
     FClientSecret: StringRAL;
     FExpiresAt: TDateTime;
     FGrantType: TRALOAuth2GrantType;
+    /// Code of SetAuthorizationCode, exchanged by the next request.
     FPendingCode: StringRAL;
+    /// Redirect URI of the pending code.
     FPendingRedirect: StringRAL;
+    /// State AuthorizationURL sent.
     FPendingState: StringRAL;
+    /// PKCE verifier of the pending code.
     FPendingVerifier: StringRAL;
     FRefreshMargin: IntegerRAL;
+    /// Refresh token held.
     FRefreshToken: StringRAL;
     FScope: StringRAL;
     FTokenScope: StringRAL;
@@ -363,29 +407,30 @@ type
   public
     constructor Create(AOwner: TComponent); override;
 
-    /// The URL to send the user to (a browser), with a new state and PKCE
-    /// verifier kept here. AState is what the answer must bring back
+    { The URL to send the user to (a browser), with a new state and PKCE
+      verifier kept here. AState is what the answer must bring back. }
     function AuthorizationURL(const AAuthorizeURL, ARedirectURI: StringRAL;
       out AState: StringRAL): StringRAL;
     /// Forgets the tokens
     procedure ClearTokens;
-    /// A 401: the access token is dropped; the refresh token, if any, renews
-    /// it before the request goes again
+    { A 401: the access token is dropped; the refresh token, if any, renews
+      it before the request goes again. }
     function HandleChallenge(ARequest: TRALRequest; AResponse: TRALResponse): boolean; override;
     /// There is an access token not about to expire
     function IsAuthenticated: boolean; override;
-    /// Obtains the access token: refresh_token first, then the code of
-    /// SetAuthorizationCode, or client_credentials
+    { Obtains the access token: refresh_token first, then the code of
+      SetAuthorizationCode, or client_credentials. }
     function Prepare(ATransport: TRALAuthTransport; AVars: TStringList;
       AResponse: TRALResponse): IntegerRAL; override;
     procedure SetAuthHeader(AVars: TStringList; AParams: TRALParams); override;
-    /// The code the redirect brought, with its state; the next request
-    /// exchanges it. Raises when the state is not the one sent
+    { The code the redirect brought, with its state; the next request
+      exchanges it. Raises when the state is not the one sent. }
     procedure SetAuthorizationCode(const ACode, AState: StringRAL);
 
+    /// Access token held; empty before the first request.
     property AccessToken: StringRAL read GetAccessToken;
-    /// When the access token expires (local time); zero when the provider
-    /// did not say
+    { When the access token expires (local time); zero when the provider
+      did not say. }
     property ExpiresAt: TDateTime read FExpiresAt;
     /// Kept by the application across runs, to start from it
     property RefreshToken: StringRAL read GetRefreshToken write SetRefreshToken;
@@ -394,35 +439,44 @@ type
   published
     /// Sent as "audience" with the token request, when set
     property Audience: StringRAL read FAudience write FAudience;
+    /// How the client authenticates to the token endpoint.
     property ClientAuth: TRALOAuth2ClientAuth read FClientAuth write FClientAuth
       default ocaSecretBasic;
+    /// Client identifier.
     property ClientID: StringRAL read FClientID write FClientID;
+    /// Client secret; empty for a public client.
     property ClientSecret: StringRAL read FClientSecret write FClientSecret;
+    /// Grant used when there is no token.
     property GrantType: TRALOAuth2GrantType read FGrantType write FGrantType
       default ogtClientCredentials;
     /// Seconds before expires_in when the token is renewed ahead of a 401
     property RefreshMargin: IntegerRAL read FRefreshMargin write FRefreshMargin
       default 30;
+    /// Scope asked for, separated by blanks.
     property Scope: StringRAL read FScope write FScope;
-    /// The token endpoint: a route of the server called, or an absolute URL
-    /// (the provider is often another host)
+    { The token endpoint: a route of the server called, or an absolute URL
+      (the provider is often another host). }
     property TokenURL: StringRAL read FTokenURL write FTokenURL;
   end;
 
-  { TRALOAuth2Loopback }
-
-  /// The redirect of a desktop app (RFC 8252 7.3): a route on a TRALServer
-  /// listening on 127.0.0.1 receives the code the browser brings back
+  { The redirect of a desktop app (RFC 8252 7.3): a route on a TRALServer
+    listening on 127.0.0.1 receives the code the browser brings back. }
   TRALOAuth2Loopback = class(TRALComponent)
   private
+    /// Code the browser brought.
     FCode: StringRAL;
+    /// Error the provider sent.
     FError: StringRAL;
+    /// Set when the browser arrives.
     FEvent: TEvent;
     FPath: StringRAL;
+    /// Route of Path on Server.
     FRoute: TRALRoute;
     FServer: TRALServer;
+    /// State the browser brought.
     FState: StringRAL;
 
+    /// Takes code, state and error of the redirect and answers a short page.
     procedure Reply(ARequest: TRALRequest; AResponse: TRALResponse);
     procedure SetServer(AValue: TRALServer);
   protected
@@ -433,11 +487,12 @@ type
 
     /// http://127.0.0.1:<Server.Port><Path>
     function RedirectURI: StringRAL;
-    /// Starts Server, waits up to ATimeout ms for the browser, stops it. The
-    /// error the provider sent (access_denied) comes in AError
+    { Starts Server, waits up to ATimeout ms for the browser, stops it. The
+      error the provider sent (access_denied) comes in AError. }
     function WaitForCode(ATimeout: IntegerRAL; out ACode, AState,
       AError: StringRAL): boolean;
   published
+    /// Path of the redirect route.
     property Path: StringRAL read FPath write FPath;
     /// Any engine; its Port is the one of RedirectURI
     property Server: TRALServer read FServer write SetServer;
@@ -456,15 +511,18 @@ uses
   RALClient;
 
 const
+  /// Default paths: token, authorize, introspect, JWKS, metadata, revoke.
   cPathDefaults: array[0..5] of StringRAL = ('/oauth/token', '/oauth/authorize',
     '/oauth/introspect', '/oauth/jwks', '/.well-known/oauth-authorization-server',
     '/oauth/revoke');
 
+/// ABytes random bytes in base64url.
 function RandomText(ABytes: IntegerRAL): StringRAL;
 begin
   Result := RALBase64UrlEncode(RandomBytes(ABytes));
 end;
 
+/// Value of the form field AName, else of the query param; empty when absent.
 function FieldOf(ARequest: TRALRequest; const AName: StringRAL): StringRAL;
 var
   vParam: TRALParam;
@@ -478,7 +536,7 @@ begin
     Result := '';
 end;
 
-{ every scope of ANeeded is in AHave (both space-separated) }
+/// Every scope of ANeeded is in AHave (both space-separated).
 function HasScopes(const AHave, ANeeded: StringRAL): boolean;
 var
   vHave, vNeed: TStringList;
@@ -503,6 +561,7 @@ begin
   end;
 end;
 
+/// Key of a token in the store: base64url of its SHA-256.
 function TokenKey(const AToken: StringRAL): StringRAL;
 var
   vHash: TRALSHA2_32;

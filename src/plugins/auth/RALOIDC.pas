@@ -1,8 +1,8 @@
-/// OpenID Connect: logging users in through an identity provider (Google,
-/// Microsoft Entra ID, Keycloak, Auth0, Okta or any OIDC issuer), on the
-/// server (TRALOIDCLogin, authorization code + PKCE) and on a desktop or
-/// console client (TRALClientOIDCAuth, device flow of RFC 8628 or the
-/// browser with the loopback redirect of RFC 8252).
+{ OpenID Connect: logging users in through an identity provider (Google,
+  Microsoft Entra ID, Keycloak, Auth0, Okta or any OIDC issuer), on the
+  server (TRALOIDCLogin, authorization code + PKCE) and on a desktop or
+  console client (TRALClientOIDCAuth, device flow of RFC 8628 or the
+  browser with the loopback redirect of RFC 8252). }
 unit RALOIDC;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -20,7 +20,7 @@ uses
   RALPlugin, RALAuthBase, RALKeyValueStore, RALAuthentication, RALOAuth2;
 
 type
-  /// Known identity providers: what changes between them is the issuer and the roles claim.
+  /// Known identity providers: they differ in the issuer and the roles claim.
   TRALOIDCProvider = (opGeneric, opGoogle, opMicrosoft, opKeycloak, opAuth0, opOkta);
 
   { The endpoints of an issuer, read from its discovery document
@@ -32,10 +32,15 @@ type
     FEndSessionEndpoint: StringRAL;
     FIssuer: StringRAL;
     FJwksURI: StringRAL;
+    /// JWK set of the provider.
     FKeys: TRALJWKSet;
+    /// When FKeys was fetched.
     FKeysAt: TDateTime;
+    /// When the discovery document was read.
     FLoadedAt: TDateTime;
+    /// Guards the document and the keys.
     FLock: TCriticalSection;
+    /// Key sets replaced, freed with the object.
     FRetired: TList;
     FTokenEndpoint: StringRAL;
     FUserinfoEndpoint: StringRAL;
@@ -95,6 +100,7 @@ type
   TRALOIDCLogin = class(TRALPlugin)
   private
     FCacheMinutes: IntegerRAL;
+    /// Route the provider redirects back to.
     FCallbackRoute: TRALRoute;
     FClientID: StringRAL;
     FClientSecret: StringRAL;
@@ -102,34 +108,42 @@ type
     FDiscoveryURL: StringRAL;
     FFetchEngine: StringRAL;
     FIssuer: StringRAL;
+    /// Route that starts the login.
     FLoginRoute: TRALRoute;
+    /// Route that ends the session.
     FLogoutRoute: TRALRoute;
     FOnError: TRALOnOIDCError;
     FOnLogin: TRALOnOIDCLogin;
+    /// Store used when Store is not assigned.
     FOwnStore: TRALMemoryStore;
     FPostLoginRedirect: StringRAL;
     FPostLogoutRedirect: StringRAL;
     FProvider: TRALOIDCProvider;
     FRedirectURI: StringRAL;
     FRolesClaim: StringRAL;
+    /// Owner of the three routes.
     FRoutes: TOwnedCollection;
     FScope: StringRAL;
     FSession: TRALServerJWTAuth;
     FStore: TRALKeyValueStore;
 
+    /// Checks state and nonce, exchanges the code and logs the user in.
     procedure AnswerCallback(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Redirects the browser to the provider with state, nonce and PKCE.
     procedure AnswerLogin(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Ends the session and redirects to the provider's logout.
     procedure AnswerLogout(ARequest: TRALRequest; AResponse: TRALResponse);
-    { refuses the login: OnError, or a 400/403 page with AError }
+    /// Refuses the login: OnError, or a 400/403 page with AError.
     procedure Fail(ARequest: TRALRequest; AResponse: TRALResponse; AStatus: IntegerRAL;
       const AError: StringRAL);
     function GetPath(AIndex: IntegerRAL): StringRAL;
-    { the redirect_uri: RedirectURI, else the callback on the host the browser used }
+    /// The redirect_uri: RedirectURI, else the callback on the host the browser used.
     function RedirectFor(ARequest: TRALRequest): StringRAL;
     procedure SetPath(AIndex: IntegerRAL; const AValue: StringRAL);
     procedure SetProvider(AValue: TRALOIDCProvider);
     procedure SetSession(const AValue: TRALServerJWTAuth);
     procedure SetStore(const AValue: TRALKeyValueStore);
+    /// Store, or the internal one.
     function UsedStore: TRALKeyValueStore;
   protected
     class function DefaultPriority: IntegerRAL; override;
@@ -161,7 +175,7 @@ type
     property ClientID: StringRAL read FClientID write FClientID;
     /// Client secret (confidential client); empty for a public one.
     property ClientSecret: StringRAL read FClientSecret write FClientSecret;
-    /// URL of the discovery document, when it is not Issuer + /.well-known/openid-configuration.
+    /// Discovery document URL; empty is Issuer + /.well-known/openid-configuration.
     property DiscoveryURL: StringRAL read FDiscoveryURL write FDiscoveryURL;
     /// Client engine of the requests to the provider; empty = the first linked.
     property FetchEngine: StringRAL read FFetchEngine write FFetchEngine;
@@ -178,11 +192,11 @@ type
     property OnLogin: TRALOnOIDCLogin read FOnLogin write FOnLogin;
     /// Where the browser goes after the login when it brought no return.
     property PostLoginRedirect: StringRAL read FPostLoginRedirect write FPostLoginRedirect;
-    /// Where the provider sends the browser after the logout (absolute URL); empty = none.
+    /// Where the provider sends the browser after the logout (absolute URL); empty: none.
     property PostLogoutRedirect: StringRAL read FPostLogoutRedirect write FPostLogoutRedirect;
     /// Known provider: sets RolesClaim (and nothing else).
     property Provider: TRALOIDCProvider read FProvider write SetProvider default opGeneric;
-    /// redirect_uri sent to the provider; empty = the callback on the host of the request.
+    /// redirect_uri sent to the provider; empty: the callback on the request's host.
     property RedirectURI: StringRAL read FRedirectURI write FRedirectURI;
     { Claims the roles come from (separated by commas; a dotted name walks into
       an object: realm_access.roles for Keycloak). }
@@ -266,15 +280,18 @@ function RALOIDCSafeRedirect(const ARedirect: StringRAL): boolean;
 implementation
 
 const
+  /// Key prefix of a login in progress in the store.
   cStatePrefix = 'oidc.state:';
+  /// Milliseconds a login in progress is kept.
   cStateTTL = 600000;
 
+/// ABytes random bytes in base64url.
 function RandomText(ABytes: IntegerRAL): StringRAL;
 begin
   Result := RALBase64UrlEncode(RandomBytes(ABytes));
 end;
 
-{ AScope with openid as its first word, once }
+/// AScope with openid as its first word, once.
 function ScopeWithOpenID(const AScope: StringRAL): StringRAL;
 var
   vList: TStringList;
@@ -365,7 +382,7 @@ begin
   end;
 end;
 
-{ every role of the claims named in ARolesClaims, dotted paths included }
+/// Every role of the claims named in ARolesClaims, dotted paths included.
 procedure FillRoles(AIdentity: TRALIdentity; AClaims: TRALJWTParams;
   const ARolesClaims: StringRAL);
 var
@@ -384,6 +401,7 @@ begin
   end;
 end;
 
+/// Member AName of the JSON object AJson as text; empty when absent.
 function JSONMember(AJson: TRALJSONValue; const AName: StringRAL): StringRAL;
 var
   vValue: TRALJSONValue;
@@ -396,6 +414,7 @@ begin
     Result := vValue.AsString;
 end;
 
+/// The JWT algorithm named AName (RS256, ES256...); False when unknown.
 function AlgorithmOf(const AName: StringRAL; out AAlg: TRALJWTAlgorithm): boolean;
 var
   vAlg: TRALJWTAlgorithm;

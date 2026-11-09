@@ -1,33 +1,9 @@
-/// Admission limit of the server: how many requests are processed at the same
-/// time
+/// Admission limit of the server: how many requests are processed at the same time.
 unit RALConcurrency;
 
-{ Under load the requests of a server compete for the CPU and, inside the
-  process, for the memory manager: past a point every request more makes all
-  of them slower, and the throughput falls while the CPU climbs. Measured on
-  29/09/2026 with mORMot2 in threads mode, one connection per request, a server
-  on 4 CPUs: 6.8k req/s at 300 connections with no limit, 8.7k with at most 8
-  requests at once - and the mean latency three times lower, the CPU per
-  request 30% lower. 4, 8 and 16 gave almost the same; what matters is having a
-  limit (see .agents/PLANO_DESEMPENHO.md).
-
-  TRALConcurrencyPlugin is that limit. A request takes a slot before its body
-  is decoded (ppValidate, after every other RAL plugin that refuses there, so a
-  refused request never waits) and gives it back once its answer is built -
-  encoded, compressed, encrypted - and before the engine sends it: a large
-  download does not hold a slot while it crawls to a slow client. That moment
-  is TRALRequest.Finish, which every engine calls after TakeWireStream, and the
-  request's destructor calls it when an exception skipped it. A request that
-  finds no slot waits in a queue, MaxQueueWait at most, and is answered 503
-  with Retry-After when the time runs out.
-
-  It changes nothing for a server it is not linked to, and the limit is the
-  server's own: it neither caps the CPU of the process nor touches other
-  applications.
-
-  A route that calls its own server (a request to itself, through a TRALClient)
-  waits for a slot while holding one: with every slot held that way, nothing
-  frees one. That is why MaxQueueWait is not infinite by default. }
+{ A request takes a slot in ppValidate and gives it back in TRALRequest.Finish,
+  once its answer is built and before the engine sends it; one that finds no slot
+  waits MaxQueueWait at most and is answered 503 with Retry-After. }
 
 interface
 
@@ -39,38 +15,41 @@ uses
   RALTypes, RALConsts, RALTools, RALMIMETypes, RALPlugin, RALRequest, RALResponse;
 
 type
-  /// What TRALConcurrencyGate.Enter answered
+  /// What TRALConcurrencyGate.Enter answered.
   TRALGateResult = (
     /// a slot is the request's until Leave
     grEntered,
     /// no slot freed within the wait
     grTimeout,
-    /// the gate was closed (its plugin is being freed): the request goes on
-    /// without a slot
+    /// the gate closed (its plugin is being freed): the request goes on without a slot
     grClosed);
 
-  { TRALConcurrencyGate }
-
-  /// The counter behind TRALConcurrencyPlugin: slots, the queue that waits for
-  /// them and the statistics. Kept apart from the plugin and counted by
-  /// reference, because a request holds a slot for longer than a plugin can be
-  /// sure to live - a form frees its components in any order. The plugin holds
-  /// one reference, each slot and each waiting request another, and the last
-  /// one frees it
+  { The counter behind TRALConcurrencyPlugin: slots, the queue and the statistics;
+    counted by reference (the plugin, each slot and each waiting request). }
   TRALConcurrencyGate = class
   private
+    /// The plugin went away: nobody waits for a slot.
     FClosed: boolean;
+    /// Signalled when a slot comes back.
     FFreed: TEvent;
+    /// Slots held.
     FInUse: IntegerRAL;
+    /// Number of slots.
     FLimit: IntegerRAL;
+    /// Guards every counter.
     FLock: TCriticalSection;
+    /// Most slots held at once.
     FPeak: IntegerRAL;
+    /// Requests waiting.
     FQueued: IntegerRAL;
+    /// Holders of the gate; the last one frees it.
     FReferences: IntegerRAL;
+    /// Requests that found no slot in time.
     FRejected: Int64RAL;
+    /// Requests that got a slot.
     FServed: Int64RAL;
 
-    /// Drops one reference, the lock taken; True when it was the last
+    /// Drops one reference, the lock taken; True when it was the last.
     function DropLocked: boolean;
     function GetInUse: IntegerRAL;
     function GetLimit: IntegerRAL;
@@ -79,38 +58,40 @@ type
     function GetRejected: Int64RAL;
     function GetServed: Int64RAL;
   public
+    /// A gate of ALimit slots, held once by its creator.
     constructor Create(ALimit: IntegerRAL);
     destructor Destroy; override;
 
-    /// The plugin is going away: the waiting requests go on without a slot,
-    /// and the gate frees itself when the last slot comes back
+    { The plugin is going away: waiting requests go on without a slot, and the gate
+      frees itself when the last slot comes back. }
     procedure Close;
-    /// Takes a slot, waiting AWait ms at most for one (0 waits as long as it
-    /// takes)
+    /// Takes a slot, waiting AWait ms at most (0 waits as long as it takes).
     function Enter(AWait: IntegerRAL): TRALGateResult;
-    /// Gives back the slot Enter gave ARequest. Its signature is the one
-    /// TRALRequest.AddFinishHandler takes
+    /// Gives back the slot of ARequest; the signature TRALRequest.AddFinishHandler takes.
     procedure Leave(ARequest: TRALRequest);
-    /// Changes the number of slots. More slots serve the queue at once; fewer
-    /// let the requests that hold a slot finish, and the queue waits for them
+    { Changes the number of slots: more serve the queue at once, fewer let the
+      holders finish while the queue waits. }
     procedure SetLimit(AValue: IntegerRAL);
 
+    /// Slots held now.
     property InUse: IntegerRAL read GetInUse;
+    /// Number of slots.
     property Limit: IntegerRAL read GetLimit;
+    /// Most slots held at once.
     property Peak: IntegerRAL read GetPeak;
+    /// Requests waiting now.
     property Queued: IntegerRAL read GetQueued;
+    /// Requests that found no slot in time.
     property Rejected: Int64RAL read GetRejected;
+    /// Requests that got a slot.
     property Served: Int64RAL read GetServed;
   end;
 
-  { TRALConcurrencyPlugin }
-
-  /// Limits how many requests the server processes at the same time; the rest
-  /// wait in a queue instead of competing for the CPU and the memory manager.
-  /// Off for any server it is not linked to. See the unit's comment for what
-  /// it measured, and for the one trap: a route that calls its own server
+  { Limits how many requests the server processes at once; the rest wait in a
+    queue. A route that calls its own server can wait for ever: keep MaxQueueWait. }
   TRALConcurrencyPlugin = class(TRALPlugin)
   private
+    /// The slots, shared with the requests holding them.
     FGate: TRALConcurrencyGate;
     FMaxConcurrent: IntegerRAL;
     FMaxQueueWait: IntegerRAL;
@@ -133,8 +114,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// The number of slots MaxConcurrent = 0 stands for: two per logical
-    /// processor of the machine
+    /// Slots MaxConcurrent = 0 stands for: two per logical processor.
     class function AutomaticLimit: IntegerRAL;
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse); override;
 
@@ -151,23 +131,18 @@ type
     /// Requests that got a slot
     property Served: Int64RAL read GetServed;
   published
-    /// Requests processed at the same time. 0, the default, is two per logical
-    /// processor (AutomaticLimit). Changing it on a running server takes
-    /// effect at once
+    { Requests processed at once; 0 is two per logical processor (AutomaticLimit).
+      Takes effect at once on a running server. }
     property MaxConcurrent: IntegerRAL read FMaxConcurrent write SetMaxConcurrent
       default 0;
-    /// Milliseconds a request waits for a slot before it is answered 503 with
-    /// Retry-After; 0 waits as long as it takes. 30000 by default, the usual
-    /// timeout of a client - and not 0, because a route that calls its own
-    /// server could otherwise wait for ever
+    { Milliseconds a request waits for a slot before a 503 with Retry-After; 0 waits
+      as long as it takes. }
     property MaxQueueWait: IntegerRAL read FMaxQueueWait write SetMaxQueueWait
       default 30000;
-    { Streamed responses (TRALResponse.Send) open at once; past it a new stream is
-      answered 503 before its first byte. 0, the default, is no limit. A stream
-      holds a slot of MaxConcurrent only while its handler runs, but on Indy,
-      fpHTTP and Sagui each open stream holds a thread: set it there }
+    { Streamed responses open at once; past it a new stream is answered 503. 0 is no
+      limit. On Indy, fpHTTP and Sagui each open stream holds a thread. }
     property MaxStreams: IntegerRAL read FMaxStreams write FMaxStreams default 0;
-    /// Seconds in the Retry-After of a 503; 0 sends no Retry-After
+    /// Seconds in the Retry-After of a 503; 0 sends none.
     property RetryAfter: IntegerRAL read FRetryAfter write SetRetryAfter default 1;
   end;
 

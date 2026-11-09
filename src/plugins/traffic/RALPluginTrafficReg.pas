@@ -1,5 +1,5 @@
-/// Registers the traffic plugins (rate limit, HTTPS redirect, maintenance,
-/// method override) in the IDE.
+{ Registers the traffic plugins (rate limit, HTTPS redirect, maintenance,
+  method override) in the IDE. }
 unit RALPluginTrafficReg;
 
 {$I ..\..\core\PascalRAL.inc}

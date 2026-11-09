@@ -1,8 +1,8 @@
-/// The client behind a proxy (RALPluginForwardedPackage): when a request comes
-/// from a trusted proxy, TRALForwardedPlugin puts the client's address, scheme
-/// and host that Forwarded (RFC 7239) or X-Forwarded-* carry in the request,
-/// before any plugin judges the address. IP ranges (CIDR, IPv4 and IPv6) in
-/// TRALIPRanges.
+{ The client behind a proxy (RALPluginForwardedPackage): when a request comes
+  from a trusted proxy, TRALForwardedPlugin puts the client's address, scheme
+  and host that Forwarded (RFC 7239) or X-Forwarded-* carry in the request,
+  before any plugin judges the address. IP ranges (CIDR, IPv4 and IPv6) in
+  TRALIPRanges. }
 unit RALForwarded;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -28,10 +28,14 @@ type
     without a lock (the ranges are replaced whole) }
   TRALIPRanges = class
   private
+    /// Prefix length of each range.
     FBits: array of IntegerRAL;
+    /// Serialises Text; readers take no lock.
     FLock: TCriticalSection;
+    /// Network address of each range.
     FRanges: array of TRALIPBytes;
 
+    /// Adds the network ABytes with ABits of prefix.
     procedure AddRange(const ABytes: TRALIPBytes; ABits: IntegerRAL);
   public
     constructor Create;
@@ -66,11 +70,13 @@ type
   private
     FClientIPHeader: StringRAL;
     FHeaders: TRALForwardedHeaders;
+    /// TrustedProxies, parsed.
     FRanges: TRALIPRanges;
     FStripUntrusted: boolean;
     FTrustedProxies: TStrings;
 
     procedure SetTrustedProxies(const AValue: TStrings);
+    /// Parses TrustedProxies again.
     procedure TrustedChanged(Sender: TObject);
   protected
     class function DefaultPriority: IntegerRAL; override;
@@ -130,6 +136,7 @@ begin
     Result := Copy(Result, 1, vPos - 1);
 end;
 
+/// Reads a dotted IPv4 address into ABytes; False when it is not one.
 function ParseIPv4(const AText: StringRAL; out ABytes: array of Byte): boolean;
 var
   vParts: TStringList;
@@ -387,14 +394,19 @@ end;
 { TRALForwardedPlugin }
 
 type
-  { one hop of the chain: the address a proxy saw, with what it saw it ask for }
+  /// One hop of the chain: the address a proxy saw, with what it saw it ask for.
   TRALForwardedHop = record
+    /// Address of the hop.
     Address: StringRAL;
+    /// Scheme the hop asked for.
     Proto: StringRAL;
+    /// Host the hop asked for.
     Host: StringRAL;
   end;
+  /// Hops of the chain, the client first.
   TRALForwardedHops = array of TRALForwardedHop;
 
+/// Every value of the header AName, joined by commas.
 function HeaderValues(ARequest: TRALRequest; const AName: StringRAL): StringRAL;
 var
   vInt: IntegerRAL;
@@ -414,6 +426,7 @@ begin
   end;
 end;
 
+/// Items of a comma list, trimmed; the caller frees it.
 function SplitList(const AText: StringRAL): TStringList;
 begin
   Result := TStringList.Create;

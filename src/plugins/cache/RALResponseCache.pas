@@ -1,7 +1,7 @@
-/// The response cache and ETags of routes (TRALResponseCachePlugin): GET and
-/// HEAD answers of the routes in CacheRoutes are kept for a while and answered
-/// again without running the route; with DynamicETag every GET answer gets a
-/// strong ETag and a matching If-None-Match gets 304.
+{ The response cache and ETags of routes (TRALResponseCachePlugin): GET and
+  HEAD answers of the routes in CacheRoutes are kept for a while and answered
+  again without running the route; with DynamicETag every GET answer gets a
+  strong ETag and a matching If-None-Match gets 304. }
 unit RALResponseCache;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -22,6 +22,7 @@ type
   TRALCacheRoute = class(TCollectionItem)
   private
     FPath: StringRAL;
+    /// Route split into segments, for the match.
     FPattern: TRALRouteSegments;
     FTTL: IntegerRAL;
 
@@ -58,11 +59,13 @@ type
     FCacheRoutes: TRALCacheRoutes;
     FDynamicETag: boolean;
     FMaxBodySize: IntegerRAL;
+    /// Store used when Store is not assigned.
     FOwnStore: TRALMemoryStore;
     FPrefix: StringRAL;
     FStore: TRALKeyValueStore;
     FVaryHeaders: TStrings;
 
+    /// Store, or the internal one.
     function ActiveStore: TRALKeyValueStore;
     /// Whether ARequest may be served from and kept in the cache.
     function Cacheable(ARequest: TRALRequest): boolean;
@@ -70,7 +73,8 @@ type
     function CacheRouteOf(ARequest: TRALRequest): TRALCacheRoute;
     /// Key of ARequest in the store.
     function KeyOf(ARequest: TRALRequest): StringRAL;
-    /// Keeps the answer, sets the ETag, turns it into a 304 (AContext: what the request carried).
+    { Keeps the answer, sets the ETag, turns it into a 304 (AContext: what the request
+      carried). }
     procedure ResponseReady(AResponse: TRALResponse; AContext: TObject);
     procedure SetCacheRoutes(const AValue: TRALCacheRoutes);
     procedure SetStore(const AValue: TRALKeyValueStore);
@@ -106,6 +110,7 @@ type
 
 implementation
 
+/// Text of the header AName of AParams; empty when absent.
 function HeaderText(AParams: TRALParams; const AName: StringRAL): StringRAL;
 var
   vParam: TRALParam;
@@ -116,7 +121,7 @@ begin
     Result := vParam.AsString;
 end;
 
-{ Whether the If-None-Match of a request names AETag (or is *). }
+/// Whether the If-None-Match of a request names AETag (or is *).
 function ETagMatches(const AIfNoneMatch, AETag: StringRAL): boolean;
 var
   vList, vTag: StringRAL;
@@ -158,6 +163,7 @@ begin
     RawByteString(AETag) + #10 + RawByteString(IntToStr(AKept)) + #10 + ABody;
 end;
 
+/// Reads a stored answer: status, type, ETag, when kept and body; False when damaged.
 function UnpackEntry(const AValue: RawByteString; out AStatus: IntegerRAL;
   out AType, AETag: StringRAL; out AKept: Int64RAL; out ABody: RawByteString): boolean;
 var
@@ -340,13 +346,20 @@ type
     handler does the work, its finish handler frees it. }
   TRALCachePending = class
   public
+    /// The answer may be stored.
     Cacheable: boolean;
+    /// If-None-Match the request carried.
     IfNoneMatch: StringRAL;
+    /// Cache key of the request.
     Key: StringRAL;
+    /// The plugin that took the request.
     Plugin: TRALResponseCachePlugin;
+    /// Cache rule that matched.
     Route: TRALCacheRoute;
 
+    /// Finish handler: frees the object.
     procedure Done(ARequest: TRALRequest);
+    /// Wire handler: stores the answer or turns it into a 304.
     procedure Ready(AResponse: TRALResponse);
   end;
 
