@@ -21,31 +21,26 @@ Type
                      {$ENDIF}
                      )
   private
-    FUnitIdent: string;
     FClassName: string;
     FFileName: string;
+    FUnitIdent: string;
   public
     procedure Execute;
-
-    { IOTAWizard }
-    function GetIDString: string;
-    function GetName: string;
-    function GetState: TWizardState;
-
-    { IOTAProjectWizard }
     function GetAuthor: string;
     function GetComment: string;
+    function GetIDString: string;
+    function GetName: string;
     function GetPage: string;
+    function GetState: TWizardState;
     {$IFDEF WIN64}
     function GetGlyph: THandle;
     {$ELSE}
     function GetGlyph: Cardinal;
     {$ENDIF}
 
-    { IOTARepositoryWizard80 }
+    function GetDesigner: string;
     function GetGalleryCategory: IOTAGalleryCategory;
     function GetPersonality: string;
-    function GetDesigner: string;
 
     {$IFDEF DELPHI10_0UP}
       function GetFrameworkTypes: TArray<string>;

@@ -13,29 +13,29 @@ FFormClass, FUnitName, FEngine
 type
   TRALWizardBaseFile = class(TInterfacedObject, IOTAFile)
   private
-    FModuleName: string;
-    FFormName: string;
     FAncestorName: string;
-    FFormClass: string;
-    FUnitName: string;
-    FEngine: integer;
     FAuth: integer;
+    FEngine: integer;
+    FFormClass: string;
+    FFormName: string;
+    FModuleName: string;
     FOptions: integer;
+    FUnitName: string;
   public
     constructor Create(AModulename, AFormName, AAncestorName, AFormClass,
                        AUnitName: string; AEngine, AAuth, AOptions : integer);
 
-    function GetSource: string; virtual;
     function GetAge: TDateTime; virtual;
+    function GetSource: string; virtual;
   published
-    property ModuleName: string read FModuleName write FModuleName;
-    property FormName: string read FFormName write FFormName;
     property AncestorName: string read FAncestorName write FAncestorName;
-    property FormClass: string read FFormClass write FFormClass;
-    property UnitName: string read FUnitName write FUnitName;
-    property Engine: integer read FEngine write FEngine;
     property Auth: integer read FAuth write FAuth;
+    property Engine: integer read FEngine write FEngine;
+    property FormClass: string read FFormClass write FFormClass;
+    property FormName: string read FFormName write FFormName;
+    property ModuleName: string read FModuleName write FModuleName;
     property Options: integer read FOptions write FOptions;
+    property UnitName: string read FUnitName write FUnitName;
   end;
 
 implementation

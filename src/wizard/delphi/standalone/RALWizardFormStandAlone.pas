@@ -11,37 +11,34 @@ type
 
   TRALWizardFormStandAloneCreator = class(TNotifierObject, IOTACreator, IOTAModuleCreator)
   private
+    FAuth: integer;
+    FEngine : integer;
+    FFileName: string;
+    FFormClass: string;
+    FIsMainForm: Boolean;
+    FOptions: integer;
     FOwner: IOTAModule;
     FUnitName: string;
-    FFormClass: string;
-    FFileName: string;
-    FEngine : integer;
-    FAuth: integer;
-    FOptions: integer;
-    FIsMainForm: Boolean;
   public
-    { IOTACreator }
+    constructor Create(AOwner: IOTAModule; AUnitName, AFormClass, AFileName : string;
+                       AEngine, AAuth, AOptions : integer; AIsMainForm: Boolean = False);
+
+    procedure FormCreated(const FormEditor: IOTAFormEditor);
+    function GetAncestorName: string;
     function GetCreatorType: string;
     function GetExisting: Boolean;
     function GetFileSystem: string;
-    function GetOwner: IOTAModule;
-    function GetUnnamed: Boolean;
-
-    { IOTAModuleCreator }
-    function GetAncestorName: string;
+    function GetFormName: string;
     function GetImplFileName: string;
     function GetIntfFileName: string;
-    function GetFormName: string;
     function GetMainForm: Boolean;
+    function GetOwner: IOTAModule;
     function GetShowForm: Boolean;
     function GetShowSource: Boolean;
+    function GetUnnamed: Boolean;
     function NewFormFile(const FormIdent, AncestorIdent: string): IOTAFile;
     function NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile;
     function NewIntfSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile;
-    procedure FormCreated(const FormEditor: IOTAFormEditor);
-
-    constructor Create(AOwner: IOTAModule; AUnitName, AFormClass, AFileName : string;
-                       AEngine, AAuth, AOptions : integer; AIsMainForm: Boolean = False);
   end;
 
   { TRALWizardFormStandAloneFile }

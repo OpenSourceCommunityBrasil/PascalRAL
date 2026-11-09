@@ -13,21 +13,21 @@ type
   TRALWizard = class(TProjectDescriptor)
   private
     FApplicationType : integer;
-    FEngineType : integer;
     FAuthType : integer;
+    FEngineType : integer;
+    FProjectDir : string;
     FSwagger : boolean;
     FWebModule : boolean;
-    FProjectDir : string;
   protected
-    function CreateProjStandAlone(AProject: TLazProject) : TModalResult;
-    function CreateProjConsole(AProject: TLazProject) : TModalResult;
     function CreateProjCGI(AProject: TLazProject) : TModalResult;
+    function CreateProjConsole(AProject: TLazProject) : TModalResult;
+    function CreateProjStandAlone(AProject: TLazProject) : TModalResult;
   public
-    function GetLocalizedName: string; override;
-    function GetLocalizedDescription: string; override;
-    function DoInitDescriptor: TModalResult; override;
-    function InitProject(AProject: TLazProject): TModalResult; override;
     function CreateStartFiles(AProject: TLazProject): TModalResult; override;
+    function DoInitDescriptor: TModalResult; override;
+    function GetLocalizedDescription: string; override;
+    function GetLocalizedName: string; override;
+    function InitProject(AProject: TLazProject): TModalResult; override;
   end;
 
   { TRALWizardApplication }
@@ -37,10 +37,11 @@ type
     function CreateFormStandAlone(AProject: TLazProject) : TModalResult;
   public
     constructor Create; override;
-    function GetLocalizedName: string; override;
-    function GetLocalizedDescription: string; override;
-    function InitProject(AProject: TLazProject): TModalResult; override;
+
     function DoInitDescriptor: TModalResult; override;
+    function GetLocalizedDescription: string; override;
+    function GetLocalizedName: string; override;
+    function InitProject(AProject: TLazProject): TModalResult; override;
   end;
 
 procedure Register;

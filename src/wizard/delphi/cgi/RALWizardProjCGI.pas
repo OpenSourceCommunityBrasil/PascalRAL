@@ -19,36 +19,29 @@ type
                                        {$ENDIF}
                                        )
   private
-    FProjectFile: string;
-    FProjectDir: string;
-    FEngine: integer;
     FAuth: integer;
-    FOptions: integer;
-
-    FUnitName: string;
-    FFormClass: string;
+    FEngine: integer;
     FFileName: string;
+    FFormClass: string;
+    FOptions: integer;
+    FProjectDir: string;
+    FProjectFile: string;
+    FUnitName: string;
   protected
-    { IOTACreator }
     function GetCreatorType: string;
     function GetExisting: Boolean;
-    function GetFileSystem: string;
-    function GetOwner: IOTAModule;
-    function GetUnnamed: Boolean;
-
-    { IOTAProjectCreator }
     function GetFileName: string;
+    function GetFileSystem: string;
     function GetOptionFileName: string;
+    function GetOwner: IOTAModule;
     function GetShowSource: Boolean;
+    function GetUnnamed: Boolean;
     procedure NewDefaultModule; deprecated;
+    procedure NewDefaultProjectModule(const Project: IOTAProject);
     function NewOptionSource(const ProjectName: string): IOTAFile;
     procedure NewProjectResource(const Project: IOTAProject);
     function NewProjectSource(const ProjectName: string): IOTAFile;
 
-    { IOTAProjectCreator50 }
-    procedure NewDefaultProjectModule(const Project: IOTAProject);
-
-    { IOTAProjectCreator80 }
     {$IFDEF DELPHIXE5UP}
       function GetProjectPersonality: string;
     {$ENDIF}
