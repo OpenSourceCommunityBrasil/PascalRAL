@@ -11,8 +11,7 @@ uses
 
 type
 
-  { TRALCSVFormatOptions }
-
+  /// How values are written in a CSV.
   TRALCSVFormatOptions = class(TPersistent)
   private
     FBoolFalseStr: StringRAL;
@@ -28,44 +27,66 @@ type
   public
     constructor Create;
 
+    /// Reads the options from a stream.
     procedure LoadPropsFromStream(AWriter: TRALBinaryWriter);
+    /// Writes the options to a stream.
     procedure SavePropsToStream(AWriter: TRALBinaryWriter);
   published
+    /// The text of False.
     property BoolFalseStr: StringRAL read FBoolFalseStr write FBoolFalseStr;
+    /// The text of True.
     property BoolTrueStr: StringRAL read FBoolTrueStr write FBoolTrueStr;
+    /// The column separator.
     property ColumnSeparator: CharRAL read FColumnSeparator write FColumnSeparator;
+    /// The date format of dtfCustom.
     property CustomDateFormat: StringRAL read FCustomDateFormat write FCustomDateFormat;
+    /// The time format of dtfCustom.
     property CustomTimeFormat: StringRAL read FCustomTimeFormat write FCustomTimeFormat;
+    /// How dates are written.
     property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
+    /// The decimal separator of numbers.
     property DecimalSeparator: CharRAL read FDecimalSeparator write FDecimalSeparator;
+    /// The thousand separator of numbers.
     property ThousandSeparator: CharRAL read FThousandSeparator write FThousandSeparator;
   end;
 
-  { TRALStorageCSV }
-
+  /// Writes and reads a dataset as CSV, a header line first.
   TRALStorageCSV = class(TRALStorage)
   private
     FFormatOptions: TRALCSVFormatOptions;
     FUseUTF8BOM: boolean;
   protected
+    /// A boolean as BoolTrueStr or BoolFalseStr.
     function CSVFormatBoolean(AValue: Boolean): StringRAL;
+    /// A date by DateTimeFormat.
     function CSVFormatDateTime(AValue: TDateTime): StringRAL;
+    /// A number with the separators of the options.
     function CSVFormatFloat(AValue: Double): StringRAL;
     /// a memo quoted whole, line breaks included
     function CSVFormatMemo(AValue: StringRAL): StringRAL;
     /// format settings built from FormatOptions on top of the machine defaults
     function CSVFormatSettings: TFormatSettings;
+    /// A blob as quoted base64.
     function CSVFormatStream(AValue: TStream): StringRAL;
+    /// A text quoted, its quotes doubled and its line breaks dropped (RFC 4180).
     function CSVFormatString(AValue: StringRAL): StringRAL;
+    /// Whether AValue starts and ends with a quote.
     function CSVIsQuoted(const AValue: StringRAL): boolean;
+    /// Reads a date by DateTimeFormat; False when it is not one.
     function CSVParseDateTime(const AValue: StringRAL; var ADate: TDateTime): boolean;
     /// strips the outer quotes of a value that came quoted
     function CSVUnquote(const AValue: StringRAL): StringRAL;
+    /// Builds the fields of ADataset from the header line.
     procedure ReadFields(ADataset: TDataSet; AStream: TStream);
+    /// The values of the next line; the caller frees the list.
     function ReadLine(AStream: TStream): TStringList;
+    /// Appends the records of the stream to ADataset.
     procedure ReadRecords(ADataset: TDataSet; AStream: TStream);
+    /// Writes the header line.
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
+    /// Writes the records of ADataset.
     procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
+    /// Writes the bytes of AValue.
     procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
   public
     constructor Create;
@@ -74,12 +95,13 @@ type
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
   published
+    /// How values are written.
     property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
+    /// Whether the file starts with the UTF-8 BOM.
     property UseUTF8BOM: boolean read FUseUTF8BOM write FUseUTF8BOM;
   end;
 
-  { TRALStorageCSVLink }
-
+  /// The storage link of the CSV format.
   TRALStorageCSVLink = class(TRALStorageLink)
   private
     FFormatOptions: TRALCSVFormatOptions;
@@ -95,7 +117,9 @@ type
     procedure LoadPropsFromStream(AWriter: TRALBinaryWriter); override;
     procedure SavePropsToStream(AWriter: TRALBinaryWriter); override;
   published
+    /// How values are written.
     property FormatOptions: TRALCSVFormatOptions read FFormatOptions write FFormatOptions;
+    /// Whether the file starts with the UTF-8 BOM.
     property UseUTF8BOM: boolean read FUseUTF8BOM write FUseUTF8BOM;
   end;
 
@@ -275,9 +299,7 @@ begin
 end;
 
 { The text whole, line breaks included - RFC 4180 lets them sit inside the
-  quotes, and ReadLine keeps them there. It was the base64 of the field's own
-  bytes (UTF-16 for a wide memo, see RALStorageBIN), which the reader took
-  for the text itself: a memo came back as base64 }
+  quotes, and ReadLine keeps them there }
 function TRALStorageCSV.CSVFormatMemo(AValue: StringRAL): StringRAL;
 begin
   Result := '"' + StringReplace(AValue, '"', '""', [rfReplaceAll]) + '"';
@@ -287,9 +309,7 @@ function TRALStorageCSV.CSVFormatString(AValue: StringRAL): StringRAL;
 begin
   Result := StringReplace(AValue, #13, '', [rfReplaceAll]);
   Result := StringReplace(Result, #10, '', [rfReplaceAll]);
-  // RFC 4180: a quote inside a quoted value is written doubled. Without this
-  // any value with a quote in it broke the reader's quote tracking for the
-  // rest of the line
+  // RFC 4180: a quote inside a quoted value is written doubled
   Result := StringReplace(Result, '"', '""', [rfReplaceAll]);
 
   Result := Format('"%s"', [Trim(Result)]);
@@ -303,13 +323,8 @@ end;
 
 procedure TRALStorageCSV.SaveToStream(ADataset: TDataSet; AStream: TStream);
 const
-  { as three bytes, not a string: the old code did
-    Write(BytesOf(UTF8BOM), 3), and a dynamic array handed to an untyped
-    const parameter is its POINTER, so the file started with three bytes of a
-    heap address. Random per run: usually harmless, sometimes a quote or a
-    line break, and then the reader lost the header or swallowed the whole
-    CSV into one quoted field - the "storage csv" cases that failed in one
-    combination out of a hundred. }
+  { as three bytes, not a dynamic array: one handed to an untyped const
+    parameter is its pointer }
   UTF8BOM: array [0 .. 2] of Byte = ($EF, $BB, $BF);
 begin
   if FUseUTF8BOM then
@@ -434,10 +449,8 @@ end;
   ReadFields can tell a quoted "123" (text) from a bare 123 (number); a doubled
   quote inside a quoted value comes back as a single one.
 
-  The stream holds UTF-8 BYTES. The previous reader pulled a Char at a time,
-  which on Delphi is two bytes: every multi-byte sequence was torn apart and
-  the line break was never found, so the whole file became one field. It also
-  had the separator hardcoded to ';' regardless of FormatOptions. }
+  The stream holds UTF-8 bytes and is read byte by byte (a Char is two bytes
+  on Delphi); the separator is FormatOptions.ColumnSeparator. }
 function TRALStorageCSV.ReadLine(AStream: TStream): TStringList;
 var
   vByte, vNext: Byte;
@@ -527,8 +540,8 @@ begin
 
   ADataset.FieldDefs.Clear;
 
-  // the writer may put a UTF-8 BOM first; left in, it became part of the
-  // first field name and that column was never matched again
+  // the writer may put a UTF-8 BOM first; left in, it would be part of the
+  // first field name
   vInt64 := AStream.Position;
   if (AStream.Read(vBOM[0], 3) <> 3) or (vBOM[0] <> $EF) or (vBOM[1] <> $BB) or
      (vBOM[2] <> $BF) then
@@ -630,8 +643,6 @@ begin
   end;
 end;
 
-{ This was an empty procedure: LoadFromStream built the fields and then
-  returned an open dataset with no rows. }
 procedure TRALStorageCSV.ReadRecords(ADataset: TDataSet; AStream: TStream);
 var
   vLine: TStringList;

@@ -219,9 +219,8 @@ var
   vType, vEntry: StringRAL;
   vInt: IntegerRAL;
 begin
-  { in StringRAL from start to end: the type of every answer goes through
-    here, and on Delphi a string, Trim and LowerCase over it were three
-    conversions to UTF-16 and back }
+  { in StringRAL from start to end, with no conversion to UTF-16 on Delphi:
+    the type of every answer goes through here }
   Result := False;
   vInt := Pos(StringRAL(';'), AContentType);
   if vInt > 0 then

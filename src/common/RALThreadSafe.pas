@@ -11,23 +11,25 @@ uses
 
 type
 
-  { TRALThreadSafe }
-
+  /// Base of the objects guarded by their own critical section.
   TRALThreadSafe = class
   protected
+    /// The lock.
     FCriticalSection: TCriticalSection;
   public
     constructor Create; virtual;
     destructor Destroy; override;
 
+    /// Takes the lock.
     procedure Lock;
+    /// Releases the lock.
     procedure Unlock;
   end;
 
-  { TRALStringListSafe }
-
+  /// A string list whose every operation takes its lock.
   TRALStringListSafe = class(TRALThreadSafe)
   private
+    /// The list.
     FValue: TStringList;
   protected
     function GetValue(const AName: StringRAL): StringRAL;
@@ -36,40 +38,53 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
+    /// Adds AItem.
     procedure Add(const AItem: StringRAL);
-    /// Inserts AItem with AObject. Returns False when AItem was already there:
-    /// the list is sorted with dupIgnore, so nothing is inserted and AObject
-    /// stays with the caller, who must free it or it leaks
+    { Inserts AItem with AObject. Returns False when AItem was already there:
+      the list is sorted with dupIgnore, so nothing is inserted and AObject
+      stays with the caller, who must free it or it leaks. }
     function AddObject(const AItem: StringRAL; AObject: TObject): boolean;
+    /// Removes every item, freeing the objects with AFreeObjects.
     procedure Clear(AFreeObjects: boolean = false);
+    /// Number of items.
     function Count: IntegerRAL;
+    /// Whether AItem is in the list.
     function Exists(const AItem: StringRAL): boolean;
+    /// The item at AIndex.
     function Get(const AIndex: IntegerRAL): StringRAL;
+    /// The name of the name=value item at AIndex.
     function GetName(const AIndex: IntegerRAL): StringRAL;
+    /// The object of the item at AIndex.
     function GetObject(const AIndex: IntegerRAL): TObject;
+    /// Whether the list is empty; read without the lock.
     function IsEmpty: boolean;
+    /// Takes the lock and returns the list; call Unlock when done.
     function Lock: TStringList; reintroduce;
+    /// The object of AItem, or nil.
     function ObjectByItem(const AItem: StringRAL): TObject;
+    /// Removes AItem, freeing its object with AFreeObjects.
     procedure Remove(const AItem: StringRAL; AFreeObjects: boolean = false); overload;
+    /// Removes the item at AItem, freeing its object with AFreeObjects.
     procedure Remove(const AItem: IntegerRAL; AFreeObjects: boolean = false); overload;
+    /// Releases the lock Lock took.
     procedure Unlock; reintroduce;
 
+    /// The value of the name=value item AName.
     property Values[const AName: StringRAL]: StringRAL read GetValue write SetValue;
   end;
 
-  { TRALSnapshots }
-
-  /// The current version of something every request reads while the
-  /// configuration may replace it - read with no lock at all. Publish puts a
-  /// new version in place with one atomic write, and the version it replaces
-  /// is kept, not freed, until this object goes: a request that took it a
-  /// moment before is still reading it. A version is never changed after it is
-  /// published, so a request sees one consistent whole, never half of each.
-  /// What is kept grows by one per change, and a change is someone editing the
-  /// configuration, not a request
+  { The current version of something every request reads while the
+    configuration may replace it - read with no lock at all. Publish puts a
+    new version in place with one atomic write, and the version it replaces
+    is kept, not freed, until this object goes: a request that took it a
+    moment before is still reading it. A version is never changed after it is
+    published, so a request sees one consistent whole, never half of each.
+    What is kept grows by one per change, and a change is someone editing the
+    configuration, not a request. }
   TRALSnapshots = class(TRALThreadSafe)
   private
     FCurrent: TObject;
+    /// Snapshots replaced, kept alive until the owner is freed.
     FRetired: TList;
   public
     constructor Create; override;
@@ -78,8 +93,8 @@ type
     /// Makes AValue the current version, owned by this object from here on
     procedure Publish(AValue: TObject);
 
-    /// The current version, nil before the first Publish. Never freed while
-    /// this object lives, whatever is published after it
+    { The current version, nil before the first Publish. Never freed while
+      this object lives, whatever is published after it. }
     property Current: TObject read FCurrent;
   end;
 
@@ -267,14 +282,9 @@ end;
 
 function TRALStringListSafe.IsEmpty: boolean;
 begin
-  { deliberately outside the lock. TStringList.Count is a plain field read, and
-    the answer is already stale the instant it returns whether we take the lock
-    or not - a caller can only use it as a hint, never as a decision it then
-    acts on without re-checking. What skipping the lock buys is the hot path:
-    the security lists are empty on almost every server, and ValidateRequest
-    consults two of them on every single request. Taking a critical section to
-    read one integer is free while requests are rare and turns into a convoy
-    once hundreds of threads do it thousands of times a second. }
+  { outside the lock: Count is a plain field read and stale the instant it
+    returns either way, so a caller takes it as a hint. The security lists,
+    empty on most servers, are asked this on every request }
   Result := (FValue = nil) or (FValue.Count = 0);
 end;
 

@@ -28,120 +28,130 @@ uses
 
 /// A monotonic clock in microseconds, for durations only (not the time of day).
 function RALTickMicro: Int64RAL;
+/// The Content-Encription name of a cipher (aes256cbc_pkcs7...), empty for crNone.
 function CriptoToStrCripto(ACripto: TRALCriptoType): StringRAL;
+/// A route path normalized: one leading slash, no '../', no repeated slashes.
 function FixRoute(ARoute: StringRAL): StringRAL;
+/// The method of an HTTP method name; amUNKNOWN for any other.
 function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
+/// The digits of AValue.
 function OnlyNumbers(const AValue: StringRAL): StringRAL;
+/// The HTTP name of a method.
 function RALMethodToHTTPMethod(AMethod: TRALMethod): StringRAL;
+/// Reads a date laid out by AFormat (y, M, d, h, n, s, z positions).
 function RALStringToDateTime(const AValue: StringRAL;
                              const AFormat: StringRAL = 'yyyyMMddhhnnsszzz'): TDateTime;
+/// numOfBytes cryptographically random bytes.
 function RandomBytes(numOfBytes: IntegerRAL): TBytes;
+/// The cipher of a Content-Encription name, crNone when unknown.
 function StrCriptoToCripto(const AStr: StringRAL): TRALCriptoType;
 
+/// A local time in UTC.
 function RALDateTimeToGMT(ADateTime: TDateTime): TDateTime;
 /// The inverse of RALDateTimeToGMT: a UTC value back to the local zone
 function RALGMTToDateTime(ADateTime: TDateTime): TDateTime;
-/// ISO 8601 with milliseconds, the same on every compiler. AInputIsUTC stamps
-/// 'Z' on the value as it is (what DateToISO8601 does by default); False says
-/// the value is local time and writes the real offset ('-03:00')
+{ ISO 8601 with milliseconds, the same on every compiler. AInputIsUTC stamps
+  'Z' on the value as it is (what DateToISO8601 does by default); False says
+  the value is local time and writes the real offset ('-03:00'). }
 function RALDateTimeToISO8601(const AValue: TDateTime; AInputIsUTC: Boolean): StringRAL;
-/// Reads what RALDateTimeToISO8601 writes, and ISO 8601 from elsewhere, in the
-/// extended (2026-09-22T06:51:24) or the basic format (20260922T065124): 'Z' is
-/// kept as written (RAL stamped it on local time for years), an explicit offset
-/// is brought to local time, no zone is taken as it is. Raises when the text is
-/// not a date; see RALTryISO8601ToDateTime. The ISO 8601 functions of RAL live
-/// here only - use these, not the RTL's DateToISO8601/ISO8601ToDate, which
-/// XE2..XE5 lack and which differ between Delphi and FPC
+{ Reads what RALDateTimeToISO8601 writes, and ISO 8601 from elsewhere, in the
+  extended (2026-09-22T06:51:24) or the basic format (20260922T065124): 'Z' is
+  kept as written (RAL writes it on local time too), an explicit offset
+  is brought to local time, no zone is taken as it is. Raises when the text is
+  not a date; see RALTryISO8601ToDateTime. The ISO 8601 functions of RAL live
+  here only - use these, not the RTL's DateToISO8601/ISO8601ToDate, which
+  XE2..XE5 lack and which differ between Delphi and FPC. }
 function RALISO8601ToDateTime(const AValue: StringRAL): TDateTime;
+/// RALISO8601ToDateTime that returns False instead of raising.
 function RALTryISO8601ToDateTime(const AValue: StringRAL; out ADate: TDateTime): Boolean;
+/// Whether AArray holds AStr, compared without case.
 function Contains(const AStr: StringRAL; const AArray: array of StringRAL): boolean;
+/// Number of logical processors.
 function RALCPUCount: integer;
-/// The moment an HTTP date stands for, in UTC; raises EConvertError when the
-/// text is not one - see RALTryHTTPDate
+{ The moment an HTTP date stands for, in UTC; raises EConvertError when the
+  text is not one - see RALTryHTTPDate. }
 function HTTPDateTimeToDateTime(const Astr: StringRAL): TDateTime;
-/// An HTTP date the way RFC 9110 5.6.7 asks a recipient to read one - the IMF
-/// date ('Sun, 06 Nov 1994 08:49:37 GMT'), RFC 850's ('Sunday, 06-Nov-94
-/// 08:49:37 GMT') and asctime's ('Sun Nov  6 08:49:37 1994') - plus what
-/// cookies carry besides ('Sun, 06-Nov-1994 08:49:37 GMT'), by the algorithm
-/// of RFC 6265 5.1.1. AUtc is the moment in UTC; False when the text holds no
-/// date, which makes a header carrying it count as not sent
+{ An HTTP date the way RFC 9110 5.6.7 asks a recipient to read one - the IMF
+  date ('Sun, 06 Nov 1994 08:49:37 GMT'), RFC 850's ('Sunday, 06-Nov-94
+  08:49:37 GMT') and asctime's ('Sun Nov  6 08:49:37 1994') - plus what
+  cookies carry besides ('Sun, 06-Nov-1994 08:49:37 GMT'), by the algorithm
+  of RFC 6265 5.1.1. AUtc is the moment in UTC; False when the text holds no
+  date, which makes a header carrying it count as not sent. }
 function RALTryHTTPDate(const AText: StringRAL; out AUtc: TDateTime): Boolean;
-/// Equality in constant time, for MACs and signatures: it does not stop at
-/// the first differing byte, so the time taken says nothing about the data
+{ Equality in constant time, for MACs and signatures: it does not stop at
+  the first differing byte, so the time taken says nothing about the data. }
 function RALSameBytes(const A, B: TBytes): Boolean;
 /// Same thing for secrets kept as strings (passwords, signatures)
 function RALSameSecret(const A, B: StringRAL): Boolean;
-/// Case-insensitive name comparison without leaving StringRAL. Use it for param
-/// and header names; SameText is the general-purpose one and stays for text.
+{ Case-insensitive name comparison without leaving StringRAL. Use it for param
+  and header names; SameText is the general-purpose one and stays for text. }
 function RALSameName(const A, B: StringRAL): Boolean;
-/// Where ASubLower first appears in AText, ASCII letters compared without
-/// case, or 0. ASubLower must already be lower case. Pos(LowerCase(...)) on
-/// Delphi converts the text to UTF-16 and back and allocates both times; this
-/// reads the bytes where they are
+{ Where ASubLower first appears in AText, ASCII letters compared without
+  case, or 0. ASubLower must already be lower case. Pos(LowerCase(...)) on
+  Delphi converts the text to UTF-16 and back and allocates both times; this
+  reads the bytes where they are. }
 function RALPosText(const ASubLower, AText: StringRAL): IntegerRAL;
-/// A number that came as text over HTTP, whatever the locale of this machine:
-/// '2.5' and '2,5' are both 2.5, and with both separators present the last one
-/// is the decimal ('1.234,5' and '1,234.5'). False when it is not a number
+{ A number that came as text over HTTP, whatever the locale of this machine:
+  '2.5' and '2,5' are both 2.5, and with both separators present the last one
+  is the decimal ('1.234,5' and '1,234.5'). False when it is not a number. }
 function RALTryStrToFloat(const AValue: StringRAL; out AResult: Double): Boolean;
 /// Same rule as RALTryStrToFloat, for Currency
 function RALTryStrToCurr(const AValue: StringRAL; out AResult: Currency): Boolean;
-/// Drops trailing blanks without leaving StringRAL. Same rule as the RTL's
-/// TrimRight - everything up to and including a space goes - and the same
-/// result: a byte above 127 is always part of a multibyte character and never
-/// compares below 33, so scanning bytes can never cut one in half.
+{ Drops trailing blanks without leaving StringRAL. Same rule as the RTL's
+  TrimRight - everything up to and including a space goes - and the same
+  result: a byte above 127 is always part of a multibyte character and never
+  compares below 33, so scanning bytes can never cut one in half. }
 function RALTrimRight(const A: StringRAL): StringRAL;
 /// The same, both ends.
 function RALTrim(const A: StringRAL): StringRAL;
-/// A header or cookie as RFC 9110 5.5 wants it on the wire: CR, LF and NUL
-/// become a space. A value an application takes from a request - a file name
-/// in Content-Disposition, a cookie, an echoed header - would otherwise end the
-/// line where the client chose and write headers, or a body, of its own
-/// (response splitting). Every engine sends its headers and cookies through
-/// this. The same string comes back when there is nothing to replace.
+{ A header or cookie as RFC 9110 5.5 wants it on the wire: CR, LF and NUL
+  become a space. A value an application takes from a request - a file name
+  in Content-Disposition, a cookie, an echoed header - would otherwise end the
+  line where the client chose and write headers, or a body, of its own
+  (response splitting). Every engine sends its headers and cookies through
+  this. The same string comes back when there is nothing to replace. }
 function RALSafeHeaderText(const AText: StringRAL): StringRAL;
-/// An HTTP date (RFC 9110 5.6.7) of a moment already in UTC:
-/// 'Sun, 06 Nov 1994 08:49:37 GMT'. Digits and English names only - the RTL's
-/// FormatDateTime puts the locale's time separator where ':' is written
+{ An HTTP date (RFC 9110 5.6.7) of a moment already in UTC:
+  'Sun, 06 Nov 1994 08:49:37 GMT'. Digits and English names only - the RTL's
+  FormatDateTime puts the locale's time separator where ':' is written. }
 function RALHTTPDate(AUtc: TDateTime): StringRAL;
-/// Whether AFileName is a regular file - not a folder - with its size and the
-/// moment it was last written, in Unix seconds (UTC). A link is followed, as
-/// FileExists does. One call to the system, where FileExists, a size and a
-/// date take three
+{ Whether AFileName is a regular file - not a folder - with its size and the
+  moment it was last written, in Unix seconds (UTC). A link is followed, as
+  FileExists does. One call to the system, where FileExists, a size and a
+  date take three. }
 function RALFileInfo(const AFileName: string; out ASize: Int64;
   out AModified: Int64): boolean;
-/// Whether APath is itself a symbolic link - on Windows also a junction - and
-/// not what it names. A reparse point that stands for the file itself, such as
-/// a OneDrive placeholder or a deduplicated file, is not a link
+{ Whether APath is itself a symbolic link - on Windows also a junction - and
+  not what it names. A reparse point that stands for the file itself, such as
+  a OneDrive placeholder or a deduplicated file, is not a link. }
 function RALIsLink(const APath: string): boolean;
-/// Copies the published properties ASource and ADest have in common - what a
-/// form would store - so that an AssignTo is one line and a property added
-/// later is copied without anyone having to remember it. A sub-object
-/// (TStrings, a collection, options) is copied INTO the one ADest has; a
-/// component is a reference, and the reference is what goes over
+{ Copies the published properties ASource and ADest have in common - what a
+  form would store - so that an AssignTo is one line and a property added
+  later is copied without anyone having to remember it. A sub-object
+  (TStrings, a collection, options) is copied INTO the one ADest has; a
+  component is a reference, and the reference is what goes over. }
 procedure RALAssignProperties(ASource, ADest: TPersistent);
-/// The setter of a property whose object the class created and frees: copies
-/// AValue into AOwned and never takes the pointer, which leaked the owned one
-/// and left the class holding an object its caller may free. nil and AOwned
-/// itself are ignored
+{ The setter of a property whose object the class created and frees: copies
+  AValue into AOwned and never takes the pointer (the class keeps its own
+  object; the caller may free AValue). nil and AOwned itself are ignored. }
 procedure RALAssignOwned(AOwned, AValue: TPersistent);
 
-/// Atomic counters, spelled the same way on both compilers: Delphi has
-/// AtomicIncrement/AtomicDecrement in the RTL, FPC calls them InterLocked* and
-/// only declares the 64-bit pair on 64-bit CPUs. All three return the NEW value
-/// - InterLockedExchangeAdd, which FPC does have, returns the old one.
+{ Atomic counters, spelled the same way on both compilers: Delphi has
+  AtomicIncrement/AtomicDecrement in the RTL, FPC calls them InterLocked* and
+  only declares the 64-bit pair on 64-bit CPUs. All three return the new value
+  (InterLockedExchangeAdd answers the value before the add). }
 function RALAtomicInc(var ATarget: IntegerRAL): IntegerRAL; overload;
+/// Decrements atomically and returns the new value.
 function RALAtomicDec(var ATarget: IntegerRAL): IntegerRAL; overload;
-/// Adds to a 64-bit counter. Only the addition is atomic: a reader still sees
-/// the value move under it, which is what the statistics counters expect.
+{ Adds to a 64-bit counter. Only the addition is atomic: a reader still sees
+  the value move under it, which is what the statistics counters expect. }
 function RALAtomicInc(var ATarget: Int64RAL; AValue: Int64RAL): Int64RAL; overload;
 
 var
-  /// How a number goes on the wire as text: '.' for decimals, ',' for
-  /// thousands, the rest as the RTL starts with. A local TFormatSettings with
-  /// only the separators assigned held whatever the stack had in every other
-  /// field, which FloatToStr happened not to read. Filled when the program
-  /// starts and only read after that; passed as a const parameter it is not
-  /// copied
+  { How a number goes on the wire as text: '.' for decimals, ',' for
+    thousands, the rest as the RTL starts with (every field set, not only the
+    separators). Filled when the program starts and only read after that;
+    passed as a const parameter it is not copied. }
   RALInvariantFormat: TFormatSettings;
 
 implementation
@@ -155,6 +165,7 @@ uses
 
 {$IF DEFINED(FPC) AND NOT DEFINED(CPU64)}
 var
+  /// Guards the 64-bit counters where the CPU has no atomic 64-bit add.
   gAtomic64: System.TRTLCriticalSection;
 {$IFEND}
 
@@ -179,6 +190,7 @@ end;
 {$ELSE}
   {$IF Defined(FPC) and Defined(LINUX)}
 var
+  /// The monotonic clock reading.
   vTime: TTimeSpec;
 begin
   clock_gettime(CLOCK_MONOTONIC, @vTime);
@@ -266,11 +278,17 @@ type
   { WIN32_FILE_ATTRIBUTE_DATA, declared here because the RTLs of the two
     compilers do not agree on its name }
   TRALFileAttributeData = record
+    /// The file attributes.
     dwFileAttributes: DWORD;
+    /// Creation time.
     ftCreationTime: TFileTime;
+    /// Last access time.
     ftLastAccessTime: TFileTime;
+    /// Last write time.
     ftLastWriteTime: TFileTime;
+    /// High word of the size.
     nFileSizeHigh: DWORD;
+    /// Low word of the size.
     nFileSizeLow: DWORD;
   end;
 
@@ -674,7 +692,7 @@ var
   vA, vB: Byte;
 begin
   { byte by byte, without leaving StringRAL: on Delphi SameText has no
-    AnsiString overload and converts BOTH sides from UTF-8 to UTF-16 on every
+    AnsiString overload and converts both sides from UTF-8 to UTF-16 on every
     call - two heap allocations per comparison, in a lookup that runs once per
     param inserted. FPC does not convert, but the ASCII path is shorter there
     too. }
@@ -766,9 +784,8 @@ var
   vPrevSlash: boolean;
 begin
   { the common case, and the only one on the path of a request: a path that
-    is already fixed comes back as it is. The engines fix the path of every
-    request (TRALRequest.SetQuery) and the route lookup fixed it again - two
-    new strings each time, for an answer equal to the question }
+    is already fixed comes back as it is, with no new string (the engines and
+    the route lookup both ask) }
   if IsFixedRoute(ARoute) then
   begin
     Result := ARoute;
@@ -778,7 +795,7 @@ begin
   Result := '/' + ARoute;
 
   { path transversal fix - same semantics as StringReplace(...,'../','',
-    rfReplaceAll): it scans left to right and, on a match, carries on AFTER the
+    rfReplaceAll): it scans left to right and, on a match, carries on after the
     removed run without re-examining what is left. Written by hand because
     StringReplace on Delphi converts the whole string to UTF-16 and back, and
     FixRoute runs once per route evaluated on every request. The Pos in front
@@ -807,9 +824,8 @@ begin
     SetLength(Result, vOut - POSINISTR + 1);
   end;
 
-  { the "while Pos('//') > 0 do StringReplace" rebuilt the whole string on
-    every turn: quadratic in the number of slashes, and a URI carrying
-    thousands of them was a denial of service on its own }
+  { repeated slashes collapse in one pass: linear in the length, whatever
+    the number of slashes a URI carries }
   vHigh := RALHighStr(Result);
   vOut := POSINISTR - 1;
   vPrevSlash := False;
@@ -853,8 +869,9 @@ var
   vInt, vDiff: IntegerRAL;
 begin
   { "=" on strings stops at the first differing character, so a wrong
-    password that shares a longer prefix with the real one took longer to be
-    refused - enough, over many tries, to guess it character by character }
+    password that shares a longer prefix with the real one would take longer
+    to be refused - enough, over many tries, to guess it character by
+    character }
   vDiff := Length(A) xor Length(B);
   for vInt := POSINISTR to RALHighStr(A) do
     if vInt <= RALHighStr(B) then
@@ -940,10 +957,8 @@ begin
   if numOfBytes <= 0 then
     Exit;
 
-  { Randomize + Random reseeded from the clock on every call: two calls in the
-    same millisecond gave the same bytes, and the nonce, the token id and now
-    the AES IV came out guessable. These are the platform's cryptographic
-    sources instead. }
+  { the platform's cryptographic sources: nonces, token ids and the AES IV
+    must not be guessable }
   {$IFDEF RALWindows}
   if not SystemFunction036(@Result[0], numOfBytes) then
     raise ERALException.Create(ecRandomBytesFailed);
@@ -952,8 +967,8 @@ begin
   if (vHandle >= 0) and URandomRead(vHandle, Result, numOfBytes) then
     Exit;
 
-  { the kept handle could not be had, or failed: the way it always was, which
-    raises as it always did }
+  { the kept handle could not be had, or failed: open the device for this
+    call, which raises when it cannot }
   vFile := TFileStream.Create('/dev/urandom', fmOpenRead or fmShareDenyNone);
   try
     vFile.ReadBuffer(Result[0], numOfBytes);
@@ -967,13 +982,9 @@ function HTTPMethodToRALMethod(AMethod: StringRAL): TRALMethod;
 var
   vMethod: TRALMethod;
 begin
-  { a table instead of GetEnumValue: the RTTI version built 'am' + UpperCase -
-    two UTF-8/UTF-16 conversions on Delphi, plus a concatenation - and only then
-    walked the enum names comparing strings, once per request.
-    A method that is not one of these is amUNKNOWN, which the server answers
-    with 501. It used to become amGET - and run the route's GET handler, with
-    AllowedMethods and SkipAuthMethods judging a GET nobody sent - while 'ALL',
-    which is no HTTP method at all, became amALL }
+  { a table instead of GetEnumValue, with no conversion on Delphi. A method
+    that is not one of these (the name of amALL included, no HTTP method) is
+    amUNKNOWN, which the server answers with 501 }
   Result := amUNKNOWN;
   for vMethod := Succ(amALL) to Pred(amUNKNOWN) do
   begin
@@ -1092,10 +1103,8 @@ end;
 
 { The offset of the DATE being converted, not today's: across a daylight-saving
   change the two differ by an hour. Delphi XE2 on has it in TTimeZone, with
-  each year's own rules; FPC and Delphi XE took the offset in force when the
-  call ran, so a date on the other side of a change came out an hour off - a
-  JWT exp, a JSON date. On Windows they now ask the rules of that year. FPC
-  off Windows still has nothing date-aware in its RTL and keeps today's
+  each year's own rules; FPC and Delphi XE on Windows ask the rules of that
+  year. FPC off Windows has nothing date-aware in its RTL and takes today's
   offset. }
 {$IF (DEFINED(FPC) OR NOT DEFINED(DELPHIXE2UP)) AND DEFINED(RALWindows)}
 type
@@ -1103,6 +1112,7 @@ type
     declares one of its own with DayOfWeek in another place, and which of the
     two that name means depends on the order of the uses }
   TRALWinTime = record
+    /// The parts of a Windows SYSTEMTIME.
     wYear, wMonth, wDayOfWeek, wDay, wHour, wMinute, wSecond, wMilliseconds: Word;
   end;
 
@@ -1149,9 +1159,8 @@ end;
 {$IFEND}
 
 {$IF NOT DEFINED(FPC) AND NOT DEFINED(DELPHIXE2UP)}
-{ Delphi XE: minutes to add to local time to get UTC, as Windows has them now -
-  only for when it will not say for the date. The old code here subtracted
-  them, and kept them in a Cardinal, which a zone east of UTC turns negative }
+{ Delphi XE: minutes to add to local time to get UTC, as Windows has them now,
+  for when it will not say for the date; negative east of UTC }
 function RALCurrentBias: Integer;
 var
   vZone: TTimeZoneInformation;
@@ -1200,8 +1209,7 @@ begin
     Result := IncMinute(ADateTime, RALCurrentBias);
     {$ENDIF}
   {$ELSE}
-    { ToUniversalTime raises on the skipped hour - an opensql over a record
-      holding one answered 500 }
+    { ToUniversalTime raises on the skipped hour of a daylight-saving change }
     if TTimeZone.Local.IsInvalidTime(ADateTime) then
       Result := ADateTime + (TTimeZone.Local.ToUniversalTime(ADateTime - 1) -
                              (ADateTime - 1))
@@ -1241,8 +1249,6 @@ end;
 
 function HTTPDateTimeToDateTime(const AStr: StringRAL): TDateTime;
 begin
-  { it read fixed offsets of the IMF date alone, and StrToInt raised on
-    anything else - a one-digit day, RFC 850, asctime, a cookie's dashes }
   if not RALTryHTTPDate(AStr, Result) then
     raise EConvertError.CreateFmt(emHTTPDateInvalid, [string(AStr)]);
 end;

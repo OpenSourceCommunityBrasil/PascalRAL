@@ -1,7 +1,7 @@
-/// Sends lines to the system's log: syslog (the journal under systemd) on
-/// Linux and macOS, the Event Log on Windows. Linked to a TRALLogPlugin it
-/// writes the request lines; the service host's OnLog and the application
-/// use Write or WriteText directly.
+{ Sends lines to the system's log: syslog (the journal under systemd) on
+  Linux and macOS, the Event Log on Windows. Linked to a TRALLogPlugin it
+  writes the request lines; the service host's OnLog and the application
+  use Write or WriteText directly. }
 unit RALSystemLog;
 
 {$I ..\core\PascalRAL.inc}
@@ -23,10 +23,13 @@ type
   private
     FIdent: string;
     FLevel: TRALSystemLogLevel;
+    /// Guards opening, closing and writing.
     FLock: TCriticalSection;
     FLogPlugin: TRALLogPlugin;
+    /// Whether the log is open.
     FOpened: boolean;
     {$IFDEF RALWindows}
+    /// The event source handle (Windows).
     FHandle: THandle;
     {$ENDIF}
     FRequestLevel: TRALSystemLogLevel;
@@ -34,8 +37,10 @@ type
     procedure SetIdent(const AValue: string);
     procedure SetLogPlugin(const AValue: TRALLogPlugin);
   protected
+    /// Closes the log when it is open.
     procedure CloseLog;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    /// Opens the log when it is closed.
     procedure OpenLog;
   public
     constructor Create(AOwner: TComponent); override;
@@ -63,29 +68,44 @@ implementation
 
 {$IFDEF RALWindows}
 const
+  /// The Windows library of the event log.
   cAdvapi = 'advapi32.dll';
+  /// Event log type: error.
   EVENTLOG_ERROR_TYPE_ = 1;
+  /// Event log type: warning.
   EVENTLOG_WARNING_TYPE_ = 2;
+  /// Event log type: information.
   EVENTLOG_INFORMATION_TYPE_ = 4;
 
+/// Opens an event log source (Windows).
 function RegisterEventSourceW(AServer, ASource: PWideChar): THandle; stdcall; external cAdvapi;
+/// Closes an event log source (Windows).
 function DeregisterEventSource(AHandle: THandle): LongBool; stdcall; external cAdvapi;
+/// Writes an entry to the event log (Windows).
 function ReportEventW(AHandle: THandle; AType, ACategory: Word; AEventID: Cardinal;
   AUserSid: Pointer; ANumStrings: Word; ADataSize: Cardinal; AStrings: Pointer;
   AData: Pointer): LongBool; stdcall; external cAdvapi;
 {$ELSE}
 const
   {$IFDEF FPC}
+  /// The C library, for syslog.
   cLibC = 'c';
   {$ELSE}
+  /// The C library, for syslog.
   cLibC = 'libc.so.6';
   {$ENDIF}
+  /// openlog option: write the process id.
   LOG_PID_ = $01;
+  /// syslog facility: system daemons.
   LOG_DAEMON_ = 3 shl 3;
+  /// The syslog priority of each level.
   cSyslogPriority: array[TRALSystemLogLevel] of Integer = (7, 6, 5, 4, 3, 2);
 
+/// libc openlog.
 procedure libc_openlog(AIdent: PAnsiChar; AOption, AFacility: Integer); cdecl; external cLibC name 'openlog';
+/// libc closelog.
 procedure libc_closelog; cdecl; external cLibC name 'closelog';
+/// libc syslog, with a %s format.
 procedure libc_syslog(APriority: Integer; AFormat: PAnsiChar; AText: PAnsiChar); cdecl; external cLibC name 'syslog';
 {$ENDIF}
 
@@ -142,7 +162,7 @@ end;
 
 {$IFNDEF RALWindows}
 var
-  { syslog keeps the pointer it gets: the text lives as long as the process }
+  /// Syslog keeps the pointer it gets: the text lives as long as the process.
   gIdent: AnsiString;
 {$ENDIF}
 

@@ -1,10 +1,15 @@
+// The extension to media type table of RALMIMETypes.
 type
+  /// An extension and its media type.
   TRALMIMEItem = record
+    /// The extension, without the dot.
     Ext: PChar;
+    /// The media type.
     MIME: PChar;
   end;
         
 const
+  /// The extensions and their media types.
   RAL_MIME_TYPES : array[0..1244] of TRALMIMEItem = (
   ( Ext : '.123'; Mime : 'application/vnd.lotus-1-2-3'),
   ( Ext : '.3dml'; Mime : 'text/vnd.in3d.3dml'),

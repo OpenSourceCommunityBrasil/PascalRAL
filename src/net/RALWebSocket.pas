@@ -1,7 +1,7 @@
-/// WebSocket (RFC 6455) as a channel over another one (RALNetPackage), client
-/// and server: the handshake with an optional subprotocol (Protocol; MQTT
-/// asks for "mqtt"), binary frames, the bytes as one stream that may cross
-/// frame boundaries either way, ping/pong and closing with a status code.
+{ WebSocket (RFC 6455) as a channel over another one (RALNetPackage), client
+  and server: the handshake with an optional subprotocol (Protocol; MQTT
+  asks for "mqtt"), binary frames, the bytes as one stream that may cross
+  frame boundaries either way, ping/pong and closing with a status code. }
 unit RALWebSocket;
 
 {$I ..\core\PascalRAL.inc}
@@ -52,31 +52,51 @@ type
     (masked on the client side, as RFC 6455 5.3 asks) }
   TRALWebSocketChannel = class(TRALLayerChannel)
   private
+    /// Whether the close handshake ended.
     FClosed: boolean;
+    /// Whether a Close frame was sent.
     FCloseSent: boolean;
     FHandshakeDone: boolean;
+    /// Bytes read and not yet parsed.
     FIn: TBytes;
+    /// Start of the unparsed bytes in FIn.
     FInHead: IntegerRAL;
+    /// End of the bytes in FIn.
     FInTail: IntegerRAL;
     FMaxFrame: Int64RAL;
+    /// Frames queued and not yet written.
     FOut: TBytes;
+    /// Start of the unwritten bytes in FOut.
     FOutHead: IntegerRAL;
+    /// End of the bytes in FOut.
     FOutTail: IntegerRAL;
     FPath: StringRAL;
+    /// The payload of the message being read.
     FPayload: TBytes;
+    /// Start of the unread payload.
     FPayloadHead: IntegerRAL;
+    /// End of the payload.
     FPayloadTail: IntegerRAL;
+    /// The subprotocols the peer offered.
     FPeerProtocols: StringRAL;
     FProtocol: StringRAL;
     FRequestHeaders: TStringList;
+    /// Client (masks frames) or server.
     FRole: TRALWSRole;
 
+    /// Appends ACount bytes read to FIn.
     procedure AppendIn(const ABuffer; ACount: IntegerRAL);
+    /// Appends ACount payload bytes.
     procedure AppendPayload(AData: PByte; ACount: IntegerRAL);
+    /// Reads what the inner stream has; returns the bytes read.
     function Fill: IntegerRAL;
+    /// Writes the queued frames to the inner stream.
     procedure FlushOut;
+    /// Parses the frames in FIn; True when payload became available.
     function ParseFrames: boolean;
+    /// Queues a frame of AOpcode with ACount bytes of AData.
     procedure QueueFrame(AOpcode: Byte; AData: PByte; ACount: IntegerRAL);
+    /// Reads the client handshake; True once it is complete and answered.
     function ServerHandshakeParse: boolean;
   public
     /// WebSocket over AInner in ARole.
@@ -126,7 +146,9 @@ uses
   RALSHA1, RALBase64, RALTools;
 
 const
+  /// The GUID of the Sec-WebSocket-Accept computation (RFC 6455).
   cGUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+  /// Longest handshake head, in bytes.
   cMaxHandshake = 16384;
 
 function RALWSAccept(const AKey: StringRAL): StringRAL;
@@ -145,7 +167,7 @@ begin
   end;
 end;
 
-{ the value of header AName (case-insensitive) in AHead, '' when absent }
+/// The value of header AName (case-insensitive) in AHead, '' when absent.
 function HeaderValue(AHead: TStrings; const AName: string): string;
 var
   vInt, vPos: IntegerRAL;
@@ -165,7 +187,7 @@ begin
   end;
 end;
 
-{ True when the comma-separated list AList holds AToken (case-insensitive) }
+/// True when the comma-separated list AList holds AToken (case-insensitive).
 function ListHas(const AList, AToken: string): boolean;
 var
   vParts: TStringList;
@@ -188,11 +210,13 @@ begin
   end;
 end;
 
+/// Raises ERALWebSocketError for a failed handshake.
 procedure HandshakeError(const AReason: string);
 begin
   raise ERALWebSocketError.CreateClose(0, Format(emWSHandshake, [AReason]));
 end;
 
+/// Raises ERALWebSocketError for a malformed frame (close code 1002).
 procedure FrameError(const AReason: string);
 begin
   raise ERALWebSocketError.CreateClose(RALWSCloseProtocolError,
@@ -473,7 +497,8 @@ begin
               'Sec-WebSocket-Key: ' + vKey + #13#10 +
               'Sec-WebSocket-Version: 13'#13#10;
   if FProtocol <> '' then
-    vRequest := vRequest + 'Sec-WebSocket-Protocol: ' + FProtocol + #13#10; // [MQTT-6.0.0-3]
+    // [MQTT-6.0.0-3]
+    vRequest := vRequest + 'Sec-WebSocket-Protocol: ' + FProtocol + #13#10;
   if AHeaders <> nil then
     for vInt := 0 to AHeaders.Count - 1 do
       if Trim(AHeaders[vInt]) <> '' then
@@ -528,7 +553,8 @@ begin
     if HeaderValue(vHead, 'Sec-WebSocket-Accept') <> string(RALWSAccept(vKey)) then
       HandshakeError(emWSBadAccept);
     if (FProtocol <> '') and
-       (HeaderValue(vHead, 'Sec-WebSocket-Protocol') <> string(FProtocol)) then // [MQTT-6.0.0-4]
+       (HeaderValue(vHead, 'Sec-WebSocket-Protocol') <> string(FProtocol)) then
+      // [MQTT-6.0.0-4]
       HandshakeError(emWSNoProtocol);
   finally
     vHead.Free;

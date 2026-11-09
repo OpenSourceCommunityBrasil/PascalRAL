@@ -25,7 +25,6 @@
  *)
 
 { Cross-platform low-level Pascal binding for the Sagui library. }
-
 unit libsagui;
 
 {$IFDEF FPC}
@@ -57,26 +56,35 @@ uses
 
 {$IFNDEF FPC}
 const
+  /// The handle of no library.
   NilHandle = HMODULE(0);
 type
+  /// A loaded library handle.
   TLibHandle = HMODULE;
 {$ENDIF}
 
 const
+  /// Major version of the Sagui library this binding is for.
   SG_VERSION_MAJOR = 3;
 
+  /// Minor version of the Sagui library this binding is for.
   SG_VERSION_MINOR = 5;
 
+  /// Patch version of the Sagui library this binding is for.
   SG_VERSION_PATCH = 2;
 
+  /// The version as $MMmmpp, as sg_version returns it.
   SG_VERSION_HEX = (SG_VERSION_MAJOR shl 16) or (SG_VERSION_MINOR shl 8) or //FI:O803
     SG_VERSION_PATCH;
 
+  /// The major version as text, part of the library file name.
   SG_VERSION_MAJOR_STR = '3';
 
+  /// Size of an error message buffer.
   SG_ERR_SIZE = 256;
 
 {$IF NOT DEFINED(FPC)}
+  /// The shared library extension of the platform.
   SharedSuffix =
  {$IF DEFINED(MSWINDOWS)}
     'dll'
@@ -87,6 +95,7 @@ const
  {$IFEND};
 {$IFEND}
 
+  /// File name of the Sagui library.
   SG_LIB_NAME = Concat(
 {$IFDEF MSWINDOWS}
     'libsagui-', SG_VERSION_MAJOR_STR
@@ -99,694 +108,978 @@ const
   );
 
 resourcestring
+  /// Error: no library name.
   SSgLibEmptyName = 'Empty library name.';
+  /// Error: the library is not loaded.
   SSgLibNotLoaded = Concat('Library ''%s'' not loaded. If it is not available ',
    'on the system, please download it at: https://github.com/risoflora/libsagui/releases');
+  /// Error: the file is not the Sagui library.
   SSgLibInvalid = 'Invalid library ''%s''.';
+  /// Error: the library is older than the binding needs.
   SSgLibVersion = 'Application requires Sagui library v%d.%d.%d or higher.';
+  /// Error: the unload event is registered already.
   SSgUnloadEventAlreadyRegistered = 'Unload event already registered.';
 
 type
+  /// C char.
   cchar = Byte;
+  /// C char pointer (a C string).
   Pcchar = {$IF Defined(FPC) or (CompilerVersion > 29)}MarshaledAString{$ELSE}PAnsiChar{$IFEND};
+  /// C bool.
   cbool = Boolean;
+  /// Pointer to a C bool.
   Pcbool = ^Boolean;
+  /// C uint16_t.
   cuint16_t = UInt16;
+  /// C int.
   cint = Int32;
+  /// C unsigned int.
   cuint = UInt32;
+  /// C uint64_t.
   cuint64_t = UInt64;
+  /// C size_t.
   csize_t = NativeUInt;
+  /// C ssize_t.
   cssize_t = NativeInt;
+  /// C double.
   cdouble = Double;
+  /// C time_t.
   ctime_t = NativeInt;
+  /// C void pointer.
   Pcvoid = Pointer;
+  /// Pointer to a C void pointer.
   PPcvoid = PPointer;
+  /// C enum.
   cenum = cint;
+  /// C va_list.
   cva_list = Pointer;
 
+  /// Sagui's sg_malloc_func callback.
   sg_malloc_func = function(size: csize_t): Pcvoid; cdecl;
 
+  /// Sagui's sg_realloc_func callback.
   sg_realloc_func = function(ptr: Pcvoid; size: csize_t): Pcvoid; cdecl;
 
+  /// Sagui's sg_free_func callback.
   sg_free_func = procedure(ptr: Pcvoid); cdecl;
 
+  /// Sagui's sg_pow_func callback.
   sg_pow_func = function(const x: cdouble; const y: cdouble): cdouble; cdecl;
 
+  /// Sagui's sg_fmod_func callback.
   sg_fmod_func = function(const x: cdouble; const y: cdouble): cdouble; cdecl;
 
+  /// Sagui's sg_err_cb callback.
   sg_err_cb = procedure(cls: Pcvoid; const err: Pcchar); cdecl;
 
+  /// Sagui's sg_write_cb callback.
   sg_write_cb = function(handle: Pcvoid; offset: cuint64_t; const buf: Pcchar;
     size: csize_t): cssize_t; cdecl;
 
+  /// Sagui's sg_read_cb callback.
   sg_read_cb = function(handle: Pcvoid; offset: cuint64_t; buf: Pcchar;
     size: csize_t): cssize_t; cdecl;
 
+  /// Sagui's sg_free_cb callback.
   sg_free_cb = procedure(handle: Pcvoid); cdecl;
 
+  /// Sagui's sg_save_cb callback.
   sg_save_cb = function(handle: Pcvoid; overwritten: cbool): cint; cdecl;
 
+  /// Sagui's sg_save_as_cb callback.
   sg_save_as_cb = function(handle: Pcvoid; const path: Pcchar;
     overwritten: cbool): cint; cdecl;
 
 var
+  /// Sagui's sg_version.
   sg_version: function: cuint; cdecl;
 
+  /// Sagui's sg_version_str.
   sg_version_str: function: Pcchar; cdecl;
 
+  /// Sagui's sg_mm_set.
   sg_mm_set: function(malloc_func: sg_malloc_func;
     realloc_func: sg_realloc_func; free_func: sg_free_func): cint; cdecl;
 
+  /// Sagui's sg_malloc.
   sg_malloc: function(size: csize_t): Pcvoid; cdecl;
 
+  /// Sagui's sg_alloc.
   sg_alloc: function(size: csize_t): Pcvoid; cdecl;
 
+  /// Sagui's sg_realloc.
   sg_realloc: function(ptr: Pcvoid; size: csize_t): Pcvoid; cdecl;
 
+  /// Sagui's sg_free.
   sg_free: procedure(ptr: Pcvoid); cdecl;
 
+  /// Sagui's sg_math_set.
   sg_math_set: function(pow_func: sg_pow_func;
     fmod_func: sg_fmod_func): cint; cdecl;
 
+  /// Sagui's sg_strerror.
   sg_strerror: function(errnum: cint; errmsg: Pcchar;
     errlen: csize_t): Pcchar; cdecl;
 
+  /// Sagui's sg_is_post.
   sg_is_post: function(const method: Pcchar): cbool; cdecl;
 
+  /// Sagui's sg_extract_entrypoint.
   sg_extract_entrypoint: function(const path: Pcchar): Pcchar; cdecl;
 
+  /// Sagui's sg_tmpdir.
   sg_tmpdir: function: Pcchar; cdecl;
 
+  /// Sagui's sg_eor.
   sg_eor: function(err: cbool): cssize_t; cdecl;
 
+  /// Sagui's sg_ip.
   sg_ip: function(const socket: Pcvoid; buf: Pcchar;
     size: csize_t): cint; cdecl;
 
 type
+  /// Pointer to a sg_str.
   Psg_str = ^sg_str;
+  /// Sagui's opaque sg_str.
   sg_str = record
   end;
 
 var
+  /// Sagui's sg_str_new.
   sg_str_new: function: Psg_str; cdecl;
 
+  /// Sagui's sg_str_free.
   sg_str_free: procedure(str: Psg_str); cdecl;
 
+  /// Sagui's sg_str_write.
   sg_str_write: function(str: Psg_str; const val: Pcchar;
     len: csize_t): cint; cdecl;
 
+  /// Sagui's sg_str_printf_va.
   sg_str_printf_va: function(str: Psg_str; const fmt: Pcchar;
     ap: cva_list): cint; cdecl;
 
+  /// Sagui's sg_str_printf.
   sg_str_printf: function(str: Psg_str; const fmt: Pcchar): cint; cdecl
 {$IFNDEF _FIXINSIGHT_}varargs{$ENDIF};
 
+  /// Sagui's sg_str_content.
   sg_str_content: function(str: Psg_str): Pcchar; cdecl;
 
+  /// Sagui's sg_str_length.
   sg_str_length: function(str: Psg_str): csize_t; cdecl;
 
+  /// Sagui's sg_str_clear.
   sg_str_clear: function(str: Psg_str): cint; cdecl;
 
 type
+  /// Pointer to a pointer to a sg_strmap.
   PPsg_strmap = ^Psg_strmap;
+  /// Pointer to a sg_strmap.
   Psg_strmap = ^sg_strmap;
+  /// Sagui's opaque sg_strmap.
   sg_strmap = record
   end;
 
+  /// Sagui's sg_strmap_iter_cb callback.
   sg_strmap_iter_cb = function(cls: Pcvoid; pair: Psg_strmap): cint; cdecl;
 
+  /// Sagui's sg_strmap_sort_cb callback.
   sg_strmap_sort_cb = function(cls: Pcvoid; pair_a: Psg_strmap;
     pair_b: Psg_strmap): cint; cdecl;
 
 var
+  /// Sagui's sg_strmap_name.
   sg_strmap_name: function(pair: Psg_strmap): Pcchar; cdecl;
 
+  /// Sagui's sg_strmap_val.
   sg_strmap_val: function(pair: Psg_strmap): Pcchar; cdecl;
 
+  /// Sagui's sg_strmap_add.
   sg_strmap_add: function(map: PPsg_strmap; const name: Pcchar;
     const val: Pcchar): cint; cdecl;
 
+  /// Sagui's sg_strmap_set.
   sg_strmap_set: function(map: PPsg_strmap; const name: Pcchar;
     const val: Pcchar): cint; cdecl;
 
+  /// Sagui's sg_strmap_find.
   sg_strmap_find: function(map: Psg_strmap; const name: Pcchar;
     pair: PPsg_strmap): cint; cdecl;
 
+  /// Sagui's sg_strmap_get.
   sg_strmap_get: function(map: Psg_strmap; const name: Pcchar): Pcchar; cdecl;
 
+  /// Sagui's sg_strmap_rm.
   sg_strmap_rm: function(map: PPsg_strmap; const name: Pcchar): cint; cdecl;
 
+  /// Sagui's sg_strmap_iter.
   sg_strmap_iter: function(map: Psg_strmap; cb: sg_strmap_iter_cb;
     cls: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_strmap_sort.
   sg_strmap_sort: function(map: PPsg_strmap; cb: sg_strmap_sort_cb;
     cls: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_strmap_count.
   sg_strmap_count: function(map: Psg_strmap): cuint; cdecl;
 
+  /// Sagui's sg_strmap_next.
   sg_strmap_next: function(next: PPsg_strmap): cint; cdecl;
 
+  /// Sagui's sg_strmap_cleanup.
   sg_strmap_cleanup: procedure(map: PPsg_strmap); cdecl;
 
 type
+  /// Pointer to a sg_httpauth.
   Psg_httpauth = ^sg_httpauth;
+  /// Sagui's opaque sg_httpauth.
   sg_httpauth = record
   end;
 
+  /// Pointer to a pointer to a sg_httpupld.
   PPsg_httpupld = ^Psg_httpupld;
+  /// Pointer to a sg_httpupld.
   Psg_httpupld = ^sg_httpupld;
+  /// Sagui's opaque sg_httpupld.
   sg_httpupld = record
   end;
 
+  /// Pointer to a sg_httpreq.
   Psg_httpreq = ^sg_httpreq;
+  /// Sagui's opaque sg_httpreq.
   sg_httpreq = record
   end;
 
+  /// Pointer to a sg_httpres.
   Psg_httpres = ^sg_httpres;
+  /// Sagui's opaque sg_httpres.
   sg_httpres = record
   end;
 
+  /// Pointer to a sg_httpsrv.
   Psg_httpsrv = ^sg_httpsrv;
+  /// Sagui's opaque sg_httpsrv.
   sg_httpsrv = record
   end;
 
 type
+  /// Sagui's sg_httpsrv_cli_cb callback.
   sg_httpsrv_cli_cb = procedure(cls: Pcvoid; const client: Pcvoid;
     closed: Pcbool); cdecl;
 
 type
+  /// Sagui's sg_httpauth_cb callback.
   sg_httpauth_cb = function(cls: Pcvoid; auth: Psg_httpauth; req: Psg_httpreq;
     res: Psg_httpres): cbool; cdecl;
 
+  /// Sagui's sg_httpupld_cb callback.
   sg_httpupld_cb = function(cls: Pcvoid; handle: PPcvoid; const dir: Pcchar;
     const field: Pcchar; const name: Pcchar; const mime: Pcchar;
     const encoding: Pcchar): cint; cdecl;
 
+  /// Sagui's sg_httpuplds_iter_cb callback.
   sg_httpuplds_iter_cb = function(cls: Pcvoid; upld: Psg_httpupld): cint; cdecl;
 
+  /// Sagui's sg_httpreq_cb callback.
   sg_httpreq_cb = procedure(cls: Pcvoid; req: Psg_httpreq;
     res: Psg_httpres); cdecl;
 
 var
+  /// Sagui's sg_httpauth_set_realm.
   sg_httpauth_set_realm: function(auth: Psg_httpauth;
     const realm: Pcchar): cint; cdecl;
 
+  /// Sagui's sg_httpauth_realm.
   sg_httpauth_realm: function(auth: Psg_httpauth): pcchar; cdecl;
 
+  /// Sagui's sg_httpauth_deny2.
   sg_httpauth_deny2: function(auth: Psg_httpauth; const reason: Pcchar;
     const content_type: Pcchar; status: cuint): cint; cdecl;
 
+  /// Sagui's sg_httpauth_deny.
   sg_httpauth_deny: function(auth: Psg_httpauth; const reason: Pcchar;
     const content_type: Pcchar): cint; cdecl;
 
+  /// Sagui's sg_httpauth_cancel.
   sg_httpauth_cancel: function(auth: Psg_httpauth): cint; cdecl;
 
+  /// Sagui's sg_httpauth_usr.
   sg_httpauth_usr: function(auth: Psg_httpauth): Pcchar; cdecl;
 
+  /// Sagui's sg_httpauth_pwd.
   sg_httpauth_pwd: function(auth: Psg_httpauth): Pcchar; cdecl;
 
 var
+  /// Sagui's sg_httpuplds_iter.
   sg_httpuplds_iter: function(uplds: Psg_httpupld; cb: sg_httpuplds_iter_cb;
     cls: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_httpuplds_next.
   sg_httpuplds_next: function(upld: PPsg_httpupld): cint; cdecl;
 
+  /// Sagui's sg_httpuplds_count.
   sg_httpuplds_count: function(uplds: Psg_httpupld): cuint; cdecl;
 
 var
+  /// Sagui's sg_httpupld_handle.
   sg_httpupld_handle: function(uplds: Psg_httpupld): Pcvoid; cdecl;
 
+  /// Sagui's sg_httpupld_dir.
   sg_httpupld_dir: function(uplds: Psg_httpupld): Pcchar; cdecl;
 
+  /// Sagui's sg_httpupld_field.
   sg_httpupld_field: function(uplds: Psg_httpupld): Pcchar; cdecl;
 
+  /// Sagui's sg_httpupld_name.
   sg_httpupld_name: function(uplds: Psg_httpupld): Pcchar; cdecl;
 
+  /// Sagui's sg_httpupld_mime.
   sg_httpupld_mime: function(uplds: Psg_httpupld): Pcchar; cdecl;
 
+  /// Sagui's sg_httpupld_encoding.
   sg_httpupld_encoding: function(uplds: Psg_httpupld): Pcchar; cdecl;
 
+  /// Sagui's sg_httpupld_size.
   sg_httpupld_size: function(uplds: Psg_httpupld): cuint64_t; cdecl;
 
+  /// Sagui's sg_httpupld_save.
   sg_httpupld_save: function(upld: Psg_httpupld;
     overwritten: cbool): cint; cdecl;
 
+  /// Sagui's sg_httpupld_save_as.
   sg_httpupld_save_as: function(upld: Psg_httpupld; const path: Pcchar;
     overwritten: cbool): cint; cdecl;
 
 var
+  /// Sagui's sg_httpreq_srv.
   sg_httpreq_srv: function(req: Psg_httpreq): Psg_httpsrv; cdecl;
 
+  /// Sagui's sg_httpreq_headers.
   sg_httpreq_headers: function(req: Psg_httpreq): PPsg_strmap; cdecl;
 
+  /// Sagui's sg_httpreq_cookies.
   sg_httpreq_cookies: function(req: Psg_httpreq): PPsg_strmap; cdecl;
 
+  /// Sagui's sg_httpreq_params.
   sg_httpreq_params: function(req: Psg_httpreq): PPsg_strmap; cdecl;
 
+  /// Sagui's sg_httpreq_fields.
   sg_httpreq_fields: function(req: Psg_httpreq): PPsg_strmap; cdecl;
 
+  /// Sagui's sg_httpreq_version.
   sg_httpreq_version: function(req: Psg_httpreq): Pcchar; cdecl;
 
+  /// Sagui's sg_httpreq_method.
   sg_httpreq_method: function(req: Psg_httpreq): Pcchar; cdecl;
 
+  /// Sagui's sg_httpreq_path.
   sg_httpreq_path: function(req: Psg_httpreq): Pcchar; cdecl;
 
+  /// Sagui's sg_httpreq_payload.
   sg_httpreq_payload: function(req: Psg_httpreq): Psg_str; cdecl;
 
+  /// Sagui's sg_httpreq_is_uploading.
   sg_httpreq_is_uploading: function(req: Psg_httpreq): cbool; cdecl;
 
+  /// Sagui's sg_httpreq_uploads.
   sg_httpreq_uploads: function(req: Psg_httpreq): Psg_httpupld; cdecl;
 
+  /// Sagui's sg_httpreq_client.
   sg_httpreq_client: function(req: Psg_httpreq): Pcvoid; cdecl;
 
+  /// Sagui's sg_httpreq_tls_session.
   sg_httpreq_tls_session: function(req: Psg_httpreq): Pcvoid; cdecl;
 
+  /// Sagui's sg_httpreq_isolate.
   sg_httpreq_isolate: function(req: Psg_httpreq; cb: sg_httpreq_cb;
     cls: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_httpreq_set_user_data.
   sg_httpreq_set_user_data: function(req: Psg_httpreq;
     data: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_httpreq_user_data.
   sg_httpreq_user_data: function(req: Psg_httpreq): Pcvoid; cdecl;
 
 var
+  /// Sagui's sg_httpres_headers.
   sg_httpres_headers: function(res: Psg_httpres): PPsg_strmap; cdecl;
 
+  /// Sagui's sg_httpres_set_cookie.
   sg_httpres_set_cookie: function(res: Psg_httpres; const name: Pcchar;
     const val: Pcchar): cint; cdecl;
 
+/// Sagui's sg_httpres_send.
 function sg_httpres_send(res: Psg_httpres; const val: Pcchar;
   const content_type: Pcchar; status: cuint): cint;
 {$IFNDEF DEBUG}inline;{$ENDIF}
 
 var
+  /// Sagui's sg_httpres_sendbinary.
   sg_httpres_sendbinary: function(res: Psg_httpres; buf: Pcvoid; size: csize_t;
     const content_type: Pcchar; status: cuint): cint; cdecl;
 
+/// Sagui's sg_httpres_download.
 function sg_httpres_download(res: Psg_httpres;
   const filename: Pcchar; status: cuint): cint; {$IFNDEF DEBUG}inline;{$ENDIF}
 
+/// Sagui's sg_httpres_render.
 function sg_httpres_render(res: Psg_httpres;
   const filename: Pcchar; status: cuint): cint; {$IFNDEF DEBUG}inline;{$ENDIF}
 
 var
+  /// Sagui's sg_httpres_sendfile2.
   sg_httpres_sendfile2: function(res: Psg_httpres; size: cuint64_t;
     max_size: cuint64_t; offset: cuint64_t; const filename: Pcchar;
     const disposition: Pcchar; status: cuint): cint; cdecl;
 
+  /// Sagui's sg_httpres_sendfile.
   sg_httpres_sendfile: function(res: Psg_httpres; size: cuint64_t;
     max_size: cuint64_t; offset: cuint64_t; const filename: Pcchar;
     downloaded: cbool; status: cuint): cint; cdecl;
 
+  /// Sagui's sg_httpres_sendstream.
   sg_httpres_sendstream: function(res: Psg_httpres; size: cuint64_t;
     read_cb: sg_read_cb; handle: Pcvoid; free_cb: sg_free_cb;
     status: cuint): cint; cdecl;
 
+/// Sagui's sg_httpres_zsend.
 function sg_httpres_zsend(res: Psg_httpres; const val: Pcchar;
   const content_type: Pcchar; status: cuint): cint;
 {$IFNDEF DEBUG}inline;{$ENDIF}
 
 var
+  /// Sagui's sg_httpres_zsendbinary2.
   sg_httpres_zsendbinary2: function(res: Psg_httpres; level: cint; buf: Pcvoid;
     size: csize_t; const content_type: Pcchar; status: cuint): cint; cdecl;
 
+  /// Sagui's sg_httpres_zsendbinary.
   sg_httpres_zsendbinary: function(res: Psg_httpres; buf: Pcvoid; size: csize_t;
     const content_type: Pcchar; status: cuint): cint; cdecl;
 
+  /// Sagui's sg_httpres_zsendstream2.
   sg_httpres_zsendstream2: function(res: Psg_httpres; level: cint;
     size: cuint64_t; read_cb: sg_read_cb; handle: Pcvoid; free_cb: sg_free_cb;
     status: cuint): cint; cdecl;
 
+  /// Sagui's sg_httpres_zsendstream.
   sg_httpres_zsendstream: function(res: Psg_httpres; read_cb: sg_read_cb;
     handle: Pcvoid; free_cb: sg_free_cb; status: cuint): cint; cdecl;
 
+/// Sagui's sg_httpres_zdownload.
 function sg_httpres_zdownload(res: Psg_httpres;
   const filename: Pcchar; status: cuint): cint; {$IFNDEF DEBUG}inline;{$ENDIF}
 
+/// Sagui's sg_httpres_zrender.
 function sg_httpres_zrender(res: Psg_httpres;
   const filename: Pcchar; status: cuint): cint; {$IFNDEF DEBUG}inline;{$ENDIF}
 
 var
+  /// Sagui's sg_httpres_zsendfile2.
   sg_httpres_zsendfile2: function(res: Psg_httpres; level: cint;
     size: cuint64_t; max_size: cuint64_t; offset: cuint64_t;
     const filename: Pcchar; const disposition: Pcchar;
     status: cuint): cint; cdecl;
 
+  /// Sagui's sg_httpres_zsendfile.
   sg_httpres_zsendfile: function(res: Psg_httpres; size: cuint64_t;
     max_size: cuint64_t; offset: cuint64_t; const filename: Pcchar;
     downloaded: cbool; status: cuint): cint; cdecl;
 
+  /// Sagui's sg_httpres_reset.
   sg_httpres_reset: function(res: Psg_httpres): cint; cdecl;
 
+  /// Sagui's sg_httpres_clear.
   sg_httpres_clear: function(res: Psg_httpres): cint; cdecl;
 
+  /// Sagui's sg_httpres_is_empty.
   sg_httpres_is_empty: function(res: Psg_httpres): cbool; cdecl;
 
 var
+  /// Sagui's sg_httpsrv_new2.
   sg_httpsrv_new2: function(auth_cb: sg_httpauth_cb; req_cb: sg_httpreq_cb;
     err_cb: sg_err_cb; cls: Pcvoid): Psg_httpsrv; cdecl;
 
+  /// Sagui's sg_httpsrv_new.
   sg_httpsrv_new: function(cb: sg_httpreq_cb; cls: Pcvoid): Psg_httpsrv; cdecl;
 
+  /// Sagui's sg_httpsrv_free.
   sg_httpsrv_free: procedure(srv: Psg_httpsrv); cdecl;
 
+  /// Sagui's sg_httpsrv_tls_listen4.
   sg_httpsrv_tls_listen4: function(srv: Psg_httpsrv; const key: Pcchar;
     const pwd: Pcchar; const cert: Pcchar; const trust: Pcchar;
     const dhparams: Pcchar; const priorities: Pcchar; const hostname: Pcchar;
     port: cuint16_t; backlog: cuint; threaded: cbool): cbool; cdecl;
 
+  /// Sagui's sg_httpsrv_tls_listen3.
   sg_httpsrv_tls_listen3: function(srv: Psg_httpsrv; const key: Pcchar;
     const pwd: Pcchar; const cert: Pcchar; const trust: Pcchar;
     const dhparams: Pcchar; const priorities: Pcchar; port: cuint16_t;
     threaded: cbool): cbool; cdecl;
 
+  /// Sagui's sg_httpsrv_tls_listen2.
   sg_httpsrv_tls_listen2: function(srv: Psg_httpsrv; const key: Pcchar;
     const pwd: Pcchar; const cert: Pcchar; const trust: Pcchar;
     const dhparams: Pcchar; port: cuint16_t; threaded: cbool): cbool; cdecl;
 
+  /// Sagui's sg_httpsrv_tls_listen.
   sg_httpsrv_tls_listen: function(srv: Psg_httpsrv; const key: Pcchar;
     const cert: Pcchar; port: cuint16_t; threaded: cbool): cbool; cdecl;
 
+  /// Sagui's sg_httpsrv_listen2.
   sg_httpsrv_listen2: function(srv: Psg_httpsrv; hostname: Pcchar;
     port: cuint16_t; backlog: cuint; threaded: cbool): cbool; cdecl;
 
+  /// Sagui's sg_httpsrv_listen.
   sg_httpsrv_listen: function(srv: Psg_httpsrv; port: cuint16_t;
     threaded: cbool): cbool; cdecl;
 
+  /// Sagui's sg_httpsrv_shutdown.
   sg_httpsrv_shutdown: function(srv: Psg_httpsrv): cint; cdecl;
 
+  /// Sagui's sg_httpsrv_port.
   sg_httpsrv_port: function(srv: Psg_httpsrv): cuint16_t; cdecl;
 
+  /// Sagui's sg_httpsrv_is_threaded.
   sg_httpsrv_is_threaded: function(srv: Psg_httpsrv): cbool; cdecl;
 
+  /// Sagui's sg_httpsrv_set_cli_cb.
   sg_httpsrv_set_cli_cb: function(srv: Psg_httpsrv; cb: sg_httpsrv_cli_cb;
     cls: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_httpsrv_set_upld_cbs.
   sg_httpsrv_set_upld_cbs: function(srv: Psg_httpsrv; cb: sg_httpupld_cb;
     cls: Pcvoid; write_cb: sg_write_cb; free_cb: sg_free_cb;
     save_cb: sg_save_cb; save_as_cb: sg_save_as_cb): cint; cdecl;
 
+  /// Sagui's sg_httpsrv_set_upld_dir.
   sg_httpsrv_set_upld_dir: function(srv: Psg_httpsrv;
     const dir: Pcchar): cint; cdecl;
 
+  /// Sagui's sg_httpsrv_upld_dir.
   sg_httpsrv_upld_dir: function(srv: Psg_httpsrv): Pcchar; cdecl;
 
+  /// Sagui's sg_httpsrv_set_post_buf_size.
   sg_httpsrv_set_post_buf_size: function(srv: Psg_httpsrv;
     size: csize_t): cint; cdecl;
 
+  /// Sagui's sg_httpsrv_post_buf_size.
   sg_httpsrv_post_buf_size: function(srv: Psg_httpsrv): csize_t; cdecl;
 
+  /// Sagui's sg_httpsrv_set_payld_limit.
   sg_httpsrv_set_payld_limit: function(srv: Psg_httpsrv;
     limit: csize_t): cint; cdecl;
 
+  /// Sagui's sg_httpsrv_payld_limit.
   sg_httpsrv_payld_limit: function(srv: Psg_httpsrv): csize_t; cdecl;
 
+  /// Sagui's sg_httpsrv_set_uplds_limit.
   sg_httpsrv_set_uplds_limit: function(srv: Psg_httpsrv;
     limit: cuint64_t): cint; cdecl;
 
+  /// Sagui's sg_httpsrv_uplds_limit.
   sg_httpsrv_uplds_limit: function(srv: Psg_httpsrv): cuint64_t; cdecl;
 
+  /// Sagui's sg_httpsrv_set_thr_pool_size.
   sg_httpsrv_set_thr_pool_size: function(srv: Psg_httpsrv;
     size: cuint): cint; cdecl;
 
+  /// Sagui's sg_httpsrv_thr_pool_size.
   sg_httpsrv_thr_pool_size: function(srv: Psg_httpsrv): cuint; cdecl;
 
+  /// Sagui's sg_httpsrv_set_con_timeout.
   sg_httpsrv_set_con_timeout: function(srv: Psg_httpsrv;
     timeout: cuint): cint; cdecl;
 
+  /// Sagui's sg_httpsrv_con_timeout.
   sg_httpsrv_con_timeout: function(srv: Psg_httpsrv): cuint; cdecl;
 
+  /// Sagui's sg_httpsrv_set_con_limit.
   sg_httpsrv_set_con_limit: function(srv: Psg_httpsrv;
     limit: cuint): cint; cdecl;
 
+  /// Sagui's sg_httpsrv_con_limit.
   sg_httpsrv_con_limit: function(srv: Psg_httpsrv): cuint; cdecl;
 
+  /// Sagui's sg_httpsrv_handle.
   sg_httpsrv_handle: function(srv: Psg_httpsrv): Pcvoid; cdecl;
 
 type
+  /// Pointer to a pointer to a sg_entrypoint.
   PPsg_entrypoint = ^Psg_entrypoint;
+  /// Pointer to a sg_entrypoint.
   Psg_entrypoint = ^sg_entrypoint;
+  /// Sagui's opaque sg_entrypoint.
   sg_entrypoint = record
   end;
 
 var
+  /// Sagui's sg_entrypoint_name.
   sg_entrypoint_name: function(entrypoint: Psg_entrypoint): Pcchar; cdecl;
 
+  /// Sagui's sg_entrypoint_set_user_data.
   sg_entrypoint_set_user_data: function(entrypoint: Psg_entrypoint;
     user_data: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_entrypoint_user_data.
   sg_entrypoint_user_data: function(entrypoint: Psg_entrypoint): Pcvoid; cdecl;
 
 type
+  /// Pointer to a sg_entrypoints.
   Psg_entrypoints = ^sg_entrypoints;
+  /// Sagui's opaque sg_entrypoints.
   sg_entrypoints = record
   end;
 
+  /// Sagui's sg_entrypoints_iter_cb callback.
   sg_entrypoints_iter_cb = function(cls: Pcvoid;
     entrypoint: Psg_entrypoint): cint; cdecl;
 
 var
+  /// Sagui's sg_entrypoints_new.
   sg_entrypoints_new: function: Psg_entrypoints; cdecl;
 
+  /// Sagui's sg_entrypoints_free.
   sg_entrypoints_free: procedure(entrypoints: Psg_entrypoints); cdecl;
 
+  /// Sagui's sg_entrypoints_add.
   sg_entrypoints_add: function(entrypoints: Psg_entrypoints; const path: Pcchar;
     user_data: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_entrypoints_rm.
   sg_entrypoints_rm: function(entrypoints: Psg_entrypoints;
     const path: Pcchar): cint; cdecl;
 
+  /// Sagui's sg_entrypoints_iter.
   sg_entrypoints_iter: function(entrypoints: Psg_entrypoints;
     cb: sg_entrypoints_iter_cb; cls: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_entrypoints_clear.
   sg_entrypoints_clear: function(entrypoints: Psg_entrypoints): cint; cdecl;
 
+  /// Sagui's sg_entrypoints_find.
   sg_entrypoints_find: function(entrypoints: Psg_entrypoints;
     entrypoint: PPsg_entrypoint; const path: Pcchar): cint; cdecl;
 
 type
+  /// Pointer to a pointer to a sg_route.
   PPsg_route = ^Psg_route;
+  /// Pointer to a sg_route.
   Psg_route = ^sg_route;
+  /// Sagui's opaque sg_route.
   sg_route = record
   end;
 
+  /// Sagui's sg_segments_iter_cb callback.
   sg_segments_iter_cb = function(cls: Pcvoid; index: cuint;
     const segment: Pcchar): cint; cdecl;
 
+  /// Sagui's sg_vars_iter_cb callback.
   sg_vars_iter_cb = function(cls: Pcvoid; const name: Pcchar;
     const val: Pcchar): cint; cdecl;
 
+  /// Sagui's sg_route_cb callback.
   sg_route_cb = procedure(cls: Pcvoid; route: Psg_route); cdecl;
 
+  /// Sagui's sg_routes_iter_cb callback.
   sg_routes_iter_cb = function(cls: Pcvoid; route: Psg_route): cint; cdecl;
 
 var
+  /// Sagui's sg_route_handle.
   sg_route_handle: function(route: Psg_route): Pcvoid; cdecl;
 
+  /// Sagui's sg_route_match.
   sg_route_match: function(route: Psg_route): Pcvoid; cdecl;
 
+  /// Sagui's sg_route_rawpattern.
   sg_route_rawpattern: function(route: Psg_route): Pcchar; cdecl;
 
+  /// Sagui's sg_route_pattern.
   sg_route_pattern: function(route: Psg_route): Pcchar; cdecl;
 
+  /// Sagui's sg_route_path.
   sg_route_path: function(route: Psg_route): Pcchar; cdecl;
 
+  /// Sagui's sg_route_segments_iter.
   sg_route_segments_iter: function(route: Psg_route; cb: sg_segments_iter_cb;
     cls: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_route_vars_iter.
   sg_route_vars_iter: function(route: Psg_route; cb: sg_vars_iter_cb;
     cls: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_route_user_data.
   sg_route_user_data: function(route: Psg_route): Pcvoid; cdecl;
 
 var
+  /// Sagui's sg_routes_add2.
   sg_routes_add2: function(routes: PPsg_route; route: PPsg_route;
     const pattern: Pcchar; errmsg: Pcchar; errlen: csize_t;
     cb: sg_route_cb; cls: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_routes_add.
   sg_routes_add: function(routes: Psg_route; const pattern: Pcchar;
     cb: sg_route_cb; cls: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_routes_rm.
   sg_routes_rm: function(routes: PPsg_route;
     const pattern: Pcchar): cint; cdecl;
 
+  /// Sagui's sg_routes_iter.
   sg_routes_iter: function(routes: Psg_route; cb: sg_routes_iter_cb;
     cls: Pcvoid): cint; cdecl;
 
+  /// Sagui's sg_routes_next.
   sg_routes_next: function(route: PPsg_route): cint; cdecl;
 
+  /// Sagui's sg_routes_count.
   sg_routes_count: function(routes: Psg_route): cuint; cdecl;
 
+  /// Sagui's sg_routes_cleanup.
   sg_routes_cleanup: function(routes: PPsg_route): cint; cdecl;
 
 type
+  /// Pointer to a sg_router.
   Psg_router = ^sg_router;
+  /// Sagui's opaque sg_router.
   sg_router = record
   end;
 
+  /// Sagui's sg_router_dispatch_cb callback.
   sg_router_dispatch_cb = function(cls: Pcvoid; const path: Pcchar;
     route: Psg_route): cint; cdecl;
 
+  /// Sagui's sg_router_match_cb callback.
   sg_router_match_cb = function(cls: Pcvoid; route: Psg_route): cint; cdecl;
 
 var
+  /// Sagui's sg_router_new.
   sg_router_new: function(routes: Psg_route): Psg_router; cdecl;
 
+  /// Sagui's sg_router_free.
   sg_router_free: procedure(router: Psg_router); cdecl;
 
+  /// Sagui's sg_router_dispatch2.
   sg_router_dispatch2: function(router: Psg_router; const path: Pcchar;
     user_data: Pcvoid; dispatch_cb: sg_router_dispatch_cb; cls: Pcvoid;
     match_cb: sg_router_match_cb): cint; cdecl;
 
+  /// Sagui's sg_router_dispatch.
   sg_router_dispatch: function(router: Psg_router; const path: Pcchar;
     user_data: Pcvoid): cint; cdecl;
 
 type
+  /// Pointer to a sg_expr.
   Psg_expr = ^sg_expr;
+  /// Sagui's opaque sg_expr.
   sg_expr = record
   end;
 
 type
+  /// An expression error code (SG_EXPR_ERR_*).
   sg_expr_err_type = cenum;
 const
+  /// Expression error:  unknown.
   SG_EXPR_ERR_UNKNOWN = 0; //FI:O803
+  /// Expression error:  unexpected number.
   SG_EXPR_ERR_UNEXPECTED_NUMBER = 1; //FI:O803
+  /// Expression error:  unexpected word.
   SG_EXPR_ERR_UNEXPECTED_WORD = 2; //FI:O803
+  /// Expression error:  unexpected parens.
   SG_EXPR_ERR_UNEXPECTED_PARENS = 3; //FI:O803
+  /// Expression error:  missing operand.
   SG_EXPR_ERR_MISSING_OPERAND = 4; //FI:O803
+  /// Expression error:  unknown operator.
   SG_EXPR_ERR_UNKNOWN_OPERATOR = 5; //FI:O803
+  /// Expression error:  invalid func name.
   SG_EXPR_ERR_INVALID_FUNC_NAME = 6; //FI:O803
+  /// Expression error:  bad parens.
   SG_EXPR_ERR_BAD_PARENS = 7; //FI:O803
+  /// Expression error:  too few func args.
   SG_EXPR_ERR_TOO_FEW_FUNC_ARGS = 8; //FI:O803
+  /// Expression error:  first arg is not var.
   SG_EXPR_ERR_FIRST_ARG_IS_NOT_VAR = 9; //FI:O803
+  /// Expression error:  bad variable name.
   SG_EXPR_ERR_BAD_VARIABLE_NAME = 10; //FI:O803
+  /// Expression error:  bad assignment.
   SG_EXPR_ERR_BAD_ASSIGNMENT = 11; //FI:O803
 
 type
+  /// Pointer to a sg_expr_argument.
   Psg_expr_argument = ^sg_expr_argument;
+  /// Sagui's opaque sg_expr_argument.
   sg_expr_argument = record
   end;
 
 type
+  /// Sagui's sg_expr_func callback.
   sg_expr_func = function(cls: Pcvoid; args: Psg_expr_argument;
     const identifier: Pcchar): cdouble; cdecl;
 
 type
+  /// Pointer to a sg_expr_extension.
   Psg_expr_extension = ^sg_expr_extension;
+  /// A function an expression may call.
   sg_expr_extension = record
+    /// The function.
     func: sg_expr_func;
+    /// Its name in the expression.
     identifier: Pcchar;
+    /// User data passed to it.
     cls: Pcvoid;
   end;
 
 var
+  /// Sagui's sg_expr_new.
   sg_expr_new: function: Psg_expr; cdecl;
 
+  /// Sagui's sg_expr_free.
   sg_expr_free: procedure(expr: Psg_expr); cdecl;
 
+  /// Sagui's sg_expr_compile.
   sg_expr_compile: function(expr: Psg_expr; const str: Pcchar; len: csize_t;
     extensions: Psg_expr_extension): cint; cdecl;
 
+  /// Sagui's sg_expr_clear.
   sg_expr_clear: function(expr: Psg_expr): cint; cdecl;
 
+  /// Sagui's sg_expr_eval.
   sg_expr_eval: function(expr: Psg_expr): cdouble; cdecl;
 
+  /// Sagui's sg_expr_var.
   sg_expr_var: function(expr: Psg_expr; const name: Pcchar;
     len: csize_t): cdouble; cdecl;
 
+  /// Sagui's sg_expr_set_var.
   sg_expr_set_var: function(expr: Psg_expr; const name: Pcchar; len: csize_t;
     const val: cdouble): cint; cdecl;
 
+  /// Sagui's sg_expr_arg.
   sg_expr_arg: function(args: Psg_expr_argument; index: cint): cdouble; cdecl;
 
+  /// Sagui's sg_expr_near.
   sg_expr_near: function(expr: Psg_expr): cint; cdecl;
 
+  /// Sagui's sg_expr_err.
   sg_expr_err: function(expr: Psg_expr): sg_expr_err_type; cdecl;
 
+  /// Sagui's sg_expr_strerror.
   sg_expr_strerror: function(expr: Psg_expr): Pcchar; cdecl;
 
+  /// Sagui's sg_expr_calc.
   sg_expr_calc: function(const str: Pcchar; len: csize_t): cdouble; cdecl;
 
 type
 
   { ESgLibNotLoaded }
 
+  /// Raised when the library is used before it is loaded.
   ESgLibNotLoaded = class(EFileNotFoundException);
 
   { ESgUnloadEvent }
 
+  /// Error registering an unload event.
   ESgUnloadEvent = class(Exception);
 
-  { TSgLibUnloadHolder }
-
+  /// An unload event and its sender.
   TSgLibUnloadHolder = class sealed
   private
     FEvent: TNotifyEvent;
     FSender: TObject;
   public
+    /// Holds AEvent and ASender.
     constructor Create(AEvent: TNotifyEvent; ASender: TObject);
 
+    /// The event.
     property Event: TNotifyEvent read FEvent;
+    /// The sender it is called with.
     property Sender: TObject read FSender;
   end;
 
-  { TSgUnloadEvents }
-
+  /// The events called before the library unloads.
   TSgUnloadEvents = class sealed
   private
     FCS: TCriticalSection;
     FList: TObjectList<TSgLibUnloadHolder>;
   protected
+    /// The lock shared with SgLib.
     property CS: TCriticalSection read FCS;
+    /// The events.
     property List: TObjectList<TSgLibUnloadHolder> read FList;
   public
+    /// Creates the list, guarded by ACS.
     constructor Create(ACS: TCriticalSection); virtual;
     destructor Destroy; override;
 
+    /// Registers an event; raises ESgUnloadEvent when it is registered.
     procedure Add(AEvent: TNotifyEvent; ASender: TObject); virtual;
+    /// Calls every event.
     procedure Call; virtual;
+    /// Removes every event.
     procedure Clear; virtual;
+    /// Removes an event.
     procedure Remove(AEvent: TNotifyEvent); virtual;
   end;
 
   { SgLib }
 
+  /// Loads, checks and unloads the Sagui library.
   SgLib = record
+  /// Guards loading and unloading.
   private class var
     GCS: TCriticalSection;
     GUnloadEvents: TSgUnloadEvents;
+    /// The file name last loaded.
     GLastName: TFileName;
     GHandle: TLibHandle;
   private
+    /// Loads AName and binds every entry point; NilHandle when it does not load.
     class function InternalLoad(
       const AName: TFileName): TLibHandle; static;
   public
+    /// Creates the lock and the unload events.
     class procedure Init; static;
+    /// Unloads the library and frees the lock.
     class procedure Done; static;
+    /// The file name last loaded.
     class function GetLastName: string; static;
+    /// Raises when the library is older than AVersion.
     class procedure CheckVersion(AVersion: Integer); overload; static;
-    // XE2 stops with an internal error (URW1147) when these two are inlined into
-    // another unit
+    { XE2 stops with an internal error (URW1147) when these two are inlined into
+      another unit }
     class procedure CheckVersion; overload; static;
 {$IF NOT DEFINED(DEBUG) AND (DEFINED(FPC) OR (CompilerVersion > 23))}inline;{$IFEND}
+    /// Raises EOSError with the text of ALastError, unless it is 0.
     class procedure CheckLastError(ALastError: Integer); static;
 {$IF NOT DEFINED(DEBUG) AND (DEFINED(FPC) OR (CompilerVersion > 23))}inline;{$IFEND}
+    { Loads the library AName and binds it; raises ESgLibNotLoaded when it does
+      not load }
     class function Load(const AName: TFileName): TLibHandle; static;
+    /// Calls the unload events and unloads the library.
     class function Unload: TLibHandle; static;
+    /// Whether the library is loaded.
     class function IsLoaded: Boolean; static;
+    /// Raises ESgLibNotLoaded unless the library is loaded.
     class procedure Check; static;
+    /// The events called before the library unloads.
     class property UnloadEvents: TSgUnloadEvents read GUnloadEvents;
+    /// The library handle, NilHandle when none.
     class property Handle: TLibHandle read GHandle;
   end;
 
+/// Power, given to Sagui as its pow.
 function cpow(const X, Y: cdouble): cdouble; cdecl;
 {$IFNDEF DEBUG}inline;{$ENDIF}
 
+/// Floating-point remainder, given to Sagui as its fmod.
 function cfmod(const X, Y: cdouble): cdouble; cdecl;
 {$IFNDEF DEBUG}inline;{$ENDIF}
 
 implementation
 
+/// Whether two events are the same method of the same object.
 function SameNotifyEvent(AN1, AN2: TNotifyEvent): Boolean;
 {$IFNDEF DEBUG}inline;{$ENDIF}
 begin

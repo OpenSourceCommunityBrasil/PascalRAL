@@ -1,3 +1,4 @@
+/// Shared library loading: one handle per object, symbols bound by name.
 unit RALDynLibs;
 
 {$IFDEF FPC}
@@ -15,44 +16,56 @@ uses
 
 type
 
+  /// A loaded shared library, freed with its last reference.
   IRALDynLibs = interface
     ['{6B44033D-FDA5-4C45-9A95-34E5CE7EF32E}']
     function GetFilename: string;
     function GetHandle: NativeUInt;
+    /// Binds a symbol; leaves it nil and returns False when the library lacks it.
     function TryBind(
       var Target;
       const Symbol: AnsiString
     ): Boolean;
+    /// Binds a symbol; raises when the library lacks it.
     procedure Bind(
       var Target;
       const Symbol: AnsiString
     );
+    /// The file loaded.
     property Filename: string read GetFilename;
+    /// The library handle.
     property Handle: NativeUInt read GetHandle;
   end;
 
-  { Owns the library handle. Bound procedures are valid until this object is freed. }
+  /// Owns the library handle. Bound procedures are valid until this object is freed.
   TRALDynLibs = class(TInterfacedObject, IRALDynLibs)
   private
     FFilename: string;
     FHandle: NativeUInt;
 
+    /// The file loaded.
     function GetFilename: string;
+    /// The library handle.
     function GetHandle: NativeUInt;
   public
+    /// Loads Filename; raises when it does not load.
     constructor Create(const Filename: string);
     destructor Destroy; override;
 
+    /// Binds a symbol; raises when the library lacks it.
     procedure Bind(
       var Target;
       const Symbol: AnsiString
     );
+    /// Binds a symbol; leaves it nil and returns False when the library lacks it.
     function TryBind(
       var Target;
       const Symbol: AnsiString
     ): Boolean;
 
+    /// The file loaded.
     property Filename: string read FFilename;
+    /// The library handle.
     property Handle: NativeUInt read FHandle;
   end;
 

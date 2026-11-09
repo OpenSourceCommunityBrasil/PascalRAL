@@ -1,8 +1,8 @@
-/// The event loop of a server on RAL's own sockets (RALNetPackage): a thread
-/// that accepts on the listeners, N poll threads each owning a slice of the
-/// connections, and a timer. The owner (the MQTT broker, and later an SMTP
-/// server or a balancer) gives the protocol by descending from
-/// TRALSocketLoopConnection; the loop never reads a byte itself.
+{ The event loop of a server on RAL's own sockets (RALNetPackage): a thread
+  that accepts on the listeners, N poll threads each owning a slice of the
+  connections, and a timer. The owner (the MQTT broker, and later an SMTP
+  server or a balancer) gives the protocol by descending from
+  TRALSocketLoopConnection; the loop never reads a byte itself. }
 unit RALSocketLoop;
 
 {$I ..\core\PascalRAL.inc}
@@ -29,6 +29,7 @@ type
   TRALSocketLoopConnection = class
   private
     FCloseAfterFlush: boolean;
+    /// Whether the connection was closed.
     FClosed: boolean;
     FReturned: Word;
     FThread: TRALSocketLoopThread;
@@ -86,17 +87,25 @@ type
     itself ends the wait), serves each connection, flushes what is queued }
   TRALSocketLoopThread = class(TThread)
   private
+    /// The connections this thread polls.
     FConnections: TList;
     FContext: TObject;
+    /// Connections handed over, not yet polled.
     FIncoming: TList;
+    /// Guards FIncoming.
     FLock: TCriticalSection;
+    /// The loop the thread belongs to.
     FLoop: TRALSocketLoop;
+    /// Wake datagrams sent and not yet read; one is enough.
     FWakePending: IntegerRAL;
+    /// The datagram socket that wakes the poll.
     FWaker: TRALSocket;
+    /// The address of FWaker.
     FWakerAddress: TRALSocketAddress;
   protected
     procedure Execute; override;
   public
+    /// Creates and starts a poll thread of ALoop.
     constructor Create(ALoop: TRALSocketLoop);
     destructor Destroy; override;
 
@@ -120,13 +129,18 @@ type
     and stop them the same way; the listeners stay the owner's }
   TRALSocketLoop = class
   private
+    /// The thread that accepts connections.
     FAcceptor: TThread;
+    /// The listening sockets.
     FListeners: array of TRALSocket;
     FOnAccept: TRALSocketLoopAccept;
     FOnTimer: TNotifyEvent;
     FPollSlice: IntegerRAL;
+    /// The tag of each listener, passed to OnAccept.
     FTags: array of IntegerRAL;
+    /// The poll threads.
     FThreads: TList;
+    /// The thread that fires the timer.
     FTimer: TThread;
     FTimerInterval: IntegerRAL;
   public
@@ -173,23 +187,27 @@ uses
   RALTools;
 
 type
-  { the accepting thread }
+  /// The accepting thread.
   TRALSocketLoopAcceptor = class(TThread)
   private
+    /// The loop it accepts for.
     FLoop: TRALSocketLoop;
   protected
     procedure Execute; override;
   public
+    /// Creates the accepting thread of ALoop.
     constructor Create(ALoop: TRALSocketLoop);
   end;
 
-  { the timer thread: short sleeps, so stopping is prompt }
+  /// The timer thread: short sleeps, so stopping is prompt.
   TRALSocketLoopTimer = class(TThread)
   private
+    /// The loop it fires for.
     FLoop: TRALSocketLoop;
   protected
     procedure Execute; override;
   public
+    /// Creates the timer thread of ALoop.
     constructor Create(ALoop: TRALSocketLoop);
   end;
 

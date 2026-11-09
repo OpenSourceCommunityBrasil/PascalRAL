@@ -10,8 +10,8 @@ uses
   RALBase64, RALMD5, RALJson, RALTools, RALJWS;
 
 type
-  { Digest hashes: MD5, SHA-256 and SHA-512-256 (tdaSHA2_512, the name it
-    always had). Each also has a -sess variant, TRALDigestParams.SessAlgorithm. }
+  { Digest hashes: MD5, SHA-256 and SHA-512-256 (tdaSHA2_512). Each also has
+    a -sess variant, TRALDigestParams.SessAlgorithm. }
   TRALDigestAlgorithm = (tdaMD5, tdaSHA2_256, tdaSHA2_512);
   /// A set of Digest algorithms.
   TRALDigestAlgorithms = set of TRALDigestAlgorithm;
@@ -808,9 +808,8 @@ end;
 procedure TRALJWTParams.AddClaim(const AKey, AValue: StringRAL);
 begin
   { a claim set twice is replaced, not duplicated: the list is sorted by the
-    whole "key=value" line, so a second value for the same key went in next to
-    the first and the token carried the key twice - invalid JSON, read back as
-    whichever came first. Renewing a token (OnRenewToken) is exactly that }
+    whole "key=value" line, and a key twice is invalid JSON. Renewing a token
+    (OnRenewToken) sets claims again }
   DelClaim(AKey);
   FCustomClaims.Add(AKey + '=' + AValue);
 end;
@@ -871,9 +870,7 @@ begin
 
     { exp/iat/nbf are Unix time, which is UTC by definition; the fields hold
       local time (they come from Now). DateTimeToUnix treats its input as
-      UTC, so without the conversion a token issued at UTC-3 said it would
-      expire three hours earlier than meant, and one from another library
-      was refused or accepted with the zone offset as the error }
+      UTC, so the fields are converted first }
     if FExpiration > 0 then
       vJson.Add('exp', DateTimeToUnix(RALDateTimeToGMT(FExpiration)));
 
@@ -1145,10 +1142,9 @@ begin
 
   if not vOk then
   begin
-    { not a token, so nothing of the previous one may stay: anything
-      malformed handed to an object that had validated a good token came
-      back valid, with that token's claims. The header keeps its Algorithm,
-      which is the caller's configuration }
+    { not a token, so nothing of the previous one may stay (a malformed text
+      must not come back valid with the claims of a good token). The header
+      keeps its Algorithm, which is the caller's configuration }
     FToken := '';
     FPayload.Clear;
     FSigningInput := '';
@@ -1179,10 +1175,8 @@ begin
       end;
       try
         { the incremental HMAC over the text where it is, and the digest
-          written as base64url at once: HMACAsString went through a stream
-          for the text, one per pad and one for the base64, plus three
-          StringReplace - which on Delphi are UTF-16 - on every token checked.
-          It refuses what HMACAsString refused, in the same order }
+          written as base64url at once, with no stream and no conversion. It
+          refuses what HMACAsString refuses, in the same order }
         if AInput = '' then
           raise ERALException.Create(ecHMACEmptyText);
         if FSignSecretKey = '' then

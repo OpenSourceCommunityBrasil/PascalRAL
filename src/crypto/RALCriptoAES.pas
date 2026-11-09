@@ -997,8 +997,8 @@ begin
   // content still passes through here when the connection is encrypted
   if vSize = 0 then
     Exit;
-  // IV, at least one block in whole blocks, and the MAC: anything else was
-  // never produced by this cipher
+  // IV, at least one block in whole blocks, and the MAC: anything else is
+  // not this cipher's output
   if (vSize < 16 + 16 + cMacSize) or ((vSize - 16 - cMacSize) mod 16 <> 0) then
     raise ERALException.Create(ecCryptInvalidLength);
 

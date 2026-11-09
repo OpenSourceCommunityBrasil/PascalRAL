@@ -10,56 +10,82 @@ uses
 
 type
 
-  { TRALStorageBIN }
-
+  /// Writes and reads a dataset in RAL's own binary format.
   TRALStorageBIN = class(TRALStorage)
   protected
+    /// Reads a boolean.
     function ReadBoolean(AStream: TStream): Boolean;
+    /// Reads a byte.
     function ReadByte(AStream: TStream): Byte;
+    /// Reads a date and time.
     function ReadDateTime(AStream: TStream): TDateTime;
     /// Reads exactly ACount bytes or raises - every Read* goes through it
     procedure ReadExact(AStream: TStream; var ABuffer; ACount: IntegerRAL);
+    /// Builds the fields of ADataset from the stream.
     procedure ReadFields(ADataset: TDataSet; AStream: TStream);
+    /// Reads a double.
     function ReadFloat(AStream: TStream): Double;
-    // read
+    /// read
     function ReadHeader(AStream: TStream): boolean;
+    /// Reads a 64-bit integer.
     function ReadInt64(AStream: TStream): Int64RAL;
+    /// Reads a 32-bit integer.
     function ReadInteger(AStream: TStream): Integer;
+    /// Reads an unsigned 32-bit integer.
     function ReadLongWord(AStream: TStream): LongWord;
     /// Reads what WriteMemo writes into AField, which may be nil
     procedure ReadMemo(AStream: TStream; AField: TField);
+    /// Appends the records of the stream to ADataset.
     procedure ReadRecords(ADataset: TDataSet; AStream: TStream);
+    /// Reads a signed byte.
     function ReadShortint(AStream: TStream): Shortint;
+    /// Reads a 16-bit integer.
     function ReadSmallint(AStream: TStream): Smallint;
+    /// Reads a stream, its size first. The caller frees the stream.
     function ReadStream(AStream: TStream): TStream;
+    /// Reads a string, its size first.
     function ReadString(AStream: TStream): StringRAL;
+    /// Reads an unsigned 16-bit integer.
     function ReadWord(AStream: TStream): Word;
+    /// Writes a boolean.
     procedure WriteBoolean(AStream: TStream; AValue: Boolean);
+    /// Writes a byte.
     procedure WriteByte(AStream: TStream; AValue: Byte);
+    /// Writes a date and time.
     procedure WriteDateTime(AStream: TStream; AValue: TDateTime);
+    /// Writes the field definitions of ADataset.
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
+    /// Writes a double.
     procedure WriteFloat(AStream: TStream; AValue: Double);
-    // write
+    /// write
     procedure WriteHeader(AStream: TStream);
+    /// Writes a 64-bit integer.
     procedure WriteInt64(AStream: TStream; AValue: Int64RAL);
+    /// Writes a 32-bit integer.
     procedure WriteInteger(AStream: TStream; AValue: Integer);
+    /// Writes an unsigned 32-bit integer.
     procedure WriteLongWord(AStream: TStream; AValue: LongWord);
-    /// The text of a memo, as UTF-16LE in the layout WriteStream gives a
-    /// stream - never the field's own bytes (see the implementation)
+    { The text of a memo, as UTF-16LE in the layout WriteStream gives a
+      stream - never the field's own bytes (see the implementation). }
     procedure WriteMemo(AStream: TStream; AField: TField);
+    /// Writes the records of ADataset.
     procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
+    /// Writes a signed byte.
     procedure WriteShortint(AStream: TStream; AValue: Shortint);
+    /// Writes a 16-bit integer.
     procedure WriteSmallint(AStream: TStream; AValue: Smallint);
+    /// Writes a stream, its size first.
     procedure WriteStream(AStream: TStream; AValue: TStream);
+    /// Writes a string, its size first.
     procedure WriteString(AStream: TStream; AValue: StringRAL);
+    /// Writes an unsigned 16-bit integer.
     procedure WriteWord(AStream: TStream; AValue: Word);
   public
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
   end;
 
-  { TRALStorageBINLink }
-
+  /// The storage link of the binary format.
   TRALStorageBINLink = class(TRALStorageLink)
   protected
     function GetContentType: StringRAL; override;
@@ -115,7 +141,7 @@ begin
     WriteInteger(AStream, ADataset.Fields[vInt].Size);
 
     // a decimal also says its precision - Size is its scale. Only for sftBCD,
-    // which no reader before it knew, so no stream an older RAL reads changes
+    // so the streams of the other types read as before
     if vType = sftBCD then
       WriteInteger(AStream, RALFieldPrecision(ADataset.Fields[vInt]));
   end;
@@ -207,8 +233,8 @@ begin
   vBytes := StringToBytesUTF8(AValue);
   vSize := Length(vBytes);
   AStream.Write(vSize, SizeOf(vSize));
-  { an empty text - a VARCHAR holding '' - has no [0] to take: with range
-    checks on, every answer carrying one was a 500 }
+  { an empty text - a VARCHAR holding '' - has no [0] to take (a range error
+    with range checks on) }
   if vSize > 0 then
     AStream.Write(vBytes[0], vSize);
 end;
@@ -274,13 +300,9 @@ begin
   AStream.CopyFrom(AValue, vSize);
 end;
 
-{ It used to be the bytes TBlobField.SaveToStream gives, which are in the
-  field's own encoding - ANSI for a Delphi ftMemo, UTF-8 for an FPC one,
-  UTF-16 for an ftWideMemo on both - and the reader loaded them as they came
-  into the field it built, an ftWideMemo: every memo that was not wide on the
-  writer's side arrived as garbage, an sqldb server's included. UTF-16 is
-  what the wide memos already sent, so a reader of before still reads those,
-  and now every other memo as well. Little-endian, as every target is }
+{ A memo travels as UTF-16 little-endian text whatever the field's own
+  encoding (ANSI for a Delphi ftMemo, UTF-8 for an FPC one), since the reader
+  loads it into an ftWideMemo }
 procedure TRALStorageBIN.WriteMemo(AStream: TStream; AField: TField);
 var
   vText: UnicodeString;
@@ -383,7 +405,7 @@ begin
 
   ADataset.Open;
 
-  // as vezes os fields ja estao carregados e o fieldsdefs nao funciona direito
+  // the fields may be loaded already, and FieldDefs is not reliable then
   for vInt := 0 to Pred(ADataset.FieldCount) do
   begin
     vName := ADataset.Fields[vInt].FieldName;
@@ -410,9 +432,8 @@ begin
   vRecords := ReadInt64(AStream);
   vFields := Length(FFieldTypes);
   { each value starts with its null flag, so a record takes at least a byte
-    per field. A count the rest of the stream cannot hold is a lie - and with
-    no field at all every record took nothing, and the loop ran as many times
-    as the count said }
+    per field. A count the rest of the stream cannot hold is a lie, and with
+    no field at all no count can be checked }
   if (vRecords < 0) or ((vRecords > 0) and ((vFields = 0) or
      (vRecords > (AStream.Size - AStream.Position) div vFields))) then
     raise ERALException.Create(ecStreamSizeBeyondEnd);
@@ -463,9 +484,9 @@ begin
       vInt64 := vInt64 + 1;
     end;
   finally
-    { in a finally, as the CSV reader already had it: a record that failed -
-      a stream cut short now raises emStreamSizeBeyondEnd in the middle of it -
-      left the read-only fields writable and the controls disabled }
+    { in a finally: a record that fails (a stream cut short raises
+      emStreamSizeBeyondEnd in the middle of it) must not leave the read-only
+      fields writable and the controls disabled }
     RestoreReadOnly;
     ADataset.EnableControls;
   end;
@@ -475,9 +496,9 @@ begin
   SetLength(FFoundFields, 0);
 end;
 
-{ The same fix TRALBinaryWriter.ReadExact got: Stream.Read returns how much it
-  read and nothing looked, so at the end of the stream - a response cut short,
-  or one that lies about its counts - a value was whatever the stack held. }
+{ As TRALBinaryWriter.ReadExact: a short read raises, instead of leaving the
+  value as whatever the stack held (a response cut short, or one that lies
+  about its counts). }
 procedure TRALStorageBIN.ReadExact(AStream: TStream; var ABuffer; ACount: IntegerRAL);
 begin
   if AStream.Read(ABuffer, ACount) <> ACount then
@@ -576,9 +597,7 @@ function TRALStorageBIN.ReadStream(AStream: TStream): TStream;
 var
   vSize : Int64RAL;
 begin
-  { the size first, and checked: the stream used to be created before
-    anything was read - and leaked by every read that failed - and then grown
-    to whatever size the data announced }
+  { the size first, and checked, before the stream is created }
   ReadExact(AStream, vSize, SizeOf(vSize));
   if vSize > AStream.Size - AStream.Position then
     raise ERALException.Create(ecStreamSizeBeyondEnd);

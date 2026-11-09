@@ -1,7 +1,7 @@
-/// Regular expressions of RAL: RE2 syntax, linear time, the same on every compiler.
-/// No backtracking: a pattern compiles to a Thompson NFA, "is there a match" runs
-/// as a lazily built DFA, and captures run on a Pike VM; a required literal is
-/// searched first. Backreferences and lookaround are refused when compiling.
+{ Regular expressions of RAL: RE2 syntax, linear time, the same on every compiler.
+  No backtracking: a pattern compiles to a Thompson NFA, "is there a match" runs
+  as a lazily built DFA, and captures run on a Pike VM; a required literal is
+  searched first. Backreferences and lookaround are refused when compiling. }
 unit RALRegex;
 
 {$I ..\core\PascalRAL.inc}
@@ -32,6 +32,7 @@ type
   private
     FPosition: IntegerRAL;
   public
+    /// An error at byte APosition of the pattern.
     constructor CreatePos(const AMessage: string; APosition: IntegerRAL);
 
     /// Byte of the pattern, from 1, where the error was found.
@@ -45,7 +46,8 @@ type
   /// Set of TRALRegexOption.
   TRALRegexOptions = set of TRALRegexOption;
 
-  /// One capture group of a match: Index from 1 and Length in bytes; Index 0 = did not take part.
+  { One capture group of a match: Index from 1 and Length in bytes; Index 0 = did not
+    take part. }
   TRALRegexGroup = record
     /// Byte of the text, from 1, where the group starts; 0 when it did not take part.
     Index: IntegerRAL;
@@ -91,6 +93,7 @@ type
 
   /// One instruction: X and Y are targets (split, jmp), the class or the slot.
   TRALRegexInst = record
+    /// The instruction.
     Op: TRALRegexOp;
     /// Code point of ropChar (folded for ropCharFold).
     Rune: Cardinal;
@@ -102,13 +105,17 @@ type
 
   /// A range of code points of a class.
   TRALRegexRange = record
+    /// First code point.
     Lo: Cardinal;
+    /// Last code point.
     Hi: Cardinal;
   end;
 
   /// A character class: sorted, merged ranges.
   TRALRegexClass = record
+    /// Whether the class matches what is outside the ranges.
     Negated: Boolean;
+    /// The ranges, sorted and merged.
     Ranges: array of TRALRegexRange;
   end;
 
@@ -138,42 +145,64 @@ type
     thread that finds it busy runs the NFA instead of waiting. }
   TRALRegex = class
   private
+    /// Whether the pattern matches only at the start.
     FAnchorStart: Boolean;
     FCapCount: IntegerRAL;
+    /// The character classes of the program.
     FClasses: array of TRALRegexClass;
     /// The same states as FDFAStates, for the hot loop.
     FDFAArray: array of TRALRegexDFAState;
     /// Buckets of the state table: first state of each hash, or -1.
     FDFABuckets: array of IntegerRAL;
+    /// Whether the program can run on the DFA.
     FDFAEnabled: Boolean;
+    /// Whether the DFA reached its state limit.
     FDFAFull: Boolean;
+    /// Guards the DFA states.
     FDFALock: TCriticalSection;
+    /// The start state, by whether the position is at a line start.
     FDFAStart: array[Boolean] of IntegerRAL;
+    /// The DFA states built so far.
     FDFAStates: TList;
+    /// The pattern as a plain literal, when it is one.
     FLiteral: RawByteString;
+    /// Whether the literal must end the text.
     FLiteralEnd: Boolean;
+    /// Whether the pattern is a plain literal.
     FLiteralOnly: Boolean;
     /// Horspool skip table of FLiteral.
     FLiteralSkip: array[0..255] of IntegerRAL;
+    /// The names of the groups.
     FNames: array of StringRAL;
     FOptions: TRALRegexOptions;
     FPattern: StringRAL;
+    /// The program.
     FProg: array of TRALRegexInst;
+    /// Instructions of the program.
     FProgCount: IntegerRAL;
 
+    /// The DFA state of a set of program counters, created when new.
     function AddDFAState(const APCs: array of IntegerRAL; ACount: IntegerRAL): IntegerRAL;
+    /// Whether ARune is in class AClass.
     function ClassMatches(AClass: IntegerRAL; ARune: Cardinal): Boolean;
+    /// Parses the pattern and builds the program.
     procedure Compile;
+    /// Whether there is a match at or after AStart, by the DFA.
     function DFAMatch(const AText: StringRAL; AStart: IntegerRAL;
       out AUsed: Boolean): Boolean;
+    /// The state after ARune from AState.
     function DFAStep(AState: IntegerRAL; ARune: Cardinal): IntegerRAL;
+    /// Frees the DFA states.
     procedure FreeDFA;
     function GetGroupName(AIndex: IntegerRAL): StringRAL;
+    /// Searches the literal from AStart (Horspool).
     function LiteralMatch(const AText: StringRAL; AStart: IntegerRAL;
       out AIndex: IntegerRAL): Boolean;
+    /// Searches from AStart with the Pike VM, captures included.
     function PikeSearch(const AText: StringRAL; AStart: IntegerRAL;
       ACaps: TRALRegexGroups; AWantCaps: Boolean): Boolean;
   public
+    /// Compiles APattern; raises ERALRegex when it is invalid.
     constructor Create(const APattern: StringRAL; AOptions: TRALRegexOptions = []);
     destructor Destroy; override;
 
@@ -187,8 +216,7 @@ type
     function Match(const AText: StringRAL; AStart: IntegerRAL = 1): TRALRegexMatch;
     /// Every match, left to right; an empty match advances one character.
     function Matches(const AText: StringRAL): TRALRegexMatches;
-    /// AText with every match replaced by AReplacement, where $0..$99 and ${name}
-    /// are groups and $$ is a dollar.
+    /// Replaces each match with AReplacement ($0..$99, ${name}: groups; $$: a dollar).
     function Replace(const AText, AReplacement: StringRAL): StringRAL;
     /// The pieces of AText between the matches.
     function Split(const AText: StringRAL): TRALRegexPieces;
@@ -210,27 +238,45 @@ function RALRegexIsMatch(const AText, APattern: StringRAL;
 implementation
 
 type
+  /// The kinds of node of the parsed pattern.
   TNodeKind = (nkEmpty, nkLiteral, nkClass, nkAny, nkConcat, nkAlternate,
     nkRepeat, nkCapture, nkAssert);
 
+  /// A node of the parsed pattern.
   TNode = record
+    /// The kind.
     Kind: TNodeKind;
+    /// The code point of a literal.
     Rune: Cardinal;
+    /// Whether a literal ignores case.
     Fold: Boolean;
+    /// Whether . matches a line break.
     DotAll: Boolean;
+    /// The class of a class node.
     ClassIdx: IntegerRAL;
+    /// Fewest repetitions.
     MinRep: IntegerRAL;
+    /// Most repetitions, -1 for no limit.
     MaxRep: IntegerRAL;
+    /// Whether the repetition is greedy.
     Greedy: Boolean;
+    /// The group of a capture.
     CapIndex: IntegerRAL;
+    /// The assertion of an assert node.
     Assert: TRALRegexOp;
+    /// The children of a concat, alternate, repeat or capture.
     Children: array of IntegerRAL;
   end;
 
+  /// The flags in force while parsing.
   TFlags = record
+    /// (?i).
     IgnoreCase: Boolean;
+    /// (?m).
     MultiLine: Boolean;
+    /// (?s).
     DotAll: Boolean;
+    /// (?U).
     Ungreedy: Boolean;
   end;
 
@@ -238,47 +284,79 @@ type
     going straight to the regex. }
   TParser = class
   private
+    /// Groups so far.
     FCaps: IntegerRAL;
+    /// Bytes of the pattern.
     FLen: IntegerRAL;
+    /// Nodes used.
     FNodeCount: IntegerRAL;
+    /// The nodes.
     FNodes: array of TNode;
+    /// The regex being built.
     FOwner: TRALRegex;
+    /// The position in the pattern.
     FPos: IntegerRAL;
+    /// The pattern.
     FText: RawByteString;
 
+    /// Appends AChild to ANode.
     procedure AddChild(ANode, AChild: IntegerRAL);
+    /// Whether the pattern ended.
     function AtEnd: Boolean;
+    /// A class node of the ranges.
     function ClassNode(const ARanges: array of TRALRegexRange; ANegated: Boolean;
       const AFlags: TFlags): IntegerRAL;
+    /// Raises ERALRegex at the current position.
     procedure Error(const AMessage: string);
+    /// A literal node of ARune.
     function LiteralNode(ARune: Cardinal; const AFlags: TFlags): IntegerRAL;
+    /// A new node of AKind.
     function NewNode(AKind: TNodeKind): IntegerRAL;
+    /// Takes the next code point.
     function Next: Cardinal;
+    /// Parses a | b.
     function ParseAlternate(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
+    /// Parses an atom: literal, class, group, escape or assertion.
     function ParseAtom(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
+    /// Parses a [...] class.
     function ParseClass(var AFlags: TFlags): IntegerRAL;
+    /// Parses a sequence.
     function ParseConcat(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
+    /// Parses an escape inside a class: a code point, or ranges for \d \w \s.
     function ParseEscapeInClass(var ARanges: TList; out ARune: Cardinal): Boolean;
+    /// Parses the digits of \x.
     function ParseHex: Cardinal;
+    /// Parses a decimal number; False when there is none.
     function ParseNumber(out AValue: IntegerRAL): Boolean;
+    /// Parses an atom and its repetition.
     function ParseRepeat(var AFlags: TFlags; ADepth: IntegerRAL): IntegerRAL;
+    /// The next code point, not taken.
     function Peek: Cardinal;
+    /// The byte at AOffset from the position.
     function PeekAt(AOffset: IntegerRAL): Byte;
+    /// A class node of \d, \w or \s.
     function PerlClassNode(ALetter: Cardinal; const AFlags: TFlags): IntegerRAL;
   public
+    /// A parser of AText for AOwner.
     constructor Create(AOwner: TRALRegex; const AText: RawByteString);
 
+    /// Parses the whole pattern; returns the root node.
     function Parse(const AFlags: TFlags): IntegerRAL;
   end;
 
 type
+  /// Pointer to a TRALRegexRange.
   PRALRegexRange = ^TRALRegexRange;
+  /// Pointer to a TRALRegexInst.
   PRALRegexInst = ^TRALRegexInst;
 
 const
+  /// The code point that stands for invalid UTF-8.
   cRuneError = $FFFD;
+  /// Deepest nesting of groups a pattern may have.
   cMaxDepth = 1000;
 
+/// Fills the Horspool skip table of a literal.
 procedure FillSkip(const ALit: RawByteString; var ASkip: array of IntegerRAL); forward;
 
 { UTF-8 }
@@ -365,6 +443,7 @@ begin
     Result := AText[APos - 1];
 end;
 
+/// The UTF-8 bytes of a code point.
 function EncodeRune(ARune: Cardinal): RawByteString;
 begin
   if ARune < $80 then
@@ -379,6 +458,7 @@ begin
       AnsiChar($80 or ((ARune shr 6) and $3F)) + AnsiChar($80 or (ARune and $3F));
 end;
 
+/// Whether a code point is a word character (\w).
 function IsWordRune(ARune: Cardinal): Boolean;
 begin
   Result := ((ARune >= Ord('0')) and (ARune <= Ord('9'))) or
@@ -426,6 +506,7 @@ var
   /// Code points (up to $4FF) that have another case form.
   gHasCasePair: array[0..$4FF] of Boolean;
 
+/// Fills gHasCasePair.
 procedure FillCasePairs;
 var
   vRune: Cardinal;
@@ -449,6 +530,7 @@ end;
 
 { Ranges }
 
+/// Sorts ranges and merges those that touch.
 procedure SortMerge(var ARanges: array of TRALRegexRange; var ACount: IntegerRAL);
 var
   vInt, vJ, vOut: IntegerRAL;
@@ -485,6 +567,7 @@ begin
   ACount := vOut + 1;
 end;
 
+/// A range of ALo to AHi.
 function MakeRange(ALo, AHi: Cardinal): TRALRegexRange;
 begin
   Result.Lo := ALo;
@@ -775,6 +858,7 @@ begin
   FNodes[Result].ClassIdx := vIdx;
 end;
 
+/// Adds the ranges of \d, \w or \s (ALetter); upper case letters are negated.
 procedure AddPerlRanges(ALetter: Cardinal; AList: TList; out ANegated: Boolean);
 
   procedure Add(ALo, AHi: Cardinal);
@@ -807,6 +891,7 @@ begin
   end;
 end;
 
+/// Frees a list of ranges.
 procedure FreeRangeList(AList: TList);
 var
   vInt: IntegerRAL;
@@ -1297,15 +1382,22 @@ end;
 { Compiler }
 
 type
+  /// Turns the parsed pattern into the program.
   TCompiler = class
   private
+    /// The regex being built.
     FOwner: TRALRegex;
+    /// The parsed pattern.
     FParser: TParser;
 
+    /// Appends an instruction.
     procedure Emit(AOp: TRALRegexOp; ARune: Cardinal; AX, AY: IntegerRAL);
+    /// Emits the code of ANode.
     procedure Gen(ANode: IntegerRAL);
+    /// Sets the jump targets of the instruction at APC.
     procedure Patch(APC: IntegerRAL; AX, AY: IntegerRAL);
   public
+    /// A compiler of AParser for AOwner.
     constructor Create(AOwner: TRALRegex; AParser: TParser);
   end;
 
@@ -1431,7 +1523,7 @@ begin
   end;
 end;
 
-{ The longest run of case-sensitive literals every match must contain. }
+/// The longest run of case-sensitive literals every match must contain.
 function RequiredLiteral(AParser: TParser; ANode: IntegerRAL): RawByteString;
 var
   vNode: ^TNode;
@@ -1828,13 +1920,19 @@ end;
 { Pike VM }
 
 type
+  /// A sparse set of program counters, in priority order, with their captures.
   TThreadList = record
+    /// Program counters in priority order.
     Dense: array of IntegerRAL;   // pcs in priority order
+    /// Index in Dense of each program counter.
     Sparse: array of IntegerRAL;  // pc -> index in Dense
+    /// Program counters in the list.
     Count: IntegerRAL;
+    /// The captures of each thread.
     Caps: array of IntegerRAL;    // Count * NCap, the captures of each thread
   end;
 
+/// Sizes a thread list for a program and its captures.
 procedure ListInit(var AList: TThreadList; AProgLen, ANCap: IntegerRAL);
 begin
   SetLength(AList.Dense, AProgLen);
@@ -1843,6 +1941,7 @@ begin
   AList.Count := 0;
 end;
 
+/// Whether APC is in the list.
 function ListHas(const AList: TThreadList; APC: IntegerRAL): Boolean;
 var
   vIdx: IntegerRAL;
@@ -1852,17 +1951,27 @@ begin
 end;
 
 type
+  /// A step of the explicit stack that adds threads.
   TStackItem = record
+    /// The program counter.
     PC: IntegerRAL;
-    Slot: IntegerRAL;   // >= 0: restore Caps[Slot] := Value instead of exploring
+    /// A capture to restore, or -1.
+    Slot: IntegerRAL;   // >= 0: restore Caps[Slot] to Value instead of exploring
+    /// The value to restore.
     Value: IntegerRAL;
   end;
 
+  /// What a Pike VM search works on.
   TPikeContext = record
+    /// The program.
     Prog: PRALRegexInst;
+    /// The text.
     Text: PByte;
+    /// Bytes of the text.
     Len: IntegerRAL;
+    /// Capture slots per thread.
     NCap: IntegerRAL;
+    /// The explicit stack.
     Stack: array of TStackItem;
   end;
 

@@ -1,3 +1,4 @@
+/// BSON (bsonspec.org) read and written through TRALJSON values.
 unit RALBSON;
 
 {$IFDEF FPC}
@@ -15,18 +16,23 @@ uses
   RALJson, RALTypes;
 
 const
+  /// The key that wraps a root that is not a document.
   RALBSONRootElementKey = '$RALElement';
 
 type
-  { BSON roots are documents. Canonical mode preserves BSON numeric types. }
+  /// BSON roots are documents. Canonical mode preserves BSON numeric types.
   TRALBSON = class
   public
+    { The BSON of Document; InterpretExtendedJSON turns $-keys into their BSON types. 0
+      limits mean none. }
     class function Encode(
       Document: TRALJSON;
       InterpretExtendedJSON: Boolean = True;
       MaxDocumentSize: Integer = 0;
       MaxDepth: Integer = 0
     ): TBytes; static;
+    { Reads BSON bytes; Canonical keeps the BSON types as extended JSON. 0 limits mean
+      none; the caller frees the result. }
     class function Parse(
       const Bytes: TBytes;
       Canonical: Boolean = True;
@@ -34,6 +40,8 @@ type
       MaxDepth: Integer = 0;
       UnwrapRootElement: Boolean = True
     ): TRALJSON; overload; static;
+    { Reads BSON from a stream; Canonical keeps the BSON types as extended JSON. 0
+      limits mean none; the caller frees the result. }
     class function Parse(
       Stream: TStream;
       Canonical: Boolean = True;
@@ -41,6 +49,7 @@ type
       MaxDepth: Integer = 0;
       UnwrapRootElement: Boolean = True
     ): TRALJSON; overload; static;
+    /// Writes the BSON of Document to Stream.
     class procedure SaveToStream(
       Document: TRALJSON;
       Stream: TStream;
@@ -56,34 +65,49 @@ uses
   RALBase64, RALExceptions, RALErrorCodes;
 
 type
+  /// Reads BSON from a stream into TRALJSON values.
   TRALBSONReader = class
   private
+    /// Whether BSON types are kept as extended JSON.
     FCanonical: Boolean;
+    /// Deepest nesting read, 0 for no limit.
     FMaxDepth: Integer;
+    /// Largest document read, 0 for no limit.
     FMaxDocumentSize: Integer;
+    /// Bytes read so far.
     FPosition: Int64;
+    /// The stream read.
     FStream: TStream;
 
+    /// Reads an unsigned 32-bit little-endian value within Limit.
     function Read32(Limit: Int64): Cardinal;
+    /// Reads an unsigned 64-bit little-endian value within Limit.
     function Read64(Limit: Int64): UInt64;
+    /// Reads a byte within Limit.
     function ReadByte(Limit: Int64): Byte;
+    /// Reads Count bytes within Limit; raises when the stream or the document ends first.
     procedure ReadRaw(
       var Buffer;
       Count: Integer;
       Limit: Int64
     );
+    /// Reads a signed 32-bit value within Limit.
     function ReadSigned32(Limit: Int64): Integer;
+    /// Reads a signed 64-bit value within Limit.
     function ReadSigned64(Limit: Int64): Int64;
+    /// Reads a string, length-prefixed or null-terminated (CString), checked as UTF-8.
     function ReadText(
       Limit: Int64;
       CString: Boolean
     ): StringRAL;
+    /// Reads the value of an element of a type.
     function ReadValue(
       Kind: Byte;
       Limit: Int64;
       Depth: Integer
     ): TRALJSON;
   public
+    /// Creates a reader of AStream with its limits.
     constructor Create(
       Stream: TStream;
       Canonical: Boolean;
@@ -91,6 +115,7 @@ type
       MaxDepth: Integer
     );
 
+    /// Reads a document or an array.
     function ReadDocument(
       IsArray: Boolean;
       Limit: Int64;
@@ -98,32 +123,45 @@ type
     ): TRALJSON;
   end;
 
+  /// Writes TRALJSON values as BSON.
   TRALBSONWriter = class
   private
+    /// Whether $-keys are turned into their BSON types.
     FExtended: Boolean;
+    /// Deepest nesting written, 0 for no limit.
     FMaxDepth: Integer;
+    /// Largest document written, 0 for no limit.
     FMaxDocumentSize: Integer;
     FStream: TMemoryStream;
 
+    /// Writes an unsigned 32-bit little-endian value.
     procedure Write32(Value: Cardinal);
+    /// Writes an unsigned 64-bit little-endian value.
     procedure Write64(Value: UInt64);
+    /// Writes a byte.
     procedure WriteByte(Value: Byte);
+    /// Writes one element: type, name and value.
     procedure WriteElement(
       const Name: StringRAL;
       Value: TRALJSON;
       Depth: Integer
     );
+    /// Writes Count bytes.
     procedure WriteRaw(
       const Buffer;
       Count: Integer
     );
+    /// Writes a signed 32-bit value.
     procedure WriteSigned32(Value: Integer);
+    /// Writes a signed 64-bit value.
     procedure WriteSigned64(Value: Int64);
+    /// Writes a string, length-prefixed or null-terminated.
     procedure WriteText(
       const Value: StringRAL;
       CString: Boolean
     );
   public
+    /// Creates a writer with its limits.
     constructor Create(
       Extended: Boolean;
       MaxSize: Integer;
@@ -131,15 +169,19 @@ type
     );
     destructor Destroy; override;
 
+    /// Writes a document or an array.
     procedure WriteDocument(
       Value: TRALJSON;
       Depth: Integer
     );
+    /// Writes the root, wrapped under RALBSONRootElementKey when it is not a document.
     procedure WriteRoot(Document: TRALJSON);
 
+    /// The BSON written.
     property Stream: TMemoryStream read FStream;
   end;
 
+/// Raises for a negative size or depth limit.
 procedure CheckLimits(
   MaxSize: Integer;
   MaxDepth: Integer
@@ -149,6 +191,7 @@ begin
     raise ERALException.Create(ecBSONNegativeLimits);
 end;
 
+/// Adds Value to Obj, freeing Value when the add raises.
 procedure AddOwned(
   Obj: TRALJSONObject;
   const Name: StringRAL;
@@ -163,6 +206,7 @@ begin
   end;
 end;
 
+/// A new object holding Value under Name; Value is freed when that fails.
 function Wrap(
   const Name: StringRAL;
   Value: TRALJSON
@@ -183,6 +227,7 @@ begin
   end;
 end;
 
+/// A new object holding the string Value under Name.
 function WrapString(
   const Name: StringRAL;
   const Value: StringRAL
@@ -191,6 +236,7 @@ begin
   Result := Wrap(Name, TRALJSONString.Create(Value));
 end;
 
+/// Value as a string; raises for anything else.
 function RequireString(Value: TRALJSON): StringRAL;
 begin
   if (Value = nil) or (Value.Kind <> rjkString) then
@@ -198,6 +244,7 @@ begin
   Result := Value.AsString;
 end;
 
+/// Value as an object; raises for anything else.
 function RequireObject(
   Value: TRALJSON;
   Count: Integer
@@ -210,6 +257,7 @@ begin
     raise ERALException.Create(ecExtendedJSONInvalidMemberCount);
 end;
 
+/// The integer of a decimal text; raises when it is not one.
 function IntegerText(const Text: StringRAL): Int64;
 var
   Number: TRALJSONNumber;
@@ -222,6 +270,7 @@ begin
   end;
 end;
 
+/// The value of a hex digit; raises for anything else.
 function HexValue(C: AnsiChar): Integer;
 begin
   case C of
@@ -236,6 +285,7 @@ begin
   end;
 end;
 
+/// Bytes as lowercase hex.
 function ToHex(const Bytes: TBytes): StringRAL;
 const
   Digits: StringRAL = '0123456789abcdef';
@@ -252,6 +302,7 @@ begin
   end;
 end;
 
+/// The bytes of a hex text of an exact length; raises otherwise.
 function FromHex(
   const Text: StringRAL;
   Size: Integer
@@ -267,6 +318,7 @@ begin
     Result[I] := HexValue(Text[I * 2 + 1]) * 16 + HexValue(Text[I * 2 + 2]);
 end;
 
+/// The text of a double given by its bits, NaN and Infinity included.
 function FloatText(Bits: UInt64): StringRAL;
 var
   Value: Double;
@@ -294,6 +346,7 @@ begin
     Result := Result + '.0';
 end;
 
+/// The bits of a double given as text, NaN and Infinity included.
 function FloatBits(const Text: StringRAL): UInt64;
 var
   Value: Double;
@@ -316,6 +369,7 @@ begin
   end;
 end;
 
+/// Raises unless the options are among ilmsux, in alphabetical order.
 procedure ValidateRegexOptions(const Text: StringRAL);
 var
   I: Integer;
@@ -826,6 +880,7 @@ begin
   FStream.Position := Finish;
 end;
 
+/// The BSON type an extended JSON object stands for, or -1 when it is a plain object.
 function ExtendedType(Obj: TRALJSONObject): Integer;
 var
   Name: StringRAL;
@@ -868,6 +923,7 @@ begin
     Result := $FF;
 end;
 
+/// Value as an unsigned 32-bit integer; raises otherwise.
 function RequireUInt32(Value: TRALJSON): Cardinal;
 var
   Number: Int64;

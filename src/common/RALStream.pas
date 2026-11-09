@@ -11,10 +11,10 @@ uses
 
 type
 
-  { TRALBinaryWriter }
-
+  /// Reads and writes typed values on a stream, sizes as 7-bit varints.
   TRALBinaryWriter = class
   private
+    /// The stream read and written.
     FStream: TStream;
 
     /// Refuses a size prefix that announces more than the stream still holds
@@ -22,87 +22,126 @@ type
     /// Reads exactly ACount bytes or raises - see there
     procedure ReadExact(var ABuffer; ACount: IntegerRAL);
   protected
-    // read and write UTF-7
+    /// read and write UTF-7
     function ReadSize: UInt64RAL;
+    /// Writes ASize as a 7-bit varint.
     procedure WriteSize(ASize: UInt64RAL);
   public
+    /// Works on AStream, which it does not own.
     constructor Create(const AStream: TStream);
 
+    /// Reads a boolean.
     function ReadBoolean: Boolean;
+    /// Reads a byte.
     function ReadByte: Byte;
+    /// Reads a byte array, its size first.
     function ReadBytes: TBytes;
+    /// Reads ALength bytes, with no size before them.
     function ReadBytesDirect(ALength: integer): TBytes;
+    /// Reads a character.
     function ReadChar: CharRAL;
+    /// Reads a date and time.
     function ReadDateTime: TDateTime;
-    /// A byte that becomes an enum whose last member is AHigh, refused with
-    /// emStorageInvalidBinary past it: cast first, a case over the value took
-    /// a member's branch on Delphi Win32 and jumped out of its table on FPC
+    { A byte that becomes an enum whose last member is AHigh, refused with
+      emStorageInvalidBinary past it, before it is cast. }
     function ReadEnum(AHigh: Byte): Byte;
+    /// Reads a double.
     function ReadFloat: Double;
+    /// Reads a 64-bit integer.
     function ReadInt64: Int64RAL;
+    /// Reads a 32-bit integer.
     function ReadInteger: IntegerRAL;
+    /// Reads an unsigned 32-bit integer.
     function ReadLongWord: LongWord;
+    /// Reads an unsigned 64-bit integer.
     function ReadQWord: UInt64;
+    /// Reads a signed byte.
     function ReadShortint: Shortint;
+    /// Reads a 16-bit integer.
     function ReadSmallint: Smallint;
+    /// Reads a stream written by WriteStream into AStream.
     procedure ReadStream(AStream: TStream);
+    /// Reads a UTF-8 string, its size first.
     function ReadString: StringRAL;
+    /// Reads an unsigned 16-bit integer.
     function ReadWord: Word;
+    /// Writes a boolean.
     procedure WriteBoolean(AValue: Boolean);
+    /// Writes a byte.
     procedure WriteByte(AValue: Byte);
+    /// Writes a byte array, its size first.
     procedure WriteBytes(AValue: TBytes);
+    /// Writes the bytes, with no size before them.
     procedure WriteBytesDirect(AValue: TBytes);
+    /// Writes a character.
     procedure WriteChar(AValue: CharRAL);
+    /// Writes a date and time.
     procedure WriteDateTime(AValue: TDateTime);
+    /// Writes a double.
     procedure WriteFloat(AValue: Double);
+    /// Writes a 64-bit integer.
     procedure WriteInt64(AValue: Int64RAL);
+    /// Writes a 32-bit integer.
     procedure WriteInteger(AValue: IntegerRAL);
+    /// Writes an unsigned 32-bit integer.
     procedure WriteLongWord(AValue: LongWord);
+    /// Writes an unsigned 64-bit integer.
     procedure WriteQWord(AValue: UInt64);
+    /// Writes a signed byte.
     procedure WriteShortint(AValue: Shortint);
+    /// Writes a 16-bit integer.
     procedure WriteSmallint(AValue: Smallint);
+    /// Writes a stream, its size first.
     procedure WriteStream(AValue: TStream);
+    /// Writes a UTF-8 string, its size first.
     procedure WriteString(AValue: StringRAL);
+    /// Writes an unsigned 16-bit integer.
     procedure WriteWord(AValue: Word);
   end;
 
   /// The capacity argument of TMemoryStream.Realloc, which changed type
   TRALStreamCapacity = {$IFDEF FPC}PtrInt{$ELSE}{$IFDEF DELPHI11UP}NativeInt{$ELSE}Longint{$ENDIF}{$ENDIF};
 
-  { TRALMemoryStream }
-
-  /// A TMemoryStream that holds a small content in a small block. Delphi
-  /// rounds every capacity up to 8 KB and FPC to 4 KB, so a stream of a few
-  /// bytes - a segment of a JWT, an HMAC, a short answer - took a block of
-  /// that size: on Delphi a medium block, which FastMM serves under a single
-  /// lock for every thread of the process. Below 8 KB the capacity is the
-  /// size rounded to 64 bytes, growing by half at least; from 8 KB on it is
-  /// the RTL's own
+  { A TMemoryStream that holds a small content in a small block. Delphi
+    rounds every capacity up to 8 KB and FPC to 4 KB, so a stream of a few
+    bytes - a segment of a JWT, an HMAC, a short answer - would take a block
+    of that size: on Delphi a medium block, which FastMM serves under a
+    single lock for every thread of the process. Below 8 KB the capacity is the
+    size rounded to 64 bytes, growing by half at least; from 8 KB on it is
+    the RTL's own. }
   TRALMemoryStream = class(TMemoryStream)
   protected
     function Realloc(var NewCapacity: TRALStreamCapacity): Pointer; override;
   public
-    /// The capacity for ASize bytes, at once: a body whose size is known is
-    /// allocated whole
+    { The capacity for ASize bytes, at once: a body whose size is known is
+      allocated whole. }
     procedure Reserve(ASize: Int64RAL);
   end;
 
+  /// A memory stream filled from a string, bytes or another stream.
   TRALStringStream = class(TRALMemoryStream)
   public
+    /// Creates the stream with the bytes of AString.
     constructor Create(AString: StringRAL); overload;
+    /// Creates the stream with the content of AStream.
     constructor Create(AStream: TStream); overload;
+    /// Creates the stream with ABytes.
     constructor Create(ABytes: TBytes); overload;
 
+    /// The content as a string, its bytes as they are.
     function DataString: StringRAL;
+    /// Appends ABytes.
     procedure WriteBytes(ABytes: TBytes);
+    /// Appends the content of AStream.
     procedure WriteStream(AStream: TStream);
+    /// Appends the bytes of AString.
     procedure WriteString(AString: StringRAL);
   end;
 
   { How a stream reaches the body decoder (TRALParams.DecodeBody), and so what
     the decoder may do with it:
     - boCopy: the caller keeps it and may free it right after the call - it is
-      copied once. What the old setters (RequestStream :=) do;
+      copied once. What the setters (RequestStream :=) do;
     - boBorrowed: the caller keeps it alive for as long as the request (or the
       client response) lives, and nobody writes to it. Every server engine
       creates and frees its request inside one callback, so its own buffer is
@@ -114,20 +153,17 @@ type
       created to receive into }
   TRALBodyOwnership = (boCopy, boBorrowed, boBorrowedWritable, boOwned);
 
-  { TRALMemoryView }
-
   { Read-only stream over memory that belongs to someone else - a buffer of an
     engine, of a C library, or of another stream. Writing or resizing raises.
     The memory must outlive the view }
   TRALMemoryView = class(TCustomMemoryStream)
   public
+    /// A view of ASize bytes at APointer.
     constructor Create(APointer: Pointer; ASize: Int64RAL);
 
     procedure SetSize(const NewSize: Int64); override;
     function Write(const Buffer; Count: Longint): Longint; override;
   end;
-
-  { TRALStringView }
 
   { Read-only stream over the bytes of a string, holding a reference to it: the
     string lives while the view does, and nothing is copied. RawByteString, so
@@ -137,12 +173,12 @@ type
   private
     FText: RawByteString;
   public
+    /// A view of the bytes of AText, kept by reference.
     constructor Create(const AText: RawByteString);
 
+    /// The string viewed.
     property Text: RawByteString read FText;
   end;
-
-  { TRALStreamSlice }
 
   { Read-only window (start, size) over another stream, which it does not own
     unless told to. Every read positions the parent itself, so several slices
@@ -150,14 +186,21 @@ type
     TRALMemoryView when the parent is contiguous memory }
   TRALStreamSlice = class(TStream)
   private
+    /// Whether the slice frees FParent.
     FOwnsParent: boolean;
+    /// The stream the slice is a window of.
     FParent: TStream;
+    /// The position in the slice.
     FPos: Int64RAL;
+    /// The size of the slice.
     FSize: Int64RAL;
+    /// Where the slice starts in FParent.
     FStart: Int64RAL;
   protected
     function GetSize: Int64; override;
   public
+    { A window of ASize bytes of AParent from AStart; AOwnsParent frees AParent with the
+      slice. }
     constructor Create(AParent: TStream; AStart, ASize: Int64RAL;
       AOwnsParent: boolean = False);
     destructor Destroy; override;
@@ -168,32 +211,34 @@ type
     function Write(const Buffer; Count: Longint): Longint; override;
   end;
 
-  { TRALChunkedStream }
-
   { A body kept as a list of blocks of BlockSize bytes instead of one
-    contiguous allocation (.agents/PLANO_STREAM_UNICO.md, D8). Appending a
-    block never moves what is already there - a TMemoryStream growing to
-    hundreds of MB is reallocated over and over, and the memory manager may
-    copy it every time - and with ReleaseOnRead every block already read is
-    given back at once, which is what lets a transform hold its input and its
-    output at the cost of one block instead of two whole bodies.
+    contiguous allocation: appending never moves what is there, and with
+    ReleaseOnRead every block already read is given back at once, so a
+    transform holds its input and output at the cost of one block.
 
     Read fills the whole request across blocks: RAL code reads a size with a
     single Read (StreamToBytes), which TStream would allow to stop short }
   TRALChunkedStream = class(TStream)
   private
+    /// The blocks.
     FBlocks: TList;
     FBlockSize: IntegerRAL;
+    /// The position.
     FPos: Int64RAL;
+    /// Blocks given back already (ReleaseOnRead).
     FReleased: IntegerRAL;
     FReleaseOnRead: boolean;
+    /// The size.
     FSize: Int64RAL;
 
+    /// The block at AIndex, allocated when it does not exist yet.
     function Block(AIndex: IntegerRAL): PByte;
+    /// Gives back the blocks before the one that holds APosition.
     procedure ReleaseBefore(APosition: Int64RAL);
   protected
     function GetSize: Int64; override;
   public
+    /// Creates the stream with blocks of ABlockSize bytes (0: RALChunkSize).
     constructor Create(ABlockSize: IntegerRAL = 0);
     destructor Destroy; override;
 
@@ -202,14 +247,13 @@ type
     procedure SetSize(const NewSize: Int64); override;
     function Write(const Buffer; Count: Longint): Longint; override;
 
+    /// The size of a block.
     property BlockSize: IntegerRAL read FBlockSize;
     { Every block that the reading position has left behind is freed. For a
       stream read once, front to back, by a transform; seeking back into a
       freed block raises }
     property ReleaseOnRead: boolean read FReleaseOnRead write FReleaseOnRead;
   end;
-
-  { TRALTempFileStream }
 
   { A body kept in a file of its own, for bodies above SpoolAbove. Created
     with a unique name in RALSpoolFolder (the system temp folder when empty)
@@ -223,10 +267,9 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    /// The temporary file, deleted when the stream is freed.
     property FileName: string read FFileName;
   end;
-
-  { TRALBodyStream }
 
   { The storage of a body whose size is not known in advance, or is: one
     contiguous block up to RALChunkAbove, a TRALChunkedStream above it, a
@@ -239,12 +282,16 @@ type
   TRALBodyStream = class(TStream)
   private
     FInner: TStream;
+    /// Size from which the body goes to a temporary file, 0 for never.
     FSpoolAbove: Int64RAL;
 
+    /// Moves to the next kind of storage when ANeeded bytes do not fit the current one.
     procedure Promote(ANeeded: Int64RAL);
   protected
     function GetSize: Int64; override;
   public
+    { Creates the body; AExpectedSize (-1: unknown) picks the storage at once,
+      ASpoolAbove 0 never spools. }
     constructor Create(AExpectedSize: Int64RAL = -1; ASpoolAbove: Int64RAL = 0);
     destructor Destroy; override;
 
@@ -262,17 +309,19 @@ type
     property Inner: TStream read FInner;
   end;
 
-  { TRALConcatStream }
-
   { Read-only stream made of several parts read one after the other, without
     joining them: the multipart of a response is its headers and the content
     of each param, and the engine reads it straight from here. Owns the parts
     handed with AOwned }
   TRALConcatStream = class(TStream)
   private
+    /// The parts the stream frees.
     FOwned: TList;
+    /// The parts, in order.
     FParts: TList;
+    /// The position.
     FPos: Int64RAL;
+    /// The sum of the sizes of the parts.
     FSize: Int64RAL;
   protected
     function GetSize: Int64; override;
@@ -280,7 +329,9 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    /// Appends a stream; AOwned frees it with this one.
     procedure Add(AStream: TStream; AOwned: boolean); overload;
+    /// Appends the bytes of a string.
     procedure Add(const AText: RawByteString); overload;
     function Read(var Buffer; Count: Longint): Longint; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
@@ -288,31 +339,36 @@ type
     function Write(const Buffer; Count: Longint): Longint; override;
   end;
 
-  { TRALFileStream }
-
-  /// A file, or a window of one, read to be sent. It is opened with
-  /// fmShareDenyNone - a file being served does not stop a new version from
-  /// being published - and only when first read, unless AOpenNow. A window
-  /// running past the end of the file is cut to what the file has when it is
-  /// opened. Read-only: Write writes nothing
+  { A file, or a window of one, read to be sent. It is opened with
+    fmShareDenyNone - a file being served does not stop a new version from
+    being published - and only when first read, unless AOpenNow. A window
+    running past the end of the file is cut to what the file has when it is
+    opened. Read-only: Write writes nothing. }
   TRALFileStream = class(TStream)
   private
     { the window as asked for, -1 to the end of the file, and as it is once
       the file is open }
     FAsked: Int64;
+    /// The window once the file is open.
     FCount: Int64;
+    /// The file, nil until it is opened.
     FFile: TFileStream;
     FFileName: string;
     { where the file handle stands, so a sequential read seeks nothing; -1
       when unknown }
     FFilePos: Int64;
+    /// Where the window starts in the file.
     FOffset: Int64;
+    /// The position in the window.
     FPosition: Int64;
 
+    /// Opens the file when it is not open yet, and cuts the window to it.
     procedure NeedFile;
   protected
     function GetSize: Int64; override;
   public
+    { A window of ACount bytes (-1: to the end) of AFileName from AOffset; AOpenNow
+      opens it at once. }
     constructor Create(const AFileName: string; AOffset: Int64 = 0;
       ACount: Int64 = -1; AOpenNow: boolean = False);
     destructor Destroy; override;
@@ -321,24 +377,25 @@ type
     function IsWholeFile: boolean;
     function Read(var Buffer; Count: Longint): Longint; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
-    /// Another stream over the same file and window, not open yet - what a
-    /// param keeps when it hands this one over to be sent
+    { Another stream over the same file and window, not open yet - what a
+      param keeps when it hands this one over to be sent. }
     function Twin: TRALFileStream;
     function Write(const Buffer; Count: Longint): Longint; override;
 
+    /// The file.
     property FileName: string read FFileName;
   end;
 
-  { TRALBufferStream }
-
-  /// Read-only bytes kept alive by reference: a string, or a memory stream
-  /// shared by reference count. Twin gives another stream over the same bytes -
-  /// its own position, freed on its own - without copying them, which is how
-  /// a body reaches the engine that frees what it sends while the param still
-  /// holds it. Write writes nothing
+  { Read-only bytes kept alive by reference: a string, or a memory stream
+    shared by reference count. Twin gives another stream over the same bytes -
+    its own position, freed on its own - without copying them, which is how
+    a body reaches the engine that frees what it sends while the param still
+    holds it. Write writes nothing. }
   TRALBufferStream = class(TCustomMemoryStream)
   private
+    /// What keeps a shared memory stream alive.
     FKeeper: IInterface;
+    /// The string whose bytes the stream reads.
     FText: StringRAL;
   public
     /// Over AText, which is not copied: the stream keeps a reference to it
@@ -346,27 +403,28 @@ type
     /// Over AStream, which it TAKES: it is freed with the last stream sharing it
     constructor Create(AStream: TCustomMemoryStream); overload;
 
+    /// Another stream over the same bytes, with its own position; the caller frees it.
     function Twin: TRALBufferStream;
     function Write(const Buffer; Count: Longint): Longint; override;
   end;
 
 var
-  { Bodies up to this size stay one contiguous block (DEFAULTCHUNKABOVE) }
+  /// Bodies up to this size stay one contiguous block (DEFAULTCHUNKABOVE).
   RALChunkAbove: Int64RAL = DEFAULTCHUNKABOVE;
-  { Usable size of each block of a chunked body (DEFAULTCHUNKSIZE) }
+  /// Usable size of each block of a chunked body (DEFAULTCHUNKSIZE).
   RALChunkSize: IntegerRAL = DEFAULTCHUNKSIZE;
-  { Folder of the spooled bodies; empty is the system temp folder }
+  /// Folder of the spooled bodies; empty is the system temp folder.
   RALSpoolFolder: string = '';
 
-/// A read-only window over AParent: a TRALMemoryView when the parent is
-/// contiguous memory, a TRALStreamSlice otherwise
+{ A read-only window over AParent: a TRALMemoryView when the parent is
+  contiguous memory, a TRALStreamSlice otherwise. }
 function RALStreamSlice(AParent: TStream; AStart, ASize: Int64RAL): TStream;
-/// Copies ACount bytes of ASource, from where it is, to ADest in pieces of a
-/// fixed buffer - TStream.CopyFrom on some compilers allocates as much as the
-/// whole count
+{ Copies ACount bytes of ASource, from where it is, to ADest in pieces of a
+  fixed buffer - TStream.CopyFrom on some compilers allocates as much as the
+  whole count. }
 procedure RALCopyStream(ASource, ADest: TStream; ACount: Int64RAL);
-/// Removes spooled bodies older than a day from RALSpoolFolder (a process
-/// killed in the middle of a request leaves them behind)
+{ Removes spooled bodies older than a day from RALSpoolFolder (a process
+  killed in the middle of a request leaves them behind). }
 procedure RALCleanSpoolFolder;
 /// The folder spooled bodies go to
 function RALSpoolPath: string;
@@ -377,16 +435,17 @@ procedure SaveStream(AStream: TStream; const AFileName: StringRAL);
 function BytesToStream(ABytes: TBytes): TStream;
 /// Converts a given AStream to TBytes
 function StreamToBytes(AStream: TStream): TBytes;
-// Converts a given AStream to an UTF8String
+/// Converts a given AStream to an UTF8String
 function StreamToString(AStream: TStream): StringRAL;
 { StreamToString, except that a TRALStringView over UTF-8 text hands its own
   string over - the reference, not a copy. What reads a body that an engine
   delivered as a string (mORMot2, fpHTTP, CGI) back as text }
 function RALStreamText(AStream: TStream): StringRAL;
-// Converts a given AStream to a byte string
+/// Converts a given AStream to a byte string
 function StreamToByteString(AStream: TStream): StringRAL;
-// Creates a TStream and writes the given AStr into it
+/// Creates a TStream and writes the given AStr into it
 function StringToStreamUTF8(const AStr: StringRAL): TStream;
+/// A new stream with the bytes of AStr, as they are; the caller frees it.
 function StringToStream(const AStr: StringRAL): TStream;
 
 implementation
@@ -397,9 +456,10 @@ uses
 {$ENDIF}
 
 const
-  { the pieces RALCopyStream and the promotions move at a time }
+  /// The pieces RALCopyStream and the promotions move at a time.
   cCopyBuffer = 65536;
 
+/// Raises EStreamError for a write to a read-only stream.
 procedure RaiseReadOnly;
 begin
   raise EStreamError.Create(emStreamReadOnly);
@@ -728,7 +788,7 @@ end;
 { TRALMemoryStream }
 
 const
-  { below this, the capacity is RAL's: the size the RTLs round up to }
+  /// Below this, the capacity is RAL's: the size the RTLs round up to.
   cRALSmallStream = 8192;
 
 function TRALMemoryStream.Realloc(var NewCapacity: TRALStreamCapacity): Pointer;
@@ -1041,11 +1101,9 @@ var
   vSize, vDone: Int64RAL;
   vRead: IntegerRAL;
 begin
-  { straight into the string: it went through a TBytes first, and then
-    BytesToStringUTF8 copied that again - two copies of the whole body to read
-    it as text, every time. The bytes are UTF-8 already (StringRAL), so
-    nothing needs converting. A TStringStream used to answer DataString, which
-    on Delphi decodes with the ANSI code page }
+  { straight into the string, with no copy in between: the bytes are UTF-8
+    already (StringRAL). A TStringStream is not asked for DataString, which on
+    Delphi decodes with the ANSI code page }
   Result := '';
   if (AStream = nil) or (AStream.Size = 0) then
     Exit;
@@ -1075,10 +1133,8 @@ begin
   Result := 0;
   vMult := 0;
 
-  { a stream that ends before the size does is malformed, and ReadByte now
-    says so: this used to answer whatever it had read so far - 0 at the very
-    end - so a count read off the network could drive a caller's loop through
-    billions of empty strings past the end of a twenty-byte body }
+  { a stream that ends before the size does is malformed, and ReadByte says
+    so: a count read off the network must not drive a loop past the end }
   repeat
     vByte := ReadByte;
     { widened before the shift: "(vByte and 127) shl 28" is 32-bit arithmetic
@@ -1264,10 +1320,9 @@ begin
   ReadExact(Result, SizeOf(Result));
 end;
 
-{ Every fixed-size read goes through here. Stream.Read returns how much it
-  actually read, and nothing looked: at the end of the stream the value came
-  back as whatever the stack held - and these values come off the network,
-  where one of them was cast straight to an enum that indexes a table. }
+{ Every fixed-size read goes through here: Stream.Read returns how much it
+  actually read, and a short read raises instead of leaving the value as
+  whatever the stack held - these values come off the network. }
 procedure TRALBinaryWriter.ReadExact(var ABuffer; ACount: IntegerRAL);
 begin
   if FStream.Read(ABuffer, ACount) <> ACount then
@@ -1290,9 +1345,7 @@ begin
   vQWord := ReadSize;
   CheckSize(vQWord);
   { nothing to copy is nothing: CopyFrom reads a count of 0 as "all of it,
-    from the start", on both compilers, so an empty stream in the data copied
-    the whole of FStream in its place - this field, the ones after it and the
-    ones before - and every read after it ran past the end }
+    from the start", on both compilers }
   if vQWord > 0 then
   begin
     { the whole size at once instead of growing step by step with the copy }
@@ -1497,8 +1550,8 @@ end;
 
 function TRALFileStream.Twin: TRALFileStream;
 begin
-  { the window as it was asked for: a whole file is measured again when the
-    twin opens it }
+  { the window as it was asked for: for a whole file the twin measures the
+    file when it opens it }
   Result := TRALFileStream.Create(FFileName, FOffset, FAsked);
 end;
 
@@ -1514,8 +1567,10 @@ type
     when the last TRALBufferStream over it lets go }
   TRALStreamKeeper = class(TInterfacedObject)
   private
+    /// The stream kept.
     FStream: TStream;
   public
+    /// Keeps AStream, freed with the keeper.
     constructor Create(AStream: TStream);
     destructor Destroy; override;
   end;

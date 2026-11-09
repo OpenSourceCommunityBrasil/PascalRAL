@@ -1,8 +1,9 @@
-/// TLS and DTLS for the protocols on RAL's own sockets (RALNetPackage), over
-/// OpenSSL (1.1.1 or 3.x) loaded at run time: the same code on every system. Client and server, SNI, ALPN, the
-/// server name checked against the certificate, mutual TLS, and the rule of
-/// TRALClient for which certificate is accepted: the event decides, else the
-/// pin, else the verdict of OpenSSL, which covers chain and name.
+{ TLS and DTLS for the protocols on RAL's own sockets (RALNetPackage), over
+  OpenSSL (1.1.1 or 3.x) loaded at run time: the same code on every system.
+  Client and server, SNI, ALPN, the server name checked against the
+  certificate, mutual TLS, and the rule of TRALClient for which certificate is
+  accepted: the event decides, else the pin, else the verdict of OpenSSL,
+  which covers chain and name. }
 unit RALTLS;
 
 {$IFDEF FPC}
@@ -87,19 +88,28 @@ type
   TRALTLSContext = class
   private
     FALPN: StringRAL;
+    /// CA file whose names a server asks a client certificate of.
     FClientCAFile: StringRAL;
     FContext: Pointer;
+    /// Whether the context is DTLS.
     FDatagram: boolean;
+    /// The password of the private key.
     FKeyPassword: AnsiString;
+    /// The lowest protocol version accepted.
     FMinVersion: TRALTLSVersion;
+    /// The child contexts of AddCertificate, by server name.
     FNamed: TStringList;
+    /// Guards FNamed.
     FNamedLock: TCriticalSection;
+    /// The context a child belongs to.
     FParent: TRALTLSContext;
     FRole: TRALTLSRole;
     FStrictServerName: boolean;
+    /// The SSL_VERIFY_* flags.
     FVerifyMode: Integer;
 
     function GetALPN: StringRAL;
+    /// The child context of AServerName, created when new (server only).
     function NewNamed(const AServerName: StringRAL): TRALTLSContext;
   public
     { A context for ARole; ADatagram makes it DTLS (over UDP, as MQTT-SN).
@@ -154,14 +164,20 @@ type
     the broker's event loop. After it, Read and Write never wait }
   TRALTLSChannel = class(TRALLayerChannel)
   private
+    /// The context.
     FContext: TRALTLSContext;
     FDone: boolean;
     FSessionKey: StringRAL;
+    /// The SSL object.
     FSSL: Pointer;
+    /// What OpenSSL waits for: RALPollIn or RALPollOut.
     FWant: Word;
 
+    { The result of a read or write: bytes, 0 for a close, RALSocketWouldBlock; raises
+      for an error. }
     function CheckIO(ARes: Integer; const AWhat: string): IntegerRAL;
   protected
+    /// The DER of the peer certificate, or empty.
     function PeerCertificateDER: TBytes;
   public
     { TLS over AInner (a socket channel, already connected), from AContext;
@@ -212,7 +228,9 @@ type
     when MaxEntries is reached }
   TRALTLSSessionCache = class
   private
+    /// The sessions by key.
     FItems: TStringList;
+    /// Guards FItems.
     FLock: TCriticalSection;
     FMaxEntries: IntegerRAL;
   protected
@@ -268,13 +286,19 @@ type
     handshake leaves as one datagram, its records joined, which DTLS allows }
   TRALDTLSSession = class
   private
+    /// The context.
     FContext: TRALTLSContext;
     FDone: boolean;
+    /// The memory BIO the datagrams received go into.
     FRead: Pointer;
+    /// Whether this end is the server.
     FServer: boolean;
+    /// The SSL object.
     FSSL: Pointer;
+    /// The memory BIO the datagrams to send come from.
     FWrite: Pointer;
 
+    /// Advances the handshake.
     procedure Step;
   public
     { A session of AContext (made with ADatagram); AServer answers a client's
@@ -341,35 +365,65 @@ uses
   RALSHA2_32, RALNetwork, RALDynLibs;
 
 const
+  /// OpenSSL SSL_ERROR_NONE.
   SSL_ERROR_NONE = 0;
+  /// OpenSSL SSL_ERROR_SSL.
   SSL_ERROR_SSL = 1;
+  /// OpenSSL SSL_ERROR_WANT_READ.
   SSL_ERROR_WANT_READ = 2;
+  /// OpenSSL SSL_ERROR_WANT_WRITE.
   SSL_ERROR_WANT_WRITE = 3;
+  /// OpenSSL SSL_ERROR_SYSCALL.
   SSL_ERROR_SYSCALL = 5;
+  /// OpenSSL SSL_ERROR_ZERO_RETURN.
   SSL_ERROR_ZERO_RETURN = 6;
+  /// OpenSSL SSL_VERIFY_NONE.
   SSL_VERIFY_NONE = 0;
+  /// OpenSSL SSL_VERIFY_PEER.
   SSL_VERIFY_PEER = 1;
+  /// OpenSSL SSL_VERIFY_FAIL_IF_NO_PEER_CERT.
   SSL_VERIFY_FAIL_IF_NO_PEER_CERT = 2;
+  /// OpenSSL SSL_FILETYPE_PEM.
   SSL_FILETYPE_PEM = 1;
+  /// OpenSSL SSL_CTRL_SET_TLSEXT_HOSTNAME.
   SSL_CTRL_SET_TLSEXT_HOSTNAME = 55;
+  /// OpenSSL SSL_CTRL_SET_MIN_PROTO_VERSION.
   SSL_CTRL_SET_MIN_PROTO_VERSION = 123;
+  /// OpenSSL SSL_CTRL_MODE.
   SSL_CTRL_MODE = 33;
+  /// OpenSSL SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER.
   SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER = $2;
+  /// OpenSSL TLSEXT_NAMETYPE_host_name.
   TLSEXT_NAMETYPE_host_name = 0;
+  /// OpenSSL SSL_TLSEXT_ERR_OK.
   SSL_TLSEXT_ERR_OK = 0;
+  /// OpenSSL SSL_TLSEXT_ERR_ALERT_FATAL.
   SSL_TLSEXT_ERR_ALERT_FATAL = 2;
+  /// OpenSSL SSL_TLSEXT_ERR_NOACK.
   SSL_TLSEXT_ERR_NOACK = 3;
+  /// OpenSSL SSL_AD_UNRECOGNIZED_NAME.
   SSL_AD_UNRECOGNIZED_NAME = 112;
+  /// OpenSSL SSL_CTRL_SET_TLSEXT_SERVERNAME_CB.
   SSL_CTRL_SET_TLSEXT_SERVERNAME_CB = 53;
+  /// OpenSSL SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG.
   SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG = 54;
+  /// OpenSSL SSL_CTRL_SET_SESS_CACHE_MODE.
   SSL_CTRL_SET_SESS_CACHE_MODE = 44;
+  /// OpenSSL SSL_SESS_CACHE_CLIENT.
   SSL_SESS_CACHE_CLIENT = $0001;
+  /// OpenSSL SSL_SESS_CACHE_NO_INTERNAL_STORE.
   SSL_SESS_CACHE_NO_INTERNAL_STORE = $0200;
+  /// OpenSSL SSL_OP_IGNORE_UNEXPECTED_EOF.
   SSL_OP_IGNORE_UNEXPECTED_EOF = $80;
+  /// OpenSSL TLS1_2_VERSION.
   TLS1_2_VERSION = $0303;
+  /// OpenSSL TLS1_3_VERSION.
   TLS1_3_VERSION = $0304;
+  /// OpenSSL DTLS1_2_VERSION.
   DTLS1_2_VERSION = $FEFD;
+  /// OpenSSL BIO_NOCLOSE.
   BIO_NOCLOSE = 0;
+  /// OpenSSL X509_V_OK.
   X509_V_OK = 0;
 
 type
@@ -378,26 +432,35 @@ type
     decides which ones it cannot live without. }
   TRALTLSLibrary = class
   private
+    /// The file names tried, in order.
     FCandidates: TStringList;
+    /// The library loaded.
     FLibrary: IRALDynLibs;
     FLibraryName: string;
+    /// The entry points bound, cleared on unload.
     FProcs: TList;
 
     function GetLibraryHandle: NativeUInt;
   protected
+    /// Adds a file name to try.
     procedure AddLibrary(const AName: string);
+    /// Loads the first candidate that loads, then binds the entry points.
     procedure LoadLibrary;
+    /// Binds AName to AProc; nil when the library lacks it.
     procedure LoadProc(var AProc: Pointer; AName: PAnsiChar);
+    /// Binds the entry points of the library.
     procedure LoadProcs; virtual; abstract;
   public
     constructor Create; virtual;
     destructor Destroy; override;
 
+    /// Handle of the library loaded.
     property LibraryHandle: NativeUInt read GetLibraryHandle;
+    /// The file loaded.
     property LibraryName: string read FLibraryName;
   end;
 
-  { the two libraries; libcrypto first, libssl needs it }
+  /// The two libraries; libcrypto first, libssl needs it.
   TRALTLSCryptoLib = class(TRALTLSLibrary)
   protected
     procedure LoadProcs; override;
@@ -405,6 +468,7 @@ type
     constructor Create; override;
   end;
 
+  /// libssl, loaded after libcrypto.
   TRALTLSSSLLib = class(TRALTLSLibrary)
   protected
     procedure LoadProcs; override;
@@ -413,125 +477,230 @@ type
   end;
 
 var
+  /// Guards loading the libraries.
   GLock: TCriticalSection;
+  /// libcrypto, once loaded.
   GCrypto: TRALTLSCryptoLib;
+  /// libssl, once loaded.
   GSSL: TRALTLSSSLLib;
+  /// Whether both libraries are loaded.
   GLoaded: boolean;
+  /// Why the last load failed.
   GLoadError: string;
+  /// The client sessions kept for resumption, process-wide.
   GSessions: TRALTLSSessionCache;
 
-  { libssl }
+  /// Libssl.
   OPENSSL_init_ssl: function(opts: UInt64; settings: Pointer): Integer; cdecl;
+  /// OpenSSL TLS_client_method.
   TLS_client_method: function: Pointer; cdecl;
+  /// OpenSSL TLS_server_method.
   TLS_server_method: function: Pointer; cdecl;
+  /// OpenSSL DTLS_client_method.
   DTLS_client_method: function: Pointer; cdecl;
+  /// OpenSSL DTLS_server_method.
   DTLS_server_method: function: Pointer; cdecl;
+  /// OpenSSL SSL_CTX_new.
   SSL_CTX_new: function(meth: Pointer): Pointer; cdecl;
+  /// OpenSSL SSL_CTX_free.
   SSL_CTX_free: procedure(ctx: Pointer); cdecl;
+  /// OpenSSL SSL_CTX_ctrl.
   SSL_CTX_ctrl: function(ctx: Pointer; cmd: Integer; larg: NativeInt; parg: Pointer): NativeInt; cdecl;
+  /// OpenSSL SSL_CTX_set_verify.
   SSL_CTX_set_verify: procedure(ctx: Pointer; mode: Integer; cb: Pointer); cdecl;
+  /// OpenSSL SSL_CTX_load_verify_locations.
   SSL_CTX_load_verify_locations: function(ctx: Pointer; CAfile, CApath: PAnsiChar): Integer; cdecl;
+  /// OpenSSL SSL_CTX_set_default_verify_paths.
   SSL_CTX_set_default_verify_paths: function(ctx: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_CTX_use_certificate_chain_file.
   SSL_CTX_use_certificate_chain_file: function(ctx: Pointer; f: PAnsiChar): Integer; cdecl;
+  /// OpenSSL SSL_CTX_use_PrivateKey_file.
   SSL_CTX_use_PrivateKey_file: function(ctx: Pointer; f: PAnsiChar; typ: Integer): Integer; cdecl;
+  /// OpenSSL SSL_CTX_use_certificate.
   SSL_CTX_use_certificate: function(ctx: Pointer; x: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_CTX_use_PrivateKey.
   SSL_CTX_use_PrivateKey: function(ctx: Pointer; pkey: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_CTX_check_private_key.
   SSL_CTX_check_private_key: function(ctx: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_CTX_set_default_passwd_cb.
   SSL_CTX_set_default_passwd_cb: procedure(ctx: Pointer; cb: Pointer); cdecl;
+  /// OpenSSL SSL_CTX_set_default_passwd_cb_userdata.
   SSL_CTX_set_default_passwd_cb_userdata: procedure(ctx: Pointer; u: Pointer); cdecl;
+  /// OpenSSL SSL_CTX_set_alpn_protos.
   SSL_CTX_set_alpn_protos: function(ctx: Pointer; protos: PByte; len: Cardinal): Integer; cdecl;
+  /// OpenSSL SSL_CTX_set_alpn_select_cb.
   SSL_CTX_set_alpn_select_cb: procedure(ctx: Pointer; cb: Pointer; arg: Pointer); cdecl;
+  /// OpenSSL SSL_CTX_get_cert_store.
   SSL_CTX_get_cert_store: function(ctx: Pointer): Pointer; cdecl;
+  /// OpenSSL SSL_CTX_set_client_CA_list.
   SSL_CTX_set_client_CA_list: procedure(ctx: Pointer; list: Pointer); cdecl;
+  /// OpenSSL SSL_load_client_CA_file.
   SSL_load_client_CA_file: function(f: PAnsiChar): Pointer; cdecl;
+  /// OpenSSL SSL_new.
   SSL_new: function(ctx: Pointer): Pointer; cdecl;
+  /// OpenSSL SSL_free.
   SSL_free: procedure(ssl: Pointer); cdecl;
+  /// OpenSSL SSL_set_fd.
   SSL_set_fd: function(ssl: Pointer; fd: Integer): Integer; cdecl;
+  /// OpenSSL SSL_set_bio.
   SSL_set_bio: procedure(ssl, rbio, wbio: Pointer); cdecl;
+  /// OpenSSL SSL_connect.
   SSL_connect: function(ssl: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_accept.
   SSL_accept: function(ssl: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_read.
   SSL_read: function(ssl: Pointer; buf: Pointer; num: Integer): Integer; cdecl;
+  /// OpenSSL SSL_write.
   SSL_write: function(ssl: Pointer; const buf: Pointer; num: Integer): Integer; cdecl;
+  /// OpenSSL SSL_get_error.
   SSL_get_error: function(ssl: Pointer; ret: Integer): Integer; cdecl;
+  /// OpenSSL SSL_shutdown.
   SSL_shutdown: function(ssl: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_pending.
   SSL_pending: function(ssl: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_ctrl.
   SSL_ctrl: function(ssl: Pointer; cmd: Integer; larg: NativeInt; parg: Pointer): NativeInt; cdecl;
+  /// OpenSSL SSL_set1_host.
   SSL_set1_host: function(ssl: Pointer; hostname: PAnsiChar): Integer; cdecl;
+  /// OpenSSL SSL_get0_param.
   SSL_get0_param: function(ssl: Pointer): Pointer; cdecl;
+  /// OpenSSL SSL_get_verify_result.
   SSL_get_verify_result: function(ssl: Pointer): NativeInt; cdecl;
+  /// OpenSSL SSL_get_peer_certificate.
   SSL_get_peer_certificate: function(ssl: Pointer): Pointer; cdecl;
+  /// OpenSSL SSL_get1_peer_certificate.
   SSL_get1_peer_certificate: function(ssl: Pointer): Pointer; cdecl;
+  /// OpenSSL SSL_get0_alpn_selected.
   SSL_get0_alpn_selected: procedure(ssl: Pointer; out data: PByte; out len: Cardinal); cdecl;
+  /// OpenSSL SSL_get_version.
   SSL_get_version: function(ssl: Pointer): PAnsiChar; cdecl;
+  /// OpenSSL SSL_set_alpn_protos.
   SSL_set_alpn_protos: function(ssl: Pointer; protos: PByte; len: Cardinal): Integer; cdecl;
+  /// OpenSSL SSL_set_connect_state.
   SSL_set_connect_state: procedure(ssl: Pointer); cdecl;
+  /// OpenSSL SSL_set_accept_state.
   SSL_set_accept_state: procedure(ssl: Pointer); cdecl;
+  /// OpenSSL SSL_do_handshake.
   SSL_do_handshake: function(ssl: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_CTX_callback_ctrl.
   SSL_CTX_callback_ctrl: function(ctx: Pointer; cmd: Integer; fp: Pointer): NativeInt; cdecl;
+  /// OpenSSL SSL_CTX_sess_set_new_cb.
   SSL_CTX_sess_set_new_cb: procedure(ctx: Pointer; cb: Pointer); cdecl;
+  /// OpenSSL SSL_get_servername.
   SSL_get_servername: function(ssl: Pointer; typ: Integer): PAnsiChar; cdecl;
+  /// OpenSSL SSL_set_SSL_CTX.
   SSL_set_SSL_CTX: function(ssl, ctx: Pointer): Pointer; cdecl;
+  /// OpenSSL SSL_set_session.
   SSL_set_session: function(ssl, session: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_SESSION_free.
   SSL_SESSION_free: procedure(session: Pointer); cdecl;
+  /// OpenSSL SSL_SESSION_is_resumable.
   SSL_SESSION_is_resumable: function(session: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_session_reused.
   SSL_session_reused: function(ssl: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_set_ex_data.
   SSL_set_ex_data: function(ssl: Pointer; idx: Integer; data: Pointer): Integer; cdecl;
+  /// OpenSSL SSL_get_ex_data.
   SSL_get_ex_data: function(ssl: Pointer; idx: Integer): Pointer; cdecl;
+  /// OpenSSL SSL_CTX_set_options.
   SSL_CTX_set_options: function(ctx: Pointer; op: UInt64): UInt64; cdecl;
 
-  { libcrypto }
+  /// Libcrypto.
   OpenSSL_version: function(t: Integer): PAnsiChar; cdecl;
+  /// OpenSSL OPENSSL_version_major.
   OPENSSL_version_major: function: Cardinal; cdecl;
+  /// OpenSSL X509_free.
   X509_free: procedure(x: Pointer); cdecl;
+  /// OpenSSL i2d_X509.
   i2d_X509: function(x: Pointer; out_: PPointer): Integer; cdecl;
+  /// OpenSSL d2i_X509.
   d2i_X509: function(px: PPointer; in_: PPointer; len: Integer): Pointer; cdecl;
+  /// OpenSSL X509_get_subject_name.
   X509_get_subject_name: function(x: Pointer): Pointer; cdecl;
+  /// OpenSSL X509_get_issuer_name.
   X509_get_issuer_name: function(x: Pointer): Pointer; cdecl;
+  /// OpenSSL X509_NAME_oneline.
   X509_NAME_oneline: function(a: Pointer; buf: PAnsiChar; size: Integer): PAnsiChar; cdecl;
+  /// OpenSSL X509_get_serialNumber.
   X509_get_serialNumber: function(x: Pointer): Pointer; cdecl;
+  /// OpenSSL ASN1_INTEGER_to_BN.
   ASN1_INTEGER_to_BN: function(ai: Pointer; bn: Pointer): Pointer; cdecl;
+  /// OpenSSL BN_bn2hex.
   BN_bn2hex: function(a: Pointer): PAnsiChar; cdecl;
+  /// OpenSSL BN_free.
   BN_free: procedure(a: Pointer); cdecl;
+  /// OpenSSL CRYPTO_free.
   CRYPTO_free: procedure(p: Pointer; f: PAnsiChar; line: Integer); cdecl;
+  /// OpenSSL X509_get0_notBefore.
   X509_get0_notBefore: function(x: Pointer): Pointer; cdecl;
+  /// OpenSSL X509_get0_notAfter.
   X509_get0_notAfter: function(x: Pointer): Pointer; cdecl;
+  /// OpenSSL ASN1_TIME_to_tm.
   ASN1_TIME_to_tm: function(s: Pointer; tm: Pointer): Integer; cdecl;
+  /// OpenSSL X509_verify_cert_error_string.
   X509_verify_cert_error_string: function(n: NativeInt): PAnsiChar; cdecl;
+  /// OpenSSL X509_STORE_add_cert.
   X509_STORE_add_cert: function(store, x: Pointer): Integer; cdecl;
+  /// OpenSSL X509_VERIFY_PARAM_set1_ip_asc.
   X509_VERIFY_PARAM_set1_ip_asc: function(param: Pointer; ipasc: PAnsiChar): Integer; cdecl;
+  /// OpenSSL BIO_new_mem_buf.
   BIO_new_mem_buf: function(buf: Pointer; len: Integer): Pointer; cdecl;
+  /// OpenSSL BIO_new_dgram.
   BIO_new_dgram: function(fd, close_flag: Integer): Pointer; cdecl;
+  /// OpenSSL BIO_new.
   BIO_new: function(typ: Pointer): Pointer; cdecl;
+  /// OpenSSL BIO_s_mem.
   BIO_s_mem: function: Pointer; cdecl;
+  /// OpenSSL BIO_read.
   BIO_read: function(b: Pointer; data: Pointer; dlen: Integer): Integer; cdecl;
+  /// OpenSSL BIO_write.
   BIO_write: function(b: Pointer; const data: Pointer; dlen: Integer): Integer; cdecl;
+  /// OpenSSL BIO_ctrl.
   BIO_ctrl: function(b: Pointer; cmd: Integer; larg: NativeInt; parg: Pointer): NativeInt; cdecl;
+  /// OpenSSL BIO_free.
   BIO_free: function(bio: Pointer): Integer; cdecl;
+  /// OpenSSL PEM_read_bio_X509.
   PEM_read_bio_X509: function(bp: Pointer; x: PPointer; cb, u: Pointer): Pointer; cdecl;
+  /// OpenSSL PEM_read_bio_PrivateKey.
   PEM_read_bio_PrivateKey: function(bp: Pointer; x: PPointer; cb, u: Pointer): Pointer; cdecl;
+  /// OpenSSL EVP_PKEY_free.
   EVP_PKEY_free: procedure(pkey: Pointer); cdecl;
+  /// OpenSSL ERR_get_error.
   ERR_get_error: function: Cardinal; cdecl;
+  /// OpenSSL ERR_error_string_n.
   ERR_error_string_n: procedure(e: Cardinal; buf: PAnsiChar; len: NativeUInt); cdecl;
+  /// OpenSSL ERR_clear_error.
   ERR_clear_error: procedure; cdecl;
 
 {$IFDEF RALWindows}
 const
+  /// The Windows certificate library.
   cCrypt32 = 'crypt32.dll';
 
 type
+  /// Pointer to a TCertContext.
   PCertContext = ^TCertContext;
+  /// CERT_CONTEXT (Windows).
   TCertContext = record
+    /// The encoding.
     dwCertEncodingType: Cardinal;
+    /// The DER.
     pbCertEncoded: PByte;
+    /// Bytes of the DER.
     cbCertEncoded: Cardinal;
+    /// The parsed certificate.
     pCertInfo: Pointer;
+    /// The store it came from.
     hCertStore: Pointer;
   end;
 
+/// The Windows CertOpenSystemStoreW.
 function CertOpenSystemStoreW(hProv: NativeUInt; szSubsystemProtocol: PWideChar): Pointer; stdcall;
   external cCrypt32 name 'CertOpenSystemStoreW';
+/// The Windows CertEnumCertificatesInStore.
 function CertEnumCertificatesInStore(hCertStore: Pointer; pPrevCertContext: PCertContext): PCertContext; stdcall;
   external cCrypt32 name 'CertEnumCertificatesInStore';
+/// The Windows CertCloseStore.
 function CertCloseStore(hCertStore: Pointer; dwFlags: Cardinal): LongBool; stdcall;
   external cCrypt32 name 'CertCloseStore';
 {$ENDIF}
@@ -752,13 +921,17 @@ end;
 
 {$IFNDEF RALWindows}
 const
+  /// SIGPIPE.
   cSIGPIPE = 13; // the same on Linux, Android, the BSDs and Apple
   {$IFDEF FPC}
+  /// The C library.
   cLibC = 'c';
   {$ELSE}
+  /// The C library.
   cLibC = libc;
   {$ENDIF}
 
+/// libc signal.
 function sys_signal(ASignal: Integer; AHandler: Pointer): Pointer; cdecl;
   external cLibC name {$IFNDEF FPC}_PU + {$ENDIF}'signal';
 
@@ -775,7 +948,7 @@ begin
 end;
 {$ENDIF}
 
-{ loads both libraries once; True when everything the code calls is there }
+/// Loads both libraries once; True when everything the code calls is there.
 function LoadOpenSSL: boolean;
 begin
   GLock.Acquire;
@@ -835,7 +1008,7 @@ begin
     Result := StringRAL(GLoadError);
 end;
 
-{ the errors OpenSSL queued, as text, and the queue emptied }
+/// The errors OpenSSL queued, as text, and the queue emptied.
 function OpenSSLErrors: string;
 var
   vCode: Cardinal;
@@ -855,6 +1028,7 @@ begin
   until False;
 end;
 
+/// Raises ERALTLSError for AWhat with the OpenSSL error queue.
 procedure RaiseTLS(const AWhat: string);
 var
   vDetail: string;
@@ -865,7 +1039,7 @@ begin
   raise ERALTLSError.CreateFmt(ecTLSError, [AWhat, vDetail]);
 end;
 
-{ ALPN on the wire: each name preceded by its length }
+/// ALPN on the wire: each name preceded by its length.
 function ALPNWire(const AList: StringRAL): TBytes;
 var
   vParts: TStringList;
@@ -894,6 +1068,7 @@ begin
   end;
 end;
 
+/// Gives OpenSSL the key password kept in userdata.
 function PasswordCallback(buf: PAnsiChar; size, rwflag: Integer; userdata: Pointer): Integer; cdecl;
 var
   vPassword: PAnsiChar;
@@ -909,7 +1084,7 @@ begin
   Move(vPassword^, buf^, Result);
 end;
 
-{ server side of ALPN: the first of the server's protocols the client offered }
+/// Server side of ALPN: the first of the server's protocols the client offered.
 function ALPNSelect(ssl: Pointer; out_: PPointer; outlen: PByte; in_: PByte;
   inlen: Cardinal; arg: Pointer): Integer; cdecl;
 var
@@ -1864,6 +2039,7 @@ begin
   Result := FDone and (SSL_pending(FSSL) > 0);
 end;
 
+/// The DER of the peer certificate of ASSL, or empty.
 function CertificateDER(ASSL: Pointer): TBytes;
 var
   vCert: Pointer;
@@ -1891,11 +2067,13 @@ begin
   Result := CertificateDER(FSSL);
 end;
 
-{ the peer certificate of ASSL as TRALClient describes it }
+/// The peer certificate of ASSL as TRALClient describes it.
 function CertificateOf(ASSL: Pointer): TRALCertInfo;
 type
   TTm = record
+    /// The parts of a struct tm.
     tm_sec, tm_min, tm_hour, tm_mday, tm_mon, tm_year, tm_wday, tm_yday, tm_isdst: Integer;
+    /// tm_gmtoff and tm_zone on some systems.
     tm_pad: array[0..7] of Integer; // tm_gmtoff and tm_zone on some systems
   end;
 var
@@ -2064,8 +2242,11 @@ end;
 { TRALDTLSSession }
 
 const
+  /// OpenSSL BIO_CTRL_PENDING.
   BIO_CTRL_PENDING = 10;
+  /// OpenSSL SSL_CTRL_SET_MTU.
   SSL_CTRL_SET_MTU = 17;
+  /// OpenSSL DTLS_CTRL_HANDLE_TIMEOUT.
   DTLS_CTRL_HANDLE_TIMEOUT = 74;
 
 constructor TRALDTLSSession.Create(AContext: TRALTLSContext; AServer: boolean;

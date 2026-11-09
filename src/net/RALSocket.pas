@@ -1,11 +1,11 @@
-/// TCP and UDP sockets over the operating system's own socket API, the same
-/// code on every system and compiler: only where each function comes from
-/// (ws2_32.dll, or the C library) and a handful of constants change, and they
-/// are all in the declarations block at the top of the implementation. Waiting
-/// is poll() everywhere (WSAPoll on Windows). Also the channel classes the
-/// protocols stack on a socket (TLS, WebSocket, a proxy).
-/// Package RALNetPackage: used by MQTT, and meant for every protocol RAL speaks
-/// on its own sockets (e-mail, a balancer, WebSocket clients).
+{ TCP and UDP sockets over the operating system's own socket API, the same
+  code on every system and compiler: only where each function comes from
+  (ws2_32.dll, or the C library) and a handful of constants change, and they
+  are all in the declarations block at the top of the implementation. Waiting
+  is poll() everywhere (WSAPoll on Windows). Also the channel classes the
+  protocols stack on a socket (TLS, WebSocket, a proxy).
+  Package RALNetPackage: used by MQTT, and meant for every protocol RAL speaks
+  on its own sockets (e-mail, a balancer, WebSocket clients). }
 unit RALSocket;
 
 {$I ..\core\PascalRAL.inc}
@@ -92,12 +92,15 @@ type
     request and its answer by 40 ms or more }
   TRALSocket = class
   private
+    /// The address family of the socket.
     FFamily: IntegerRAL;
     FHandle: TRALSocketHandle;
     FPeerAddress: StringRAL;
     FPeerPort: IntegerRAL;
 
     function GetActive: boolean;
+    { Sets the options of every socket: no SIGPIPE, and for TCP no Nagle and a keep
+      alive of a minute. }
     procedure SetOptions(ATCP: boolean);
   public
     constructor Create;
@@ -172,6 +175,7 @@ type
     wait; the Wait* helpers wait on the socket with a deadline }
   TRALChannel = class
   private
+    /// The socket of the channel, when it has one.
     FSocket: TRALSocket;
   protected
     function GetSocket: TRALSocket; virtual;
@@ -181,7 +185,8 @@ type
     { Writes what a layer queued and did not get out yet; True when nothing
       is left. Never waits }
     function Flush: boolean; virtual;
-    /// True when bytes are already buffered in the layer, so Read will not need the socket.
+    { True when bytes are already buffered in the layer, so Read will not need the
+      socket. }
     function HasBuffered: boolean; virtual;
     { Bytes read (up to ACount), 0 when the connection closed, or
       RALSocketWouldBlock when nothing is there yet }
@@ -189,7 +194,8 @@ type
     { Reads up to ACount bytes, waiting up to ATimeout milliseconds for the
       first of them: bytes read, 0 when closed, RALSocketWouldBlock on timeout }
     function ReadWait(var ABuffer; ACount, ATimeout: IntegerRAL): IntegerRAL;
-    /// Events the layer needs from the socket to make progress (TLS may need to write to read).
+    { Events the layer needs from the socket to make progress (TLS may need to write to
+      read). }
     function WantedEvents: Word; virtual;
     { Bytes taken (up to ACount, maybe 0 when the layer below is full), or
       RALSocketWouldBlock }
@@ -206,6 +212,7 @@ type
   /// The socket as a channel: plain TCP.
   TRALSocketChannel = class(TRALChannel)
   private
+    /// Whether the channel frees the socket.
     FOwnsSocket: boolean;
   public
     /// Channel over ASocket; AOwnsSocket frees it with the channel.
@@ -221,6 +228,7 @@ type
   TRALLayerChannel = class(TRALChannel)
   private
     FInner: TRALChannel;
+    /// Whether the layer frees the inner channel.
     FOwnsInner: boolean;
   protected
     function GetSocket: TRALSocket; override;
@@ -272,83 +280,150 @@ uses
   --------------------------------------------------------------------------- }
 
 const
+  /// SOCK_STREAM.
   cSOCK_STREAM = 1;
+  /// SOCK_DGRAM.
   cSOCK_DGRAM = 2;
+  /// IPPROTO_TCP.
   cIPPROTO_TCP = 6;
+  /// IPPROTO_UDP.
   cIPPROTO_UDP = 17;
+  /// TCP_NODELAY.
   cTCP_NODELAY = 1;
+  /// AI_PASSIVE.
   cAI_PASSIVE = 1;
+  /// MSG_PEEK.
   cMSG_PEEK = 2; // the same on Windows, Linux, Android, the BSDs and Apple
 
 {$IFDEF RALWindows}
 const
+  /// The library of the socket API on this platform.
   cLib = 'ws2_32.dll';
+  /// AF_INET.
   cAF_INET = 2;
+  /// AF_INET6 on this platform.
   cAF_INET6 = 23;
+  /// SOL_SOCKET on this platform.
   cSOL_SOCKET = $FFFF;
+  /// SO_REUSEADDR on this platform.
   cSO_REUSEADDR = $0004;
+  /// SO_KEEPALIVE on this platform.
   cSO_KEEPALIVE = $0008;
+  /// SO_BROADCAST on this platform.
   cSO_BROADCAST = $0020;
+  /// SO_ERROR on this platform.
   cSO_ERROR = $1007;
+  /// IPPROTO_IPV6.
   cIPPROTO_IPV6 = 41;
+  /// IPV6_V6ONLY on this platform.
   cIPV6_V6ONLY = 27;
+  /// NI_NUMERICHOST on this platform.
   cNI_NUMERICHOST = 2;
+  /// NI_NUMERICSERV on this platform.
   cNI_NUMERICSERV = 8;
+  /// The "would block" error on this platform.
   cEAGAIN = 10035;      // WSAEWOULDBLOCK
+  /// The "connect in progress" error on this platform.
   cEINPROGRESS = 10036;
+  /// The "interrupted" error on this platform.
   cEINTR = 10004;
+  /// FIONBIO (Windows).
   cFIONBIO = Integer($8004667E);
+  /// SHUT_WR.
   cSHUT_WR = 1;
+  /// The invalid socket handle.
   cInvalid = TRALSocketHandle(not TRALSocketHandle(0));
+  { The flags of every send: MSG_NOSIGNAL where it exists, so a closed peer does not
+    kill the process. }
   cSendFlags = 0;
 
 type
+  /// Pointer to a TAddrInfo.
   PAddrInfo = ^TAddrInfo;
+  /// struct addrinfo on this platform.
   TAddrInfo = record
+    /// Flags.
     ai_flags: Integer;
+    /// Family.
     ai_family: Integer;
+    /// Socket type.
     ai_socktype: Integer;
+    /// Protocol.
     ai_protocol: Integer;
+    /// Size of ai_addr.
     ai_addrlen: NativeUInt;
+    /// Canonical name.
     ai_canonname: PAnsiChar;
+    /// The address.
     ai_addr: Pointer;
+    /// The next entry.
     ai_next: PAddrInfo;
   end;
+  /// socklen_t on this platform.
   TSockLen = Integer;
+  /// struct pollfd.
   TPollFd = record
+    /// The socket.
     fd: TRALSocketHandle;
+    /// The events asked for.
     events: SmallInt;
+    /// The events that came.
     revents: SmallInt;
   end;
 
+/// The system socket.
 function sys_socket(af, typ, protocol: Integer): TRALSocketHandle; stdcall; external cLib name 'socket';
+/// The system connect.
 function sys_connect(s: TRALSocketHandle; name: Pointer; namelen: TSockLen): Integer; stdcall; external cLib name 'connect';
+/// The system bind.
 function sys_bind(s: TRALSocketHandle; name: Pointer; namelen: TSockLen): Integer; stdcall; external cLib name 'bind';
+/// The system listen.
 function sys_listen(s: TRALSocketHandle; backlog: Integer): Integer; stdcall; external cLib name 'listen';
+/// The system accept.
 function sys_accept(s: TRALSocketHandle; addr: Pointer; var addrlen: TSockLen): TRALSocketHandle; stdcall; external cLib name 'accept';
+/// The system send.
 function sys_send(s: TRALSocketHandle; const buf; len, flags: Integer): Integer; stdcall; external cLib name 'send';
+/// The system recv.
 function sys_recv(s: TRALSocketHandle; var buf; len, flags: Integer): Integer; stdcall; external cLib name 'recv';
+/// The system sendto.
 function sys_sendto(s: TRALSocketHandle; const buf; len, flags: Integer; addrto: Pointer; tolen: TSockLen): Integer; stdcall; external cLib name 'sendto';
+/// The system recvfrom.
 function sys_recvfrom(s: TRALSocketHandle; var buf; len, flags: Integer; from: Pointer; var fromlen: TSockLen): Integer; stdcall; external cLib name 'recvfrom';
+/// The system closesocket.
 function sys_closesocket(s: TRALSocketHandle): Integer; stdcall; external cLib name 'closesocket';
+/// The system shutdown.
 function sys_shutdown(s: TRALSocketHandle; how: Integer): Integer; stdcall; external cLib name 'shutdown';
+/// The system setsockopt.
 function sys_setsockopt(s: TRALSocketHandle; level, optname: Integer; optval: Pointer; optlen: TSockLen): Integer; stdcall; external cLib name 'setsockopt';
+/// The system getsockopt.
 function sys_getsockopt(s: TRALSocketHandle; level, optname: Integer; optval: Pointer; var optlen: TSockLen): Integer; stdcall; external cLib name 'getsockopt';
+/// The system WSAIoctl.
 function sys_WSAIoctl(s: TRALSocketHandle; code: Cardinal; inbuf: Pointer; inlen: Cardinal;
   outbuf: Pointer; outlen: Cardinal; var returned: Cardinal; overlapped, completion: Pointer): Integer;
   stdcall; external cLib name 'WSAIoctl';
+/// The system getsockname.
 function sys_getsockname(s: TRALSocketHandle; name: Pointer; var namelen: TSockLen): Integer; stdcall; external cLib name 'getsockname';
+/// The system getpeername.
 function sys_getpeername(s: TRALSocketHandle; name: Pointer; var namelen: TSockLen): Integer; stdcall; external cLib name 'getpeername';
+/// The system ioctlsocket.
 function sys_ioctlsocket(s: TRALSocketHandle; cmd: Integer; var arg: Cardinal): Integer; stdcall; external cLib name 'ioctlsocket';
+/// The system poll.
 function sys_poll(fds: Pointer; nfds: Cardinal; timeout: Integer): Integer; stdcall; external cLib name 'WSAPoll';
+/// The system getaddrinfo.
 function sys_getaddrinfo(node, service: PAnsiChar; hints: PAddrInfo; var res: PAddrInfo): Integer; stdcall; external cLib name 'getaddrinfo';
+/// The system freeaddrinfo.
 procedure sys_freeaddrinfo(ai: PAddrInfo); stdcall; external cLib name 'freeaddrinfo';
+/// The system getnameinfo.
 function sys_getnameinfo(sa: Pointer; salen: TSockLen; host: PAnsiChar; hostlen: Cardinal;
   serv: PAnsiChar; servlen: Cardinal; flags: Integer): Integer; stdcall; external cLib name 'getnameinfo';
+/// Winsock WSAStartup.
 function WSAStartup(AVersion: Word; AData: Pointer): Integer; stdcall; external cLib name 'WSAStartup';
+/// Winsock WSACleanup.
 function WSACleanup: Integer; stdcall; external cLib name 'WSACleanup';
+/// Winsock WSAGetLastError.
 function WSAGetLastError: Integer; stdcall; external cLib name 'WSAGetLastError';
 
+/// The error of the last socket call.
 function LastError: IntegerRAL;
 begin
   Result := WSAGetLastError;
@@ -365,6 +440,7 @@ begin
     Result := Result or $0010;
 end;
 
+/// The RALPoll* bits of the events the system reported.
 function PollEventsFromSys(AEvents: SmallInt): Word;
 begin
   Result := 0;
@@ -378,6 +454,7 @@ begin
     Result := Result or RALPollHup;
 end;
 
+/// Puts a socket in non-blocking mode; False when the system refuses.
 function SetNonBlocking(AHandle: TRALSocketHandle): boolean;
 var
   vArg: Cardinal;
@@ -387,135 +464,229 @@ begin
 end;
 {$ELSE}
 const
+  /// AF_INET.
   cAF_INET = 2;
   {$IF Defined(DARWIN) or Defined(MACOS) or Defined(IOS) or Defined(FREEBSD) or Defined(BSD)}
     {$DEFINE RALSOCKET_BSD}
   {$IFEND}
   {$IFDEF RALSOCKET_BSD}
+  /// AF_INET6 on this platform.
   cAF_INET6 = 28 + {$IFDEF FREEBSD}0{$ELSE}2{$ENDIF}; // 30 on Apple, 28 on FreeBSD
+  /// SOL_SOCKET on this platform.
   cSOL_SOCKET = $FFFF;
+  /// SO_REUSEADDR on this platform.
   cSO_REUSEADDR = $0004;
+  /// SO_KEEPALIVE on this platform.
   cSO_KEEPALIVE = $0008;
+  /// SO_BROADCAST on this platform.
   cSO_BROADCAST = $0020;
+  /// SO_ERROR on this platform.
   cSO_ERROR = $1007;
+  /// SO_NOSIGPIPE (Apple, BSD).
   cSO_NOSIGPIPE = $1022;
+  /// IPPROTO_IPV6.
   cIPPROTO_IPV6 = 41;
+  /// IPV6_V6ONLY on this platform.
   cIPV6_V6ONLY = 27;
+  /// NI_NUMERICHOST on this platform.
   cNI_NUMERICHOST = 2;
+  /// NI_NUMERICSERV on this platform.
   cNI_NUMERICSERV = 8;
+  /// The "would block" error on this platform.
   cEAGAIN = 35;
+  /// The "connect in progress" error on this platform.
   cEINPROGRESS = 36;
+  /// The "interrupted" error on this platform.
   cEINTR = 4;
+  /// O_NONBLOCK on this platform.
   cO_NONBLOCK = $0004;
   {$IFDEF FREEBSD}
+  { The flags of every send: MSG_NOSIGNAL where it exists, so a closed peer does not
+    kill the process. }
   cSendFlags = $20000; // MSG_NOSIGNAL
   {$ELSE}
+  { The flags of every send: MSG_NOSIGNAL where it exists, so a closed peer does not
+    kill the process. }
   cSendFlags = 0;      // Apple: SO_NOSIGPIPE on the socket instead
   {$ENDIF}
   {$ELSE}
+  /// AF_INET6 on this platform.
   cAF_INET6 = 10;
+  /// SOL_SOCKET on this platform.
   cSOL_SOCKET = 1;
+  /// SO_REUSEADDR on this platform.
   cSO_REUSEADDR = 2;
+  /// SO_KEEPALIVE on this platform.
   cSO_KEEPALIVE = 9;
+  /// SO_BROADCAST on this platform.
   cSO_BROADCAST = 6;
+  /// SO_ERROR on this platform.
   cSO_ERROR = 4;
+  /// IPPROTO_IPV6.
   cIPPROTO_IPV6 = 41;
+  /// IPV6_V6ONLY on this platform.
   cIPV6_V6ONLY = 26;
+  /// TCP_KEEPIDLE (Linux).
   cTCP_KEEPIDLE = 4;
+  /// TCP_KEEPINTVL (Linux).
   cTCP_KEEPINTVL = 5;
+  /// TCP_KEEPCNT (Linux).
   cTCP_KEEPCNT = 6;
+  /// NI_NUMERICHOST on this platform.
   cNI_NUMERICHOST = 1;
+  /// NI_NUMERICSERV on this platform.
   cNI_NUMERICSERV = 2;
+  /// The "would block" error on this platform.
   cEAGAIN = 11;
+  /// The "connect in progress" error on this platform.
   cEINPROGRESS = 115;
+  /// The "interrupted" error on this platform.
   cEINTR = 4;
+  /// O_NONBLOCK on this platform.
   cO_NONBLOCK = $0800;
+  { The flags of every send: MSG_NOSIGNAL where it exists, so a closed peer does not
+    kill the process. }
   cSendFlags = $4000;  // MSG_NOSIGNAL: a write to a closed peer must not kill the process
   {$ENDIF}
+  /// F_GETFL.
   cF_GETFL = 3;
+  /// F_SETFL.
   cF_SETFL = 4;
+  /// SHUT_WR.
   cSHUT_WR = 1;
+  /// The invalid socket handle.
   cInvalid = -1;
   {$IFDEF FPC}
+  /// The library of the socket API on this platform.
   cLib = 'c';
   {$ELSE}
+  /// The library of the socket API on this platform.
   cLib = libc;
   {$ENDIF}
 
 type
+  /// Pointer to a TAddrInfo.
   PAddrInfo = ^TAddrInfo;
   {$IFDEF RALSOCKET_BSD}
+  /// struct addrinfo on this platform.
   TAddrInfo = record
+    /// Flags.
     ai_flags: Integer;
+    /// Family.
     ai_family: Integer;
+    /// Socket type.
     ai_socktype: Integer;
+    /// Protocol.
     ai_protocol: Integer;
+    /// Size of ai_addr.
     ai_addrlen: Cardinal;
+    /// Canonical name.
     ai_canonname: PAnsiChar;
+    /// The address.
     ai_addr: Pointer;
+    /// The next entry.
     ai_next: PAddrInfo;
   end;
   {$ELSE}
+  /// struct addrinfo on this platform.
   TAddrInfo = record
+    /// Flags.
     ai_flags: Integer;
+    /// Family.
     ai_family: Integer;
+    /// Socket type.
     ai_socktype: Integer;
+    /// Protocol.
     ai_protocol: Integer;
+    /// Size of ai_addr.
     ai_addrlen: Cardinal;
+    /// The address.
     ai_addr: Pointer;
+    /// Canonical name.
     ai_canonname: PAnsiChar;
+    /// The next entry.
     ai_next: PAddrInfo;
   end;
   {$ENDIF}
+  /// socklen_t on this platform.
   TSockLen = Cardinal;
+  /// struct pollfd.
   TPollFd = record
+    /// The socket.
     fd: Integer;
+    /// The events asked for.
     events: SmallInt;
+    /// The events that came.
     revents: SmallInt;
   end;
 
+/// The system socket.
 function sys_socket(af, typ, protocol: Integer): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'socket';
+/// The system connect.
 function sys_connect(s: Integer; name: Pointer; namelen: TSockLen): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'connect';
+/// The system bind.
 function sys_bind(s: Integer; name: Pointer; namelen: TSockLen): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'bind';
+/// The system listen.
 function sys_listen(s: Integer; backlog: Integer): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'listen';
+/// The system accept.
 function sys_accept(s: Integer; addr: Pointer; var addrlen: TSockLen): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'accept';
+/// The system send.
 function sys_send(s: Integer; const buf; len: NativeUInt; flags: Integer): NativeInt; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'send';
+/// The system recv.
 function sys_recv(s: Integer; var buf; len: NativeUInt; flags: Integer): NativeInt; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'recv';
+/// The system sendto.
 function sys_sendto(s: Integer; const buf; len: NativeUInt; flags: Integer; addrto: Pointer; tolen: TSockLen): NativeInt; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'sendto';
+/// The system recvfrom.
 function sys_recvfrom(s: Integer; var buf; len: NativeUInt; flags: Integer; from: Pointer; var fromlen: TSockLen): NativeInt; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'recvfrom';
+/// The system close.
 function sys_close(s: Integer): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'close';
+/// The system shutdown.
 function sys_shutdown(s: Integer; how: Integer): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'shutdown';
+/// The system setsockopt.
 function sys_setsockopt(s: Integer; level, optname: Integer; optval: Pointer; optlen: TSockLen): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'setsockopt';
+/// The system getsockopt.
 function sys_getsockopt(s: Integer; level, optname: Integer; optval: Pointer; var optlen: TSockLen): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'getsockopt';
+/// The system getsockname.
 function sys_getsockname(s: Integer; name: Pointer; var namelen: TSockLen): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'getsockname';
+/// The system getpeername.
 function sys_getpeername(s: Integer; name: Pointer; var namelen: TSockLen): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'getpeername';
+/// The system fcntl.
 function sys_fcntl(fd, cmd, arg: Integer): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'fcntl';
+/// The system poll.
 function sys_poll(fds: Pointer; nfds: Cardinal; timeout: Integer): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'poll';
+/// The system getaddrinfo.
 function sys_getaddrinfo(node, service: PAnsiChar; hints: PAddrInfo; var res: PAddrInfo): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'getaddrinfo';
+/// The system freeaddrinfo.
 procedure sys_freeaddrinfo(ai: PAddrInfo); cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'freeaddrinfo';
+/// The system getnameinfo.
 function sys_getnameinfo(sa: Pointer; salen: TSockLen; host: PAnsiChar; hostlen: Cardinal;
   serv: PAnsiChar; servlen: Cardinal; flags: Integer): Integer; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'getnameinfo';
 {$IFDEF RALSOCKET_BSD}
+/// The system errno (errno location).
 function sys_errno: PInteger; cdecl; external cLib name {$IFNDEF FPC}_PU + {$ENDIF}'__error';
 {$ELSE}
   {$IF Defined(ANDROID) or Defined(Android32) or Defined(Android64)}
+/// The system errno (errno location).
 function sys_errno: PInteger; cdecl; external cLib name '__errno';
   {$ELSE}
+/// The system errno (errno location).
 function sys_errno: PInteger; cdecl; external cLib name '__errno_location';
   {$IFEND}
 {$ENDIF}
 
+/// The error of the last socket call.
 function LastError: IntegerRAL;
 begin
   Result := sys_errno^;
 end;
 
-{ POSIX poll: the public constants are its own values }
+/// POSIX poll: the public constants are its own values.
 function PollEventsToSys(AEvents: Word): SmallInt;
 begin
   Result := SmallInt(AEvents and (RALPollIn or RALPollOut));
 end;
 
+/// The RALPoll* bits of the events the system reported.
 function PollEventsFromSys(AEvents: SmallInt): Word;
 begin
   Result := Word(AEvents) and (RALPollIn or RALPollOut or RALPollErr or
@@ -524,11 +695,13 @@ begin
     Result := (Result and not Word($0020)) or RALPollErr;
 end;
 
+/// The system closesocket.
 function sys_closesocket(s: Integer): Integer;
 begin
   Result := sys_close(s);
 end;
 
+/// Puts a socket in non-blocking mode; False when the system refuses.
 function SetNonBlocking(AHandle: TRALSocketHandle): boolean;
 var
   vFlags: Integer;
@@ -542,6 +715,7 @@ end;
   From here on, the same code on every system.
   --------------------------------------------------------------------------- }
 
+/// The address family of AFamily.
 function FamilyCode(AFamily: TRALIPFamily): Integer;
 begin
   case AFamily of
@@ -559,13 +733,14 @@ begin
     Result := Format(emSocketErrorCode, [ACode]);
 end;
 
+/// Raises ERALSocketError for AWhat with the system error ACode.
 procedure RaiseSocket(const AWhat: string; ACode: IntegerRAL);
 begin
   raise ERALSocketError.CreateCode(ACode, Format(emSocketError,
     [AWhat, RALSocketErrorText(ACode), ACode]));
 end;
 
-{ the family field: a word on Windows and Linux, a byte after sa_len on BSD }
+/// The family field: a word on Windows and Linux, a byte after sa_len on BSD.
 function AddressFamily(const AAddress: TRALSocketAddress): Integer;
 begin
   {$IFDEF RALSOCKET_BSD}
@@ -602,6 +777,7 @@ begin
   Result := (A.Size = B.Size) and (A.Size > 0) and CompareMem(@A.Data[0], @B.Data[0], A.Size);
 end;
 
+/// Resolves AHost and APort; returns the getaddrinfo code, AList freed by the caller.
 function Resolve(const AHost: StringRAL; APort: IntegerRAL; AFamily: TRALIPFamily;
   ASockType: Integer; APassive: boolean; out AList: PAddrInfo): Integer;
 var
@@ -697,6 +873,7 @@ begin
 end;
 
 {$IF Defined(RALWindows) and not Defined(FPC)}
+/// The Windows GetTickCount64.
 function GetTickCount64: UInt64; stdcall; external kernel32 name 'GetTickCount64';
 {$IFEND}
 
@@ -819,7 +996,9 @@ procedure TRALSocket.ConnectStart(const AAddress: TRALSocketAddress);
 type
   // TCP_INITIAL_RTO_PARAMETERS of mstcpip.h
   TInitialRto = record
+    /// Initial retransmission timeout, ms.
     Rtt: Word;
+    /// SYN retransmissions before failing.
     MaxSynRetransmissions: Byte;
   end;
 const
@@ -892,7 +1071,9 @@ const
   cAttemptDelay = 250; // RFC 8305 5: the Connection Attempt Delay
 type
   TAttempt = record
+    /// The socket of one connection attempt.
     Handle: TRALSocketHandle;
+    /// The address it connects to.
     Address: TRALSocketAddress;
   end;
 var
@@ -1461,6 +1642,7 @@ end;
 
 {$IFDEF RALWindows}
 var
+  /// The WSADATA of WSAStartup.
   vWSAData: array[0..1023] of Byte;
 
 initialization

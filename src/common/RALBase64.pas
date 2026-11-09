@@ -10,63 +10,80 @@ uses
   RALExceptions, RALErrorCodes, RALTypes, RALStream, RALConsts;
 
 type
-  /// What DecodeBase64 carries from one block of the input to the next: the
-  /// sextets of a group not complete yet, and whether the padding began
+  { What DecodeBase64 carries from one block of the input to the next: the
+    sextets of a group not complete yet, and whether the padding began. }
   TRALBase64DecodeState = record
+    /// Bits read and not yet written.
     Bits: Cardinal;
+    /// Characters of the current group.
     Count: IntegerRAL;
+    /// Whether padding was met.
     Padding: Boolean;
   end;
 
-  { TRALBase64 }
-
-  /// Base64 and base64url. Decoding skips blanks and line breaks between the
-  /// characters, as MIME writes them, and raises EConvertError on any other
-  /// character outside both alphabets, or one after the padding: it used to
-  /// fold an invalid one into the group as all bits set, and answer garbage
+  { Base64 and base64url. Decoding skips blanks and line breaks between the
+    characters, as MIME writes them, and raises EConvertError on any other
+    character outside both alphabets, or one after the padding. }
   TRALBase64 = class
   protected
+    /// Decodes AInputLen characters at AInput into AOutput; returns the bytes written.
     class function DecodeBase64(AInput, AOutput: PByte; AInputLen: Integer;
       var AState: TRALBase64DecodeState): IntegerRAL;
-    /// The bytes of the group the input ended in; raises when one character
-    /// was left over, which makes no byte
+    { The bytes of the group the input ended in; raises when one character
+      was left over, which makes no byte. }
     class function DecodeFinish(AOutput: PByte; var AState: TRALBase64DecodeState): IntegerRAL;
+    /// Encodes AInputLen bytes at AInput into AOutput; returns the characters written.
     class function EncodeBase64(AInput, AOutput: PByte; AInputLen: Integer): IntegerRAL;
   public
+    /// Decodes base64 text.
     class function Decode(const AValue: StringRAL): StringRAL; overload;
+    /// Decodes base64 bytes.
     class function Decode(AValue: TBytes): StringRAL; overload;
+    /// Decodes a base64 stream.
     class function Decode(AValue: TStream): StringRAL; overload;
+    /// Decodes base64 text into bytes.
     class function DecodeAsBytes(const AValue: StringRAL): TBytes; overload;
+    /// Decodes a base64 stream into bytes.
     class function DecodeAsBytes(AValue: TStream): TBytes; overload;
+    /// Decodes a base64 stream into a new one, owned by the caller.
     class function DecodeAsStream(AValue: TStream): TStream; overload;
+    /// Decodes base64 text into a new stream, owned by the caller.
     class function DecodeAsStream(AValue: StringRAL): TStream; overload;
-    /// ALength characters of base64 or base64url at AInput, padded or not,
-    /// straight into a string of the decoded bytes: one allocation, where
-    /// Decode(FromBase64Url(...)) went through two replaced strings, two
-    /// streams and, on Delphi, UTF-16. Refuses what Decode refuses, an empty
-    /// text included
+    { ALength characters of base64 or base64url at AInput, padded or not,
+      straight into a string of the decoded bytes, in one allocation. Refuses
+      what Decode refuses, an empty text included. }
     class function DecodeBuffer(AInput: PByte; ALength: IntegerRAL): StringRAL;
     /// The same, for a whole text
     class function DecodeText(const AValue: StringRAL): StringRAL;
+    /// Encodes a string (raw bytes with ABinary, else UTF-8).
     class function Encode(const AValue: StringRAL; ABinary : boolean = false): StringRAL; overload;
+    /// Encodes bytes.
     class function Encode(AValue: TBytes): StringRAL; overload;
+    /// Encodes a stream.
     class function Encode(AValue: TStream): StringRAL; overload;
+    /// Encodes a string into base64 bytes.
     class function EncodeAsBytes(const AValue: StringRAL): TBytes; overload;
+    /// Encodes a stream into base64 bytes.
     class function EncodeAsBytes(AValue: TStream): TBytes; overload;
+    /// Encodes a stream into a new one, owned by the caller.
     class function EncodeAsStream(AValue: TStream): TStream; overload;
-    /// ALength bytes at AData as base64url without padding (RFC 7515 2) - what
-    /// ToBase64Url(Encode(...)) gives - in one allocation
+    { ALength bytes at AData as base64url without padding (RFC 7515 2) - what
+      ToBase64Url(Encode(...)) gives - in one allocation. }
     class function EncodeUrl(AData: PByte; ALength: IntegerRAL): StringRAL;
+    /// Base64url text as base64, padding included.
     class function FromBase64Url(const AValue: StringRAL): StringRAL;
+    /// Bytes that ASize characters of base64 decode to, at most.
     class function GetSizeDecode(ASize: Int64RAL): Int64RAL;
+    /// Characters that ASize bytes encode to.
     class function GetSizeEncode(ASize: Int64RAL): Int64RAL;
+    /// Base64 text as base64url, without padding.
     class function ToBase64Url(const AValue: StringRAL): StringRAL;
   end;
 
 implementation
 
 const
-  // Table with all 64 possible base64 characters
+  /// Table with all 64 possible base64 characters
   TEncode64 : array[0..63] of Byte = (
                  065,066,067,068,069,070,071,072,073,074,075,076,077,078,
                  079,080,081,082,083,084,085,086,087,088,089,090,097,098,
@@ -74,7 +91,7 @@ const
                  113,114,115,116,117,118,119,120,121,122,048,049,050,051,
                  052,053,054,055,056,057,043,047);
 
-  // Table with all 64 base64 characters in a ASCII table (255 characters)
+  /// Table with all 64 base64 characters in a ASCII table (255 characters)
   TDecode64 : array[0..255] of Byte = (
                  00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00, //019
                  00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00, //038
@@ -306,8 +323,7 @@ end;
 class function TRALBase64.GetSizeDecode(ASize: Int64RAL): Int64RAL;
 begin
   // ceiling, not rounding: the decoder walks whole groups of four, so an
-  // input of 54 chars still touches 14 groups. Round() gave 40 bytes for a
-  // buffer the loop could write 42 into.
+  // input of 54 chars still touches 14 groups (42 bytes)
   Result := ((ASize + 3) div 4) * 3;
 end;
 
@@ -559,9 +575,8 @@ begin
   vSize := AValue.Size;
 
   { whole groups of 3 bytes per piece: each piece is encoded on its own, and a
-    piece that is not a multiple of 3 ends in padding - a "=" in the MIDDLE of
-    the output. It happened above 50 MB (52428800 mod 3 = 2): RAL's decoder
-    took it, a strict one elsewhere did not }
+    piece that is not a multiple of 3 would end in padding - a "=" in the
+    middle of the output, which a strict decoder refuses }
   if vSize > DEFAULTBUFFERSTREAMSIZE then
     vBytesRead := (DEFAULTBUFFERSTREAMSIZE div 3) * 3
   else

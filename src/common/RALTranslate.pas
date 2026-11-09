@@ -1,3 +1,4 @@
+/// Loads the translated texts of RAL from the rallang resource or a file.
 unit RALTranslate;
 
 interface
@@ -16,6 +17,7 @@ uses
 implementation
 
 {$IFDEF FPC}
+  /// Translation callback of the FPC resource strings.
   function ResourcesTranslate(AName, AValue : AnsiString; AHash : Longint; AArg: Pointer) : AnsiString;
   var
     vTrans: TCustomIniFile;
@@ -35,6 +37,7 @@ implementation
     Result := vTrans.ReadString(vSession, vKey, '');
   end;
 {$ELSE}
+  /// The value of ASession/AKey in the language file.
   function GetIniValue(AIniFile : TCustomIniFile; ASession, AKey: StringRAL): PWideChar;
   var
     vStr : WideString;
@@ -51,6 +54,7 @@ implementation
     Move(PWideChar(vStr)^, Result^, vLen);
   end;
 
+  /// Replaces a resource string.
   procedure SetResourceString(ARes: PResStringRec; AValue: PChar);
   var
     PProtect: DWORD;
@@ -62,6 +66,7 @@ implementation
     {$ENDIF}
   end;
 
+  /// Replaces the RAL texts with those of the language file.
   procedure TranslateRALConsts(vTrans : TCustomIniFile);
   const
     cPRes : array[0..13] of PResStringRec = (@emContentCheckError, @emCompressLibFilesError,
@@ -83,9 +88,10 @@ implementation
       SetResourceString(cPRes[vInt], GetIniValue(vTrans, 'RALConsts', cRes[vInt]));
   end;
 
+  /// Reads a locale value of Windows.
   function RetrieveLocaleInfo(ALangID : Cardinal; AInfoType: LCTYPE; var AInfo: StringRAL): LongInt;
   var
-    Buffer: string; // deve ser string
+    Buffer: string; // must be string
   begin
     AInfo := '';
     Result := GetLocaleInfo(ALangID, AInfoType, nil, 0);
@@ -100,6 +106,7 @@ implementation
   end;
 {$ENDIF}
 
+/// The language of the system, as language_COUNTRY.
 function GetLanguage : StringRAL;
 {$IFNDEF FPC}
   var
@@ -117,6 +124,7 @@ begin
   {$ENDIF}
 end;
 
+/// Translates the RAL texts to ALangID (empty: the language of the system).
 procedure RALResourcesTranslate(ALangID: StringRAL = '');
 var
   vTrans: TCustomIniFile;

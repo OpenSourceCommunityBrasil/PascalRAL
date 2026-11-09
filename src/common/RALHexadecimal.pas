@@ -1,3 +1,4 @@
+/// Hexadecimal encoding and decoding of strings, bytes and streams.
 unit RALHexadecimal;
 
 interface
@@ -7,25 +8,41 @@ uses
   RALExceptions, RALErrorCodes, RALTypes, RALStream, RALConsts, RALTools;
 
 type
-  { TRALHexadecimal }
 
+  /// Hexadecimal encoding and decoding.
   TRALHexadecimal = class
   protected
+    { Decodes AInputLen hex characters at AInput into AOutput; returns the bytes
+      written. }
     class function DecodeHex(AInput, AOutput: PByte; AInputLen: integer): integer;
+    /// Encodes AInputLen bytes at AInput into AOutput; returns the characters written.
     class function EncodeHex(AInput, AOutput: PByte; AInputLen: integer): integer;
   public
+    /// Decodes hex text.
     class function Decode(const AValue: StringRAL): StringRAL; overload;
+    /// Decodes hex bytes.
     class function Decode(AValue: TBytes): StringRAL; overload;
+    /// Decodes a hex stream.
     class function Decode(AValue: TStream): StringRAL; overload;
+    /// Decodes hex text into bytes.
     class function DecodeAsBytes(const AValue: StringRAL): TBytes; overload;
+    /// Decodes a hex stream into bytes.
     class function DecodeAsBytes(AValue: TStream): TBytes; overload;
+    /// Decodes a hex stream into a new one, owned by the caller.
     class function DecodeAsStream(AValue: TStream): TStream; overload;
+    /// Decodes hex text into a new stream, owned by the caller.
     class function DecodeAsStream(AValue: StringRAL): TStream; overload;
+    /// Encodes a string (raw bytes with ABinary, else UTF-8).
     class function Encode(const AValue: StringRAL; ABinary : boolean = false): StringRAL; overload;
+    /// Encodes bytes.
     class function Encode(AValue: TBytes): StringRAL; overload;
+    /// Encodes a stream.
     class function Encode(AValue: TStream): StringRAL; overload;
+    /// Encodes a string into hex bytes.
     class function EncodeAsBytes(const AValue: StringRAL): TBytes; overload;
+    /// Encodes a stream into hex bytes.
     class function EncodeAsBytes(AValue: TStream): TBytes; overload;
+    /// Encodes a stream into a new one, owned by the caller.
     class function EncodeAsStream(AValue: TStream): TStream; overload;
   end;
 
@@ -112,7 +129,7 @@ begin
   else
     vBytesRead := AValue.Size;
 
-  // total de bytes read deve ser par
+  // the count of bytes read must be even
   if vBytesRead and 1 > 0 then
     vBytesRead := vBytesRead + 1;
 

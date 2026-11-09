@@ -124,11 +124,10 @@ begin
 end;
 
 { Straight through zlib, with the window and the memory level the size of the
-  body asks for (ZLibSizes) and the pieces on the stack. TCompressionStream
-  fixed both at 15 and 8 and carried a 64 KB buffer, and the input was read in
-  a 64 KB piece of its own: the gzip of an 11-byte JSON cost some 400 KB of
-  allocations, for every answer of a server that compresses - and blocks that
-  size are the ones the memory manager serves under a single lock }
+  body asks for (ZLibSizes) and the pieces on the stack, instead of
+  TCompressionStream's fixed 15/8 and its 64 KB buffers: a small answer
+  compresses without large allocations, which the memory manager serves under
+  a single lock }
 procedure TRALCompressZLib.InitCompress(AInStream, AOutStream: TStream);
 var
   vSize: LongWord;

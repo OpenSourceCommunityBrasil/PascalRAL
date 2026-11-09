@@ -9,18 +9,22 @@ uses
 
 type
 
-  { TRALHTTPCoder }
-
+  /// URL (percent) and HTML entity encoding.
   TRALHTTPCoder = class
+    /// Decodes the HTML entities of AHtml.
     class function DecodeHTML(const AHtml: StringRAL): StringRAL;
+    /// Decodes the percent escapes of AUrl (and + as a space).
     class function DecodeURL(const AUrl: StringRAL): StringRAL;
+    /// Encodes AHtml with HTML entities.
     class function EncodeHTML(const AHtml: StringRAL): StringRAL;
+    /// Percent-encodes AUrl.
     class function EncodeURL(const AUrl: StringRAL): StringRAL;
   end;
 
 implementation
 
 const
+  /// The URL encoding of each byte.
   URLStrTable: array[0..255] of StringRAL = (
     '%00', '%01', '%02', '%03', '%04', '%05', '%06', '%07', '%08',
     '%09', '%0A', '%0B', '%0C', '%0D', '%0E', '%0F', '%10', '%11',
@@ -50,6 +54,7 @@ const
     '%F6', '%F7', '%F8', '%F9', '%FA', '%FB', '%FC', '%FD', '%FE',
     '%FF');
 
+  /// The HTML encoding of each byte.
   HTMLStrTable: array[0..255] of StringRAL = (
     '&#00;', '&#01;', '&#02;', '&#03;', '&#04;', '&#05;',
     '&#06;', '&#07;', '&#08;', '&#09;', '&#10;', '&#11;',
@@ -93,7 +98,7 @@ const
 
   { TRALHTTPCoder }
 
-{ the value of a hexadecimal digit, 255 for any other byte }
+/// The value of a hexadecimal digit, 255 for any other byte.
 function HexDigit(AByte: Byte): Byte;
 begin
   case AByte of
@@ -115,8 +120,7 @@ var
   vDecoded: StringRAL;
 begin
   { nothing to decode is the common case - a name, a number, a plain word -
-    and then the answer is the string itself, not a copy: it used to cost a
-    byte buffer and a new string every time }
+    and then the answer is the string itself, not a copy }
   vSrc := PByte(Pointer(AUrl));
   vEnd := vSrc + Length(AUrl);
   while (vSrc < vEnd) and (vSrc^ <> Ord('%')) and (vSrc^ <> Ord('+')) do
@@ -129,8 +133,7 @@ begin
 
   { decoded byte by byte straight into a string that can only get shorter:
     "%C3%A7" is the UTF-8 of "ç", and appending CharRAL(#$C3) to a UTF8String
-    on Delphi converted that byte from the ANSI codepage first - every
-    non-ASCII character came out doubly encoded ("Ã§"). A '%' without two
+    on Delphi would convert that byte from the ANSI codepage first. A '%' without two
     hexadecimal digits after it stays as it is. Result is written last, after
     AUrl was read whole, because a caller writing "S := DecodeURL(S)" may
     hand both the same variable }
@@ -160,9 +163,8 @@ begin
   Result := vDecoded;
 end;
 
-{ Every byte of AText replaced by its entry of ATable, in one allocation. The
-  result used to grow by concatenation - a reallocation and a copy of all of it
-  per input byte, quadratic - and EncodeURL runs over every form field sent }
+{ Every byte of AText replaced by its entry of ATable, in one allocation
+  (EncodeURL runs over every form field sent) }
 function EncodeByTable(const AText: StringRAL; const ATable: array of StringRAL): StringRAL;
 var
   vInt, vLen: IntegerRAL;
@@ -220,10 +222,8 @@ var
   end;
 
 begin
-  { One pass into a result that can only shrink - an entity becomes one byte -
-    instead of concatenating a character at a time, which was quadratic, and
-    in an unterminated '&...' as well. An '&' that opens no entity is kept as
-    it is: the text from it to the next '&' used to be dropped }
+  { One pass into a result that can only shrink - an entity becomes one
+    byte. An '&' that opens no entity is kept as it is }
   SetLength(Result, Length(AHtml));
   vOut := POSINISTR;
   vEsc := -1;

@@ -1,3 +1,4 @@
+/// The HTML pages a server answers its own errors with, and the HTTP reason phrases.
 unit RALResponsePages;
 
 interface
@@ -7,8 +8,8 @@ uses
   RALTypes, RALTools, RALConsts;
 
 type
-  { TRALPageCode }
 
+  /// The HTML page of one status code.
   TRALResponsePage = class(TCollectionItem)
   private
     FPage: TStrings;
@@ -21,26 +22,33 @@ type
     constructor Create(ACollection: TCollection); override;
     destructor Destroy; override;
   published
+    /// The HTML of the page.
     property Page: TStrings read FPage write SetPage;
+    /// The status code the page answers.
     property StatusCode: IntegerRAL read FStatusCode write FStatusCode;
   end;
 
-  { TRALResponsePages }
-
+  /// The HTML pages a server answers its own errors with.
   TRALResponsePages = class(TOwnedCollection)
   protected
     function GetHTMLPage(AStatusCode: IntegerRAL): StringRAL;
   public
+    /// Creates the collection, empty.
     constructor Create(AOwner: TPersistent);
 
+    /// Adds the default page of every status RAL answers itself.
     procedure CreateDefaultPages;
+    /// Adds the page of AStatusCode; empty AHTMLPage takes the default.
     procedure CreatePage(AStatusCode: IntegerRAL; AHTMLPage: StringRAL = '');
+    /// The default page of AStatusCode, or empty.
     class function GetHTTPResponsePage(AStatusCode: IntegerRAL): StringRAL;
 
+    /// The page of AStatusCode, or empty.
     property HTMLPage[AStatusCode: IntegerRAL] : StringRAL read GetHTMLPage;
   end;
 
-/// The reason phrase of an HTTP status (RFC 9110), in English; '' for one it does not know.
+{ The reason phrase of an HTTP status (RFC 9110), in English; '' for one it does not
+  know. }
 function RALHTTPReason(AStatusCode: IntegerRAL): StringRAL;
 
 implementation

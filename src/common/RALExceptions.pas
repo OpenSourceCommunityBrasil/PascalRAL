@@ -15,7 +15,7 @@ uses
   RALErrorCodes;
 
 const
-  { Existing exceptions created with only a message have no assigned code. }
+  /// Existing exceptions created with only a message have no assigned code.
   RAL_ERROR_UNSPECIFIED = RALErrorCodes.RAL_ERROR_UNSPECIFIED;
 
 type

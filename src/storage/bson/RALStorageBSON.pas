@@ -1,3 +1,4 @@
+/// The BSON storage: datasets saved to and loaded from BSON.
 unit RALStorageBSON;
 
 interface
@@ -9,21 +10,23 @@ uses
 
 type
 
-  { TRALStorageBSON }
-
+  /// Writes and reads a dataset as BSON.
   TRALStorageBSON = class(TRALStorage)
   protected
+    /// Builds the fields of ADataset from the document.
     procedure ReadFields(ADataset : TDataSet; ADocument : TRALJSONObject);
+    /// Appends the records of the document to ADataset.
     procedure ReadRecords(ADataset : TDataSet; ADocument : TRALJSONObject);
+    /// Writes the field definitions of ADataset to the document.
     procedure WriteFields(ADataset : TDataSet; ADocument : TRALJSONObject);
+    /// Writes the records of ADataset to the document.
     procedure WriteRecords(ADataset : TDataSet; ADocument : TRALJSONObject);
   public
     procedure LoadFromStream(ADataset : TDataSet; AStream : TStream); override;
     procedure SaveToStream(ADataset : TDataSet; AStream : TStream); override;
   end;
 
-  { TRALStorageBSONLink }
-
+  /// The storage link of the BSON format.
   TRALStorageBSONLink = class(TRALStorageLink)
   protected
     function GetContentType: StringRAL; override;
@@ -35,6 +38,7 @@ type
 
 implementation
 
+/// AValue as an array; raises for anything else.
 function StorageArray(AValue: TRALJSON): TRALJSONArray;
 begin
   if (AValue = nil) or (AValue.Kind <> rjkArray) then
@@ -42,6 +46,7 @@ begin
   Result := AValue.AsArray;
 end;
 
+/// The extended JSON {AKind: AValue} of a BSON number.
 function BSONNumber(const AKind, AValue: StringRAL): TRALJSONObject;
 begin
   Result := TRALJSONObject.Create;
@@ -53,6 +58,7 @@ begin
   end;
 end;
 
+/// The extended JSON of a double, with every digit.
 function BSONDouble(AValue: Double): TRALJSONObject;
 var
   vFormat: TFormatSettings;
@@ -76,6 +82,7 @@ begin
     Result := BSONNumber('$numberDouble', FloatToStrF(AValue, ffGeneral, 17, 0, vFormat));
 end;
 
+/// A double read from a number or its extended JSON.
 function StorageDouble(AValue: TRALJSON): Double;
 var
   vText: StringRAL;
@@ -96,6 +103,7 @@ begin
     raise ERALException.Create(ecStorageInvalidBinary);
 end;
 
+/// The extended JSON of a date as unix seconds, for the legacy format.
 function BSONLegacyDate(AValue: TDateTime): TRALJSONObject;
 begin
   Result := TRALJSONObject.Create;
@@ -294,7 +302,7 @@ begin
 
   ADataset.Open;
 
-  // as vezes os fields ja estao carregados e o fieldsdefs nao funciona direito
+  // the fields may be loaded already, and FieldDefs is not reliable then
   for vInt := 0 to Pred(ADataset.FieldCount) do
   begin
     vName := ADataset.Fields[vInt].FieldName;
@@ -382,9 +390,8 @@ begin
     if vBookMark <> nil then
       ADataset.GotoBookmark(vBookMark);
   finally
-    { in a finally, as the CSV reader already had it: a record that failed
-      left the read-only fields writable, the controls disabled and the
-      bookmark allocated }
+    { in a finally: a record that fails must not leave the read-only fields
+      writable, the controls disabled and the bookmark allocated }
     if vBookMark <> nil then
       ADataset.FreeBookmark(vBookMark);
     RestoreReadOnly;

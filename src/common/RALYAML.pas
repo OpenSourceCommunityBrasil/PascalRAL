@@ -1,6 +1,6 @@
-/// YAML 1.2 written from a parsed JSON value (block style), for the API
-/// documentation (swagger.yaml) and the YAML formatter of objects. Writing
-/// only.
+{ YAML 1.2 written from a parsed JSON value (block style), for the API
+  documentation (swagger.yaml) and the YAML formatter of objects. Writing
+  only. }
 unit RALYAML;
 
 {$I ..\core\PascalRAL.inc}
@@ -39,7 +39,7 @@ begin
   end;
 end;
 
-{ AText as a JSON string literal, which is also a YAML double-quoted scalar }
+/// AText as a JSON string literal, which is also a YAML double-quoted scalar.
 function YAMLQuote(const AText: StringRAL): StringRAL;
 const
   cHex: StringRAL = '0123456789abcdef';
@@ -67,6 +67,7 @@ begin
 end;
 
 
+/// A scalar as YAML text, quoted when plain text would read as something else.
 function YAMLScalar(AValue: TRALJSONValue): StringRAL;
 var
   vText: StringRAL;
@@ -111,6 +112,7 @@ begin
   end;
 end;
 
+/// Appends AValue to AOut as YAML, nested at AIndent.
 procedure YAMLWrite(AValue: TRALJSONValue; const AIndent: StringRAL; var AOut: StringRAL;
   AInlineFirst: boolean);
 var

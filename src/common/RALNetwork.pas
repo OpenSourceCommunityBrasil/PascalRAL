@@ -1,6 +1,6 @@
-/// Asks the operating system which IP addresses this machine has, with plain
-/// socket calls: no engine and no third-party library take part, so every
-/// server engine gets the same answer from TRALServer.GetServerAddress
+{ Asks the operating system which IP addresses this machine has, with plain
+  socket calls: no engine and no third-party library take part, so every
+  server engine gets the same answer from TRALServer.GetServerAddress. }
 unit RALNetwork;
 
 {$I ..\core\PascalRAL.inc}
@@ -11,27 +11,27 @@ uses
   Classes, SysUtils,
   RALTypes;
 
-/// The address this machine uses on the network, in the given family: the
-/// source address the system picks for its default route, which is the one
-/// the other machines see - in IPv6 the stable one of that interface, not the
-/// temporary one the system prefers to send from. Without a default route
-/// (an isolated network, or no network at all) it is the first address of an
-/// interface that is up, link-local ones last, and with no such interface the
-/// loopback.
-/// '' only when the system refuses a socket of the family at all (no IPv6
-/// stack). Nothing is sent over the network to find it out
+{ The address this machine uses on the network, in the given family: the
+  source address the system picks for its default route, which is the one
+  the other machines see - in IPv6 the stable one of that interface, not the
+  temporary one the system prefers to send from. Without a default route
+  (an isolated network, or no network at all) it is the first address of an
+  interface that is up, link-local ones last, and with no such interface the
+  loopback.
+  '' only when the system refuses a socket of the family at all (no IPv6
+  stack). Nothing is sent over the network to find it out. }
 function RALGetLocalAddress(AMode: TRALIpMode = rimIPv4): StringRAL;
-/// Every address of the family on an interface that is up, the loopback left
-/// out and link-local ones last. Clears AList first. Lists nothing on
-/// Android, whose older versions lack the call that walks the interfaces
+{ Every address of the family on an interface that is up, the loopback left
+  out and link-local ones last. Clears AList first. Lists nothing on
+  Android, whose older versions lack the call that walks the interfaces. }
 procedure RALGetLocalAddresses(AMode: TRALIpMode; AList: TStrings);
-/// True for the "every interface" address - '0.0.0.0', '::' or any other
-/// spelling of all zeros - and for an empty text, which the engines read the
-/// same way
+{ True for the "every interface" address - '0.0.0.0', '::' or any other
+  spelling of all zeros - and for an empty text, which the engines read the
+  same way. }
 function RALIsAnyAddress(const AAddress: StringRAL): boolean;
-/// True when AValue is an address literal of the family: four dotted decimal
-/// numbers, or IPv6 hex groups (brackets and a %zone allowed). A host name,
-/// 'localhost' included, is not
+{ True when AValue is an address literal of the family: four dotted decimal
+  numbers, or IPv6 hex groups (brackets and a %zone allowed). A host name,
+  'localhost' included, is not. }
 function RALIsIPAddress(const AValue: StringRAL; AMode: TRALIpMode): boolean;
 /// The loopback of the family: '127.0.0.1' or '::1'
 function RALLoopbackAddress(AMode: TRALIpMode): StringRAL;
@@ -68,58 +68,87 @@ const
     RFC 3849), never assigned to anyone. Connecting a UDP socket only picks a
     route and a source address; no packet leaves the machine }
   cProbe4: array[0..3] of Byte = (192, 0, 2, 1);
+  { An IPv6 address of the documentation prefix: a UDP connect to it finds the source
+    address of the default route, sending nothing. }
   cProbe6: array[0..15] of Byte = ($20, $01, $0D, $B8, 0, 0, 0, 0,
                                    0, 0, 0, 0, 0, 0, 0, 1);
+  /// Port of the probe (discard).
   cProbePort = 9;
+  /// Lowercase hex digits.
   cHexDigits: string = '0123456789abcdef';
 
 {$IFDEF RALWindows}
 const
+  /// The Windows socket library.
   cWinsock = 'ws2_32.dll';
+  /// AF_INET on Windows.
   cAF_INET = 2;
+  /// AF_INET6 on Windows.
   cAF_INET6 = 23;
+  /// SOCK_DGRAM.
   cSOCK_DGRAM = 2;
 
 type
+  /// A socket handle.
   TRALSock = NativeUInt;
 
   { the Winsock declarations are written here instead of taken from the RTL:
     Delphi and FPC ship different Winsock units, and older ones lack
     getaddrinfo }
   PRALAddrInfo = ^TRALAddrInfo;
+  /// addrinfo (Windows).
   TRALAddrInfo = record
+    /// Flags.
     ai_flags: Integer;
+    /// Family.
     ai_family: Integer;
+    /// Socket type.
     ai_socktype: Integer;
+    /// Protocol.
     ai_protocol: Integer;
+    /// Size of ai_addr.
     ai_addrlen: NativeUInt;
+    /// Canonical name.
     ai_canonname: PAnsiChar;
+    /// The address.
     ai_addr: Pointer;
+    /// The next entry.
     ai_next: PRALAddrInfo;
   end;
 
+/// Winsock WSAStartup.
 function WSAStartup(AVersion: Word; AData: Pointer): Integer; stdcall;
   external cWinsock name 'WSAStartup';
+/// Winsock WSACleanup.
 function WSACleanup: Integer; stdcall;
   external cWinsock name 'WSACleanup';
+/// Winsock socket.
 function WinSocket(AFamily, AType, AProtocol: Integer): TRALSock; stdcall;
   external cWinsock name 'socket';
+/// Winsock connect.
 function WinConnect(ASocket: TRALSock; AAddr: Pointer; ALen: Integer): Integer; stdcall;
   external cWinsock name 'connect';
+/// Winsock getsockname.
 function WinGetSockName(ASocket: TRALSock; AAddr: Pointer; var ALen: Integer): Integer; stdcall;
   external cWinsock name 'getsockname';
+/// Winsock closesocket.
 function WinCloseSocket(ASocket: TRALSock): Integer; stdcall;
   external cWinsock name 'closesocket';
+/// Winsock bind.
 function WinBind(ASocket: TRALSock; AAddr: Pointer; ALen: Integer): Integer; stdcall;
   external cWinsock name 'bind';
+/// Winsock gethostname.
 function WinGetHostName(AName: PAnsiChar; ALen: Integer): Integer; stdcall;
   external cWinsock name 'gethostname';
+/// Winsock getaddrinfo.
 function WinGetAddrInfo(ANode, AService: PAnsiChar; AHints: PRALAddrInfo;
   var AResult: PRALAddrInfo): Integer; stdcall;
   external cWinsock name 'getaddrinfo';
+/// Winsock freeaddrinfo.
 procedure WinFreeAddrInfo(AInfo: PRALAddrInfo); stdcall;
   external cWinsock name 'freeaddrinfo';
 
+/// The address family of AMode.
 function FamilyOf(AMode: TRALIpMode): Integer;
 begin
   if AMode = rimIPv6 then
@@ -128,6 +157,7 @@ begin
     Result := cAF_INET;
 end;
 
+/// Starts the socket library where one must be started; False when it refuses.
 function NetStart: boolean;
 var
   vData: array[0..1023] of Byte; // WSADATA, never read
@@ -135,33 +165,39 @@ begin
   Result := WSAStartup($0202, @vData) = 0;
 end;
 
+/// Ends what NetStart started.
 procedure NetStop;
 begin
   WSACleanup;
 end;
 
+/// Sets the family of a socket address.
 procedure SetFamily(var ABuf: TRALSockAddrBuf; AFamily: Integer);
 begin
   PWord(@ABuf)^ := Word(AFamily);
 end;
 
+/// The family of a socket address.
 function GetFamily(const ABuf: TRALSockAddrBuf): Integer;
 begin
   Result := PWord(@ABuf)^;
 end;
 
+/// Opens a UDP socket of AFamily.
 function SysOpen(AFamily: Integer; out ASock: TRALSock): boolean;
 begin
   ASock := WinSocket(AFamily, cSOCK_DGRAM, 0);
   Result := ASock <> not TRALSock(0); // INVALID_SOCKET
 end;
 
+/// Connects a socket to an address.
 function SysConnect(ASock: TRALSock; const ABuf: TRALSockAddrBuf;
   ALen: Integer): boolean;
 begin
   Result := WinConnect(ASock, @ABuf, ALen) = 0;
 end;
 
+/// The local address of a socket.
 function SysGetSockName(ASock: TRALSock; var ABuf: TRALSockAddrBuf): boolean;
 var
   vLen: Integer;
@@ -170,62 +206,88 @@ begin
   Result := WinGetSockName(ASock, @ABuf, vLen) = 0;
 end;
 
+/// Closes a socket.
 procedure SysClose(ASock: TRALSock);
 begin
   WinCloseSocket(ASock);
 end;
 
+/// Opens a TCP socket of AFamily.
 function SysOpenStream(AFamily: Integer; out ASock: TRALSock): boolean;
 begin
   ASock := WinSocket(AFamily, 1 {SOCK_STREAM}, 0);
   Result := ASock <> not TRALSock(0);
 end;
 
+/// Binds a socket to an address.
 function SysBind(ASock: TRALSock; const ABuf: TRALSockAddrBuf; ALen: Integer): boolean;
 begin
   Result := WinBind(ASock, @ABuf, ALen) = 0;
 end;
 
 const
+  /// The Windows IP helper library.
   cIphlpapi = 'iphlpapi.dll';
-  { skip anycast, multicast, DNS servers and the friendly name }
+  /// Skip anycast, multicast, DNS servers and the friendly name.
   cGAAFlags = $2 or $4 or $8 or $20;
+  /// ERROR_BUFFER_OVERFLOW.
   cERROR_BUFFER_OVERFLOW = 111;
+  /// NL_SUFFIX_ORIGIN of a temporary address.
   cIpSuffixOriginRandom = 5;  // NL_SUFFIX_ORIGIN: a temporary address
+  /// NL_DAD_STATE of a usable address.
   cIpDadStatePreferred = 4;
 
 type
-  { only the leading fields, laid out the same by every Windows since XP }
+  /// Only the leading fields, laid out the same by every Windows since XP.
   TRALSocketAddress = record
+    /// The address.
     lpSockaddr: Pointer;
+    /// Its size.
     iSockaddrLength: Integer;
   end;
 
+  /// Pointer to a TRALUnicastAddr.
   PRALUnicastAddr = ^TRALUnicastAddr;
+  /// IP_ADAPTER_UNICAST_ADDRESS, the fields read.
   TRALUnicastAddr = record
+    /// Length and Flags.
     Alignment: UInt64; // Length and Flags
+    /// The next address.
     Next: PRALUnicastAddr;
+    /// The address.
     Address: TRALSocketAddress;
+    /// Where the prefix came from.
     PrefixOrigin: Integer;
+    /// Where the suffix came from (random: temporary).
     SuffixOrigin: Integer;
+    /// Duplicate address detection state.
     DadState: Integer;
   end;
 
+  /// Pointer to a TRALAdapterAddr.
   PRALAdapterAddr = ^TRALAdapterAddr;
+  /// IP_ADAPTER_ADDRESSES, the fields read.
   TRALAdapterAddr = record
+    /// Length and IfIndex.
     Alignment: UInt64; // Length and IfIndex
+    /// The next adapter.
     Next: PRALAdapterAddr;
+    /// The adapter name.
     AdapterName: PAnsiChar;
+    /// Its first address.
     FirstUnicastAddress: PRALUnicastAddr;
   end;
 
+/// The Windows GetAdaptersAddresses.
 function GetAdaptersAddresses(AFamily, AFlags: Cardinal; AReserved,
   AAddresses: Pointer; var ASize: Cardinal): Cardinal; stdcall;
   external cIphlpapi name 'GetAdaptersAddresses';
 {$ELSE}
 type
+  /// A socket handle.
   TRALSock = Integer;
 
+/// The address family of AMode.
 function FamilyOf(AMode: TRALIpMode): Integer;
 begin
   if AMode = rimIPv6 then
@@ -234,11 +296,13 @@ begin
     Result := AF_INET;
 end;
 
+/// Starts the socket library where one must be started; False when it refuses.
 function NetStart: boolean;
 begin
   Result := True;
 end;
 
+/// Ends what NetStart started.
 procedure NetStop;
 begin
 end;
@@ -250,11 +314,13 @@ begin
   psockaddr(@ABuf)^.sa_family := AFamily;
 end;
 
+/// The family of a socket address.
 function GetFamily(const ABuf: TRALSockAddrBuf): Integer;
 begin
   Result := psockaddr(@ABuf)^.sa_family;
 end;
 
+/// Opens a UDP socket of AFamily.
 function SysOpen(AFamily: Integer; out ASock: TRALSock): boolean;
 begin
   {$IFDEF FPC}
@@ -265,6 +331,7 @@ begin
   Result := ASock >= 0;
 end;
 
+/// Connects a socket to an address.
 function SysConnect(ASock: TRALSock; const ABuf: TRALSockAddrBuf;
   ALen: Integer): boolean;
 begin
@@ -275,6 +342,7 @@ begin
   {$ENDIF}
 end;
 
+/// The local address of a socket.
 function SysGetSockName(ASock: TRALSock; var ABuf: TRALSockAddrBuf): boolean;
 var
   {$IFDEF FPC}
@@ -291,6 +359,7 @@ begin
   {$ENDIF}
 end;
 
+/// Closes a socket.
 procedure SysClose(ASock: TRALSock);
 begin
   {$IFDEF FPC}
@@ -300,6 +369,7 @@ begin
   {$ENDIF}
 end;
 
+/// Opens a TCP socket of AFamily.
 function SysOpenStream(AFamily: Integer; out ASock: TRALSock): boolean;
 begin
   {$IFDEF FPC}
@@ -310,6 +380,7 @@ begin
   Result := ASock >= 0;
 end;
 
+/// Binds a socket to an address.
 function SysBind(ASock: TRALSock; const ABuf: TRALSockAddrBuf; ALen: Integer): boolean;
 begin
   {$IFDEF FPC}
@@ -321,35 +392,49 @@ end;
 
 {$IFNDEF ANDROID}
 const
+  /// IFF_UP: the interface is up.
   cIFF_UP = $1;
 
 type
-  { struct ifaddrs, the same on Linux and on Apple }
+  /// Struct ifaddrs, the same on Linux and on Apple.
   PRALIfAddrs = ^TRALIfAddrs;
+  /// struct ifaddrs.
   TRALIfAddrs = record
+    /// The next entry.
     ifa_next: PRALIfAddrs;
+    /// The interface name.
     ifa_name: PAnsiChar;
+    /// The IFF_* flags.
     ifa_flags: Cardinal;
+    /// The address.
     ifa_addr: Pointer;
+    /// The netmask.
     ifa_netmask: Pointer;
+    /// Broadcast or destination address.
     ifa_ifu: Pointer;
+    /// Address family data.
     ifa_data: Pointer;
   end;
 
 {$IFDEF FPC}
+/// libc getifaddrs.
 function getifaddrs(var AList: PRALIfAddrs): Integer; cdecl;
   external 'c' name 'getifaddrs';
+/// libc freeifaddrs.
 procedure freeifaddrs(AList: PRALIfAddrs); cdecl;
   external 'c' name 'freeifaddrs';
 {$ELSE}
+/// libc getifaddrs.
 function getifaddrs(var AList: PRALIfAddrs): Integer; cdecl;
   external libc name _PU + 'getifaddrs';
+/// libc freeifaddrs.
 procedure freeifaddrs(AList: PRALIfAddrs); cdecl;
   external libc name _PU + 'freeifaddrs';
 {$ENDIF}
 {$ENDIF}
 {$ENDIF}
 
+/// Size of a socket address of AMode.
 function AddrLen(AMode: TRALIpMode): Integer;
 begin
   if AMode = rimIPv6 then
@@ -358,6 +443,7 @@ begin
     Result := 16; // sockaddr_in
 end;
 
+/// The text of the address in ABuf.
 function FormatAddress(const ABuf: TRALSockAddrBuf; AMode: TRALIpMode): string;
 var
   vGroups: array[0..7] of Word;
@@ -424,6 +510,7 @@ begin
   end;
 end;
 
+/// Whether ABuf is the any address or a loopback one.
 function IsAnyOrLoopback(const ABuf: TRALSockAddrBuf; AMode: TRALIpMode): boolean;
 var
   vInt: Integer;
@@ -444,6 +531,7 @@ begin
     end;
 end;
 
+/// Whether ABuf is a link-local address.
 function IsLinkLocal(const ABuf: TRALSockAddrBuf; AMode: TRALIpMode): boolean;
 begin
   if AMode = rimIPv4 then
@@ -452,6 +540,7 @@ begin
     Result := (ABuf[8] = $FE) and ((ABuf[9] and $C0) = $80); // fe80::/10
 end;
 
+/// Adds the address in ABuf to APreferred or ALinkLocal, unless it is any or loopback.
 procedure AddCandidate(const ABuf: TRALSockAddrBuf; AMode: TRALIpMode;
   APreferred, ALinkLocal: TStrings);
 var
@@ -511,12 +600,14 @@ begin
 end;
 {$ELSE}
 {$IFDEF ANDROID}
+/// Lists the addresses of the interfaces that are up.
 procedure SysListAddresses(AMode: TRALIpMode; APreferred, ALinkLocal: TStrings);
 begin
   // getifaddrs only exists from Android 7 on, and linking it would stop the
   // whole application from loading on anything older
 end;
 {$ELSE}
+/// Lists the addresses of the interfaces that are up.
 procedure SysListAddresses(AMode: TRALIpMode; APreferred, ALinkLocal: TStrings);
 var
   vList, vItem: PRALIfAddrs;
@@ -558,7 +649,7 @@ end;
   prefix length), or '' to keep what the probe found: the probe's address is
   not temporary, or nothing better is there, or the system will not say. }
 {$IFDEF RALWindows}
-{ the address of AUni as a sockaddr in ABuf; False for any other family }
+/// The address of AUni as a sockaddr in ABuf; False for any other family.
 function UnicastAddress(AUni: PRALUnicastAddr; var ABuf: TRALSockAddrBuf): boolean;
 begin
   Result := (AUni^.Address.lpSockaddr <> nil) and
@@ -571,6 +662,7 @@ begin
   Result := GetFamily(ABuf) = cAF_INET6;
 end;
 
+/// The stable (not temporary) IPv6 address of the interface of AAddr, or empty.
 function StableIPv6(const AAddr: TRALSockAddrBuf): string;
 var
   vData: array of Byte;
@@ -631,7 +723,9 @@ const
   cUnusable = cTemporary or $08 or $20 or $40; // dadfailed, deprecated, tentative
 type
   TRALIfInet6 = record
+    /// The address, from /proc/net/if_inet6.
     Addr: array[0..15] of Byte;
+    /// Interface index and IFA_F_* flags.
     IfIndex, Flags: Integer;
   end;
 var
@@ -696,6 +790,7 @@ begin
 end;
 {$ENDIF}
 
+/// Fills AList with the addresses of AMode, link-local ones last.
 procedure ListAddresses(AMode: TRALIpMode; AList: TStrings);
 var
   vLinkLocal: TStringList;
@@ -748,7 +843,7 @@ begin
   end;
 end;
 
-{ AValue without blanks around it and without the brackets of a URL }
+/// AValue without blanks around it and without the brackets of a URL.
 function CleanAddress(const AValue: StringRAL): string;
 var
   vFirst, vLast: Integer;

@@ -26,6 +26,7 @@ type
   TRALJSONNumber = class;
   TRALJSONBoolean = class;
 
+  /// The kind of a JSON value.
   TRALJSONKind = (rjkObject, rjkArray, rjkString, rjkNumber, rjkBoolean, rjkNull);
 
   { Containers own their children. Free only the root returned by ParseJSON.
@@ -41,52 +42,75 @@ type
     function GetIsNull: Boolean;
     function GetKind: TRALJSONKind; virtual; abstract;
   public
+    /// AsNumber, or -1 for null or a value that is not a number.
     function AsFloat: Double;
+    /// AsInt64, or -1 for null or a value that is not an integer.
     function AsInteger: Int64;
+    /// The value as a Variant: Null, or its text.
     function AsValue: Variant;
+    /// UTF-8 bytes as StringRAL, checked.
     class function DecodeUTF8(const Bytes: RawByteString): StringRAL; static;
+    /// StringRAL as UTF-8 bytes.
     class function EncodeUTF8(const Text: StringRAL): RawByteString; static;
+    /// The kind under its older name.
     function JsonType: TRALJSONType;
+    /// Parses the rest of Stream; 0 limits mean none. The caller frees the result.
     class function LoadFromStream(Stream: TStream;
       MaxDocumentSize: Int64 = 0;
       MaxTokenSize: Integer = 0;
       MaxDepth: Integer = 0
     ): TRALJSON; static;
+    /// Parses a text; the caller frees the result.
     class function ParseJSON(const Text: StringRAL;
       MaxDocumentSize: Int64 = 0;
       MaxTokenSize: Integer = 0;
       MaxDepth: Integer = 0
     ): TRALJSON; overload; static;
+    /// Parses UTF-8 bytes; the caller frees the result.
     class function ParseJSON(const Bytes: TBytes;
       MaxDocumentSize: Int64 = 0;
       MaxTokenSize: Integer = 0;
       MaxDepth: Integer = 0
     ): TRALJSON; overload; static;
+    /// Parses the rest of a stream; the caller frees the result.
     class function ParseJSON(Stream: TStream;
       MaxDocumentSize: Int64 = 0;
       MaxTokenSize: Integer = 0;
       MaxDepth: Integer = 0
     ): TRALJSON; overload; static;
+    /// The value as compact JSON text.
     function ToJSON: StringRAL; virtual; abstract;
 
+    /// The value as an array; raises for any other kind.
     property AsArray: TRALJSONArray read GetAsArray;
+    /// The value as a boolean; raises when it cannot be read as one.
     property AsBoolean: Boolean read GetAsBoolean;
+    /// The value as an integer; raises when it cannot be read as one.
     property AsInt64: Int64 read GetAsInt64;
+    /// The value as a number; raises when it cannot be read as one.
     property AsNumber: Double read GetAsNumber;
+    /// The value as an object; raises for any other kind.
     property AsObject: TRALJSONObject read GetAsObject;
+    /// The value as text: a string as it is, null empty, anything else its JSON.
     property AsString: StringRAL read GetAsString;
+    /// Whether the value is null or nil.
     property IsNull: Boolean read GetIsNull;
+    /// The kind of the value.
     property Kind: TRALJSONKind read GetKind;
   end;
 
-  { Compatibility name for values returned by ParseJSON and Get. }
+  /// Compatibility name for values returned by ParseJSON and Get.
   TRALJSONValue = TRALJSON;
 
+  /// A JSON object: names and values in insertion order.
   TRALJSONObject = class(TRALJSON)
   private
+    /// The member names.
     FNames: TStringList;
+    /// The member values, owned.
     FValues: TObjectList;
 
+    /// Adds a member the parser checked already.
     procedure AddParsed(
       const Name: StringRAL;
       Value: TRALJSON
@@ -100,30 +124,45 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    /// Adds a value under Name; the object owns it. Returns Self.
     function Add(const Name: StringRAL; Value: TRALJSON): TRALJSONObject; overload;
+    /// Adds a string under Name. Returns Self.
     function Add(const Name, Value: StringRAL): TRALJSONObject; overload;
+    /// Adds an integer under Name. Returns Self.
     function Add(const Name: StringRAL; Value: Int64): TRALJSONObject; overload;
+    /// Adds an integer under Name. Returns Self.
     function Add(const Name: StringRAL; Value: Integer): TRALJSONObject; overload;
+    /// Adds a number under Name. Returns Self.
     function Add(const Name: StringRAL; Value: Double): TRALJSONObject; overload;
+    /// Adds a boolean under Name. Returns Self.
     function Add(const Name: StringRAL; Value: Boolean): TRALJSONObject; overload;
+    /// Adds null under Name. Returns Self.
     function Add(const Name: StringRAL): TRALJSONObject; overload;
-    { Transfers ownership to the caller; returns nil when absent. }
+    /// Transfers ownership to the caller; returns nil when absent.
     function Extract(const Name: StringRAL): TRALJSON;
+    /// The value of Name, or nil.
     function Find(const Name: StringRAL): TRALJSON;
-    { Returned values remain owned by this container. }
+    /// Returned values remain owned by this container.
     function Get(const Name: StringRAL): TRALJSON; overload;
+    /// The value at Index.
     function Get(Index: Integer): TRALJSON; overload;
     function GetName(Index: Integer): StringRAL;
     function ToJSON: StringRAL; override;
 
+    /// Number of members.
     property Count: Integer read GetCount;
+    /// The value at Index.
     property Items[Index: Integer]: TRALJSON read GetItem;
+    /// The name at Index.
     property Names[Index: Integer]: StringRAL read GetName;
+    /// The value of Name; raises when there is none.
     property Values[const Name: StringRAL]: TRALJSON read GetValue; default;
   end;
 
+  /// A JSON array.
   TRALJSONArray = class(TRALJSON)
   private
+    /// The values, owned.
     FValues: TObjectList;
 
     function GetCount: Integer;
@@ -134,21 +173,31 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    /// Appends a value; the array owns it. Returns Self.
     function Add(Value: TRALJSON): TRALJSONArray; overload;
+    /// Appends a string. Returns Self.
     function Add(const Value: StringRAL): TRALJSONArray; overload;
+    /// Appends an integer. Returns Self.
     function Add(Value: Int64): TRALJSONArray; overload;
+    /// Appends an integer. Returns Self.
     function Add(Value: Integer): TRALJSONArray; overload;
+    /// Appends a number. Returns Self.
     function Add(Value: Double): TRALJSONArray; overload;
+    /// Appends a boolean. Returns Self.
     function Add(Value: Boolean): TRALJSONArray; overload;
+    /// Appends null. Returns Self.
     function Add: TRALJSONArray; overload;
-    { Returned values remain owned by this container. }
+    /// Returned values remain owned by this container.
     function Get(Index: Integer): TRALJSON;
     function ToJSON: StringRAL; override;
 
+    /// Number of values.
     property Count: Integer read GetCount;
+    /// The value at Index.
     property Items[Index: Integer]: TRALJSON read GetItem; default;
   end;
 
+  /// A JSON string.
   TRALJSONString = class(TRALJSON)
   private
     FValue: StringRAL;
@@ -156,13 +205,16 @@ type
     function GetAsString: StringRAL; override;
     function GetKind: TRALJSONKind; override;
   public
+    /// A string of Value.
     constructor Create(const Value: StringRAL);
 
     function ToJSON: StringRAL; override;
 
+    /// The string.
     property Value: StringRAL read FValue;
   end;
 
+  /// A JSON number, kept as its text.
   TRALJSONNumber = class(TRALJSON)
   private
     FValue: StringRAL;
@@ -171,14 +223,16 @@ type
     function GetAsNumber: Double; override;
     function GetKind: TRALJSONKind; override;
   public
-    { Value retains the exact JSON number, without rounding large integers. }
+    /// Value retains the exact JSON number, without rounding large integers.
     constructor Create(const Value: StringRAL);
 
     function ToJSON: StringRAL; override;
 
+    /// The number as written.
     property Value: StringRAL read FValue;
   end;
 
+  /// A JSON boolean.
   TRALJSONBoolean = class(TRALJSON)
   private
     FValue: Boolean;
@@ -186,13 +240,16 @@ type
     function GetAsBoolean: Boolean; override;
     function GetKind: TRALJSONKind; override;
   public
+    /// A boolean of Value.
     constructor Create(Value: Boolean);
 
     function ToJSON: StringRAL; override;
 
+    /// The boolean.
     property Value: Boolean read FValue;
   end;
 
+  /// JSON null.
   TRALJSONNull = class(TRALJSON)
   protected
     function GetKind: TRALJSONKind; override;
@@ -200,7 +257,9 @@ type
     function ToJSON: StringRAL; override;
   end;
 
+  /// The kind of the token the parser is reading.
   TRALJSONTokenKind = (rjtkNone, rjtkString, rjtkNumber, rjtkLiteral);
+  /// What the parser expects next inside a container.
   TRALJSONExpectation = (
     rjeObjectKeyOrEnd,
     rjeObjectKey,
@@ -212,9 +271,13 @@ type
     rjeArrayCommaOrEnd
   );
 
+  /// One open container of the parser.
   TRALJSONParserFrame = record
+    /// The container.
     Container: TRALJSON;
+    /// What comes next in it.
     Expectation: TRALJSONExpectation;
+    /// The name of the member being read.
     MemberName: StringRAL;
   end;
 
@@ -222,42 +285,65 @@ type
     Reset is required after Finish or a parsing error. No input block is retained. }
   TRALJSONParser = class
   private
+    /// Bytes of a UTF-8 BOM matched at the start.
     FBOMLength: Integer;
+    /// Containers open.
     FDepth: Integer;
+    /// Whether the last byte of a string was a backslash.
     FEscaped: Boolean;
+    /// Whether parsing failed; Reset is needed.
     FFailed: Boolean;
+    /// Whether Finish ran; Reset is needed.
     FFinished: Boolean;
+    /// The containers open.
     FFrames: array of TRALJSONParserFrame;
+    /// The literal (true, false, null) being matched.
     FLiteral: RawByteString;
     FMaxDepth: Integer;
     FMaxDocumentSize: Int64;
     FMaxTokenSize: Integer;
+    /// The root value.
     FRoot: TRALJSON;
+    /// The token being read.
     FToken: RawByteString;
+    /// Whether the string token has an escape.
     FTokenHasEscape: Boolean;
+    /// Whether the string token is ASCII only.
     FTokenIsASCII: Boolean;
+    /// The kind of the token being read.
     FTokenKind: TRALJSONTokenKind;
+    /// Bytes of the token being read.
     FTokenLength: Integer;
     FTotalBytes: Int64;
 
+    /// Puts a value into the container open, or makes it the root.
     procedure AddValue(Value: TRALJSON);
+    /// Appends a byte to the token, within MaxTokenSize.
     procedure AppendToken(Value: Byte);
+    /// Raises when a limit changes while parsing.
     procedure CheckLimitChange;
+    /// Closes the container open.
     procedure CloseContainer(IsObject: Boolean);
+    /// Turns the token read into a value or a member name.
     procedure CompleteToken;
+    /// Takes one byte of the input.
     procedure Consume(Value: Byte);
+    /// Raises after Finish or a failure.
     procedure EnsureActive;
     /// Raises the coded error with the input position and optional formatted detail.
     procedure Fail(AErrorCode: Integer; const Detail: string = '');
     procedure SetMaxDepth(Value: Integer);
     procedure SetMaxDocumentSize(Value: Int64);
     procedure SetMaxTokenSize(Value: Integer);
+    /// Opens an object or an array, within MaxDepth.
     procedure StartContainer(IsObject: Boolean);
+    /// The token as text, escapes decoded.
     function TokenText(
       Start: Integer;
       Count: Integer
     ): StringRAL;
   public
+    /// Creates a parser with its limits (0: none).
     constructor Create(
       MaxDocumentSize: Int64 = 0;
       MaxTokenSize: Integer = 0;
@@ -265,18 +351,26 @@ type
     );
     destructor Destroy; override;
 
+    /// Ends the input and returns the root; the caller frees it.
     function Finish: TRALJSON;
+    /// Clears the parser for a new document.
     procedure Reset;
+    /// Parses Count bytes of Buffer.
     procedure Update(
       const Buffer;
       Count: NativeInt
     ); overload;
+    /// Parses the bytes of a string.
     procedure Update(const Bytes: RawByteString); overload;
 
+    /// Deepest nesting; zero disables the limit. Configure before Update or after Reset.
     property MaxDepth: Integer read FMaxDepth write SetMaxDepth;
-    { Zero disables a limit. Configure before Update or after Reset. }
+    /// Zero disables a limit. Configure before Update or after Reset.
     property MaxDocumentSize: Int64 read FMaxDocumentSize write SetMaxDocumentSize;
+    { Longest token, in bytes; zero disables the limit. Configure before Update or after
+      Reset. }
     property MaxTokenSize: Integer read FMaxTokenSize write SetMaxTokenSize;
+    /// Bytes parsed so far.
     property TotalBytes: Int64 read FTotalBytes;
   end;
 
@@ -286,29 +380,42 @@ uses
   Math;
 
 type
-  { Grow geometrically rather than copying an entire container for each item. }
+  /// Grow geometrically rather than copying an entire container for each item.
   TRALJSONTextBuffer = record
+    /// The buffer.
     Text: StringRAL;
+    /// Characters used.
     Count: Integer;
+    /// Appends Value.
     procedure Append(const Value: StringRAL);
+    /// The text appended.
     function Finish: StringRAL;
   end;
 
+  /// Reads the tokens of a JSON text held whole.
   TRALJSONTokenReader = class
   private
+    /// The position in FText.
     FPosition: Integer;
+    /// The text read.
     FText: UnicodeString;
 
+    /// Takes Value; raises when the text has something else.
     procedure Expect(Value: WideChar);
     /// Raises the coded error with the input position and optional formatted detail.
     procedure Fail(AErrorCode: Integer; const Detail: string = '');
+    /// The next character, not taken.
     function Peek: WideChar;
+    /// Reads the four hex digits of a \u escape.
     function ReadHex: Word;
+    /// Reads a quoted string, escapes decoded.
     function ReadString: StringRAL;
   public
+    /// A reader of Text.
     constructor Create(const Text: UnicodeString);
   end;
 
+/// Raises unless Value is a JSON number.
 procedure ValidateJSONNumber(const Value: StringRAL);
 var
   Position: Integer;
@@ -358,11 +465,13 @@ begin
     raise ERALException.Create(ecJSONInvalidNumber);
 end;
 
+/// UTF-16 text as StringRAL.
 function NativeText(const Text: UnicodeString): StringRAL;
 begin
   Result := UTF8Encode(Text);
 end;
 
+/// CountBytes bytes of UTF-8 from Start as UTF-16; raises for invalid UTF-8.
 function DecodeUTF8Range(
   const Bytes: RawByteString;
   Start: Integer;
@@ -438,11 +547,13 @@ begin
   SetLength(Result, Written);
 end;
 
+/// UTF-8 bytes as UTF-16; raises for invalid UTF-8.
 function DecodeUTF8(const Bytes: RawByteString): UnicodeString;
 begin
   Result := DecodeUTF8Range(Bytes, 1, Length(Bytes));
 end;
 
+/// StringRAL as UTF-16.
 function UnicodeText(const Text: StringRAL): UnicodeString;
 begin
   Result := DecodeUTF8(RawByteString(Text));
@@ -483,6 +594,7 @@ begin
   Result := Text;
 end;
 
+/// Text as a quoted, escaped JSON string.
 function QuoteText(const Text: StringRAL): StringRAL;
 const
   HexDigits: StringRAL = '0123456789ABCDEF';
@@ -654,6 +766,7 @@ begin
   end;
 end;
 
+/// Value trimmed, raising unless it is a JSON number.
 function ConversionNumberText(const Value: StringRAL): StringRAL;
 begin
   Result := Trim(Value);
@@ -665,6 +778,7 @@ begin
   end;
 end;
 
+/// Value read as a number, with '.'.
 function ConversionDouble(const Value: StringRAL): Double;
 var
   Text: StringRAL;
@@ -684,6 +798,7 @@ begin
     raise ERALException.Create(ecJSONValueDoubleRange);
 end;
 
+/// Value read as a boolean: true/false or a number.
 function ConversionBoolean(const Value: StringRAL): Boolean;
 var
   Text: StringRAL;
@@ -822,6 +937,7 @@ begin
   end;
 end;
 
+/// The JSON text of a double: the shortest that reads back the same.
 function JSONFloatText(Value: Double): StringRAL;
 var
   Settings: TFormatSettings;

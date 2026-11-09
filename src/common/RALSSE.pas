@@ -1,5 +1,5 @@
-/// Server-Sent Events (text/event-stream): the writer the server sends with and the
-/// incremental reader the client parses with.
+{ Server-Sent Events (text/event-stream): the writer the server sends with and the
+  incremental reader the client parses with. }
 unit RALSSE;
 
 {$I ..\core\PascalRAL.inc}
@@ -27,8 +27,6 @@ type
   TRALSSEOnEvent = procedure(ASender: TObject; const AEvent: TRALSSEEvent;
     var ACancel: boolean) of object;
 
-  { TRALSSEParser }
-
   { Reads text/event-stream as it arrives, in pieces of any size, by the rules of
     the WHATWG HTML standard: a field without ':' is a field with an empty value, one
     space after ':' is dropped, retry takes digits only, a BOM at the start is
@@ -37,17 +35,24 @@ type
   TRALSSEParser = class
   private
     FCancelled: boolean;
+    /// The data lines of the event being read.
     FData: StringRAL;
+    /// The event field of the event being read.
     FEvent: StringRAL;
     /// The first line is still to come: a BOM at its start is skipped.
     FFirstLine: boolean;
+    /// Whether the event being read has a data line.
     FHasData: boolean;
     FLastId: StringRAL;
+    /// The line being read.
     FLine: StringRAL;
     FMaxEventSize: IntegerRAL;
     FOnEvent: TRALSSEOnEvent;
+    /// Whether the last piece ended in CR, so an LF next closes the same line.
     FPendingCR: boolean;
+    /// The retry field of the event, or -1.
     FRetry: IntegerRAL;
+    /// Bytes of the event being read, for MaxEventSize.
     FSize: IntegerRAL;
 
     /// Dispatches the event gathered so far, if it has data.

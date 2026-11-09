@@ -1,7 +1,7 @@
-/// External configuration in layers, the last one winning: a file (JSON, INI
-/// or .env, by extension), the environment (RAL_SERVER__PORT is Server.Port)
-/// and the command line (--Server.Port=8080). Bind applies the keys to the
-/// published properties of a component and of its sub-objects.
+{ External configuration in layers, the last one winning: a file (JSON, INI
+  or .env, by extension), the environment (RAL_SERVER__PORT is Server.Port)
+  and the command line (--Server.Port=8080). Bind applies the keys to the
+  published properties of a component and of its sub-objects. }
 unit RALConfig;
 
 {$I ..\core\PascalRAL.inc}
@@ -20,11 +20,16 @@ type
     case-insensitive and dotted (Server.Port, Server.SSL.CertFile). }
   TRALConfig = class(TRALComponent)
   private
+    /// Values from the command line.
     FArgs: TStringList;
+    /// Objects bound to a key prefix (Bind).
     FBindings: TStringList;
+    /// Default values.
     FDefaults: TStringList;
     FEnvPrefix: string;
+    /// Values from the file.
     FFile: TStringList;
+    /// Age of the file when it was read.
     FFileAge: TDateTime;
     FFileName: string;
     FOnChange: TNotifyEvent;
@@ -37,9 +42,11 @@ type
     /// Applies the keys under APrefix to AObject; AOnlyReloadable leaves the rest.
     procedure ApplyTo(AObject: TPersistent; const APrefix: string; AOnlyReloadable: boolean);
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    /// Reads the --key=value arguments.
     procedure ReadCommandLine;
     /// The value of the key in the environment ('' and False when absent).
     function ReadEnvironment(const AKey: string; out AValue: string): boolean;
+    /// Reads the file (JSON, INI or .env).
     procedure ReadFile;
   public
     constructor Create(AOwner: TComponent); override;
@@ -53,8 +60,11 @@ type
     function EnvName(const AKey: string): string;
     /// The value of the key, or ADefault.
     function Get(const AKey: string; const ADefault: string = ''): string;
+    /// AKey as a boolean, or ADefault.
     function GetBool(const AKey: string; ADefault: boolean = False): boolean;
+    /// AKey as a number (with '.'), or ADefault.
     function GetFloat(const AKey: string; ADefault: Double = 0): Double;
+    /// AKey as an integer, or ADefault.
     function GetInt(const AKey: string; ADefault: Int64 = 0): Int64;
     /// The keys known from the defaults, the file and the command line.
     procedure GetKeys(AList: TStrings);
@@ -105,9 +115,11 @@ function RALIsSecretKey(const AKey: string): boolean;
 implementation
 
 const
+  /// Default prefix of the environment variables read.
   cDefaultEnvPrefix = 'RAL_';
 
 var
+  /// Number format with '.' as the decimal separator.
   gDot: TFormatSettings;
 
 function RALIsSecretKey(const AKey: string): boolean;
@@ -120,6 +132,7 @@ begin
     (Copy(vKey, Length(vKey) - 2, 3) = 'key');
 end;
 
+/// A case-insensitive name=value list.
 function NewList: TStringList;
 begin
   Result := TStringList.Create;
@@ -127,7 +140,7 @@ begin
   Result.NameValueSeparator := '=';
 end;
 
-{ a value of a list, the name compared without case }
+/// A value of a list, the name compared without case.
 function FindValue(AList: TStrings; const AKey: string; out AValue: string): boolean;
 var
   vIdx: IntegerRAL;
@@ -140,6 +153,7 @@ begin
     AValue := '';
 end;
 
+/// Sets AKey to AValue in AList.
 procedure PutValue(AList: TStrings; const AKey, AValue: string);
 var
   vIdx: IntegerRAL;
@@ -151,6 +165,7 @@ begin
     AList.Add(AKey + '=' + AValue);
 end;
 
+/// AText without its surrounding quotes.
 function Unquote(const AText: string): string;
 begin
   Result := Trim(AText);

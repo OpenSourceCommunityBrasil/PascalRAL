@@ -1,7 +1,7 @@
-/// Runs a server as a Windows service (the Service Control Manager API
-/// itself, no SvcMgr and no VCL) or as a Linux daemon under systemd
-/// (Type=notify, SIGTERM stops gracefully, SIGHUP reloads), or in the
-/// foreground of a console. The same executable installs and removes itself.
+{ Runs a server as a Windows service (the Service Control Manager API
+  itself, no SvcMgr and no VCL) or as a Linux daemon under systemd
+  (Type=notify, SIGTERM stops gracefully, SIGHUP reloads), or in the
+  foreground of a console. The same executable installs and removes itself. }
 unit RALServiceHost;
 
 {$I ..\core\PascalRAL.inc}
@@ -36,21 +36,26 @@ type
     FOnReload: TNotifyEvent;
     FOnStart: TNotifyEvent;
     FOnStop: TNotifyEvent;
+    /// Whether a reload was asked (SIGHUP or parameter change).
     FReloadAsked: boolean;
     FServer: TRALServer;
     FServiceName: string;
     FShutdownTimeout: IntegerRAL;
     FStartArgs: string;
+    /// Set when the host must stop.
     FStopEvent: TEvent;
     FUnitDir: string;
 
     procedure SetServer(const AValue: TRALServer);
   protected
+    /// Passes AText to OnLog.
     procedure Log(const AText: string);
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     /// Starts the server and waits until a stop is asked; True when it ran.
     function RunUntilStopped(ADaemon: boolean): boolean;
+    /// Activates the server and fires OnStart; raises without a server.
     procedure StartServer;
+    /// Shuts the server down (ShutdownTimeout) and fires OnStop.
     procedure StopServer;
   public
     constructor Create(AOwner: TComponent); override;
@@ -66,7 +71,7 @@ type
       was not started by the service manager and got no command (a VCL or LCL
       program then opens its window). On Linux, no command is the daemon. }
     function Run: boolean;
-    { Runs in the foreground until Ctrl+C (SIGINT/SIGTERM on Linux). }
+    /// Runs in the foreground until Ctrl+C (SIGINT/SIGTERM on Linux).
     procedure RunConsole;
     /// Asks the system to start the service.
     function StartService: boolean;
@@ -99,83 +104,131 @@ type
     property UnitDir: string read FUnitDir write FUnitDir;
   end;
 
-/// Sends a systemd notification ('READY=1', 'STOPPING=1', 'WATCHDOG=1'); False outside systemd.
+{ Sends a systemd notification ('READY=1', 'STOPPING=1', 'WATCHDOG=1'); False outside
+  systemd. }
 function RALSystemdNotify(const AState: string): boolean;
 
 implementation
 
 {$IFDEF RALWindows}
 const
+  /// The Windows library of the service API.
   cAdvapi = 'advapi32.dll';
+  /// Full access to the service control manager.
   SC_MANAGER_ALL_ACCESS = $F003F;
+  /// Full access to a service.
   SERVICE_ALL_ACCESS_ = $F01FF;
+  /// A service that runs in its own process.
   SERVICE_WIN32_OWN_PROCESS_ = $10;
+  /// A service started at boot.
   SERVICE_AUTO_START_ = 2;
+  /// A start failure is logged and the boot goes on.
   SERVICE_ERROR_NORMAL_ = 1;
+  /// Service state: stopped.
   SERVICE_STOPPED_ = 1;
+  /// Service state: starting.
   SERVICE_START_PENDING_ = 2;
+  /// Service state: stopping.
   SERVICE_STOP_PENDING_ = 3;
+  /// Service state: running.
   SERVICE_RUNNING_ = 4;
+  /// The service accepts stop.
   SERVICE_ACCEPT_STOP_ = 1;
+  /// The service accepts system shutdown.
   SERVICE_ACCEPT_SHUTDOWN_ = 4;
+  /// The service accepts parameter change (reload).
   SERVICE_ACCEPT_PARAMCHANGE_ = 8;
+  /// Control: stop.
   SERVICE_CONTROL_STOP_ = 1;
+  /// Control: report the status.
   SERVICE_CONTROL_INTERROGATE_ = 4;
+  /// Control: the system shuts down.
   SERVICE_CONTROL_SHUTDOWN_ = 5;
+  /// Control: the parameters changed.
   SERVICE_CONTROL_PARAMCHANGE_ = 6;
+  /// The process was not started by the service control manager.
   ERROR_FAILED_SERVICE_CONTROLLER_CONNECT_ = 1063;
+  /// ChangeServiceConfig2 level: the description.
   SERVICE_CONFIG_DESCRIPTION_ = 1;
 
 type
+  /// SERVICE_STATUS.
   TRALServiceStatus = record
+    /// The service type.
     dwServiceType: DWORD;
+    /// The state.
     dwCurrentState: DWORD;
+    /// The controls accepted.
     dwControlsAccepted: DWORD;
+    /// The exit code.
     dwWin32ExitCode: DWORD;
+    /// The service-specific exit code.
     dwServiceSpecificExitCode: DWORD;
+    /// Progress counter of a pending state.
     dwCheckPoint: DWORD;
+    /// Milliseconds until the next report of a pending state.
     dwWaitHint: DWORD;
   end;
+  /// SERVICE_TABLE_ENTRYW.
   TRALServiceTableEntry = record
+    /// The service name.
     lpServiceName: PWideChar;
+    /// Its ServiceMain.
     lpServiceProc: Pointer;
   end;
+  /// SERVICE_DESCRIPTIONW.
   TRALServiceDescription = record
+    /// The description.
     lpDescription: PWideChar;
   end;
 
+/// The Windows OpenSCManagerW.
 function OpenSCManagerW(AMachine, ADatabase: PWideChar; AAccess: DWORD): THandle; stdcall;
   external cAdvapi;
+/// The Windows CreateServiceW.
 function CreateServiceW(AManager: THandle; AName, ADisplay: PWideChar; AAccess, AType,
   AStart, AError: DWORD; APath, AGroup: PWideChar; ATag: Pointer; ADeps, AUser,
   APassword: PWideChar): THandle; stdcall; external cAdvapi;
+/// The Windows OpenServiceW.
 function OpenServiceW(AManager: THandle; AName: PWideChar; AAccess: DWORD): THandle; stdcall;
   external cAdvapi;
+/// The Windows DeleteService.
 function DeleteService(AService: THandle): BOOL; stdcall; external cAdvapi;
+/// The Windows StartServiceW.
 function StartServiceW(AService: THandle; AArgCount: DWORD; AArgs: Pointer): BOOL; stdcall;
   external cAdvapi;
+/// The Windows ControlService.
 function ControlService(AService: THandle; AControl: DWORD; var AStatus: TRALServiceStatus): BOOL;
   stdcall; external cAdvapi;
+/// The Windows CloseServiceHandle.
 function CloseServiceHandle(AHandle: THandle): BOOL; stdcall; external cAdvapi;
+/// The Windows StartServiceCtrlDispatcherW.
 function StartServiceCtrlDispatcherW(ATable: Pointer): BOOL; stdcall; external cAdvapi;
+/// The Windows RegisterServiceCtrlHandlerExW.
 function RegisterServiceCtrlHandlerExW(AName: PWideChar; AHandler, AContext: Pointer): THandle;
   stdcall; external cAdvapi;
+/// The Windows SetServiceStatus.
 function SetServiceStatus(AHandle: THandle; var AStatus: TRALServiceStatus): BOOL; stdcall;
   external cAdvapi;
+/// The Windows ChangeServiceConfig2W.
 function ChangeServiceConfig2W(AService: THandle; ALevel: DWORD; AInfo: Pointer): BOOL; stdcall;
   external cAdvapi;
 {$ENDIF}
 
 var
-  { the host of this process: a service manager or a signal reaches it }
+  /// The host of this process: a service manager or a signal reaches it.
   gHost: TRALServiceHost;
   {$IFDEF RALWindows}
+  /// The status handle of the running service.
   gStatusHandle: THandle;
+  /// The status last reported.
   gStatus: TRALServiceStatus;
+  /// The name of the running service.
   gName: WideString;
   {$ENDIF}
 
 {$IFDEF RALWindows}
+/// Reports AState to the service control manager.
 procedure ReportStatus(AState, AWaitHint: DWORD);
 begin
   gStatus.dwServiceType := SERVICE_WIN32_OWN_PROCESS_;
@@ -195,6 +248,7 @@ begin
     SetServiceStatus(gStatusHandle, gStatus);
 end;
 
+/// Handles the controls the service control manager sends.
 function ServiceHandler(AControl, AEventType: DWORD; AEventData, AContext: Pointer): DWORD; stdcall;
 begin
   Result := 0; // NO_ERROR
@@ -216,6 +270,7 @@ begin
   end;
 end;
 
+/// The service entry point the dispatcher calls.
 procedure ServiceMain(AArgCount: DWORD; AArgs: Pointer); stdcall;
 begin
   gStatusHandle := RegisterServiceCtrlHandlerExW(PWideChar(gName), @ServiceHandler, nil);
@@ -231,6 +286,7 @@ begin
   ReportStatus(SERVICE_STOPPED_, 0);
 end;
 
+/// Handles Ctrl+C and console close in console mode.
 function ConsoleHandler(ACtrlType: DWORD): BOOL; stdcall;
 begin
   Result := True;
@@ -240,7 +296,7 @@ end;
 {$ENDIF}
 
 {$IFNDEF RALWindows}
-{ the handlers only raise flags: everything else runs on the host's thread }
+/// The handlers only raise flags: everything else runs on the host's thread.
 procedure RALSignalHandler(ASignal: {$IFDEF FPC}cint{$ELSE}Integer{$ENDIF}); cdecl;
 begin
   if gHost = nil then
@@ -277,7 +333,7 @@ begin
     {$IFDEF FPC}
     vAddr.family := AF_UNIX;
     Move(vPath[1], vAddr.path[0], Length(vPath));
-    { '@' is the abstract namespace: a zero byte in front }
+    { a leading at sign is the abstract namespace: a zero byte in front }
     if vPath[1] = '@' then
       vAddr.path[0] := #0;
     {$ELSE}

@@ -12,6 +12,7 @@ uses
   Classes, SysUtils,
   RALStorageBSON;
 
+/// Registers the BSON storage on the palette.
 procedure Register;
 
 implementation

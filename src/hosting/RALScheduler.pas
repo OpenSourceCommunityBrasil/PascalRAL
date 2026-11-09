@@ -1,6 +1,6 @@
-/// Jobs that run by a cron expression or every N milliseconds, on their own
-/// threads, linked to a server's life: they start with it, and stopping the
-/// server (TRALServer.Shutdown included) waits for the jobs running.
+{ Jobs that run by a cron expression or every N milliseconds, on their own
+  threads, linked to a server's life: they start with it, and stopping the
+  server (TRALServer.Shutdown included) waits for the jobs running. }
 unit RALScheduler;
 
 {$I ..\core\PascalRAL.inc}
@@ -12,23 +12,30 @@ uses
   RALTypes, RALCustomObjects, RALPlugin, RALObservability, RALExceptions, RALErrorCodes;
 
 type
+  /// The fields of a cron expression.
   TRALCronField = (cfSecond, cfMinute, cfHour, cfDay, cfMonth, cfWeekDay);
+  /// The values a field matches.
   TRALCronSet = set of 0..59;
 
   { A cron expression: 5 fields (minute hour day month weekday) or 6 with the
     seconds first, decided by the count; lists, ranges, steps, names (JAN,
-    MON) and the aliases @yearly, @monthly, @weekly, @daily, @hourly, @reboot.
+    MON) and the aliases @@yearly, @@monthly, @@weekly, @@daily, @@hourly, @@reboot.
     As in POSIX cron, when both day and weekday are restricted a time matches
     either. }
   TRALCronExpression = class
   private
+    /// Whether the day field is *.
     FAnyDay: boolean;
+    /// Whether the weekday field is *.
     FAnyWeekDay: boolean;
+    /// The values each field matches.
     FFields: array[TRALCronField] of TRALCronSet;
     FReboot: boolean;
     FText: string;
 
+    /// Whether the day of ATime matches, with the POSIX rule for day and weekday.
     function DayMatches(ATime: TDateTime): boolean;
+    /// Reads one field: lists, ranges, steps and names.
     procedure ParseField(AField: TRALCronField; const AText: string);
   public
     /// Parses AText; raises ERALException when it is not valid.
@@ -38,11 +45,12 @@ type
     class function IsValid(const AText: string): boolean;
     /// True when ATime (to the second) matches.
     function Matches(ATime: TDateTime): boolean;
-    /// The first time after AFrom (to the second) that matches; 0 for none (or @reboot).
+    /// The first time after AFrom (to the second) that matches; 0 for none (or @@reboot).
     function NextAfter(AFrom: TDateTime): TDateTime;
 
-    /// @reboot: runs once, when the scheduler starts.
+    /// @@reboot: runs once, when the scheduler starts.
     property Reboot: boolean read FReboot;
+    /// The expression as given.
     property Text: string read FText;
   end;
 
@@ -58,6 +66,7 @@ type
   private
     FAllowOverlap: boolean;
     FCron: string;
+    /// The parsed Cron, nil for an interval job.
     FCronExpr: TRALCronExpression;
     FEnabled: boolean;
     FInterval: IntegerRAL;
@@ -103,10 +112,13 @@ type
     property AllowOverlap: boolean read FAllowOverlap write FAllowOverlap default False;
     /// The cron expression; when set, Interval is not used.
     property Cron: string read FCron write SetCron;
+    /// Whether the job runs.
     property Enabled: boolean read FEnabled write FEnabled default True;
     /// Milliseconds between the start of runs (no Cron).
     property Interval: IntegerRAL read FInterval write FInterval default 60000;
+    /// The name of the job.
     property Name: string read FName write FName;
+    /// Runs the job, on a thread of its own.
     property OnExecute: TRALOnJobExecute read FOnExecute write FOnExecute;
     /// Also runs when the scheduler starts.
     property RunOnStart: boolean read FRunOnStart write FRunOnStart default False;
@@ -117,11 +129,15 @@ type
   private
     function GetItem(AIndex: IntegerRAL): TRALScheduledJob;
   public
+    /// Adds a job that runs every AInterval milliseconds.
     function AddInterval(const AName: string; AInterval: IntegerRAL;
       AOnExecute: TRALOnJobExecute): TRALScheduledJob;
+    /// Adds a job that runs at the times of the cron expression ACron.
     function AddJob(const AName, ACron: string; AOnExecute: TRALOnJobExecute): TRALScheduledJob;
+    /// The job named AName, or nil.
     function Find(const AName: string): TRALScheduledJob;
 
+    /// The job at AIndex.
     property Items[AIndex: IntegerRAL]: TRALScheduledJob read GetItem; default;
   end;
 
@@ -133,11 +149,16 @@ type
   private
     FActive: boolean;
     FJobs: TRALScheduledJobs;
+    /// Guards FRuns.
     FLock: TCriticalSection;
     FOnError: TRALOnJobError;
+    /// The runs in progress.
     FRuns: TList;
+    /// Whether the scheduler is stopping.
     FStopping: boolean;
+    /// The thread that starts the runs.
     FThread: TRALSchedulerThread;
+    /// Wakes the thread to stop or to look at the jobs again.
     FWake: TEvent;
 
     procedure SetActive(const AValue: boolean);
@@ -147,9 +168,11 @@ type
     function Phases: TRALPluginPhases; override;
     /// Frees the runs that ended.
     procedure Reap(AWait: boolean);
+    /// Called as a run of AJob ends, with the exception it raised or nil.
     procedure RunFinished(AJob: TRALScheduledJob; AError: Exception);
     procedure ServerActivating; override;
     procedure ServerDeactivating; override;
+    /// Starts a run of AJob on a thread of its own.
     procedure StartRun(AJob: TRALScheduledJob);
     /// Starts the runs that are due at ANow; the earliest next run (0 = none).
     function Tick(ANow: TDateTime): TDateTime;
@@ -160,50 +183,62 @@ type
     { A health check (TRALOnHealthCheck shape): unhealthy when a job's last
       run failed; the output lists each job's next run and last error. }
     procedure HealthCheck(ACheck: TRALHealthCheck; var AHealthy: boolean; var AOutput: StringRAL);
+    /// Starts the scheduler thread.
     procedure Start;
     /// Stops planning and waits for the runs going on.
     procedure Stop;
   published
     /// Runs without a server (a linked server starts and stops it instead).
     property Active: boolean read FActive write SetActive default False;
+    /// The jobs.
     property Jobs: TRALScheduledJobs read FJobs write SetJobs;
     /// A job raised (on the job's thread).
     property OnError: TRALOnJobError read FOnError write FOnError;
   end;
 
-  { the planning thread: wakes every second or when asked }
+  /// The planning thread: wakes every second or when asked.
   TRALSchedulerThread = class(TThread)
   private
+    /// The scheduler it runs for.
     FOwner: TRALScheduler;
   protected
     procedure Execute; override;
   public
+    /// Creates the thread of AOwner.
     constructor Create(AOwner: TRALScheduler);
   end;
 
 implementation
 
 const
+  /// Lowest value of each field.
   cFieldMin: array[TRALCronField] of Integer = (0, 0, 0, 1, 1, 0);
+  /// Highest value of each field (7 is Sunday too).
   cFieldMax: array[TRALCronField] of Integer = (59, 59, 23, 31, 12, 7);
+  /// The month names a cron expression takes.
   cMonths: array[1..12] of string = ('JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL',
     'AUG', 'SEP', 'OCT', 'NOV', 'DEC');
+  /// The weekday names a cron expression takes.
   cDays: array[0..6] of string = ('SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT');
 
 type
-  { one run of a job }
+  /// One run of a job.
   TRALJobRun = class(TThread)
   private
+    /// The job being run.
     FJob: TRALScheduledJob;
+    /// The scheduler that started it.
     FScheduler: TRALScheduler;
   protected
     procedure Execute; override;
   public
+    /// Creates and starts a run of AJob.
     constructor Create(AScheduler: TRALScheduler; AJob: TRALScheduledJob);
   end;
 
 { TRALCronExpression }
 
+/// A number or name of AField as its value; raises when it is neither.
 function CronValue(AField: TRALCronField; const AText: string): Integer;
 var
   vInt: Integer;

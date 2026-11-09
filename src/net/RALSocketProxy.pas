@@ -1,7 +1,7 @@
-/// The tunnels a client on RAL's sockets can go through to reach its server: an HTTP
-/// proxy (CONNECT, RFC 9110 9.3.6) and SOCKS5 (RFC 1928, with user name and
-/// password by RFC 1929). The tunnel is opened on the plain socket, before TLS
-/// or WebSocket.
+{ The tunnels a client on RAL's sockets can go through to reach its server: an HTTP
+  proxy (CONNECT, RFC 9110 9.3.6) and SOCKS5 (RFC 1928, with user name and
+  password by RFC 1929). The tunnel is opened on the plain socket, before TLS
+  or WebSocket. }
 unit RALSocketProxy;
 
 {$I ..\core\PascalRAL.inc}
@@ -61,12 +61,13 @@ implementation
 uses
   RALBase64;
 
+/// Raises ERALSocketError for a proxy that refused or answered badly.
 procedure ProxyError(const AReason: string);
 begin
   raise ERALSocketError.CreateFmt(ecProxyRefused, [AReason]);
 end;
 
-{ reads exactly ACount bytes before the deadline }
+/// Reads exactly ACount bytes before the deadline.
 procedure ReadExact(AChannel: TRALChannel; var ABuffer; ACount: IntegerRAL;
   ADeadline: Int64RAL);
 var

@@ -10,11 +10,11 @@ uses
   RALTypes, RALMIMETypes, RALStream, RALConsts, RALTools;
 
 type
-  { TRALMultipartFormData }
 
   /// Base class for the Multipart object of the request
   TRALMultipartFormData = class
   private
+    /// The content of the part.
     FBufferStream: TStream;
     FContentType: StringRAL;
     FDescription: StringRAL;
@@ -46,15 +46,22 @@ type
     /// Saves the Multipart content into an AStream
     procedure SaveToStream(var AStream: TStream);
 
+    /// The content of the part as a stream.
     property AsStream: TStream read GetBufferStream write SetBufferStream;
+    /// The content of the part as text.
     property AsString: StringRAL read GetBufferString write SetBufferString;
     /// Whether the content is this part's own, freed with it
     property OwnsBuffer: boolean read FFreeBuffer;
   published
+    /// The Content-Type of the part.
     property ContentType: StringRAL read FContentType write FContentType;
+    /// The Content-Description of the part.
     property Description: StringRAL read FDescription write FDescription;
+    /// The Content-Disposition type (form-data, attachment).
     property Disposition: StringRAL read FDisposition write FDisposition;
+    /// The file name of the part, empty for a field.
     property Filename: StringRAL read FFilename write FFilename;
+    /// The field name of the part.
     property Name: StringRAL read FName write FName;
   end;
 
@@ -62,32 +69,37 @@ type
   TRALMultipartFormDataComplete = procedure(Sender: TObject;
     AFormData: TRALMultipartFormData; var AFreeData: boolean) of object;
 
-  { TRALMultipartDecoder }
-
   /// Base class for the object that will parse Multipart from the HTTP Request
   TRALMultipartDecoder = class
   private
+    /// Absolute position in the body of the next byte.
     FAbs: Int64RAL;
     FBoundary: StringRAL;
+    /// The line being read.
     FBuffer: TBytes;
     FClosed: boolean;
+    /// Where the content of the current part starts in the body, or -1.
     FContentStart: Int64RAL;
+    /// The parts decoded, when the event does not take them.
     FFormData: TList;
+    /// Bytes in FBuffer.
     FIndex: IntegerRAL;
+    /// Whether the last byte was a CR.
     FIs13: boolean;
+    /// The part being read.
     FItemForm: TRALMultipartFormData;
     FOnFormDataComplete: TRALMultipartFormDataComplete;
     FPartCount: IntegerRAL;
-    { parts as windows over the body instead of copies: the absolute position
-      of the byte being read, where the content of the current part started,
-      and the stream they are windows of }
+    /// Whether the parts are windows over the body instead of copies.
     FSliceParts: boolean;
+    /// The body the windows are taken from.
     FSliceSource: TStream;
+    /// Whether a delimiter was read and the line end after it is awaited.
     FWaitSepEnd: boolean;
   protected
     /// Resets what one body processed leaves behind, before the next one
     procedure BeginBody;
-    /// used to write the info of the Multipart into the stream buffer
+    /// Writes the pending part of the multipart into the stream buffer
     function BurnBuffer: PByte;
     /// destroys the content of the Multipart
     procedure ClearItems;
@@ -117,17 +129,20 @@ type
     /// Processes the Multipart from a String input
     procedure ProcessMultiPart(const AString: StringRAL); overload;
 
-    /// Whether the last body processed ended with its close delimiter - what
-    /// an empty form, with no part at all, still carries
+    { Whether the last body processed ended with its close delimiter - what
+      an empty form, with no part at all, still carries. }
     property Closed: boolean read FClosed;
     /// Gets an item from the FormData based on the index provided
     property FormData[idx: Integer]: TRALMultipartFormData read GetFormData;
-    /// The parts the last body processed was cut into, including those
-    /// OnFormDataComplete took over. A part the body never closed is not one
+    { The parts the last body processed was cut into, including those
+      OnFormDataComplete took over. A part the body never closed is not one. }
     property PartCount: IntegerRAL read FPartCount;
   published
+    /// The boundary of the body.
     property Boundary: StringRAL read FBoundary write FBoundary;
+    /// The Content-Type of the body; assigning it reads the boundary.
     property ContentType: StringRAL write SetContentType;
+    /// Fires as each part ends; set AFreeData to False to keep it.
     property OnFormDataComplete: TRALMultipartFormDataComplete read FOnFormDataComplete
       write FOnFormDataComplete;
     { True: each part's content is a window (RALStreamSlice) over the stream
@@ -137,15 +152,15 @@ type
     property SliceParts: boolean read FSliceParts write FSliceParts;
   end;
 
-  { TRALMultipartEncoder }
-
   /// Base class for the object that will create a Multipart on HTTP response
   TRALMultipartEncoder = class
   private
     FBoundary: StringRAL;
+    /// The parts to write.
     FFormData: TList;
     FMediaType: StringRAL;
   protected
+    /// Frees every part.
     procedure ClearItems;
     /// The closing delimiter
     function EndDelimiter: StringRAL;
@@ -169,8 +184,8 @@ type
     /// Adds a Stream into the multipart with the ContentType informed
     procedure AddStream(const AName: StringRAL; const AFileStream: TStream;
       const AFileName: StringRAL = ''; const AContentType: StringRAL = ''); overload;
-    /// The same, taking AFileStream over when AOwned: it is freed with the
-    /// encoder, or moves into the stream AsConcatStream answers
+    { The same, taking AFileStream over when AOwned: it is freed with the
+      encoder, or moves into the stream AsConcatStream answers. }
     procedure AddStream(const AName: StringRAL; const AFileStream: TStream;
       const AFileName, AContentType: StringRAL; AOwned: boolean); overload;
     { The multipart as a TRALConcatStream: the headers and each part's stream,
@@ -184,7 +199,9 @@ type
     /// Saves the content of the Multipart to an AFileName file
     procedure SaveToFile(const AFileName: StringRAL);
   published
+    /// The boundary; one is generated when empty.
     property Boundary: StringRAL read GetBoundary write FBoundary;
+    /// The multipart/form-data Content-Type with the boundary.
     property ContentType: StringRAL read GetContentType;
     /// The multipart type ContentType announces: multipart/form-data, or multipart/mixed
     property MediaType: StringRAL read FMediaType write FMediaType;
@@ -305,24 +322,13 @@ end;
 
 function TRALMultipartEncoder.PartHeader(AItem: TRALMultipartFormData): StringRAL;
 begin
-  { The delimiter is "--" plus the boundary, and nothing else. RFC 2046 defines
-    it that way, and the Content-Type we send declares the boundary alone
-    ("boundary=ralNNN"), so the twenty-eight dashes written here did not match
-    what we announced.
+  { The delimiter is "--" plus the boundary, and nothing else (RFC 2046), as
+    the Content-Type declares it; a strict parser (libmicrohttpd, under Sagui)
+    anchors it at the start of the line and drops a body that differs.
 
-    It went unnoticed because every parser this had met is lenient: RAL's own
-    decoder below looks for the delimiter with Pos(), a substring search that
-    finds "--ralNNN" inside "----------------------------ralNNN", and Indy,
-    mORMot2 and fpHTTP all hand the raw body to that same decoder. The
-    libmicrohttpd parser under the Sagui engine anchors the delimiter at the
-    start of the line, finds no match, and drops the whole body without an
-    error - requests reached the handler with no params, no body, no cookies.
-
-    A part names a file only when the caller gave it a filename. The encoder
-    does not invent one: whether a part should look like a file on the wire
-    is a decision about what the part IS, and only the caller knows that -
-    see TRALParams.EncodeBody, which names its own envelope parts and leaves
-    plain form fields alone. }
+    A part names a file only when the caller gave it a filename: whether a
+    part looks like a file on the wire is the caller's decision (see
+    TRALParams.EncodeBody). }
   if AItem.Filename <> '' then
     Result := Format('--%s' + HTTPLineBreak +
       'Content-Disposition: %s; name="%s"; filename="%s"' + HTTPLineBreak +
@@ -643,9 +649,8 @@ begin
     if vInt > 0 then
       Delete(AValue, vInt, Length(AValue));
     { RFC 2046 lets the boundary travel quoted - boundary="..." is what .NET's
-      HttpClient sends - and the quotes are not part of it: kept, they made a
-      delimiter that never matched, and the whole body was dropped under a 200.
-      A boundary has no ';' of its own, so cutting there was already safe }
+      HttpClient sends - and the quotes are not part of it. A boundary has no
+      ';' of its own, so cutting there is safe }
     AValue := RALTrim(AValue);
     if (Length(AValue) >= 2) and (AValue[POSINISTR] = '"') and
        (AValue[RALHighStr(AValue)] = '"') then
@@ -706,9 +711,7 @@ begin
   vLineStart := FAbs - FIndex;
   if FIndex < MultipartLineLength then
   begin
-    { the line's own bytes, no more: it used to convert the whole 64 KB buffer
-      and cut the result down, on every line of the body - and ResetBuffer
-      zeroed those 64 KB after each one so the conversion would stop there }
+    // the line's own bytes, no more
     SetLength(vLine, FIndex);
     if FIndex > 0 then
       Move(FBuffer[0], vLine[POSINISTR], FIndex);
@@ -749,8 +752,8 @@ begin
     end
   end
   else
-  // se o buffer tiver mais q 500 chars significa q o conteudo do
-  // buffer eh o parte do arquivo e nao um novo boundary
+  // a buffer of more than 500 chars is part of the file, not a new
+  // boundary
   begin
     {$IFDEF RAL_DEBUG}
     vLine := BytesToStringUTF8(FBuffer);
@@ -791,9 +794,7 @@ procedure TRALMultipartDecoder.EndBody;
 begin
   if FIndex > 0 then
     ProcessLine;
-  { a part the body opened and never closed is not delivered. It never was -
-    but nothing freed it either: the destructor only let go of the pointer,
-    and a truncated upload leaked its part, whatever it held }
+  // a part the body opened and never closed is not delivered, and is freed
   FreeAndNil(FItemForm);
 end;
 

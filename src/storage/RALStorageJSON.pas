@@ -11,10 +11,10 @@ uses
   RALMIMETypes, RALStorageTypes, RALJson, RALConsts;
 
 type
+  /// The layout of the JSON: RAL's DBWare document or a plain array of records.
   TRALJSONType = (jtDBWare, jtRAW);
 
-  { TRALJSONFormatOptions }
-
+  /// How values are written in JSON.
   TRALJSONFormatOptions = class(TPersistent)
   private
     FCustomDateTimeFormat: StringRAL;
@@ -25,87 +25,115 @@ type
   public
     constructor Create;
 
+    /// Reads the options from a stream.
     procedure LoadPropsFromStream(AWriter: TRALBinaryWriter);
+    /// Writes the options to a stream.
     procedure SavePropsToStream(AWriter: TRALBinaryWriter);
   published
+    /// The date format of dtfCustom.
     property CustomDateTimeFormat: StringRAL read FCustomDateTimeFormat write FCustomDateTimeFormat;
+    /// How dates are written.
     property DateTimeFormat: TRALDateTimeFormat read FDateTimeFormat write FDateTimeFormat;
-    /// dtfISO8601 only: whether the TDateTime values are UTC. True (the default,
-    /// see RALJSONDateTimeIsUTC) writes them with 'Z', as always; False says they
-    /// are local time - a timestamp without time zone, say - and writes the real
-    /// offset ('2026-09-22T06:51:24.000-03:00'), so a browser does not shift them
+    { dtfISO8601 only: whether the TDateTime values are UTC. True (the default,
+      see RALJSONDateTimeIsUTC) writes them with 'Z', as always; False says they
+      are local time - a timestamp without time zone, say - and writes the real
+      offset ('2026-09-22T06:51:24.000-03:00'), so a browser does not shift them. }
     property DateTimeIsUTC: boolean read FDateTimeIsUTC write FDateTimeIsUTC;
   end;
 
-  { TRALStorageJSON }
-
+  /// Base of the JSON storages.
   TRALStorageJSON = class(TRALStorage)
   private
     FFormatOptions: TRALJSONFormatOptions;
   protected
+    /// A date by DateTimeFormat.
     function JSONFormatDateTime(AValue: TDateTime): StringRAL;
-    /// Puts AValue into the field at AIndex, by that field's RAL type -
-    /// what both readers do for each value of a record
+    { Puts AValue into the field at AIndex, by that field's RAL type -
+      what both readers do for each value of a record. }
     procedure ReadFieldValue(AIndex: IntegerRAL; AValue: TRALJSONValue);
+    /// AValue as a quoted JSON string, escaped.
     function StringToJSONString(AValue: StringRAL): StringRAL;
+    /// A blob as a base64 JSON string.
     function WriteBlob(AValue: TStream): StringRAL;
+    /// A JSON boolean.
     function WriteBoolean(AValue: Boolean): StringRAL;
     /// One ASCII byte straight into the stream: the separators and brackets
     procedure WriteCharToStream(AStream: TStream; AValue: Byte);
+    /// A date as a JSON value.
     function WriteDateTime(AValue: TDateTime): StringRAL;
-    /// A decimal of the RAW format: a JSON number with every digit, so whoever
-    /// reads it from outside still finds the number it always found
+    { A decimal of the RAW format: a JSON number with every digit, so whoever
+      reads it from outside still finds the number it always found. }
     function WriteFieldBCD(AFieldName: StringRAL; const AValue: TBcd): StringRAL;
+    /// A name: blob pair.
     function WriteFieldBlob(AFieldName: StringRAL; AValue: TStream): StringRAL;
+    /// A name: boolean pair.
     function WriteFieldBoolean(AFieldName: StringRAL; AValue: Boolean): StringRAL;
+    /// A name: date pair.
     function WriteFieldDateTime(AFieldName: StringRAL; AValue: TDateTime): StringRAL;
+    /// A name: number pair.
     function WriteFieldFloat(AFieldName: StringRAL; AValue: Double): StringRAL;
+    /// A name: integer pair.
     function WriteFieldInt64(AFieldName: StringRAL; AValue: Int64RAL): StringRAL;
+    /// A name: null pair.
     function WriteFieldNull(AFieldName: StringRAL): StringRAL;
+    /// A name: string pair.
     function WriteFieldString(AFieldName: StringRAL; AValue: StringRAL): StringRAL;
+    /// A JSON number.
     function WriteFloat(AValue: Double): StringRAL;
+    /// A JSON integer.
     function WriteInt64(AValue: Int64RAL): StringRAL;
+    /// A JSON string.
     function WriteString(AValue: StringRAL): StringRAL;
+    /// Writes the bytes of AValue.
     procedure WriteStringToStream(AStream: TStream; AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
   published
+    /// How values are written.
     property FormatOptions: TRALJSONFormatOptions read FFormatOptions
       write FFormatOptions;
   end;
 
-  { TRALStorageJSON_RAW }
-
+  /// A dataset as a plain JSON array of objects, one per record.
   TRALStorageJSON_RAW = class(TRALStorageJSON)
   protected
+    /// Builds the fields of ADataset from the first record.
     procedure ReadFields(ADataset: TDataSet; AJSON: TRALJSONArray);
+    /// Appends the records of the array to ADataset.
     procedure ReadRecords(ADataset: TDataSet; AJSON: TRALJSONArray);
+    /// Prepares the escaped field names the records are written with.
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
+    /// Writes the records of ADataset.
     procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
   public
+    /// The records of ADataset as JSON text.
     function DataSetToJSON(ADataset: TDataSet): StringRAL;
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
   end;
 
-  { TRALStorageJSON_DBWare }
-
+  /// A dataset as RAL's DBWare document: header, fields and records.
   TRALStorageJSON_DBWare = class(TRALStorageJSON)
   protected
+    /// Builds the fields of ADataset from the field list.
     procedure ReadFields(ADataset: TDataSet; AJSON: TRALJSONObject);
+    /// Whether the document carries the RAL signature and a version it reads.
     function ReadHeaders(AJSON: TRALJSONObject): Boolean;
+    /// Appends the records of the document to ADataset.
     procedure ReadRecords(ADataset: TDataSet; AJSON: TRALJSONObject);
+    /// Writes the field list.
     procedure WriteFields(ADataset: TDataSet; AStream: TStream);
+    /// Writes the signature and the version.
     procedure WriteHeaders(ADataset: TDataSet; AStream: TStream);
+    /// Writes the records of ADataset.
     procedure WriteRecords(ADataset: TDataSet; AStream: TStream);
   public
     procedure LoadFromStream(ADataset: TDataSet; AStream: TStream); override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream); override;
   end;
 
-  { TRALStorageJSONLink }
-
+  /// The storage link of the JSON formats.
   TRALStorageJSONLink = class(TRALStorageLink)
   private
     FFormatOptions: TRALJSONFormatOptions;
@@ -121,16 +149,19 @@ type
     procedure LoadPropsFromStream(AWriter: TRALBinaryWriter); override;
     procedure SavePropsToStream(AWriter: TRALBinaryWriter); override;
   published
+    /// How values are written.
     property FormatOptions: TRALJSONFormatOptions read FFormatOptions write FFormatOptions;
+    /// The layout of the JSON.
     property JSONType: TRALJSONType read FJSONType write FJSONType;
   end;
 
-  { TRALStorageJSONHelper }
-
   {$IF Defined(FPC) or Defined(Delphi2005UP)}
+  /// JSON shortcuts on any dataset.
   TRALStorageJSONHelper = class helper for TDataSet
   public
+    /// The dataset as a plain JSON array.
     function ToJSON: StringRAL;
+    /// The first record as a JSON object.
     function ToJSONObject: StringRAL;
   end;
   {$IFEND}
@@ -208,8 +239,7 @@ var
   end;
 
 begin
-  { written into one buffer that grows by doubling: one string per
-    character, each a copy of everything before it, is what it used to be }
+  { written into one buffer that grows by doubling }
   vStr := UnicodeStringToUCS4String(UnicodeString(AValue));
   SetLength(Result, Length(AValue) + 16);
   vLen := 0;
@@ -229,9 +259,8 @@ begin
     else
       if vChr > $FFFF then
       begin
-        { past the first plane a character is two UTF-16 units in JSON: it
-          went out as one \u of five or six digits, which no parser reads -
-          an emoji in a text column made the whole answer invalid }
+        { past the first plane a character is two UTF-16 units in JSON (a
+          surrogate pair): a \u has four digits }
         PutUnit($D800 + ((vChr - $10000) shr 10));
         PutUnit($DC00 + ((vChr - $10000) and $3FF));
       end
@@ -419,18 +448,15 @@ begin
 
   for vInt := 0 to Pred(ADataset.FieldCount) do
   begin
-    { escaped once here, for every record: an alias with a quote or a
-      backslash in it - and opensql runs the SQL the client sends - wrote
-      invalid JSON, or JSON of the client's making }
+    { escaped once here, for every record: an alias may hold a quote or a
+      backslash, and opensql runs the SQL the client sends }
     FFieldNames[vInt] := StringToJSONString(CharCaseValue(ADataset.Fields[vInt].FieldName));
     FFieldTypes[vInt] := TRALDB.FieldTypeToRALFieldType(ADataset.Fields[vInt].DataType);
   end;
 end;
 
-{ Every piece goes straight into the stream. The row used to be assembled by
-  string concatenation and written once - each "+" reallocated and copied the
-  growing row, so a wide record cost O(fields^2) copies before reaching the
-  stream. }
+{ Every piece goes straight into the stream, with no row assembled in a
+  string first. }
 procedure TRALStorageJSON_RAW.WriteRecords(ADataset: TDataSet; AStream: TStream);
 var
   vBookMark: TBookMark;
@@ -470,9 +496,7 @@ begin
             vValue := WriteFieldBCD(FFieldNames[vInt], ADataset.Fields[vInt].AsBCD);
           sftBoolean:
             vValue := WriteFieldBoolean(FFieldNames[vInt], ADataset.Fields[vInt].AsBoolean);
-          { a memo is text, which is how the readers always took it - it went
-            out as the field's own bytes, UTF-16 for a wide memo, as escaped
-            UTF-8 (see RALStorageBIN) }
+          { a memo is text, as the readers take it (see RALStorageBIN) }
           sftString, sftMemo:
             vValue := WriteFieldString(FFieldNames[vInt], ADataset.Fields[vInt].AsWideString);
           sftBlob:
@@ -560,10 +584,9 @@ begin
     else
     begin
       vjValue := vjObj.Get(vInt);
-      { a value of no listed type - an object, an array - is text. vType had
-        no value at all for them, and went to FieldDefs.Add as it was. Text
-        gets the wide types the other readers build (RALFieldTypeToFieldType):
-        an ftString is ANSI on Delphi, and lost what CP_ACP has no place for }
+      { a value of no listed type - an object, an array - is text. Text gets
+        the wide types the other readers build (RALFieldTypeToFieldType): an
+        ftString is ANSI on Delphi, and loses what CP_ACP has no place for }
       vType := ftWideString;
       vSize := MAX_JSONSTRING;
       case vjValue.JSONType of
@@ -577,9 +600,8 @@ begin
           begin
             vSize := 0;
             { the text decides, not the double: past 2^53 every double is a
-              whole number, so a decimal of twenty digits came back from
-              AsFloat with no fraction, was taken for an integer, and the first
-              record raised reading it }
+              whole number, and a decimal of twenty digits would read as an
+              integer }
             if TryStrToInt64(string(vjValue.AsString), vInt64) then
               vType := ftLargeint
             else
@@ -648,8 +670,8 @@ begin
       vInt64 := vInt64 + 1;
     end;
   finally
-    { in a finally, as the CSV reader already had it: a record that failed
-      left the read-only fields writable and the controls disabled }
+    { in a finally: a record that fails must not leave the read-only fields
+      writable and the controls disabled }
     RestoreReadOnly;
     ADataset.EnableControls;
   end;
@@ -681,11 +703,9 @@ begin
   end;
 end;
 
-{ Every reader below checks the type of what it is about to walk. The stream
-  is whatever came over the wire - a server's answer to a memtable, a client's
-  delta to applyupdates - and each level used to be cast to TRALJSONObject or
-  TRALJSONArray blindly and walked with that class's Count/Get: valid JSON of
-  the wrong shape was type confusion, on the server before any query ran. }
+{ Every reader below checks the type of what it is about to walk: the stream
+  is whatever came over the wire (a server's answer to a memtable, a client's
+  delta to applyupdates), and valid JSON of the wrong shape is refused. }
 procedure TRALStorageJSON_RAW.LoadFromStream(ADataset: TDataSet; AStream: TStream);
 var
   vjValue: TRALJSONValue;
@@ -901,8 +921,7 @@ begin
       vName := vjArr2.Get(0).AsString;
       FFieldNames[vInt] := vName;
 
-      // type - checked whole, before it becomes an enum (see RALStorageBIN);
-      // it was cut to a byte first, so 256 came back as the first type
+      // type - checked whole, before it becomes an enum (see RALStorageBIN)
       vTypeOrd := vjArr2.Get(1).AsInteger;
       if not RALIsFieldTypeOrdinal(vTypeOrd) then
         raise ERALException.Create(ecInvalidJSONFormat);
@@ -1070,8 +1089,7 @@ end;
 function TRALStorageJSONLink.GetStorage: TRALStorage;
 begin
   { an if, not a case: on the DBWare server FJSONType is a byte of the request
-    body (LoadPropsFromStream), and the case had no else - any other value left
-    Result undefined, and the next line wrote through it }
+    body (LoadPropsFromStream), and any value must leave Result set }
   if FJSONType = jtRAW then
     Result := TRALStorageJSON_RAW.Create
   else
