@@ -52,9 +52,9 @@ type
     FStream: TStream;
   protected
     function GetStream: TStream;
+    function GetStrError: StringRAL;
     procedure SetStream(AValue: TStream);
     procedure SetStrError(AError: StringRAL);
-    function GetStrError: StringRAL;
   public
     constructor Create;
     destructor Destroy; override;
@@ -85,8 +85,8 @@ type
     property LastId: Int64RAL read FLastId write FLastId;
     property Native: boolean read FNative write FNative;
     property RowsAffected: Int64RAL read FRowsAffected write FRowsAffected;
-    property StrError: StringRAL read GetStrError write SetStrError;
     property Stream: TStream read GetStream write SetStream;
+    property StrError: StringRAL read GetStrError write SetStrError;
   end;
 
   { TRALDBSQL }
@@ -105,6 +105,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     property DriverType: TRALDBDriverType read FDriverType write FDriverType;
   published
     property BookMark: TBookMark read FBookMark write FBookMark;
@@ -124,26 +125,20 @@ type
     FTransaction: boolean;
     FVersion: byte;
   protected
-    function GetQuerySQL(ADataset: TDataSet): StringRAL;
-    function GetQueryParams(ADataset: TDataSet): TParams;
-    function GetSQLList(AIndex: IntegerRAL): TRALDBSQL;
-
-    procedure SetStorage(const AValue: TRALStorageLink);
-    procedure CreateStorage(AWriter : TRALBinaryWriter);
-    /// Reads one param of the wire into AParams; AVersion 2 carries its direction
-    procedure ReadParam(AWriter: TRALBinaryWriter; AParams: TParams; AVersion: byte);
     /// Raises emQueryVersionError for a version this unit does not read
     procedure CheckVersion(AVersion: byte);
+    procedure CreateStorage(AWriter : TRALBinaryWriter);
+    function GetQueryParams(ADataset: TDataSet): TParams;
+    function GetQuerySQL(ADataset: TDataSet): StringRAL;
+    function GetSQLList(AIndex: IntegerRAL): TRALDBSQL;
+    /// Reads one param of the wire into AParams; AVersion 2 carries its direction
+    procedure ReadParam(AWriter: TRALBinaryWriter; AParams: TParams; AVersion: byte);
+    procedure SetStorage(const AValue: TRALStorageLink);
     /// Writes AParam to the wire; AVersion 2 carries its direction
     procedure WriteParam(AWriter: TRALBinaryWriter; AParam: TParam; AVersion: byte);
   public
     constructor Create;
     destructor Destroy; override;
-
-    procedure Clear;
-    function Count: IntegerRAL;
-
-    function GetQueryClass(ADataset: TDataSet): TRALDBDriverType;
 
     procedure Add(ADataset: TDataSet;
                   AExecType: TRALDBExecType = etOpen); overload;
@@ -151,24 +146,22 @@ type
                   ABookMark: TBookMark = nil;
                   AExecType: TRALDBExecType = etExecute;
                   ADriverType: TRALDBDriverType = qtOther); overload;
-
-    procedure SaveToStream(AStream: TStream); overload;
-    function SaveToStream: TStream; overload;
-    procedure SaveToFile(AFileName: StringRAL);
-
-    procedure ResponseToStream(AStream: TStream); overload;
-    function ResponseToStream: TStream; overload;
-    procedure ResponseToFile(AFileName: StringRAL);
-
-    procedure LoadFromStream(AStream: TStream);
-    procedure LoadFromFile(AFileName: StringRAL);
-
-    procedure ResponseFromStream(AStream: TStream);
-    procedure ReponseFromFile(AFileName: StringRAL);
-
+    procedure Clear;
+    function Count: IntegerRAL;
+    function GetQueryClass(ADataset: TDataSet): TRALDBDriverType;
     { The version this unit writes: 2, or 1 under RALLegacyWire. It reads both,
       and answers a cache in the version the cache came in }
     function GetStructureVersion: byte;
+    procedure LoadFromFile(AFileName: StringRAL);
+    procedure LoadFromStream(AStream: TStream);
+    procedure ReponseFromFile(AFileName: StringRAL);
+    procedure ResponseFromStream(AStream: TStream);
+    procedure ResponseToFile(AFileName: StringRAL);
+    procedure ResponseToStream(AStream: TStream); overload;
+    function ResponseToStream: TStream; overload;
+    procedure SaveToFile(AFileName: StringRAL);
+    procedure SaveToStream(AStream: TStream); overload;
+    function SaveToStream: TStream; overload;
 
     property SQLList[AIndex: IntegerRAL]: TRALDBSQL read GetSQLList;
     { The client asks the statements to run as one transaction: all of them or

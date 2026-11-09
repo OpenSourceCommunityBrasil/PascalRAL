@@ -23,39 +23,38 @@ type
   protected
     procedure Conectar; override;
     function FindProtocol: StringRAL;
-
     { On FPC a TBufDataset; on Delphi none (nil): the outputs then go as JSON
       to a plain HTTP client }
     function NewMemDataset(AParams: TParams): TDataSet; override;
-    procedure OnConnBeforeConnect(ASender : TObject);
     procedure OnConnAfterConnect(ASender : TObject);
+    procedure OnConnBeforeConnect(ASender : TObject);
   public
     constructor Create; override;
     destructor Destroy; override;
 
     function CanExportNative: boolean; override;
     procedure Commit; override;
+    class function DatabaseName : StringRAL; override;
     procedure Disconnect; override;
-    function InTransaction: boolean; override;
-    function IsConnected: boolean; override;
-    procedure ResetSession; override;
-    procedure Rollback; override;
-    procedure StartTransaction; override;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
+    /// NativeConnection's getter - connects first, see GetNativeConnection
+    function GetConnector: TZConnection;
     function GetDriverType: TRALDBDriverType; override;
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; override;
     function GetNativeConnection: TComponent; override;
-    /// NativeConnection's getter - connects first, see GetNativeConnection
-    function GetConnector: TZConnection;
-    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    function InTransaction: boolean; override;
+    function IsConnected: boolean; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    class function PackageDependency : StringRAL; override;
+    procedure ResetSession; override;
+    procedure Rollback; override;
     procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
                            var AContentType: StringRAL;
                            var ANative: boolean); override;
+    procedure StartTransaction; override;
 
-    class function DatabaseName : StringRAL; override;
-    class function PackageDependency : StringRAL; override;
     /// The TZConnection this driver opens - see GetNativeConnection
     property NativeConnection: TZConnection read GetConnector;
   end;

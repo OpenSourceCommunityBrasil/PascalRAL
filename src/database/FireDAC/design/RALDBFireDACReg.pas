@@ -16,9 +16,9 @@ type
   private
     procedure FieldsEditor;
   public
-    function GetVerbCount: Integer; override;
-    function GetVerb(AIndex : Integer): string; override;
     procedure ExecuteVerb(AIndex : Integer); override;
+    function GetVerb(AIndex : Integer): string; override;
+    function GetVerbCount: Integer; override;
   end;
 
   { TRALDBFDMemTableTables }

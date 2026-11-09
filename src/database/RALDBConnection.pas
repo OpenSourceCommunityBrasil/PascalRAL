@@ -19,6 +19,7 @@ type
   TRALDBResultSetLink = class(TCollectionItem)
   private
     FDataSet: TDataSet;
+
     procedure SetDataSet(AValue: TDataSet);
   protected
     function GetDisplayName: string; override;
@@ -56,21 +57,33 @@ type
     FProcRoute: StringRAL;
     FQueue: TRALDBSQLCache;
     FQueueEntries: TList;
-    function IsProcRouteStored: boolean;
+
     /// Drops the queue and its entries
     procedure DropQueue;
+    function IsProcRouteStored: boolean;
   protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetClient(AValue: TRALClient);
     procedure SetModuleRoute(AValue: StringRAL);
     procedure SetProcRoute(AValue: StringRAL);
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); overload;
     destructor Destroy; override;
 
     procedure ApplyUpdatesRemote(ACache: TRALDBSQLCache; AResp: TRALThreadClientResponse);
-    procedure OpenRemote(AQuery: TDataset; AStorage: TRALStorageLink; AResp: TRALThreadClientResponse);
-    procedure ExecSQLRemote(AQuery: TDataset; AStorage: TRALStorageLink; AResp: TRALThreadClientResponse);
+    { Sends what was queued in one request: all of it is committed, or the first
+      failure undoes everything. Each caller gets its own answer before this
+      returns; a failure raises after that. The result of a queued statement
+      cannot feed the next one - a procedure on the server does that }
+    procedure Commit;
+    function ConstructDeleteSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
+                                AUpdateMode: TUpdateMode): StringRAL;
+    function ConstructInsertSQL(ADataset: TDataSet; AUpdateTable: StringRAL): StringRAL;
+    function ConstructUpdateSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
+                                AUpdateMode: TUpdateMode): StringRAL;
+    { Queues the statements of ASource (copies); AHandler gets their answers when
+      Commit returns. Used by the RAL datasets while InTransaction }
+    procedure Enqueue(ASource: TRALDBSQLCache; AHandler: TRALDBQueueHandler);
     { Calls the stored procedure AName of the server with AParams (by name) and
       hands AResp the DBWare answer: outputs and every result set. AReader is the
       dataset that reads the rows, which may get them in its native format; nil
@@ -83,33 +96,19 @@ type
       ADataSets are filled when Commit returns: they must live until then }
     procedure ExecProcRemote(const AName: StringRAL; AParams: TParams;
       const ADataSets: array of TDataSet; AStorage: TRALStorageLink = nil); overload;
-
+    procedure ExecSQLRemote(AQuery: TDataset; AStorage: TRALStorageLink; AResp: TRALThreadClientResponse);
+    function GetTables: TRALDBInfoTables;
+    function InfoFieldsFromSQL(ASQL: StringRAL): TRALDBInfoFields;
+    /// True between StartTransaction and Commit or Rollback
+    function InTransaction: boolean;
+    procedure OpenRemote(AQuery: TDataset; AStorage: TRALStorageLink; AResp: TRALThreadClientResponse);
+    /// Drops what was queued: nothing was sent
+    procedure Rollback;
     { Starts queueing: from here ApplyUpdates, ExecSQL and ExecProc of the RAL
       datasets and ExecProcRemote send nothing; Commit sends them all in one
       request, which the server runs as one transaction. Open is refused while
       the queue is open: it needs an answer at once }
     procedure StartTransaction;
-    { Sends what was queued in one request: all of it is committed, or the first
-      failure undoes everything. Each caller gets its own answer before this
-      returns; a failure raises after that. The result of a queued statement
-      cannot feed the next one - a procedure on the server does that }
-    procedure Commit;
-    /// Drops what was queued: nothing was sent
-    procedure Rollback;
-    /// True between StartTransaction and Commit or Rollback
-    function InTransaction: boolean;
-    { Queues the statements of ASource (copies); AHandler gets their answers when
-      Commit returns. Used by the RAL datasets while InTransaction }
-    procedure Enqueue(ASource: TRALDBSQLCache; AHandler: TRALDBQueueHandler);
-
-    function InfoFieldsFromSQL(ASQL: StringRAL): TRALDBInfoFields;
-    function GetTables: TRALDBInfoTables;
-
-    function ConstructInsertSQL(ADataset: TDataSet; AUpdateTable: StringRAL): StringRAL;
-    function ConstructUpdateSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
-                                AUpdateMode: TUpdateMode): StringRAL;
-    function ConstructDeleteSQL(ADataset: TDataSet; AUpdateTable: StringRAL;
-                                AUpdateMode: TUpdateMode): StringRAL;
   published
     property Client: TRALClient read FClient write SetClient;
     property ModuleRoute: StringRAL read FModuleRoute write SetModuleRoute;

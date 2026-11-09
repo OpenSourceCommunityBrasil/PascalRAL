@@ -21,85 +21,76 @@ type
 
   TRALDBFDMemTable = class({$IFDEF DELPHIXE4UP}TFDMemTable{$ELSE}TADMemTable{$ENDIF})
   private
-    FRALConnection: TRALDBConnection;
-    FLoading: boolean;
-    FLastId: Int64RAL;
-    FParams: TParams;
-    FParamCheck: boolean;
-    FRowsAffected: Int64RAL;
-    FSQL: TStrings;
-    FSQLCache: TRALDBSQLCache;
-    FStorage: TRALStorageLink;
-    FUpdateSQL: TRALDBUpdateSQL;
-    FUpdateMode: TUpdateMode;
-    FUpdateTable: StringRAL;
-    { on while a native stream is being loaded: its schema travels with it }
-    FLoadingNative: Boolean;
-    { last answer of /getsqlfields and the SQL it describes: every Open used
-      to pay that round trip again before /opensql }
-    FSchema: TRALDBInfoFields;
-    FSchemaSQL: StringRAL;
     { the first failure of the running ApplyUpdates or ExecSQL, which the call
       raises when it returns }
     FFailure: StringRAL;
+    FLastId: Int64RAL;
+    FLoading: boolean;
+    { on while a native stream is being loaded: its schema travels with it }
+    FLoadingNative: Boolean;
     FLoadingProc: boolean;
+    FOnError: TRALDBTableOnError;
+    FParamCheck: boolean;
+    FParams: TParams;
     { the last answer of ExecProc, kept for NextRecordSet, and the result set
       the dataset shows }
     FProcAnswer: TRALDBSQLCache;
     FProcSet: IntegerRAL;
+    FRALConnection: TRALDBConnection;
     FResultSets: TRALDBResultSetLinks;
+    FRowsAffected: Int64RAL;
+    { last answer of /getsqlfields and the SQL it describes: every Open used
+      to pay that round trip again before /opensql }
+    FSchema: TRALDBInfoFields;
+    FSchemaSQL: StringRAL;
+    FSQL: TStrings;
+    FSQLCache: TRALDBSQLCache;
+    FStorage: TRALStorageLink;
     FStoredProcName: StringRAL;
-
-    FOnError: TRALDBTableOnError;
+    FUpdateMode: TUpdateMode;
+    FUpdateSQL: TRALDBUpdateSQL;
+    FUpdateTable: StringRAL;
   protected
-    /// Server schema for ASQL, fetched once per SQL text and kept until the SQL or the connection changes
-    function SchemaFor(const ASQL: StringRAL): TRALDBInfoFields;
-    procedure DropSchema;
-    /// A failure of ApplyUpdates or ExecSQL: OnError hears it, and the call
-    /// raises the first one when it returns
-    procedure CallFailed(const AMessage: StringRAL);
-    procedure RaiseFailure;
-    /// needed to properly remove assignment in design-time.
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-
-    procedure InternalPost; override;
-    procedure InternalDelete; override;
-
-    procedure SetSQL(AValue: TStrings);
-    procedure SetParams(const AValue: TParams);
-    procedure SetRALConnection(const AValue: TRALDBConnection);
-    procedure SetUpdateSQL(const AValue: TRALDBUpdateSQL);
-    procedure SetStorage(const AValue: TRALStorageLink);
-
-    procedure OnChangeSQL(Sender: TObject);
-
-    // proprias do firedac
-    procedure OpenCursor(InfoQuery: boolean); override;
-    procedure SetActive(AValue: boolean); override;
-
-    // carrega os fieldsdefs do servidor
-    procedure InternalInitFieldDefs; override;
-
-    procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
-    procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
-    procedure OnApplyUpdates(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
-    procedure OnExecProcResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
     { The answers of ApplyUpdates, statements AFirst to AFirst + ACount - 1 of
       ACache: the direct call and the queue of TRALDBConnection read them alike }
     procedure ApplyAnswers(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+    procedure CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType = etExecute);
+    /// A failure of ApplyUpdates or ExecSQL: OnError hears it, and the call
+    /// raises the first one when it returns
+    procedure CallFailed(const AMessage: StringRAL);
+    procedure Clear;
+    procedure DropSchema;
     /// The answer of ExecSQL: rows affected, last id and outputs
     procedure ExecAnswer(AResponse: TRALDBSQLResponse);
+    procedure InternalDelete; override;
+    // carrega os fieldsdefs do servidor
+    procedure InternalInitFieldDefs; override;
+    procedure InternalPost; override;
+    procedure LoadFromRALStorage(ADataSet : TDataSet; AStream : TStream);
+    /// needed to properly remove assignment in design-time.
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    // proprias do firedac
+    procedure OpenCursor(InfoQuery: boolean); override;
     /// The answer of ExecProc: outputs to Params, the rows to the dataset and to ResultSets
     procedure ProcAnswer(ACache: TRALDBSQLCache; AIndex: IntegerRAL);
     procedure QueuedApply(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
     procedure QueuedExec(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
     procedure QueuedProc(ACache: TRALDBSQLCache; AFirst, ACount: IntegerRAL);
+    procedure RaiseFailure;
+    /// Server schema for ASQL, fetched once per SQL text and kept until the SQL or the connection changes
+    function SchemaFor(const ASQL: StringRAL): TRALDBInfoFields;
+    procedure SetActive(AValue: boolean); override;
+    procedure SetParams(const AValue: TParams);
+    procedure SetRALConnection(const AValue: TRALDBConnection);
     procedure SetResultSets(AValue: TRALDBResultSetLinks);
-
-    procedure Clear;
-    procedure CacheSQL(ASQL: StringRAL; AExecType: TRALDBExecType = etExecute);
-
-    procedure LoadFromRALStorage(ADataSet : TDataSet; AStream : TStream);
+    procedure SetSQL(AValue: TStrings);
+    procedure SetStorage(const AValue: TRALStorageLink);
+    procedure SetUpdateSQL(const AValue: TRALDBUpdateSQL);
+    procedure OnApplyUpdates(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
+    procedure OnChangeSQL(Sender: TObject);
+    procedure OnExecProcResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
+    procedure OnExecSQLResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
+    procedure OnQueryResponse(Sender: TObject; AResponse: TRALResponse; AException: StringRAL);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -112,44 +103,42 @@ type
     /// handled: the DAO's ApplyUpdatesRemote and FireDAC itself do the same.
     /// UpdateOptions.CountUpdatedRecords set to False skips the count.
     procedure ApplyUpdates;
-    /// Runs SQL with Params on the server and waits: RowsAffected and LastId
-    /// are read on the next line. A failure is reported through OnError and
-    /// then raised, as the DAO's ExecSQLRemote does.
-    procedure ExecSQL;
     { Calls StoredProcName on the server with Params: the outputs come back to
       Params, and the rows, when the procedure answers some, open the dataset;
       the result sets after the first go to ResultSets. A failure is reported
       through OnError and then raised. Inside TRALDBConnection.StartTransaction
       it is queued and answered when Commit returns }
     procedure ExecProc;
+    /// Runs SQL with Params on the server and waits: RowsAffected and LastId
+    /// are read on the next line. A failure is reported through OnError and
+    /// then raised, as the DAO's ExecSQLRemote does.
+    procedure ExecSQL;
     { Loads into the dataset the result set AIndex of AResponse (0 is the
       first), natively or through Storage }
     procedure LoadProcResultSet(AResponse: TRALDBSQLResponse; AIndex: IntegerRAL);
     { Shows the next result set of the last ExecProc; False, and the dataset as
       it was, when there is none }
     function NextRecordSet: boolean;
-
     function ParamByName(const AValue: StringRAL): TParam;
 
-    property RowsAffected: Int64RAL read FRowsAffected;
     property LastId: Int64RAL read FLastId;
+    property RowsAffected: Int64RAL read FRowsAffected;
   published
-    property RALConnection: TRALDBConnection read FRALConnection write SetRALConnection;
+    property OnError: TRALDBTableOnError read FOnError write FOnError;
     property ParamCheck: boolean read FParamCheck write FParamCheck;
     property Params: TParams read FParams write SetParams;
-    property SQL: TStrings read FSQL write SetSQL;
-    property Storage: TRALStorageLink read FStorage write SetStorage;
-    property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
-    property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
-    property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
+    property RALConnection: TRALDBConnection read FRALConnection write SetRALConnection;
     { The result sets of a stored procedure after the first, in order, each into
       the dataset of its item: another RAL dataset or any TDataSet (Storage) }
     property ResultSets: TRALDBResultSetLinks read FResultSets write SetResultSets;
+    property SQL: TStrings read FSQL write SetSQL;
+    property Storage: TRALStorageLink read FStorage write SetStorage;
     { A stored procedure of the server: Open and ExecProc call it by name, with
       Params, instead of running SQL }
     property StoredProcName: StringRAL read FStoredProcName write FStoredProcName;
-
-    property OnError: TRALDBTableOnError read FOnError write FOnError;
+    property UpdateMode: TUpdateMode read FUpdateMode write FUpdateMode;
+    property UpdateSQL: TRALDBUpdateSQL read FUpdateSQL write SetUpdateSQL;
+    property UpdateTable: StringRAL read FUpdateTable write FUpdateTable;
   end;
 
 implementation

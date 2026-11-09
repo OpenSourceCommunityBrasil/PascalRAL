@@ -46,6 +46,7 @@ type
     FRoute: StringRAL;
     FSchemas: TStrings;
     FStorage: TRALStorageLink;
+
     function IsRouteStored: boolean;
     procedure SetEnabled(AValue: boolean);
     procedure SetFilter(AValue: TStrings);
@@ -90,6 +91,7 @@ type
     FSQLCache: TRALDBSQLCache;
   public
     destructor Destroy; override;
+
     /// The pooled connection bound to this request; raises emDBDriverMissing
     /// when there is no driver
     function Database: TRALDBBase;
@@ -133,13 +135,19 @@ type
     FAutoCommit: boolean;
     FCatalog: TStringList;
     FCatalogLock: TCriticalSection;
+    FCharacterSet: StringRAL;
+    FConnectionParams: TStrings;
     FDatabase: StringRAL;
     FDatabaseLink: String;
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
-    FCharacterSet: StringRAL;
-    FConnectionParams: TStrings;
     FLibLocation: String;
+    FOnAfterConnect: TRALDBOnConnect;
+    FOnBeforeConnect: TRALDBOnConnect;
+    FOnErrorConnect: TRALDBOnError;
+    FOnErrorQuery: TRALDBOnError;
+    FOnValidateProc: TRALDBOnValidateProc;
+    FOnValidateSQL: TRALDBOnValidateSQL;
     FPassword: StringRAL;
     FPool: TRALDBConnectionPool;
     FPort: IntegerRAL;
@@ -147,18 +155,17 @@ type
     FProcRoute: TRALDBRoute;
     FUsername: StringRAL;
 
-    FOnBeforeConnect: TRALDBOnConnect;
-    FOnAfterConnect: TRALDBOnConnect;
-    FOnErrorConnect: TRALDBOnError;
-    FOnErrorQuery: TRALDBOnError;
-    FOnValidateProc: TRALDBOnValidateProc;
-    FOnValidateSQL: TRALDBOnValidateSQL;
+    /// Asks OnValidateSQL about a statement from the wire; raises when refused
+    procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
     procedure SetConnectionParams(AValue: TStrings);
     procedure SetLibLocation(AValue: String);
     procedure SetProcOptions(AValue: TRALDBProcOptions);
-    /// Asks OnValidateSQL about a statement from the wire; raises when refused
-    procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
   protected
+    /// Fills AResponse with the error, answering 429 when the pool timed out
+    procedure AnswerException(AResponse: TRALResponse; AException: Exception); virtual;
+    { The DBWare routes. Virtual, so a descendant extends one - audits
+      opensql, say - by overriding it and calling inherited }
+    procedure ApplyUpdates(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
     { What the catalog says of AName, from the cache while CatalogLife lasts;
       nil when there is no such procedure. A copy, freed by the caller }
     function CachedProc(ADatabase: TRALDBBase; const AName: StringRAL;
@@ -168,51 +175,44 @@ type
       AParams gets the catalog's types and directions. Freed by the caller }
     function CheckProc(ADatabase: TRALDBBase; ARequest: TRALRequest;
       const AName: StringRAL; AParams: TParams): TRALDBProcInfo;
-    /// Runs the stored procedure of ADBSQL (etProc) and fills its response
-    procedure ProcSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
+    /// Factory handed to the pool, so it can open connections on its own
+    function CreatePoolConnection(ASender: TObject): TRALDBBase;
     /// The route of the stored procedures: Route/:ral_procname
     procedure ExecProcRoute(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    procedure ExecSQL(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
+    /// Runs the OnDBReply of a TRALDBRoute with the module's request/response
+    procedure ExecuteContext(ARoute: TRALRoute; ARequest: TRALModuleRequest;
+      AResponse: TRALModuleResponse); override;
+    function FindDatabaseDriver(ARequest: TRALRequest; AResponse: TRALResponse) : TRALDBBase;
+    procedure GetFields(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    function GetInfoFieldsStream(ADatabase: TRALDBBase; ADataset: TDataSet;
+                                 ABinary: boolean): TStream;
+    function GetPoolOptions: TRALDBPoolOptions;
+    procedure GetSQLFields(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    procedure GetTables(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    /// The errors of the DBWare routes, answered as the datasets read them; a
+    /// route the application added with CreateRoute keeps the server's answer
+    function HandleException(ARequest: TRALRequest; AResponse: TRALResponse;
+      AException: Exception): boolean; override;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure OpenSQL(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
+    procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
+    /// Runs the stored procedure of ADBSQL (etProc) and fills its response
+    procedure ProcSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
+    class function RequestClass: TRALModuleRequestClass; override;
+    class function ResponseClass: TRALModuleResponseClass; override;
+    class function RouteClass: TRALRouteClass; override;
     { Saves AQuery for a client whose dataset is of AClientDriver: native when the
       driver and the link allow, else in AStorage (raises without one) }
     function SaveResultSet(ADatabase: TRALDBBase; AQuery: TDataSet;
       AClientDriver: TRALDBDriverType; AStorage: TRALStorageLink; out ANative: boolean;
       out AContentType: StringRAL): TMemoryStream;
-    /// Creates, renames or drops the route of the stored procedures
-    procedure UpdateProcRoute;
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    /// Fills AResponse with the error, answering 429 when the pool timed out
-    procedure AnswerException(AResponse: TRALResponse; AException: Exception); virtual;
-    /// Factory handed to the pool, so it can open connections on its own
-    function CreatePoolConnection(ASender: TObject): TRALDBBase;
-    /// Runs the OnDBReply of a TRALDBRoute with the module's request/response
-    procedure ExecuteContext(ARoute: TRALRoute; ARequest: TRALModuleRequest;
-      AResponse: TRALModuleResponse); override;
-    function GetPoolOptions: TRALDBPoolOptions;
-    /// The errors of the DBWare routes, answered as the datasets read them; a
-    /// route the application added with CreateRoute keeps the server's answer
-    function HandleException(ARequest: TRALRequest; AResponse: TRALResponse;
-      AException: Exception): boolean; override;
-    class function RequestClass: TRALModuleRequestClass; override;
-    class function ResponseClass: TRALModuleResponseClass; override;
-    class function RouteClass: TRALRouteClass; override;
     /// Opens the pool (PoolOptions.PrepareOnActivate)
     procedure ServerActivating; override;
     procedure SetPoolOptions(AValue: TRALDBPoolOptions);
-
-    { The DBWare routes. Virtual, so a descendant extends one - audits
-      opensql, say - by overriding it and calling inherited }
-    procedure ApplyUpdates(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
-    procedure ExecSQL(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
-    function FindDatabaseDriver(ARequest: TRALRequest; AResponse: TRALResponse) : TRALDBBase;
-    procedure GetFields(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
-    procedure GetSQLFields(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
-    procedure GetTables(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
-    procedure OpenSQL(ARequest: TRALDBRequest; AResponse: TRALDBResponse); virtual;
-
-    procedure OpenSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
-    procedure ExecSQLResponse(ADatabase: TRALDBBase; ADBSQL: TRALDBSQL; AStorage: TRALStorageLink);
-    function GetInfoFieldsStream(ADatabase: TRALDBBase; ADataset: TDataSet;
-                                 ABinary: boolean): TStream;
+    /// Creates, renames or drops the route of the stored procedures
+    procedure UpdateProcRoute;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -239,6 +239,11 @@ type
       the others answered as emDBRolledBack. A client may ask the same of one
       request (TRALDBConnection.StartTransaction) }
     property AutoCommit: boolean read FAutoCommit write FAutoCommit default True;
+    { Connection charset; empty lets the driver choose (UTF8 on Firebird) }
+    property CharacterSet: StringRAL read FCharacterSet write FCharacterSet;
+    { Name=Value settings handed to the database library before it connects -
+      Zeos Properties, FireDAC or sqldb Params. See TRALDBBase.ConnectionParams }
+    property ConnectionParams: TStrings read FConnectionParams write SetConnectionParams;
     { Name of the database this DBModule is connecting into }
     property Database: StringRAL read FDatabase write FDatabase;
     { DAO object that will be used to connect with the Database }
@@ -247,30 +252,15 @@ type
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
     { Server where the database is located }
     property Hostname: StringRAL read FHostname write FHostname;
-    { Password to connect into the database }
-    property Password: StringRAL read FPassword write FPassword;
-    { Connection pool settings, editable in the Object Inspector at design time.
-      Turning PoolOptions.Enabled on makes the module reuse open connections
-      instead of opening one per request }
-    property PoolOptions: TRALDBPoolOptions read GetPoolOptions write SetPoolOptions;
-    { The route of the stored procedures, off by default: see TRALDBProcOptions }
-    property ProcOptions: TRALDBProcOptions read FProcOptions write SetProcOptions;
-    { Database server port }
-    property Port: IntegerRAL read FPort write FPort;
-    { Name of the database server user }
-    property Username: StringRAL read FUsername write FUsername;
     { Location of the library (dll) that is used to connect with the database }
     property LibLocation: String read FLibLocation write SetLibLocation;
-    { Connection charset; empty lets the driver choose (UTF8 on Firebird) }
-    property CharacterSet: StringRAL read FCharacterSet write FCharacterSet;
-    { Name=Value settings handed to the database library before it connects -
-      Zeos Properties, FireDAC or sqldb Params. See TRALDBBase.ConnectionParams }
-    property ConnectionParams: TStrings read FConnectionParams write SetConnectionParams;
-
-    property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
     property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
+    property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
     property OnErrorConnect: TRALDBOnError read FOnErrorConnect write FOnErrorConnect;
     property OnErrorQuery: TRALDBOnError read FOnErrorQuery write FOnErrorQuery;
+    { Every stored procedure call, by the route or by a RAL dataset, after Filter
+      and the catalog: refuses it, audits it, fills params the client does not send }
+    property OnValidateProc: TRALDBOnValidateProc read FOnValidateProc write FOnValidateProc;
     { Every statement the routes opensql, execsql, applyupdates and getsqlfields
       run comes from the client as text. Without Authentication on the server
       that is the whole database open on the network; with it, every logged
@@ -278,9 +268,18 @@ type
       which statements it accepts: set AAllow to False and the request gets
       a 500 with the reason, nothing reaches the database }
     property OnValidateSQL: TRALDBOnValidateSQL read FOnValidateSQL write FOnValidateSQL;
-    { Every stored procedure call, by the route or by a RAL dataset, after Filter
-      and the catalog: refuses it, audits it, fills params the client does not send }
-    property OnValidateProc: TRALDBOnValidateProc read FOnValidateProc write FOnValidateProc;
+    { Password to connect into the database }
+    property Password: StringRAL read FPassword write FPassword;
+    { Connection pool settings, editable in the Object Inspector at design time.
+      Turning PoolOptions.Enabled on makes the module reuse open connections
+      instead of opening one per request }
+    property PoolOptions: TRALDBPoolOptions read GetPoolOptions write SetPoolOptions;
+    { Database server port }
+    property Port: IntegerRAL read FPort write FPort;
+    { The route of the stored procedures, off by default: see TRALDBProcOptions }
+    property ProcOptions: TRALDBProcOptions read FProcOptions write SetProcOptions;
+    { Name of the database server user }
+    property Username: StringRAL read FUsername write FUsername;
   end;
 
 implementation
@@ -300,6 +299,7 @@ type
   public
     Info: TRALDBProcInfo;
     Stamp: TDateTime;
+
     destructor Destroy; override;
   end;
 

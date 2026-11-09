@@ -84,20 +84,23 @@ type
     FDatabaseType: TRALDatabaseType;
     FHostname: StringRAL;
     FLibLocation: StringRAL;
-    FUsername: StringRAL;
+    FOnAfterConnect: TRALDBOnConnect;
+    FOnBeforeConnect: TRALDBOnConnect;
+    FOnErrorConnect: TRALDBOnError;
+    FOnErrorQuery: TRALDBOnError;
     FPassword: StringRAL;
     FPort: IntegerRAL;
     FRequest: TRALRequest;
     FResponse: TRALResponse;
+    FUsername: StringRAL;
 
-    FOnBeforeConnect: TRALDBOnConnect;
-    FOnAfterConnect: TRALDBOnConnect;
-    FOnErrorConnect: TRALDBOnError;
-    FOnErrorQuery: TRALDBOnError;
     function GetConnectionParams: TStrings;
     procedure SetConnectionParams(AValue: TStrings);
     procedure SetLibLocation(AValue: StringRAL);
   protected
+    { Adds to ADefs a field for each output param of AParams (ptOutput,
+      ptInputOutput, ptResult), of its type }
+    class procedure AddOutputDefs(AParams: TParams; ADefs: TFieldDefs);
     { Copies ConnectionParams into the driver's own list - Properties in Zeos,
       Params in FireDAC and sqldb - replacing a value of the same name }
     procedure ApplyConnectionParams(ADest: TStrings);
@@ -106,9 +109,6 @@ type
       and sqldb); raises like ParamByName when ADest has no such param }
     class procedure BindParams(ASource, ADest: TParams);
     procedure Conectar; virtual; abstract;
-    { Adds to ADefs a field for each output param of AParams (ptOutput,
-      ptInputOutput, ptResult), of its type }
-    class procedure AddOutputDefs(AParams: TParams; ADefs: TFieldDefs);
     { An open, empty in-memory dataset of the library, with the fields of
       AddOutputDefs; nil when the driver has none (the default) }
     function NewMemDataset(AParams: TParams): TDataSet; virtual;
@@ -118,10 +118,7 @@ type
   public
     constructor Create; virtual; abstract;
     destructor Destroy; override;
-    /// The connection object of the underlying library (TZConnection,
-    /// TFDConnection, TSQLConnector) - for code that already queries it
-    /// directly and wants the pool to manage it. nil when the driver has none
-    function GetNativeConnection: TComponent; virtual;
+
     function CanExportNative: boolean; virtual;
     { Commits what is pending: the transaction StartTransaction opened, or what a
       statement left in the library's own transaction. Does nothing when nothing
@@ -129,6 +126,7 @@ type
     procedure Commit; virtual;
     /// Opens the connection. Does nothing when it is already open
     procedure Connect; virtual;
+    class function DatabaseName: StringRAL; virtual; abstract;
     { Closes the connection. Descendants that do not override it simply keep the
       connection open until the driver is destroyed }
     procedure Disconnect; virtual;
@@ -137,6 +135,14 @@ type
       AParams (added when missing). Answers the rows, or nil, freed by the caller }
     function ExecProc(AProc: TRALDBProcInfo; AParams: TParams;
       var ARowsAffected: Int64RAL): TDataSet; virtual;
+    procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
+                      var ALastInsertId: Int64RAL); virtual; abstract;
+    function GetDriverType: TRALDBDriverType; virtual; abstract;
+    function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; virtual; abstract;
+    /// The connection object of the underlying library (TZConnection,
+    /// TFDConnection, TSQLConnector) - for code that already queries it
+    /// directly and wants the pool to manage it. nil when the driver has none
+    function GetNativeConnection: TComponent; virtual;
     { The stored procedure AName (schema.name allowed) as the catalog describes
       it, or nil when there is none; freed by the caller. On PostgreSQL the names
       in AParamNames choose between signatures, and a choice they cannot make
@@ -152,15 +158,21 @@ type
     { Moves ADataset, which ExecProc answered, to its next result set; False when
       there is none. Only libraries that hand over several result sets do it }
     function NextResultSet(ADataset: TDataSet): boolean; virtual;
+    function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
+    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
     { The output params of AParams as a dataset of one row, a field each, which
       every storage writes; nil when there is none or the driver has no
       in-memory dataset. Freed by the caller }
     function OutputsDataset(AParams: TParams): TDataSet;
+    class function PackageDependency: StringRAL; virtual; abstract;
     { Undoes anything the request left behind, pending transactions above all.
       Called by TRALDBConnectionPool before a connection is reused }
     procedure ResetSession; virtual;
     /// Undoes what is pending - see Commit
     procedure Rollback; virtual;
+    procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
+                           var AContentType: StringRAL;
+                           var ANative: boolean); virtual; abstract;
     { Opens a transaction that lasts until Commit or Rollback: no statement in
       between commits by itself. Drivers without transaction control raise
       emDBNoTransaction }
@@ -170,18 +182,7 @@ type
     function TestConnection: boolean; virtual;
     /// Cheapest statement that proves the connection is alive on this database
     function ValidationSQL: StringRAL; virtual;
-    procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
-                      var ALastInsertId: Int64RAL); virtual; abstract;
-    function GetDriverType: TRALDBDriverType; virtual; abstract;
-    function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL) : StringRAL; virtual; abstract;
-    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
-    function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
-    procedure SaveToStream(ADataset: TDataSet; AStream: TStream;
-                           var AContentType: StringRAL;
-                           var ANative: boolean); virtual; abstract;
 
-    class function DatabaseName: StringRAL; virtual; abstract;
-    class function PackageDependency: StringRAL; virtual; abstract;
     property DriverType: TRALDBDriverType read GetDriverType;
   published
     { Connection charset. Empty lets the driver pick a sane default for the
@@ -196,17 +197,16 @@ type
     property Database: StringRAL read FDatabase write FDatabase;
     property DatabaseType: TRALDatabaseType read FDatabaseType write FDatabaseType;
     property Hostname: StringRAL read FHostname write FHostname;
-    property Username: StringRAL read FUsername write FUsername;
+    property LibLocation: StringRAL read FLibLocation write SetLibLocation;
+    property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
+    property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
+    property OnErrorConnect: TRALDBOnError read FOnErrorConnect write FOnErrorConnect;
+    property OnErrorQuery: TRALDBOnError read FOnErrorQuery write FOnErrorQuery;
     property Password: StringRAL read FPassword write FPassword;
     property Port: IntegerRAL read FPort write FPort;
     property Request: TRALRequest read FRequest write FRequest;
     property Response: TRALResponse read FResponse write FResponse;
-    property LibLocation: StringRAL read FLibLocation write SetLibLocation;
-
-    property OnBeforeConnect: TRALDBOnConnect read FOnBeforeConnect write FOnBeforeConnect;
-    property OnAfterConnect: TRALDBOnConnect read FOnAfterConnect write FOnAfterConnect;
-    property OnErrorConnect: TRALDBOnError read FOnErrorConnect write FOnErrorConnect;
-    property OnErrorQuery: TRALDBOnError read FOnErrorQuery write FOnErrorQuery;
+    property Username: StringRAL read FUsername write FUsername;
   end;
 
   TRALDBClass = class of TRALDBBase;

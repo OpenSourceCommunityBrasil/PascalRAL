@@ -32,16 +32,15 @@ type
   protected
     procedure Conectar; override;
     function FindProtocol: StringRAL;
+    function NewMemDataset(AParams: TParams): TDataSet; override;
     /// A query on this connection with ASQL and AParams in place - see there
     function NewQuery(const ASQL: StringRAL; AParams: TParams):
       {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
     /// Copies the output params of AQuery back to AParams
     procedure ReadOutputs(AQuery: {$IFDEF DELPHIXE4UP}TFDQuery{$ELSE}TADQuery{$ENDIF};
       AParams: TParams);
-
-    function NewMemDataset(AParams: TParams): TDataSet; override;
-    procedure OnConnBeforeConnect(ASender: TObject);
     procedure OnConnAfterConnect(ASender: TObject);
+    procedure OnConnBeforeConnect(ASender: TObject);
     // AnyDAC (XE2..XE4) hands the initiator as an interface, FireDAC as an object
     procedure OnConnError(ASender: TObject;
       {$IFDEF DELPHIXE4UP}AInitiator: TObject{$ELSE}const AInitiator: IADStanObject{$ENDIF};
@@ -55,28 +54,28 @@ type
 
     function CanExportNative: boolean; override;
     procedure Commit; override;
+    class function DatabaseName: StringRAL; override;
     procedure Disconnect; override;
-    function InTransaction: boolean; override;
-    function IsConnected: boolean; override;
-    function NextResultSet(ADataset: TDataSet): boolean; override;
-    procedure ResetSession; override;
-    procedure Rollback; override;
-    procedure StartTransaction; override;
     procedure ExecSQL(ASQL: StringRAL; AParams: TParams; var ARowsAffected: Int64RAL;
                       var ALastInsertId: Int64RAL); override;
+    /// NativeConnection's getter - connects first, see GetNativeConnection
+    function GetConnector: {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF};
     function GetDriverType: TRALDBDriverType; override;
     function GetFieldTable(ADataset: TDataSet; AFieldIndex: IntegerRAL): StringRAL; override;
     function GetNativeConnection: TComponent; override;
-    /// NativeConnection's getter - connects first, see GetNativeConnection
-    function GetConnector: {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF};
-    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    function InTransaction: boolean; override;
+    function IsConnected: boolean; override;
+    function NextResultSet(ADataset: TDataSet): boolean; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    class function PackageDependency: StringRAL; override;
+    procedure ResetSession; override;
+    procedure Rollback; override;
     procedure SaveToStream(ADataset: TDataset; AStream: TStream;
                            var AContentType: StringRAL;
                            var ANative: boolean); override;
+    procedure StartTransaction; override;
 
-    class function DatabaseName: StringRAL; override;
-    class function PackageDependency: StringRAL; override;
     /// The FireDAC connection this driver opens - see GetNativeConnection
     property NativeConnection: {$IFDEF DELPHIXE4UP}TFDConnection{$ELSE}TADConnection{$ENDIF}
       read GetConnector;

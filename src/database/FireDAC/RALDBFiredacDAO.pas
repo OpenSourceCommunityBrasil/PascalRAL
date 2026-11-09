@@ -26,40 +26,40 @@ type
   {$IF Declared(pidAllPlatforms)}[ComponentPlatforms(pidAllPlatforms)]{$IFEND}
   TRALFDQuery = class(TFDQuery)
   private
+    vException: Exception;
+    vOnQueryRemoteFinish: TOnQueryRemoteFinish;
     vQueryBehavior: TRALExecBehavior;
     vRALClient: TRALClient;
     vRALFDConnectionServer: StringRAL;
     vRowsAffectedRemote: Int64;
-    vOnQueryRemoteFinish: TOnQueryRemoteFinish;
-    vException: Exception;
   protected
-    /// needed to properly remove assignment in design-time.
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-
-    procedure SetRALFDConnectionServer(const value: StringRAL);
-    procedure SetRALClient(const value: TRALClient);
-    procedure ExecSQLRemoteResponse(Sender: TObject; AResponse: TRALResponse;
-      AException: StringRAL);
     procedure ApplyUpdatesRemoteResponse(Sender: TObject; AResponse: TRALResponse;
       AException: StringRAL);
+    procedure ExecSQLRemoteResponse(Sender: TObject; AResponse: TRALResponse;
+      AException: StringRAL);
+    /// needed to properly remove assignment in design-time.
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure OpenRemoteResponse(Sender: TObject; AResponse: TRALResponse;
       AException: StringRAL);
     procedure SetOnQueryRemoteFinish(const value: TOnQueryRemoteFinish);
+    procedure SetRALClient(const value: TRALClient);
+    procedure SetRALFDConnectionServer(const value: StringRAL);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     procedure ApplyUpdatesRemote;
     procedure ExecSQLRemote;
     procedure OpenRemote;
   published
+    property OnQueryRemoteFinish: TOnQueryRemoteFinish read vOnQueryRemoteFinish
+      write SetOnQueryRemoteFinish;
     property QueryBehavior: TRALExecBehavior read vQueryBehavior write vQueryBehavior
       default ebSingleThread;
     property RALClient: TRALClient read vRALClient write SetRALClient;
     property RALFDConnectionServer: StringRAL read vRALFDConnectionServer
       write SetRALFDConnectionServer;
     property RowsAffectedRemote: Int64RAL read vRowsAffectedRemote;
-    property OnQueryRemoteFinish: TOnQueryRemoteFinish read vOnQueryRemoteFinish
-      write SetOnQueryRemoteFinish;
   end;
 
   TOnQueryError = procedure(ASender, AInitiator: TObject; var AException: Exception)
@@ -70,28 +70,35 @@ type
   TRALFDConnection = class(TFDConnection)
   private
     vDriverName: StringRAL;
-    vRALServer: TRALServer;
-    vRALModule: TRALModuleRoutes;
-    vOnQueryError: TOnQueryError;
     vOnQueryAfterOpen: TOnQueryAfterOpen;
-    vOnValidateSQL: TRALDBOnValidateSQL;
+    vOnQueryError: TOnQueryError;
     vOnValidateApplyUpdates: TRALDBOnValidateSQL;
+    vOnValidateSQL: TRALDBOnValidateSQL;
+    vRALModule: TRALModuleRoutes;
+    vRALServer: TRALServer;
+
+    procedure CheckApplyUpdates(ARequest: TRALRequest; const ASQL: StringRAL);
+    procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
     procedure SetDriverName(const value: StringRAL);
-    procedure SetOnQueryError(const value: TOnQueryError);
     procedure SetOnQueryAfterOpen(const value: TOnQueryAfterOpen);
+    procedure SetOnQueryError(const value: TOnQueryError);
     procedure SetRALServer(const value: TRALServer);
     procedure OnReplyQuery(ARequest: TRALRequest; AResponse: TRALResponse);
-    procedure CheckSQL(ARequest: TRALRequest; const ASQL: StringRAL);
-    procedure CheckApplyUpdates(ARequest: TRALRequest; const ASQL: StringRAL);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
     property DriverName: StringRAL read vDriverName write SetDriverName;
-    property OnQueryError: TOnQueryError read vOnQueryError write SetOnQueryError;
     property OnQueryAfterOpen: TOnQueryAfterOpen read vOnQueryAfterOpen
       write SetOnQueryAfterOpen;
-    property RALServer: TRALServer read vRALServer write SetRALServer;
+    property OnQueryError: TOnQueryError read vOnQueryError write SetOnQueryError;
+    { Fired for an ApplyUpdates, after OnValidateSQL accepted its SELECT: ASQL
+      is that SELECT, and saying yes lets the client insert, change and delete
+      rows of the tables behind it. With OnValidateSQL assigned and this one
+      not, ApplyUpdates is refused - a validator that only ever saw a SELECT
+      cannot have meant to allow writes }
+    property OnValidateApplyUpdates: TRALDBOnValidateSQL read vOnValidateApplyUpdates
+      write vOnValidateApplyUpdates;
     { Fired before a statement that came over the wire reaches the database.
       The DAO route carries whatever SQL the client sends, so without this the
       caller can run anything the connection user is allowed to run. Set AAllow
@@ -101,13 +108,7 @@ type
       delta - see OnValidateApplyUpdates }
     property OnValidateSQL: TRALDBOnValidateSQL read vOnValidateSQL
       write vOnValidateSQL;
-    { Fired for an ApplyUpdates, after OnValidateSQL accepted its SELECT: ASQL
-      is that SELECT, and saying yes lets the client insert, change and delete
-      rows of the tables behind it. With OnValidateSQL assigned and this one
-      not, ApplyUpdates is refused - a validator that only ever saw a SELECT
-      cannot have meant to allow writes }
-    property OnValidateApplyUpdates: TRALDBOnValidateSQL read vOnValidateApplyUpdates
-      write vOnValidateApplyUpdates;
+    property RALServer: TRALServer read vRALServer write SetRALServer;
   end;
 
 resourcestring

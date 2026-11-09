@@ -18,9 +18,9 @@ type
 
   TRALDBBufDatasetEditor = class(TFieldsComponentEditor)
   public
-    function GetVerbCount: integer; override;
-    function GetVerb(AIndex: integer): string; override;
     procedure ExecuteVerb(AIndex: integer); override;
+    function GetVerb(AIndex: integer): string; override;
+    function GetVerbCount: integer; override;
   end;
 
   { TRALDBBufDatasetTables }
