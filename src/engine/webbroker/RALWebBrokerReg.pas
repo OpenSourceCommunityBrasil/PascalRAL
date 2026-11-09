@@ -10,6 +10,7 @@ uses
   Classes,
   RALWebBrokerServer;
 
+/// Registers the WebBroker components.
 procedure Register;
 
 implementation

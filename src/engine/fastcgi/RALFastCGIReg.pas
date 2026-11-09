@@ -10,6 +10,7 @@ uses
   Classes,
   RALFastCGIServer;
 
+/// Registers the FastCGI components.
 procedure Register;
 
 implementation

@@ -10,6 +10,7 @@ uses
   Classes,
   RALMsQuicServer;
 
+/// Registers the MsQuic components.
 procedure Register;
 
 implementation

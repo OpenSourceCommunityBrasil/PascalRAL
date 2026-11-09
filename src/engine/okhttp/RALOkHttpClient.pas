@@ -5,25 +5,9 @@ unit RALOkHttpClient;
 
 interface
 
-{ Android only, and on purpose.
-
-  Every other platform already has an engine that can negotiate h2 - netHTTP
-  reaches WinHTTP on Windows, NSURLSession on Apple, libcurl on Linux. Android
-  is the one place where the platform client cannot: TNetHTTPClient lands on
-  HttpURLConnection, whose copy of OkHttp AOSP hands a protocol list without
-  h2, so ALPN never offers it. Measured against a server proven to serve h2 to
-  Edge, to a Java 17 client and to WinHTTP, the same application on the handset
-  always arrived as HTTP/1.1.
-
-  So this engine exists to close exactly that gap. Everywhere else the class is
-  still here and still registers itself - otherwise its name would never reach
-  the IDE, where the engine list is what RegisterEngine filled in - but it has
-  no implementation: a request refuses and says why, instead of duplicating
-  what netHTTP already does better.
-
-  It needs two jars in the project - okhttp itself and the bridge below. What
-  okhttp depends on, okio and kotlin-stdlib, already ships with the RAD Studio
-  Android runtime. See PackageDependency. }
+{ Android only: the one platform where the platform client cannot negotiate h2.
+  Elsewhere the class registers and refuses requests. Needs the okhttp jar and
+  the bridge (see PackageDependency). }
 
 uses
   Classes, SysUtils,
@@ -48,15 +32,15 @@ type
   end;
 
   [JavaSignature('pascalral/RalCertJudge')]
+  /// Java interface the bridge calls to judge a server certificate.
   JRalCertJudge = interface(IJavaInstance)
     ['{1D7B2E85-5C69-4A1F-8B42-83F6E9D52A74}']
     function ok(sha256: JString; subject: JString; issuer: JString;
                 platformTrusted: Boolean): Boolean; cdecl;
   end;
 
-  { ---------------------------------------------------- pascalral.RalOkHttp ---
-    Flat on purpose: static methods, primitive arguments and one result per
-    thread, because every object crossing JNI costs a binding. }
+  { Class of the Java bridge pascalral.RalOkHttp: static methods, primitive
+    arguments. }
   JRalOkHttpClass = interface(JObjectClass)
     ['{2E8C3F96-6D7A-4B20-9C53-94A7FAE63B85}']
     function execute(method: JString; url: JString; headerBlock: JString;
@@ -65,51 +49,63 @@ type
                      allowHttp2: Boolean; followRedirects: Boolean;
                      followSslRedirects: Boolean;
                      shareKey: JString; judge: JRalCertJudge): Integer; cdecl;
+    /// Releases the client of shareKey.
     procedure release(shareKey: JString); cdecl;
+    /// Status of the last call on this thread.
     function status: Integer; cdecl;
+    /// Protocol of the last call (h2, http/1.1).
     function protocol: JString; cdecl;
+    /// Headers of the last call, one per line.
     function headers: JString; cdecl;
+    /// Answer bytes of the last call.
     function body: TJavaArray<Byte>; cdecl;
+    /// Error of the last call.
     function error: JString; cdecl;
+    /// The last call failed on the certificate.
     function certRefused: Boolean; cdecl;
+    /// Fingerprint of the server certificate of the last call.
     function certSha256: JString; cdecl;
+    /// Subject of the server certificate of the last call.
     function certSubject: JString; cdecl;
+    /// Issuer of the server certificate of the last call.
     function certIssuer: JString; cdecl;
   end;
 
   [JavaSignature('pascalral/RalOkHttp')]
+  /// Instance side of pascalral.RalOkHttp (unused: the bridge is static).
   JRalOkHttp = interface(JObject)
     ['{3F9D4A07-7E8B-4C31-AD64-A5B80BF74C96}']
   end;
 
+  /// Import of pascalral.RalOkHttp.
   TJRalOkHttp = class(TJavaGenericImport<JRalOkHttpClass, JRalOkHttp>)
   end;
-
-  { TRALOkHttpCertJudge }
 
   /// Carries the certificate from OkHttp to the engine and the verdict back
   TRALOkHttpCertJudge = class(TJavaLocal, JRalCertJudge)
   private
+    /// Engine whose client judges.
     FEngine: TRALOkHttpClientHTTP;
   public
+    /// A judge for AEngine.
     constructor Create(AEngine: TRALOkHttpClientHTTP); reintroduce;
+    /// Called by the bridge: judges the certificate by the client's rule.
     function ok(sha256: JString; subject: JString; issuer: JString;
                 platformTrusted: Boolean): Boolean; cdecl;
   end;
 
   {$ENDIF}
 
-  { TRALOkHttpClientHTTP }
-
+  /// OkHttp client engine (Android): HTTP/2 through the Java bridge.
   TRALOkHttpClientHTTP = class(TRALClientHTTP)
   {$IFDEF ANDROID}
   private
+    /// Java judge of the certificate, when the application decides.
     FJudge: JRalCertJudge;
-    /// Identifies THIS client's own transport, used only when it refuses to
-    /// share - see ShareKey
+    /// Key of this client's own transport, when it does not share (see ShareKey).
     FOwnShareKey: StringRAL;
-    /// The certificate policy to share by configuration with whoever judges
-    /// alike, FOwnShareKey to stand alone
+    { The certificate policy to share by configuration with whoever judges
+      alike, FOwnShareKey to stand alone. }
     function ShareKey: StringRAL;
     /// "Name: Value" per line - one string instead of an array across JNI
     function HeaderBlock(ARequest: TRALRequest): StringRAL;
@@ -117,8 +113,8 @@ type
     function BodyAsBytes(ARequest: TRALRequest): TJavaArray<Byte>;
     /// Response headers, body, status and negotiated version back into RAL
     procedure ReadResponse(AResponse: TRALResponse);
-    /// Classifies what OkHttp threw, by exception class and not by digging a
-    /// number out of the text - Java gives a type, unlike WinHTTP
+    { Classifies what OkHttp threw, by exception class and not by digging a
+      number out of the text - Java gives a type, unlike WinHTTP. }
     procedure ClassifyFailure(AResponse: TRALResponse; const AError: StringRAL);
     /// The verdict on one certificate, in the shape the judge needs it
     function JudgeCertificate(const ACert: TRALCertInfo): boolean;
@@ -137,18 +133,18 @@ type
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
 
-    /// True on Android, where the fingerprint arrives with the certificate, so
-    /// SSL.Pins works - which it never did through TNetHTTPClient there. False
-    /// anywhere else, where this engine has no implementation at all.
+    { True on Android, where the fingerprint arrives with the certificate, so
+      SSL.Pins works - which it never did through TNetHTTPClient there. False
+      anywhere else, where this engine has no implementation at all. }
     class function SupportsCertPin: boolean; override;
     /// True on Android: it is the whole reason this engine exists
     class function SupportsHTTP2: boolean; override;
-    /// True on Android: OkHttp keeps a ConnectionPool of its own, so several
-    /// clients on one OkHttpClient still get every socket the traffic needs -
-    /// and multiplex onto a single one under h2, which is the point.
+    { True on Android: OkHttp keeps a ConnectionPool of its own, so several
+      clients on one OkHttpClient still get every socket the traffic needs -
+      and multiplex onto a single one under h2, which is the point. }
     class function SupportsSharedConnection: boolean; override;
-    /// True on Android: OkHttp sends HTTP/2 PING frames and drops the
-    /// connection when no pong comes back - see TRALClient.KeepAliveInterval
+    { True on Android: OkHttp sends HTTP/2 PING frames and drops the
+      connection when no pong comes back - see TRALClient.KeepAliveInterval. }
     class function SupportsKeepAliveInterval: boolean; override;
   end;
 
@@ -208,20 +204,8 @@ end;
 
 function TRALOkHttpClientHTTP.ShareKey: StringRAL;
 begin
-  { Sharing here is not RAL's pool, it is OkHttp's: one client per combination
-    of settings, each with its own connection pool. The Java side already puts
-    the timeouts, the h2 flag and the redirect setting in the key it builds, so
-    what this hands over is what is left to tell one group from another.
-
-    AND THAT IS THE CERTIFICATE POLICY, not an empty string. OkHttp keeps a
-    ConnectionPool per client and reuses a TLS connection WITHOUT a new
-    handshake - so the judge of a reused connection is whoever opened it, and a
-    client with a pin could inherit a connection accepted under a looser rule,
-    its pin never running. With the policy in the key, only those who judge
-    alike share, which is the same rule the netHTTP engine's pool follows.
-
-    Destroy releases FOwnShareKey and only that, so nothing here tears down a
-    client somebody else is still using. }
+  { OkHttp's own pool, one client per settings; the certificate policy goes in the
+    key (a reused connection keeps its verdict); Destroy releases FOwnShareKey only }
   if Parent.ShareConnection then
     Result := CertPolicyKey
   else
@@ -230,9 +214,7 @@ end;
 
 function TRALOkHttpClientHTTP.JudgeCertificate(const ACert: TRALCertInfo): boolean;
 begin
-  { svNever with nothing else set: take it as it comes. With a pin or an event
-    those decide, and Verify has nothing to say - the same rule the netHTTP
-    engine applies, kept identical on purpose. }
+  { svNever with nothing else set: take it as it comes; a pin or an event decide }
   if (not CertCheckWanted) and (Parent.SSL.Verify = svNever) then
     Result := True
   else
@@ -337,10 +319,7 @@ begin
 
       if SameText(string(vName), 'Set-Cookie') then
       begin
-        { ONLY the pair, never the attributes. AddCookies splits on ";" and
-          takes every piece as name=value, so handing it a whole Set-Cookie
-          would turn Path=/ and HttpOnly into cookies of their own and send
-          them back to the server on the next request. }
+        { only the pair, never the attributes: AddCookies splits on ";" }
         vPos := Pos(StringRAL(';'), vValue);
         if vPos > 0 then
           vValue := Copy(vValue, 1, vPos - 1);
@@ -353,9 +332,7 @@ begin
     vLines.Free;
   end;
 
-  { Same order netHTTP had to be corrected into: the compression and crypto
-    options have to be read from the headers BEFORE the body is handed over,
-    because SetWireBody decodes it with what the headers say. }
+  { compression and crypto read from the headers before the body is handed over }
   AResponse.ContentEncoding := AResponse.ParamByName('Content-Encoding').AsString;
   AResponse.Params.CompressType := AResponse.ContentCompress;
 
@@ -440,9 +417,7 @@ begin
   AResponse.Clear;
   AResponse.AddHeader('RALEngine', ENGINEOKHTTP);
 
-  { ContentCompress, as every other engine sets it: RequestStream takes the
-    compression from there and overwrites Params.CompressType, which is what
-    this used to set - so no request body was ever compressed on this engine }
+  { ContentCompress, as every engine sets it: RequestStream reads it }
   ARequest.ContentCompress := Parent.CompressType;
   ARequest.Params.AddParam('Accept-Encoding', AcceptEncodingFor(ARequest), rpkHEADER);
 
@@ -475,14 +450,8 @@ begin
     else
       vPing := 0;
 
-    { THE JUDGE ONLY GOES ALONG WHEN THE APPLICATION DECIDES - a pin for this
-      host, OnValidateServerCert, or svNever - because its presence is what
-      tells the bridge's hostname check that the name no longer matters. It
-      used to go along always, so the name was never checked at all: with no
-      pin and no event, a certificate valid for ANY host was accepted for this
-      one, and whoever held one could sit in the middle. With no judge the
-      bridge is plain OkHttp: the platform judges the chain and
-      OkHostnameVerifier the name. }
+    { the judge goes along only when the application decides (pin, event, svNever);
+      without it, the platform judges the chain and OkHostnameVerifier the name }
     if CertCheckWanted or (Parent.SSL.Verify = svNever) then
       vJudge := FJudge
     else
@@ -537,17 +506,8 @@ end;
 
 {$ENDIF}
 
-{ THE FOUR BELOW ARE OUTSIDE THE IFDEF, and that is the point of them being
-  here rather than beside the code they describe.
-
-  They answer what the ENGINE can do, and this engine only ever runs on
-  Android - everywhere else SendUrl refuses. But the Object Inspector asks
-  them on the IDE's platform, which is Windows, while the project being edited
-  targets Android. Answered per platform, they all said False in the IDE and
-  the properties they gate - HTTPVersion, ShareConnection, KeepAliveInterval -
-  vanished from the Object Inspector of an Android client that honours every
-  one of them. Same reason the class is registered on every platform: what the
-  IDE offers has to describe the target, not the machine the IDE runs on. }
+{ The four below answer for the engine (Android) on every platform: the Object
+  Inspector asks them on Windows. }
 
 class function TRALOkHttpClientHTTP.SupportsCertPin: boolean;
 begin
@@ -571,7 +531,8 @@ end;
 
 class function TRALOkHttpClientHTTP.SupportsMethod(AMethod: TRALMethod): boolean;
 begin
-  // the Java side builds the request with the method name, and OkHttp takes a body on QUERY
+  // the Java side builds the request with the method name, and OkHttp takes a body on
+  // QUERY
   Result := (AMethod > amALL) and (AMethod < amUNKNOWN);
 end;
 

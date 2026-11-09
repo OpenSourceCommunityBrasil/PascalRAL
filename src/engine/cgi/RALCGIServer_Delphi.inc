@@ -1,3 +1,4 @@
+/// Delphi part of RALCGIServer: CGI through Web.CGIApp.
 uses
   {$IFDEF RALWindows}
     Windows,
@@ -8,14 +9,17 @@ uses
   RALStream, RALNetwork;
 
 type
+  /// Web dispatcher that hands each CGI request to the server.
   TRALCGIServerHandler = class(TCustomWebDispatcher)
   private
+    /// Handles the request through the RAL server.
     procedure OnDefaultAction(Sender: TObject; ARequest: TWebRequest;
                               AResponse: TWebResponse; var AHandled: Boolean);
   public
     constructor Create(AOwner: TComponent); override;
   end;
 
+  /// CGI server engine (Delphi, Web.CGIApp).
   TRALCGIServer = class(TRALServer)
   protected
     procedure SetActive(const AValue: boolean); override;
@@ -23,14 +27,15 @@ type
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
 
-    /// The address of the web server that started the program, as it tells
-    /// it (SERVER_ADDR, or LOCAL_ADDR on IIS); the machine's otherwise
+    { The address of the web server that started the program, as it tells
+      it (SERVER_ADDR, or LOCAL_ADDR on IIS); the machine's otherwise. }
     function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
   end;
 
 implementation
 
 var
+  /// The CGI application.
   FCGIApp : TCGIApplication;
 
 { The body as it arrived, bytes and all. TWebRequest.Content is a string
@@ -45,6 +50,7 @@ begin
     ARequest.SetWireBody(TBytesStream.Create(ARaw), boOwned);
 end;
 
+/// Gives ARaw to ARequest as its body.
 procedure SetRawBody(ARequest: TRALRequest; const ARaw: AnsiString); overload;
 begin
   ARequest.SetWireBody(RawByteString(ARaw));
@@ -89,6 +95,7 @@ end;
 { TRALCGIServer }
 
 {$IFDEF RALWindows}
+  /// Number of environment variables.
   function GetEnvironmentVariableCount : Integer;
   var
     hp,p : pchar;
@@ -107,6 +114,7 @@ end;
     FreeEnvironmentStrings(p);
   end;
 
+  /// Environment variable Index, as "name=value".
   function GetEnvironmentString(Index : Integer) : AnsiString;
   var
     hp,p : pchar;
@@ -130,11 +138,13 @@ end;
     FreeEnvironmentStrings(p);
   end;
 {$ELSE}
+  /// Number of environment variables.
   function GetEnvironmentVariableCount : Integer;
   begin
     Result := 0; // todo
   end;
 
+  /// Environment variable Index, as "name=value".
   function GetEnvironmentString(Index : Integer) : AnsiString;
   begin
     Result := ''; // todo

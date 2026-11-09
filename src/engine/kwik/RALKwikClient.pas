@@ -1,23 +1,5 @@
-/// Base unit for RALClient component using the Kwik (QUIC) Engine on Android
-///
-/// It speaks the SAME wire as TRALMsQuicClientHTTP - the frame in RALQuicFrame
-/// on a bidirectional stream of its own, delimited by the stream end - so a
-/// handset on this engine and a desktop on MsQuic talk to one TRALMsQuicServer
-/// without either side knowing which the other is.
-///
-/// WHY A SECOND QUIC ENGINE AT ALL. MsQuic is a C library, and on Android
-/// that means a libmsquic.so built with the NDK: nobody publishes one, the
-/// platform is not supported by the project, and the build pins android-29.
-/// Kwik is QUIC in pure Java - four jars, 646 KB, no native code and the same
-/// file whatever the ABI - so it is the one way to get RAL's own frame onto
-/// QUIC there. Every official Android stack (OkHttp, Cronet, HttpEngine) is
-/// an HTTP client and exposes no raw stream, which is what this frame needs.
-///
-/// WHAT IT COSTS. Kwik is LGPL v3, the first dependency in this repository
-/// with a relink clause - see the README next to this unit before shipping it
-/// inside a closed application. Its TLS 1.3 is agent15, also pure Java, which
-/// wants ECDHE over secp256r1 (the default; X25519 would need API 33) and
-/// java.time, so the floor is Android 8.0 / API 26.
+{ Kwik client engine (Android): RAL's QUIC frame in pure Java, the same wire as
+  TRALMsQuicClientHTTP; Android 8.0 or later, LGPL v3 (see the README). }
 unit RALKwikClient;
 
 {$IFDEF FPC}
@@ -51,17 +33,14 @@ type
   end;
 
   [JavaSignature('pascalral/RalQuicCertJudge')]
+  /// Java interface the bridge calls to judge a server certificate.
   JRalQuicCertJudge = interface(IJavaInstance)
     ['{6C2FAD51-9B38-4E74-AF26-D803B95C1E4A}']
     function ok(sha256: JString; subject: JString; issuer: JString;
                 platformTrusted: Boolean): Boolean; cdecl;
   end;
 
-  { ------------------------------------------------------ pascalral.RalKwik ---
-    Flat on purpose: static methods, primitive arguments and one result per
-    thread, because every object crossing JNI costs a binding. The frame goes
-    over as one byte array and comes back as one - the bridge never looks
-    inside it. }
+  /// Class of the Java bridge pascalral.RalKwik: static methods, primitive arguments.
   JRalKwikClass = interface(JObjectClass)
     ['{7D30BE62-AC49-4F85-B037-E914CA6D2F5B}']
     function execute(host: JString; port: Integer; alpn: JString;
@@ -69,64 +48,84 @@ type
                      readMs: Integer; idleMs: Integer; keepAliveSec: Integer;
                      certMode: Integer; shareKey: JString;
                      judge: JRalQuicCertJudge): Integer; cdecl;
+    /// Releases the connection of shareKey.
     procedure release(shareKey: JString); cdecl;
+    /// Releases every connection.
     procedure releaseAll; cdecl;
+    /// Answer bytes of the last call on this thread.
     function body: TJavaArray<Byte>; cdecl;
+    /// Error of the last call on this thread.
     function error: JString; cdecl;
+    /// The last call failed on the certificate.
     function certRefused: Boolean; cdecl;
+    /// Fingerprint of the server certificate of the last call.
     function certSha256: JString; cdecl;
+    /// Subject of the server certificate of the last call.
     function certSubject: JString; cdecl;
+    /// Issuer of the server certificate of the last call.
     function certIssuer: JString; cdecl;
+    /// Version of the bridge.
     function version: JString; cdecl;
+    /// Probes the crypto the TLS needs; empty when all is there.
     function cryptoProbe: JString; cdecl;
   end;
 
   [JavaSignature('pascalral/RalKwik')]
+  /// Instance side of pascalral.RalKwik (unused: the bridge is static).
   JRalKwik = interface(JObject)
     ['{8E41CF73-BD5A-4096-C148-FA25DB7E306C}']
   end;
 
+  /// Import of pascalral.RalKwik.
   TJRalKwik = class(TJavaGenericImport<JRalKwikClass, JRalKwik>)
   end;
-
-  { TRALKwikCertJudge }
 
   /// Carries the certificate from Kwik to the engine and the verdict back
   TRALKwikCertJudge = class(TJavaLocal, JRalQuicCertJudge)
   private
+    /// Engine whose client judges.
     FEngine: TRALKwikClientHTTP;
   public
+    /// A judge for AEngine.
     constructor Create(AEngine: TRALKwikClientHTTP); reintroduce;
+    /// Called by the bridge: judges the certificate by the client's rule.
     function ok(sha256: JString; subject: JString; issuer: JString;
                 platformTrusted: Boolean): Boolean; cdecl;
   end;
 
   {$ENDIF}
 
-  { TRALKwikClientHTTP }
-
+  /// Kwik client engine (Android): RAL's QUIC frame through the Java bridge.
   TRALKwikClientHTTP = class(TRALClientHTTP)
   {$IFDEF ANDROID}
   private
+    /// Java judge of the certificate, when the application decides.
     FJudge: JRalQuicCertJudge;
-    /// Identifies THIS client's own connection, used only when it refuses to
-    /// share - see ShareKey
+    /// Key of this client's own connection, when it does not share (see ShareKey).
     FOwnShareKey: StringRAL;
+    /// Host of the request URL.
     FTargetHost: StringRAL;
+    /// Port of the request URL.
     FTargetPort: IntegerRAL;
+    /// Request URL.
     FTargetUrl: StringRAL;
-    { the shared key as last built, and what it was built from - see ShareKey }
+    /// The shared key as last built, and what it was built from - see ShareKey.
     FKey: StringRAL;
+    /// Host of the share key.
     FKeyHost: StringRAL;
+    /// Port of the share key.
     FKeyPort: IntegerRAL;
+    /// Certificate policy of the share key.
     FKeyPolicy: StringRAL;
+    /// Keep-alive of the share key.
     FKeyKeepAlive: IntegerRAL;
+    /// Takes host and port of AURL.
     procedure ResolveTarget(const AURL: StringRAL);
-    /// The certificate policy to share by, FOwnShareKey to stand alone. The
-    /// destination is part of it because one connection serves one peer.
+    { The certificate policy to share by, FOwnShareKey to stand alone. The
+      destination is part of it because one connection serves one peer. }
     function ShareKey: StringRAL;
-    /// 0 system, 1 none, 2 judge - mirroring TRALMsQuicCertMode, and decided
-    /// by the same three properties
+    { 0 system, 1 none, 2 judge - mirroring TRALMsQuicCertMode, and decided
+      by the same three properties. }
     function CertMode: IntegerRAL;
     /// The verdict on one certificate, in the shape the judge needs it
     function JudgeCertificate(const ACert: TRALCertInfo): boolean;
@@ -134,11 +133,11 @@ type
     procedure ClassifyFailure(AResponse: TRALResponse; ACode: IntegerRAL);
   {$ENDIF}
   public
-    /// ALPN offered to the server. Both ends must agree or the handshake never
-    /// completes; RALQUICALPN is what TRALMsQuicServer offers by default. A
-    /// class variable because the engine object is built by TRALClient and
-    /// never seen by the application - the same reason TRALMsQuicClientHTTP
-    /// has one.
+    { ALPN offered to the server. Both ends must agree or the handshake never
+      completes; RALQUICALPN is what TRALMsQuicServer offers by default. A
+      class variable because the engine object is built by TRALClient and
+      never seen by the application - the same reason TRALMsQuicClientHTTP
+      has one. }
     class var DefaultAlpn: StringRAL;
 
     {$IFDEF ANDROID}
@@ -154,23 +153,23 @@ type
     class function EngineVersion: StringRAL; override;
     class function PackageDependency: StringRAL; override;
 
-    /// False on every platform: this engine is below HTTP, so there is no
-    /// version to ask for. It is what hides HTTPVersion in the IDE and keeps
-    /// it at rhvDefault - and it must not depend on the platform, because the
-    /// property editor runs on the IDE's while the target is Android.
+    { False on every platform: this engine is below HTTP, so there is no
+      version to ask for. It is what hides HTTPVersion in the IDE and keeps
+      it at rhvDefault - and it must not depend on the platform, because the
+      property editor runs on the IDE's while the target is Android. }
     class function SupportsHTTPVersion: boolean; override;
-    /// True on Android: the certificate arrives as a chain in the trust
-    /// manager, and its SHA-256 is computed there - so SSL.Pins works.
+    { True on Android: the certificate arrives as a chain in the trust
+      manager, and its SHA-256 is computed there - so SSL.Pins works. }
     class function SupportsCertPin: boolean; override;
-    /// True on Android, and it is what QUIC is for: one connection, one stream
-    /// per request, so sharing never serialises the way an HTTP/1.1 socket
-    /// would.
+    { True on Android, and it is what QUIC is for: one connection, one stream
+      per request, so sharing never serialises the way an HTTP/1.1 socket
+      would. }
     class function SupportsSharedConnection: boolean; override;
-    /// True on Android: QUIC has a keep-alive of its own - a PING on the
-    /// interval - so there is no HTTP version to be on, the same as MsQuic.
+    { True on Android: QUIC has a keep-alive of its own - a PING on the
+      interval - so there is no HTTP version to be on, the same as MsQuic. }
     class function SupportsKeepAliveInterval: boolean; override;
-    /// One second: Kwik takes the interval in whole seconds, and a value read
-    /// back has to be the value in effect.
+    { One second: Kwik takes the interval in whole seconds, and a value read
+      back has to be the value in effect. }
     class function MinKeepAliveInterval: IntegerRAL; override;
   end;
 
@@ -179,15 +178,20 @@ implementation
 {$IFDEF ANDROID}
 
 const
-  { what RalKwik.execute answers }
+  /// What RalKwik.execute answers.
   KWIK_OK = 0;
+  /// Bridge error: the connection failed.
   KWIK_ERR_CONNECT = 1;
+  /// Bridge error: no answer in time.
   KWIK_ERR_TIMEOUT = 2;
+  /// Bridge error: the certificate was refused.
   KWIK_ERR_CERTIFICATE = 3;
 
-  { certMode }
+  /// CertMode.
   KWIK_CERT_SYSTEM = 0;
+  /// Certificate mode: accept anything.
   KWIK_CERT_NONE = 1;
+  /// Certificate mode: ask the judge after the handshake.
   KWIK_CERT_JUDGE = 2;
 
 var
@@ -196,8 +200,10 @@ var
     request fails with it instead of with a NoSuchAlgorithmException thrown
     from inside a handshake, which nobody can read. }
   vCryptoMissing: StringRAL = '';
+  /// The crypto provider was probed.
   vCryptoAsked: boolean = False;
 
+/// Why the TLS of agent15 cannot run on this device; empty when it can.
 function CryptoMissing: StringRAL;
 begin
   if not vCryptoAsked then
@@ -286,15 +292,8 @@ function TRALKwikClientHTTP.ShareKey: StringRAL;
 var
   vPolicy: StringRAL;
 begin
-  { A TLS connection is judged ONCE, at its handshake, and a reused one has no
-    handshake at all - so a client sharing a connection inherits a verdict it
-    never gave. With the certificate policy in the key, only clients that judge
-    alike ever share, which is the rule every engine here follows. The
-    destination goes in because one QUIC connection serves one peer, and the
-    keep-alive because only whoever OPENS the connection sets it (RalKwik.acquire):
-    a client asking for one used to land on a connection opened without it and
-    go on waiting out RequestTimeout on a dead network - the MsQuic engine
-    keys it the same way. }
+  { the key: destination, certificate policy and keep-alive (a reused connection
+    keeps the verdict and the keep-alive of whoever opened it) }
   if not Parent.ShareConnection then
   begin
     Result := FOwnShareKey;
@@ -331,9 +330,7 @@ end;
 
 function TRALKwikClientHTTP.JudgeCertificate(const ACert: TRALCertInfo): boolean;
 begin
-  { svNever with nothing else set: take it as it comes. With a pin or an event
-    those decide, and Verify has nothing to say - the same rule the okhttp and
-    netHTTP engines apply, kept identical on purpose. }
+  { svNever with nothing else set: take it as it comes; a pin or an event decide }
   if (not CertCheckWanted) and (Parent.SSL.Verify = svNever) then
     Result := True
   else
@@ -485,12 +482,8 @@ end;
 
 {$ENDIF}
 
-{ THE FOUR BELOW ARE OUTSIDE THE IFDEF, and deliberately so: they answer what
-  the ENGINE can do, and this engine only ever runs on Android. The Object
-  Inspector asks them on the IDE's platform - Windows - while the project
-  being edited targets Android, so an answer that changed with the platform
-  would hide HTTPVersion, ShareConnection and KeepAliveInterval from a client
-  that honours all three. Same reason the class is registered everywhere. }
+{ The four below answer for the engine (Android) on every platform: the Object
+  Inspector asks them on Windows. }
 
 class function TRALKwikClientHTTP.SupportsCertPin: boolean;
 begin
@@ -514,11 +507,7 @@ begin
   Result := 1000;
 end;
 
-{ OUTSIDE the IFDEF on purpose, unlike the other Supports: this one is asked by
-  the property editor, which runs on the IDE's platform while the target is
-  Android. An answer that changed with the platform would hide or show
-  HTTPVersion by where the IDE happens to run, and QUIC is below HTTP wherever
-  it runs. }
+{ Outside the IFDEF: the property editor asks it on the IDE's platform. }
 class function TRALKwikClientHTTP.SupportsHTTPVersion: boolean;
 begin
   Result := False;

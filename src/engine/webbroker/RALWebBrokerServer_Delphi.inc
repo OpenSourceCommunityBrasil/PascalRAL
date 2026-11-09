@@ -1,3 +1,4 @@
+/// Delphi part of RALWebBrokerServer: ISAPI and Apache through WebBroker.
 uses
   Classes, SysUtils, DateUtils,
   {$IFDEF DELPHIXE2UP}
@@ -9,8 +10,8 @@ uses
   RALMIMETypes, RALStream;
 
 type
-  { The server of the library. Active registers it as the one the requests
-    reach (one per library); Active := False at unload stops its plugins. }
+  { The server of the library: activating registers it as the one the requests
+    reach (one per library); deactivating at unload stops its plugins. }
   TRALWebBrokerServer = class(TRALServer)
   private
     FExtraHeaders: TStrings;
@@ -35,6 +36,7 @@ type
     TRALWebBrokerModule. Every request goes to the active TRALWebBrokerServer. }
   TRALWebBrokerModule = class(TCustomWebDispatcher)
   private
+    /// Handles every request through the RAL server.
     procedure DefaultAction(Sender: TObject; ARequest: TWebRequest;
       AResponse: TWebResponse; var AHandled: Boolean);
   public
@@ -47,7 +49,7 @@ function RALWebBrokerActiveServer: TRALWebBrokerServer;
 implementation
 
 const
-  { what is read when the web server lists no headers }
+  /// What is read when the web server lists no headers.
   cKnownHeaders: array[0..27] of string = ('Accept', 'Accept-Charset',
     'Accept-Encoding', 'Accept-Language', 'Accept-Encription', 'Authorization',
     'Cache-Control', 'Content-Disposition', 'Content-Encoding',
@@ -58,6 +60,7 @@ const
     'Access-Control-Request-Headers', 'traceparent');
 
 var
+  /// The server of the library.
   gServer: TRALWebBrokerServer;
 
 function RALWebBrokerActiveServer: TRALWebBrokerServer;
@@ -73,6 +76,7 @@ begin
     AStream.WriteBuffer(ARaw[0], Length(ARaw));
 end;
 
+/// Writes the bytes of ARaw to AStream.
 procedure WriteRaw(AStream: TStream; const ARaw: AnsiString); overload;
 begin
   if Length(ARaw) > 0 then
@@ -114,7 +118,7 @@ begin
   end;
 end;
 
-{ one cookie line as a WebBroker cookie (as the CGI engine does it) }
+/// One cookie line as a WebBroker cookie (as the CGI engine does it).
 procedure AddWebCookie(AResponse: TWebResponse; const ACookie: TRALCookie);
 var
   vCookie: TCookie;

@@ -10,6 +10,7 @@ uses
   Classes,
   RALSynopseServer, RALSynopseClient;
 
+/// Registers the Synopse components.
 procedure Register;
 
 implementation

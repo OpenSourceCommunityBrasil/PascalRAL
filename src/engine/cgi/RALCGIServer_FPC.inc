@@ -1,3 +1,4 @@
+/// FPC part of RALCGIServer: CGI through fcl-web.
 uses
   Classes, SysUtils, DateUtils,
   custcgi, custweb, fpweb, httpDefs, iostream,
@@ -6,8 +7,7 @@ uses
 
 type
 
-  { TRALCGIServerHandler }
-
+  /// fcl-web CGI handler that hands each request to the server.
   TRALCGIServerHandler = Class(TCgiHandler)
   public
     { The status, headers and cookies of AResponse into fcl-web's response, after
@@ -17,17 +17,16 @@ type
     procedure HandleRequest(ARequest : Trequest; AResponse : TResponse); override;
   end;
 
-  { TRALCGIServerApp }
-
+  /// fcl-web CGI application of the server.
   TRALCGIServerApp = Class(TCustomCGIApplication)
   protected
    function InitializeWebHandler: TWebHandler; override;
   end;
 
-  { TRALCGIServer }
-
+  /// CGI server engine (FPC, fcl-web).
   TRALCGIServer = class(TRALServer)
   private
+    /// The CGI application.
     FCGIApp : TRALCGIServerApp;
   protected
     procedure SetActive(const AValue: boolean); override;
@@ -39,8 +38,8 @@ type
       as it comes. The web server in front frames it (and may hold it: IIS
       buffers CGI) }
     function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
-    /// The address of the web server that started the program, as it tells
-    /// it (SERVER_ADDR, or LOCAL_ADDR on IIS); the machine's otherwise
+    { The address of the web server that started the program, as it tells
+      it (SERVER_ADDR, or LOCAL_ADDR on IIS); the machine's otherwise. }
     function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
     class function SupportsLiveStream: boolean; override;
   end;
@@ -49,21 +48,28 @@ type
 implementation
 
 type
-  { what the stream writer needs of the request being answered }
+  /// What the stream writer needs of the request being answered.
   TRALCGIStreamContext = class
   public
+    /// fcl-web response.
     CGIResponse: TResponse;
+    /// Handler of the request.
     Handler: TRALCGIServerHandler;
+    /// The RAL server.
     Server: TRALServer;
   end;
 
   { TRALCGIStreamWriter }
 
+  /// Writer of a streamed response straight on standard output.
   TRALCGIStreamWriter = class(TRALStreamWriter)
   private
+    /// Request the stream belongs to.
     FContext: TRALCGIStreamContext;
+    /// Standard output.
     FOutput: TIOStream;
   public
+    /// A writer for AContext.
     constructor Create(AContext: TRALCGIStreamContext);
     destructor Destroy; override;
 
@@ -91,7 +97,8 @@ procedure TRALCGIStreamWriter.WriteHead(AResponse: TRALHTTPHeaderInfo; AStatusCo
 begin
   FContext.Handler.FillHeaders(FContext.Server, TRALResponse(AResponse), FContext.CGIResponse);
   FContext.CGIResponse.Code := AStatusCode;
-  // no ContentStream: fcl-web writes no Content-Length, and the web server frames the body
+  // no ContentStream: fcl-web writes no Content-Length, and the web server frames the
+  // body
   FContext.CGIResponse.SendHeaders;
 end;
 
@@ -106,46 +113,6 @@ begin
 end;
 
 { TRALCGIServerHandler }
-
-{
-procedure TRALCGIServerHandler.HandleRequest(ARequest: Trequest;
-  AResponse: TResponse);
-  procedure AddNV(Const N,V : String);
-  begin
-    AResponse.Contents.Add('<TR><TD>'+N+'</TD><TD>'+V+'</TD></TR>');
-  end;
-var
-  I,P : Integer;
-  N,V : String;
-begin
-  With AResponse.Contents do
-  begin
-    BeginUpdate;
-    Try
-      Add('<HTML><TITLE>FPC CGI Test page</TITLE><BODY>');
-//      DumpRequest(ARequest, AResponse.Contents);
-      Add('<H1>CGI environment:</H1>');
-      Add('<TABLE BORDER="1">');
-      Add('<TR><TD>Name</TD><TD>Value</TD></TR>');
-
-      for I:=1 to GetEnvironmentVariableCount do
-      begin
-        V:=GetEnvironmentString(i);
-        P:=Pos('=',V);
-        N:=Copy(V,1,P-1);
-        System.Delete(V,1,P);
-        AddNV(N,V);
-      end;
-      Add('</TABLE>');
-      Add('</BODY></HTML>');
-
-      Add(ARequest.Content);
-    Finally
-      EndUpdate;
-    end;
-  end;
-end;
-}
 
 procedure TRALCGIServerHandler.HandleRequest(ARequest: Trequest;
   AResponse: TResponse);

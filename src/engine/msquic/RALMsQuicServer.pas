@@ -17,15 +17,14 @@ uses
   RALResponse, RALParams, RALTools, RALCompress, RALStream, RALQuicFrame, RALContent;
 
 type
-  { TRALMsQuicSSL }
 
-  /// TLS material for the QUIC listener.
-  ///
-  /// QUIC has no unencrypted mode - TLS 1.3 is part of the transport - so
-  /// Enabled is not a switch here: the listener refuses to start without a
-  /// certificate. The property is kept because TRALServer publishes SSL for
-  /// every engine, and an application should not have to know which one is
-  /// running to read it.
+  { TLS material for the QUIC listener.
+
+    QUIC has no unencrypted mode - TLS 1.3 is part of the transport - so
+    Enabled is not a switch here: the listener refuses to start without a
+    certificate. The property is kept because TRALServer publishes SSL for
+    every engine, and an application should not have to know which one is
+    running to read it. }
   TRALMsQuicSSL = class(TRALSSL)
   private
     FCertificateFile: TFileName;
@@ -43,189 +42,159 @@ type
 
   TRALMsQuicServer = class;
 
-  { One queued request: the context carries the stream handle it answers on. }
+  /// One queued request: the context carries the stream handle it answers on.
   TRALMsQuicWork = record
+    /// The stream to answer.
     Ctx: TObject;
   end;
-  { named on purpose: two anonymous "array of TRALMsQuicWork" are different types
-    to the compiler and cannot be assigned to each other }
+  /// Works queued; a named type, so two variables of it are assignment-compatible.
   TRALMsQuicWorkArray = array of TRALMsQuicWork;
 
-  { TRALMsQuicConn }
-
-  /// One accepted connection: what the listener learned about the peer, kept
-  /// for every stream the peer opens on it. It is the connection callback's
-  /// context, created when the connection is accepted and freed right after
-  /// the handle is closed, when the library promises no further event.
+  { One accepted connection: what the listener learned about the peer, kept
+    for every stream the peer opens on it. It is the connection callback's
+    context, created when the connection is accepted and freed right after
+    the handle is closed, when the library promises no further event. }
   TRALMsQuicConn = class
   public
+    /// Client address.
     ClientIP: StringRAL;
+    /// Client port.
     ClientPort: IntegerRAL;
+    /// The RAL server.
     Server: TRALMsQuicServer;
   end;
 
-  { TRALMsQuicStream }
+  { One request in flight. A QUIC stream carries exactly one request and its
+    answer, so this is created when the peer opens a stream and released when
+    MsQuic says the stream is finished.
 
-  /// One request in flight. A QUIC stream carries exactly one request and its
-  /// answer, so this is created when the peer opens a stream and released when
-  /// MsQuic says the stream is finished.
-  ///
-  /// Reference counted because the request is answered on a POOL thread while
-  /// MsQuic may, on its own thread, decide the stream is over - the peer
-  /// aborting is enough. Whichever of the two finishes last closes the handle:
-  /// closing it while the pool thread still holds it would pull the ground out
-  /// from under a StreamSend.
+    Reference counted because the request is answered on a POOL thread while
+    MsQuic may, on its own thread, decide the stream is over - the peer
+    aborting is enough. Whichever of the two finishes last closes the handle:
+    closing it while the pool thread still holds it would pull the ground out
+    from under a StreamSend. }
   TRALMsQuicStream = class
   public
+    /// Client address.
     ClientIP: StringRAL;
+    /// Client port.
     ClientPort: IntegerRAL;
-    /// which CONNECTION this stream belongs to - see TRALClientInfo.ConnectionID.
-    /// A QUIC connection carries many streams at once, so every request of a
-    /// client that keeps its connection reports the same value, and that is
-    /// what turns "N requests" into "N requests over how many connections"
+    { which CONNECTION this stream belongs to - see TRALClientInfo.ConnectionID.
+      A QUIC connection carries many streams at once, so every request of a
+      client that keeps its connection reports the same value, and that is
+      what turns "N requests" into "N requests over how many connections" }
     ConnID: Int64RAL;
-    /// the peer sent more than MaxRequestSize: the rest was dropped as it
-    /// arrived and the answer is a 413, without the body ever being held
+    { the peer sent more than MaxRequestSize: the rest was dropped as it
+      arrived and the answer is a 413, without the body ever being held. }
     Oversized: boolean;
+    /// Request bytes.
     Received: TMemoryStream;
+    /// Holders: the callbacks and the queue.
     RefCount: Integer;
+    /// The RAL server.
     Server: TRALMsQuicServer;
+    /// MsQuic stream handle.
     Stream: HQUIC;
 
+    /// A stream context of AServer.
     constructor Create(AServer: TRALMsQuicServer);
     destructor Destroy; override;
 
+    /// Takes a reference.
     procedure AddRef;
+    /// Drops a reference; the last frees it.
     procedure Release;
   end;
 
-  { TRALMsQuicServer }
+  { TRALServer over QUIC (Microsoft's MsQuic): RAL's own frame, one stream per
+    request, both ends RAL (not HTTP/3); callbacks run on MsQuic threads, routes on
+    the dispatch pool (PoolCount). }
 
-  /// RALServer over QUIC, using Microsoft's MsQuic.
-  ///
-  /// WHAT THIS ENGINE IS, AND WHAT IT IS NOT
-  ///
-  /// It is not HTTP/3. MsQuic implements the QUIC transport only - streams,
-  /// TLS 1.3, ALPN - and leaves HTTP semantics to whoever is on top. HTTP/3
-  /// would mean the RFC 9114 framing plus QPACK, neither of which is here.
-  /// What travels instead is the frame described below, so BOTH ENDS MUST BE
-  /// RAL: curl, a browser, a reverse proxy or a CDN cannot read it.
-  ///
-  /// What is gained by that trade is the transport underneath: every request
-  /// is its own QUIC stream, independently delivered, so a lost packet delays
-  /// only the request it belongs to instead of every request sharing the
-  /// connection - which is what happens over TCP, HTTP/2 included. One
-  /// connection carries as many concurrent requests as the peer allows, and it
-  /// survives the client changing network.
-  ///
-  /// THE WIRE FORMAT
-  ///
-  /// One request per bidirectional stream, and the stream itself delimits the
-  /// message: the peer closes its send side when the request is complete and
-  /// this engine closes its own when the answer is. There is no need for a
-  /// total length. Headers travel as (name, value) pairs, never as text.
-  ///
-  ///   request   uint8  method (TRALMethod ordinal)
-  ///             uint32 length + URL bytes
-  ///             uint32 count, then per header: uint32 length + name,
-  ///                                            uint32 length + value
-  ///             uint32 length + body
-  ///
-  ///   response  uint16 status code
-  ///             uint32 length + content type
-  ///             uint32 count + header pairs, as above
-  ///             uint32 length + body
-  ///
-  /// All sizes are little endian. A frame that does not fit what arrived is
-  /// answered with 400 rather than trusted, because a size prefix read from
-  /// the network is an allocation request from a stranger.
-  ///
-  /// THREADS
-  ///
-  /// Every callback below runs on a MsQuic worker thread, created inside the C
-  /// library. Two consequences, both handled and neither optional:
-  ///
-  /// - IsMultiThread is set before the listener starts. BeginThread never runs
-  ///   for those threads, so nothing in the RTL would set the flag the memory
-  ///   manager reads to decide whether to lock, and the heap corrupts as soon
-  ///   as two of them allocate at once. The same trap TRALSaguiServer has.
-  /// - An exception must never cross back into the C frame that called us, so
-  ///   every callback ends in an except that turns it into a QUIC status.
-  ///
-  /// The route handler does NOT run on those threads: a request is queued and
-  /// answered by the dispatch pool - see PoolCount.
-  { TRALMsQuicWorker }
-
+  /// A thread of the dispatch pool.
   TRALMsQuicWorker = class(TThread)
   private
+    /// Server whose queue it serves.
     FServer: TRALMsQuicServer;
   protected
     procedure Execute; override;
   public
+    /// A worker of AServer, started.
     constructor Create(AServer: TRALMsQuicServer);
   end;
 
+  /// MsQuic server engine (see the wiki page internos-motores).
   TRALMsQuicServer = class(TRALServer)
   private
+    /// ALPN of the listener.
     FAlpn: AnsiString;
+    /// FAlpn as a MsQuic buffer.
     FAlpnBuffer: QUIC_BUFFER;
+    /// MsQuic configuration: settings and certificate.
     FConfiguration: HQUIC;
     FConnections: IntegerRAL;
     FIdleTimeoutMs: IntegerRAL;
     FKeepAliveMs: IntegerRAL;
     FLibPath: TFileName;
+    /// MsQuic listener.
     FListener: HQUIC;
     FMaxAckDelayMs: IntegerRAL;
     FMaxStreamsPerConnection: IntegerRAL;
     FMigration: boolean;
     FPacing: boolean;
     FPoolCount: IntegerRAL;
+    /// The dispatch pool is running.
     FPoolRunning: boolean;
+    /// Ring of the queue: head, tail and count.
     FQHead, FQTail, FQCount: IntegerRAL;
+    /// Guards the queue.
     FQLock: TCriticalSection;
+    /// Wakes a parked worker.
     FQSignal: TEvent;
-    { The dispatch pool. MsQuic gives a request to one of ITS worker threads,
-      and that thread cannot move another packet until the callback returns -
-      so running the RAL pipeline there caps the whole server at however many
-      workers MsQuic created. Measured on a four core machine: twenty
-      connections were served by exactly 4 threads with a maximum concurrency
-      of 4, and ONE multiplexed connection by a single thread, because MsQuic
-      binds a connection to one partition. The pipeline therefore runs here
-      instead, and the MsQuic thread only queues. }
+    /// Works waiting for the dispatch pool (routes never run on MsQuic's threads).
     FQueue: TRALMsQuicWorkArray;
     { how many workers are parked on FQSignal. Enqueue only pays for a kernel
       signal when somebody is actually asleep, and a worker with others parked
       takes one item instead of a batch, so they get to run too. }
     FQWaiters: IntegerRAL;
+    /// MsQuic registration of the server.
     FRegistration: HQUIC;
     FRequests: IntegerRAL;
     { configurations a certificate swap replaced: the listener callback may
       have read one of them a moment before, so they are closed with the
       registration, never while it runs }
     FRetiredConfigurations: array of HQUIC;
+    /// Threads of the dispatch pool.
     FWorkers: array of TRALMsQuicWorker;
 
+    /// Closes listener, configuration and registration.
     procedure CloseServerHandles;
+    /// Takes queued works into AWork (see the implementation).
     function Dequeue(var AWork: TRALMsQuicWorkArray): IntegerRAL;
+    /// Queues a complete request for the pool.
     procedure Enqueue(ACtx: TRALMsQuicStream);
+    /// Frees the pool threads.
     procedure FreePool;
     function GetAlpn: StringRAL;
     function GetSSL: TRALMsQuicSSL;
-    /// A configuration with the settings of this server and the certificate
-    /// SSL points at; closed again when the credential does not load
+    { A configuration with the settings of this server and the certificate
+      SSL points at; closed again when the credential does not load. }
     function NewConfiguration: HQUIC;
+    /// Opens the configuration: settings and certificate.
     procedure OpenConfiguration;
+    /// Answers one request through the RAL server.
     procedure RunWork(const AWork: TRALMsQuicWork);
     procedure SetAlpn(const AValue: StringRAL);
     procedure SetMaxStreamsPerConnection(const AValue: IntegerRAL);
     procedure SetPoolCount(const AValue: IntegerRAL);
     procedure SetSSL(const AValue: TRALMsQuicSSL);
+    /// Starts the dispatch pool.
     procedure StartPool;
+    /// Stops the dispatch pool and releases what was queued unanswered.
     procedure StopPool;
   protected
     function CreateRALSSL: TRALSSL; override;
-    /// Builds the answer bytes for one request frame. Public to the unit's
-    /// callbacks only; it is where ValidateRequest and ProcessCommands run.
+    { Builds the answer bytes for one request frame. Public to the unit's
+      callbacks only; it is where ValidateRequest and ProcessCommands run. }
     function HandleFrame(ARequest: PByte; ASize: IntegerRAL;
                          const AClientIP: StringRAL; AClientPort: IntegerRAL;
                          AConnID: Int64RAL; AOversized: boolean): TBytes;
@@ -236,10 +205,10 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    /// MsQuic reads nothing of IPConfig: its listener serves both families on
-    /// every interface, so this is the machine's address in either family,
-    /// whatever the bind and IPv6Enabled say. A running listener is asked what
-    /// it really bound - see the base
+    { MsQuic reads nothing of IPConfig: its listener serves both families on
+      every interface, so this is the machine's address in either family,
+      whatever the bind and IPv6Enabled say. A running listener is asked what
+      it really bound - see the base. }
     function GetServerAddress(AMode: TRALIpMode = rimIPv4): StringRAL; override;
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     { on a running server the certificate goes into a configuration of its own,
@@ -248,22 +217,23 @@ type
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
 
-    /// How many connections this listener has accepted since it was last
-    /// activated, and how many requests came in on them. The RATIO is the
-    /// only direct proof that a client is multiplexing: many requests over
-    /// few connections is what ShareConnection is supposed to produce, and
-    /// counting is the way to know instead of assuming.
+    { How many connections this listener has accepted since it was last
+      activated, and how many requests came in on them. The RATIO is the
+      only direct proof that a client is multiplexing: many requests over
+      few connections is what ShareConnection is supposed to produce, and
+      counting is the way to know instead of assuming. }
     property ConnectionCount: IntegerRAL read FConnections;
+    /// Requests answered.
     property RequestCount: IntegerRAL read FRequests;
   published
-    /// ALPN both ends must agree on. A server and a client with different
-    /// values never complete a handshake, which is the point: it keeps two
-    /// unrelated services on the same UDP port apart. RALQUICALPN is what the
-    /// RAL client offers unless TRALMsQuicClientHTTP.DefaultAlpn is changed.
+    { ALPN both ends must agree on. A server and a client with different
+      values never complete a handshake, which is the point: it keeps two
+      unrelated services on the same UDP port apart. RALQUICALPN is what the
+      RAL client offers unless TRALMsQuicClientHTTP.DefaultAlpn is changed. }
     property Alpn: StringRAL read GetAlpn write SetAlpn;
-    /// How long a connection may sit idle before QUIC closes it, in
-    /// milliseconds. Zero disables the timeout. QUIC settles on the smaller
-    /// of the two peers' values; the RAL client starts from the same one.
+    { How long a connection may sit idle before QUIC closes it, in
+      milliseconds. Zero disables the timeout. QUIC settles on the smaller
+      of the two peers' values; the RAL client starts from the same one. }
     property IdleTimeout: IntegerRAL read FIdleTimeoutMs write FIdleTimeoutMs
       default RALQUICIDLETIMEOUT;
     { How often, in milliseconds, to send a QUIC PING on a connection that has
@@ -276,18 +246,18 @@ type
       to say. }
     property KeepAliveInterval: IntegerRAL read FKeepAliveMs write FKeepAliveMs
       default 0;
-    /// Where to load msquic from. Empty means the platform default name, found
-    /// through the usual search path - on Android, the library deployed to
-    /// library\lib\<abi>\, which is the application's own folder.
+    { Where to load msquic from. Empty means the platform default name, found
+      through the usual search path - on Android, the library deployed to
+      library\lib\<abi>\, which is the application's own folder. }
     property LibPath: TFileName read FLibPath write FLibPath;
-    /// How long QUIC may sit on an acknowledgement, in milliseconds. The
-    /// protocol default is 25, which suits bulk transfer and punishes
-    /// request/response - see the note in OpenConfiguration.
+    { How long QUIC may sit on an acknowledgement, in milliseconds. The
+      protocol default is 25, which suits bulk transfer and punishes
+      request/response - see the note in OpenConfiguration. }
     property MaxAckDelay: IntegerRAL read FMaxAckDelayMs write FMaxAckDelayMs
       default 25;
-    /// How many requests one client may have in flight on a single connection.
-    /// This is the ceiling on multiplexing, and it is what the peer is told
-    /// during the handshake. QUIC carries it in 16 bits: 1 to 65535.
+    { How many requests one client may have in flight on a single connection.
+      This is the ceiling on multiplexing, and it is what the peer is told
+      during the handshake. QUIC carries it in 16 bits: 1 to 65535. }
     property MaxStreamsPerConnection: IntegerRAL read FMaxStreamsPerConnection
       write SetMaxStreamsPerConnection default 1024;
     { Whether a peer may keep this connection while its address changes -
@@ -298,28 +268,20 @@ type
       where an address is being relied on as if it were an identity - it never
       was one, but some deployments are built that way. }
     property Migration: boolean read FMigration write FMigration default True;
-    /// Whether QUIC paces its sends. Off by default here - see the note in
-    /// OpenConfiguration; turn it on for a server that ships large bodies.
+    { Whether QUIC paces its sends. Off by default here - see the note in
+      OpenConfiguration; turn it on for a server that ships large bodies. }
     property Pacing: boolean read FPacing write FPacing default False;
-    { How many threads answer requests - see StartPool for the measurements.
-      ONE is the default and is right for a route that only computes: the
-      transport hands a request over for about 18 us of CPU, a single thread
-      answers them as fast as they arrive, and a second one measured flat to
-      worse on every client shape. It is WRONG for a route that waits - a
-      database call, a file, a slow peer - because with one thread that wait
-      is the whole server's wait: a 50 ms query caps the server at 20 requests
-      a second whatever the number of connections. TRALDBModule and the DAO
-      are exactly that kind of route, so a server that publishes them wants
-      this at the size of its database pool. Assigning it on a running server
-      restarts it, the way Port does. }
+    { Threads that answer requests: one fits routes that only compute; a route that
+      waits (database) wants as many as it waits on. Restarts a running server. }
     property PoolCount: IntegerRAL read FPoolCount write SetPoolCount default 1;
+    /// TLS settings: the certificate QUIC requires.
     property SSL: TRALMsQuicSSL read GetSSL write SetSSL;
   end;
 
 {$IFDEF RALMSQUIC_PROFILE}
-/// Where the time of a request goes inside the server, phase by phase. Only
-/// compiled with RALMSQUIC_PROFILE; see the client unit for why measuring from
-/// the outside was not enough.
+{ Where the time of a request goes inside the server, phase by phase. Only
+  compiled with RALMSQUIC_PROFILE; see the client unit for why measuring from
+  the outside was not enough. }
 function RALMsQuicSrvProfileReport: StringRAL;
 {$ENDIF}
 
@@ -330,24 +292,31 @@ uses
 
 {$IFDEF RALMSQUIC_PROFILE}
 type
+  /// Phases of a request, for the profiling counters.
   TRALMsQuicSrvPhase = (spObjects, spDecode, spValidate, spProcess, spBuild,
                       spAddParams, spHdrText, spBodyText, spAssemble);
 
 const
+  /// Name of each phase.
   RALMsQuicSrvPhaseName: array[TRALMsQuicSrvPhase] of StringRAL = (
     'create request+response', 'decode frame', 'ValidateRequest',
     'ProcessCommands (route + handler)', 'build answer',
     '  .. AddParam x4', '  .. header pairs', '  .. ResponseStream', '  .. assemble bytes');
 
 var
+  /// Ticks spent per phase.
   gSrvPhase: array[TRALMsQuicSrvPhase] of Int64;
+  /// Requests profiled.
   gSrvReqs: Int64;
+  /// Tick frequency.
   gSrvFreq: Int64;
   { How much of a request is spent INSIDE the callback at all. The client waits
     about ten times what HandleFrame costs, so most of a request is queueing
     somewhere outside it - these say whether the server is the queue. }
   gCbTicks: Int64;
+  /// Requests being answered.
   gInFlight: Integer;
+  /// Most requests answered at once.
   gMaxInFlight: Integer;
   { How many DIFFERENT threads ever ran a request. If that number is far below
     the number of cores while twenty requests are in flight, the work is not
@@ -356,30 +325,39 @@ var
   { what the pool threads actually spend their time on: blocked waiting for
     work, versus doing it - and how often a wake found nothing }
   gWaitTicks: Int64;
+  /// Wakes that found the queue empty.
   gWakeEmpty: Int64;
+  /// Wakes that found work.
   gWakeOk: Int64;
   { how deep the queue actually gets. If it never passes one while the client
     keeps twenty requests in flight, the requests are not reaching the server
     together and no amount of pool tuning matters. }
   gQDepthSum: Int64;
+  /// Deepest queue seen.
   gQDepthMax: Integer;
+  /// Queue depth samples.
   gQSamples: Int64;
   { closing the stream is a MsQuic call, and it sits outside the callback
     accounting - which is where the worker's missing time went }
   gRelTicks: Int64;
-  { the two halves of RunWork, and the gap between one request and the next }
+  /// The two halves of RunWork, and the gap between one request and the next.
   gHandleTicks: Int64;
+  /// Ticks spent sending.
   gSendTicks: Int64;
+  /// Ticks spent dequeuing.
   gDeqTicks: Int64;
 
 threadvar
+  /// This thread counted itself in gInFlight.
   tvCounted: boolean;
 
+/// A high-resolution tick.
 function SrvTicks: Int64;
 begin
   {$IFDEF RALWindows}QueryPerformanceCounter(Result);{$ELSE}Result := 0;{$ENDIF}
 end;
 
+/// Adds the ticks since AFrom to APhase and restarts AFrom.
 procedure SrvMark(APhase: TRALMsQuicSrvPhase; var AFrom: Int64);
 var
   vNow: Int64;
@@ -433,17 +411,22 @@ end;
 {$ENDIF}
 
 type
-  /// Owns the bytes of one StreamSend until MsQuic reports SEND_COMPLETE.
-  /// StreamSend is zero-copy and asynchronous: the pointer handed over has to
-  /// stay valid until the library says it is done with it.
+  { Owns the bytes of one StreamSend until MsQuic reports SEND_COMPLETE.
+    StreamSend is zero-copy and asynchronous: the pointer handed over has to
+    stay valid until the library says it is done with it. }
   PRALMsQuicSendCtx = ^TRALMsQuicSendCtx;
+  /// A buffer in flight: kept alive until MsQuic reports it sent.
   TRALMsQuicSendCtx = record
+    /// MsQuic buffer descriptor.
     Buffer: QUIC_BUFFER;
+    /// Bytes sent.
     Data: TBytes;
   end;
 
+/// MsQuic callback of a request stream: bytes, end of the request, shutdown.
 function RALMsQuicStreamCallback(Stream: HQUIC; Context: Pointer;
   Event: PQUIC_STREAM_EVENT): QUIC_STATUS; cdecl; forward;
+/// MsQuic callback of a connection: new streams, shutdown.
 function RALMsQuicConnectionCallback(Connection: HQUIC; Context: Pointer;
   Event: PQUIC_CONNECTION_EVENT): QUIC_STATUS; cdecl; forward;
 
@@ -457,8 +440,8 @@ function RALMsQuicConnectionCallback(Connection: HQUIC; Context: Pointer;
   request against 96us for the HTTP/1.1 engine. The bytes are only copied where
   somebody has to own them. }
 
-/// Adds ready-made 'Name: Value' lines - what GetParamsCookiesText produces -
-/// as pairs, and returns the new block size.
+{ Adds ready-made 'Name: Value' lines - what GetParamsCookiesText produces -
+  as pairs, and returns the new block size. }
 function AddTextHeaders(var AHeaders: TRALQuicHeaders; var ACount: IntegerRAL;
   ASize: IntegerRAL; const AText: StringRAL): IntegerRAL;
 var
@@ -500,8 +483,8 @@ begin
     PutLine(Copy(AText, vStart, MaxInt));
 end;
 
-/// Hands ABytes to MsQuic as the last thing on AStream. Ownership of the bytes
-/// moves to a heap context the library gives back on SEND_COMPLETE.
+{ Hands ABytes to MsQuic as the last thing on AStream. Ownership of the bytes
+  moves to a heap context the library gives back on SEND_COMPLETE. }
 function SendAndFinish(AStream: HQUIC; const ABytes: TBytes): QUIC_STATUS;
 var
   vCtx: PRALMsQuicSendCtx;
@@ -555,6 +538,7 @@ end;
 
 { callbacks }
 
+/// MsQuic callback of the listener: a new connection.
 function RALMsQuicListenerCallback(Listener: HQUIC; Context: Pointer;
   Event: PQUIC_LISTENER_EVENT): QUIC_STATUS; cdecl;
 var
@@ -586,17 +570,15 @@ begin
         @RALMsQuicConnectionCallback, vConn);
       Result := MsQuicApi^.ConnectionSetConfiguration(vNew^.Connection,
         vServer.FConfiguration);
-      { on failure the library rejects the connection itself. The context is
-        deliberately not freed here: whether a SHUTDOWN_COMPLETE still reaches
-        the handler is the library's call, and a freed context under it would
-        be worse than one small object left behind on a path that needs a
-        broken configuration to be reached at all. }
+      { on failure the library rejects the connection itself; the context is left to
+        a SHUTDOWN_COMPLETE that may still come }
     end;
   except
     Result := QUIC_STATUS_INTERNAL_ERROR;
   end;
 end;
 
+/// MsQuic callback of a connection: new streams, shutdown.
 function RALMsQuicConnectionCallback(Connection: HQUIC; Context: Pointer;
   Event: PQUIC_CONNECTION_EVENT): QUIC_STATUS; cdecl;
 var
@@ -636,6 +618,7 @@ begin
   end;
 end;
 
+/// MsQuic callback of a request stream: bytes, end of the request, shutdown.
 function RALMsQuicStreamCallback(Stream: HQUIC; Context: Pointer;
   Event: PQUIC_STREAM_EVENT): QUIC_STATUS; cdecl;
 var
@@ -653,11 +636,8 @@ begin
       QUIC_STREAM_EVENT_RECEIVE:
         begin
           vRecv := PQuicReceiveData(@Event^.Data[0]);
-          { MaxRequestSize is enforced HERE, before the bytes are kept: the
-            other engines read a whole body before RAL sees it, and this one
-            used to as well - a peer could hold as much memory as it cared to
-            send. Past the limit the rest is drained and dropped, and the
-            answer is the same 413 ValidateRequest gives. }
+          { MaxRequestSize is enforced here, before the bytes are kept: past it the rest
+            is drained and the answer is 413 }
           vLimit := 0;
           vLimits := vCtx.Server.FindPlugin(TRALLimitsPlugin);
           if vLimits <> nil then
@@ -677,11 +657,8 @@ begin
 
       QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
         begin
-          { the frame is complete. It is NOT processed here: this runs on a
-            MsQuic worker, and holding it for the length of a route caps the
-            server at however many workers MsQuic made - four on this machine,
-            and exactly one for a multiplexed connection, both measured. The
-            reference handed over is given back by RunWork. }
+          { the frame is complete: queued for the dispatch pool (RunWork gives the
+            reference back) }
           vCtx.AddRef;
           vCtx.Server.Enqueue(vCtx);
         end;
@@ -751,33 +728,8 @@ end;
 
 { pool }
 
-{ THE DISPATCH POOL, PoolCount threads of it, one by default.
-
-  The threads are here so that a route which blocks - a database call, a file,
-  a slow peer - does not hold a MsQuic transport thread. MsQuic binds a
-  connection to one thread, so a route running there stalls every other stream
-  on that connection. That hand-off earns its keep on its own.
-
-  Why ONE is the default: a SECOND thread does not pay for a route that only
-  computes, and that was re-measured after the per-request allocations came
-  down - TRALParam no longer keeps every value in a heap stream of its own,
-  which was the reason to expect more threads to start paying. They still do
-  not, on any of the three client shapes (12000 requests, median of three):
-
-    threads   20 conx x 1st   1 conx x 20st   1 conx x 20 pipelined
-      1           5618            4668              4037
-      2           5392            4568              2592
-      4           5547            4359              2595
-
-  Flat where it is not worse, and a third of the throughput gone on the
-  pipelined shape. The work simply is not there to spread: MsQuic hands a whole
-  request over for about 18 us of CPU on a multiplexed connection, and the
-  single thread is answering them as fast as they arrive.
-
-  Why it is a property anyway: those numbers are for a route that never waits.
-  A route that does - the DBWare module, the DAO - turns one thread into the
-  whole server's queue, and there the count has to match what the server is
-  waiting on. }
+{ Starts the dispatch pool: PoolCount threads, so a route that blocks never holds
+  a MsQuic thread. }
 procedure TRALMsQuicServer.StartPool;
 var
   vInt: IntegerRAL;
@@ -886,10 +838,7 @@ begin
       if FQCount > gQDepthMax then
         gQDepthMax := FQCount;
       {$ENDIF}
-      { signalling is a kernel call, and it used to happen on every request
-        while the lock was held - so the transport thread that produced the
-        work waited on a worker that was inside the kernel. A worker that is
-        keeping up is never asleep, so there is nobody to wake. }
+      { wake only when a worker is parked: signalling is a kernel call }
       vSignal := FQWaiters > 0;
     end;
   finally
@@ -904,16 +853,8 @@ begin
     FQSignal.SetEvent;
 end;
 
-{ Takes as much of the queue as the caller's buffer holds, in ONE acquisition.
-  It used to take the lock once per request, and with the transport thread
-  enqueueing on the other side that single critical section is hit twice per
-  request by two threads that never stop - the worker measured 0.188 ms per
-  request just getting an item out of an array with eight already waiting in
-  it. A worker that is behind now pays one acquisition for the whole backlog.
-
-  A worker never takes more than one item while another is parked: the point of
-  a pool is that the others get to run, and a batch that emptied the queue
-  would leave them asleep with work in front of them. }
+{ Takes as much of the queue as AWork holds in one acquisition, but one item only
+  while another worker is parked. }
 function TRALMsQuicServer.Dequeue(var AWork: TRALMsQuicWorkArray): IntegerRAL;
 {$IFDEF RALMSQUIC_PROFILE}var vW0: Int64;{$ENDIF}
 
@@ -940,10 +881,7 @@ begin
   if FQLock = nil then
     Exit;
 
-  { THE QUEUE IS ASKED BEFORE THE EVENT. It used to wait on FQSignal on every
-    turn, so a worker with a backlog in front of it still paid a kernel wait
-    per request - the cost that grows with how much is in flight, which is
-    exactly when it must not be paid. Only an empty queue parks. }
+  { the queue is asked before the event: only an empty queue parks }
   FQLock.Enter;
   try
     Drain;
@@ -1086,8 +1024,7 @@ end;
 
 procedure TRALMsQuicServer.SetMaxStreamsPerConnection(const AValue: IntegerRAL);
 begin
-  { the peer is told this in a 16-bit transport parameter, and a value above
-    it used to be truncated in silence - 65536 became zero streams }
+  { the peer is told this in a 16-bit transport parameter }
   if AValue < 1 then
     FMaxStreamsPerConnection := 1
   else if AValue > 65535 then
@@ -1214,9 +1151,8 @@ begin
           vRequest.ClientInfo.ConnectionID := AConnID;
           vRequest.ClientInfo.MACAddress := '';
 
-          { a byte off the wire: amALL is no method, and anything past the last
-            real one is amUNKNOWN, which ValidateRequest answers with 501 - it
-            used to become amGET, the same mistake HTTPMethodToRALMethod made }
+          { a byte off the wire: amALL is no method, and anything past the last real one
+            is amUNKNOWN (501) }
           if (vMethod > Byte(Ord(amALL))) and (vMethod < Byte(Ord(amUNKNOWN))) then
             vRequest.Method := TRALMethod(vMethod)
           else
@@ -1244,9 +1180,7 @@ begin
           {$IFDEF RALMSQUIC_PROFILE}SrvMark(spDecode, vMark);{$ENDIF}
           ValidateRequest(vRequest, vResponse);
           {$IFDEF RALMSQUIC_PROFILE}SrvMark(spValidate, vMark);{$ENDIF}
-          { a read-only view over the frame, which lives until this function
-            returns - longer than the request. It used to be copied into a
-            string, and the string into the params }
+          { a read-only view over the frame, alive until this function returns }
           if vResponse.StatusCode < HTTP_BadRequest then
             vRequest.SetWireBody(vBody, vBodySize);
 
@@ -1257,9 +1191,7 @@ begin
     except
       on e: exception do
       begin
-        { the 500 first, as ProcessCommands does: with OnServerError
-          assigned, the answer used to go out as it stood - a 200 over a
-          failure }
+        { the 500 first, as ProcessCommands does }
         vResponse.Answer(HTTP_InternalError, ErrorText(e), rctTEXTPLAIN);
         if Assigned(OnServerError) then
           OnServerError(e)
@@ -1268,15 +1200,8 @@ begin
       end;
     end;
 
-    { THE BODY COMES FIRST, and the order is not cosmetic: TakeWireStream
-      decides between a raw body and multipart and WRITES BACK ContentType,
-      ContentDisposition and ContentEncoding. Reading them before asking for
-      the body hands the client the type the response had before it was
-      encoded - a multipart answer would go out labelled as whatever the route
-      had set. TRALSynopseServer does it in this order for the same reason.
-
-      A stream and not a string: with nothing to transform it is the body
-      itself, and the frame below is then the only copy. }
+    { the body first: TakeWireStream writes back ContentType, ContentDisposition and
+      ContentEncoding; a stream, so the frame is the only copy }
     {$IFDEF RALMSQUIC_PROFILE}SrvMark(spAddParams, vMark);{$ENDIF}
     vStream := vResponse.TakeWireStream;
     if (vStream <> nil) and (vStream.Size > RALQUIC_MAX_FIELD) then
@@ -1297,10 +1222,7 @@ begin
       {$IFDEF RALMSQUIC_PROFILE}SrvMark(spBodyText, vMark);{$ENDIF}
       vCType := vResponse.ContentType;
 
-      { only the ones that carry something. An empty value used to cost a
-        TRALParam of its own plus a bare 'Name: ' line on the wire, four times
-        per answer, and the reader cannot tell that apart from the header not
-        being there - Params.Get returns the same empty string either way. }
+      { only the headers that carry something }
       if vResponse.ContentDisposition <> '' then
         vResponse.Params.AddParam('Content-Disposition', vResponse.ContentDisposition, rpkHEADER);
       if vResponse.ContentEncoding <> '' then
@@ -1428,12 +1350,7 @@ begin
     vSettings.BitFlags := vSettings.BitFlags or QUIC_SETTINGS_BIT_MigrationEnabled
   else
     vSettings.BitFlags := vSettings.BitFlags and not QUIC_SETTINGS_BIT_MigrationEnabled;
-  { PACING OFF. QUIC spreads a burst over time to be kind to the network, which
-    is right for bulk transfer and wrong for small answers: here the burst IS
-    the workload, and holding packets back only adds latency to something that
-    was never going to congest anything. It shows the moment answers stop being
-    produced one at a time - that is, as soon as more than one dispatch thread
-    is running. }
+  { pacing off: spreading a burst only adds latency to small answers }
   if not FPacing then
     vSettings.BitFlags := vSettings.BitFlags and not QUIC_SETTINGS_BIT_PacingEnabled
   else
@@ -1459,8 +1376,7 @@ begin
   vCred.Flags := QUIC_CREDENTIAL_FLAG_NONE; // absence of CLIENT means server
   if vPassword <> '' then
   begin
-    { an encrypted key needs the PROTECTED credential; the plain one used to
-      be sent regardless, and the password sat in the property unread }
+    { an encrypted key needs the protected credential, with its password }
     vCertProtected.CertificateFile := PAnsiChar(vCertPath);
     vCertProtected.PrivateKeyFile := PAnsiChar(vKeyPath);
     vCertProtected.PrivateKeyPassword := PAnsiChar(vPassword);
@@ -1495,13 +1411,8 @@ begin
     MsQuicApi^.ListenerClose(FListener);
     FListener := nil;
   end;
-  { THE POOL GOES WHILE THE REGISTRATION IS STILL ALIVE. Answering is a
-    StreamSend and giving a queued stream back ends in StreamClose, and both
-    are carried out by the registration's own workers - while RegistrationClose
-    only waits for the CONNECTIONS, which we close in their SHUTDOWN_COMPLETE
-    even when a stream of theirs is still in our queue. It used to run after
-    it: a server stopped with requests queued then closed those streams on
-    workers already torn down. }
+  { the pool stops while the registration lives: StreamSend and StreamClose of
+    queued streams run on its workers }
   StopPool;
   { RegistrationClose blocks until every connection under it has been closed,
     and a connection is only closed in its SHUTDOWN_COMPLETE - which a client
@@ -1561,10 +1472,8 @@ begin
     Exit;
   end;
 
-  { EVERYTHING that can fail sits inside the try: the base has already written
-    Active := True, and a server that says it is active while nothing listens
-    cannot even be started again, since SetActive(True) is then a no-op. The
-    certificate checks used to sit above it, so a wrong path left exactly that. }
+  { everything that can fail sits inside the try: the base already marked the
+    server active }
   try
     if (SSL.CertificateFile = '') or (SSL.PrivateKeyFile = '') then
       raise ERALException.Create(ecQuicRequiresTLS);
@@ -1636,8 +1545,8 @@ begin
   vActive := Self.Active;
   Active := False;
 
-  { inherited BEFORE reactivating: ListenerStart reads Self.Port, which is only
-    the new one after the base class has stored it. }
+  { inherited before reactivating: ListenerStart reads Port, which the base class
+    stores }
   inherited;
 
   Active := vActive;

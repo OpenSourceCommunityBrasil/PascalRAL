@@ -1,4 +1,5 @@
-﻿unit RALfpHTTPClient;
+﻿/// fpHTTP client engine: TRALClient over fphttpclient (FPC).
+unit RALfpHTTPClient;
 
 {$I ..\..\core\PascalRAL.inc}
 
@@ -11,7 +12,6 @@ uses
   RALResponse, RALMIMETypes, RALStream;
 
 type
-  { TRALfpHttpClientCore }
 
   { fphttpclient with its own resend taken away (ReadResponse) and the
     server's "Connection: close" honoured (HasConnectionClose) }
@@ -28,11 +28,10 @@ type
 
   { ERALfpConnectionClosed }
 
-  { the server closed the connection before a status line arrived }
+  /// The server closed the connection before a status line arrived.
   ERALfpConnectionClosed = class(EHTTPClient);
 
-  { TRALfpHttpClientHTTP }
-
+  /// fpHTTP client engine: one fphttpclient per engine, kept between requests.
   TRALfpHttpClientHTTP = class(TRALClientHTTP)
   private
     { scheme://host:port the kept socket was opened to. fphttpclient never
@@ -40,10 +39,11 @@ type
       has, so a client handed to another address, or left connected by a
       redirect elsewhere, sent its requests to the previous server }
     FAuthority: String;
-    { True when it was our validation that refused the certificate - see VerifyCert }
+    /// True when it was our validation that refused the certificate - see VerifyCert.
     FCertRefused: boolean;
-    { the Cookie value of the request being sent - see DoRedirect }
+    /// The Cookie value of the request being sent - see DoRedirect.
     FCookieText: StringRAL;
+    /// The fphttpclient, kept between requests.
     FHttp: TRALfpHttpClientCore;
     { the socket fphttpclient connected last, recorded by the socket handlers
       this engine hands it (fphttpclient keeps its own private): what
@@ -56,11 +56,14 @@ type
       the request was never processed and may be sent again. }
     FSocketReused: boolean;
 
+    /// Stops a redirect that would leave TLS where TLS is required.
     procedure DoRedirect(Sender: TObject; const ASrc: String; var ADest: String);
+    /// Judges the server certificate by the client's rule.
     procedure VerifyCert(Sender: TObject; var Allow: boolean);
   protected
     /// The head fphttpclient read, which it has before the first piece of the body.
     procedure ReadStreamHead(AResponse: TRALResponse); override;
+    /// Gives fphttpclient the RAL socket handler, plain or TLS.
     procedure OnGetSocketHandler(Sender: TObject; Const UseSSL: Boolean; Out AHandler: TSocketHandler);
   public
     constructor Create(AOwner: TRALClient); override;
@@ -87,7 +90,7 @@ uses
   // ParseURI, the parse fphttpclient itself connects by
   URIParser;
 
-{ where fphttpclient connects for this URL, read the way it reads it }
+/// Where fphttpclient connects for this URL, read the way it reads it.
 function FPAuthority(const AURL: String): String;
 var
   vURI: TURI;
@@ -108,11 +111,12 @@ type
 
   { TRALfpNoDelayHandler }
 
+  /// Plain socket handler with TCP_NODELAY and the fast refused connect.
   TRALfpNoDelayHandler = class(TSocketHandler)
   protected
     procedure SetSocket(const AStream: TSocketStream); override;
   public
-    { the engine that asked for it: told which socket was connected }
+    /// The engine that asked for it: told which socket was connected.
     Engine: TRALfpHttpClientHTTP;
 
     function Connect: boolean; override;
@@ -120,10 +124,12 @@ type
 
   { TRALfpNoDelaySSLHandler }
 
+  /// TLS socket handler with TCP_NODELAY and the client's certificate rule.
   TRALfpNoDelaySSLHandler = class(TOpenSSLSocketHandler)
   protected
     procedure SetSocket(const AStream: TSocketStream); override;
   public
+    /// Engine whose client judges the certificate.
     Engine: TRALfpHttpClientHTTP;
 
     function Connect: boolean; override;
@@ -160,12 +166,9 @@ begin
   fpsetsockopt(ASocket.Handle, IPPROTO_TCP, TCP_NODELAY, @vNoDelay, SizeOf(vNoDelay));
 end;
 
-{ Whether a socket kept between requests is fit for the next one. An idle HTTP
-  connection has nothing to read: a socket that IS readable was closed by the
-  peer - a server restarted, an idle timeout; the read would answer 0 - or
-  holds bytes nobody asked for, and either way must not carry a request.
-  Asked without waiting. A handle that is no socket any more fails the select
-  and counts as unfit too }
+{ Whether a socket kept between requests is fit for the next one: an idle one has
+  nothing to read (readable means closed by the peer, or stray bytes). Asked
+  without waiting. }
 function SocketIdle(AHandle: LongInt): boolean;
 var
   {$IFDEF RALWindows}
@@ -191,16 +194,20 @@ end;
 
 {$IFDEF RALWindows}
 const
-  // from mstcpip.h, which WinSock2 does not translate
+  /// SIO_TCP_INITIAL_RTO of mstcpip.h, which WinSock2 does not translate.
   SIO_TCP_INITIAL_RTO = $98000011;
+  /// Lets Windows pick the initial RTT.
   TCP_INITIAL_RTO_UNSPECIFIED_RTT = $FFFF;
+  /// No SYN retransmission: a refused connect fails at once.
   TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS = $FE;
 
 type
   { TCP_INITIAL_RTO_PARAMETERS: natural alignment, 4 bytes - packed, Windows
     refuses it with WSAEFAULT }
   TRALTcpInitialRto = record
+    /// Initial RTT in milliseconds.
     Rtt: Word;
+    /// SYN retransmissions allowed.
     MaxSynRetransmissions: Byte;
   end;
 
@@ -327,21 +334,8 @@ end;
 
 { TRALfpHttpClientCore }
 
-{ ReadResponse answers False when the connection was closed before a status
-  line arrived, and on a kept-alive connection fphttpclient then reconnects
-  and calls SendRequest again (DoKeepConnectionRequest). That resend is
-  broken: SendRequest writes the body with CopyFrom(RequestBody, Size) from
-  wherever the stream was left - its end, after the first send - so every
-  request carrying a body died with EReadError "Stream read error", and the
-  cookies, which the first send had handed over to the wire, were gone too. It
-  also resends whatever the method and however long the server took.
-
-  Raising here takes that resend away, and the case lands in SendUrl, which
-  already resends a request from a dead kept-alive socket properly: body
-  rewound, cookies reassigned, and only when the failure cannot have been a
-  request the server already processed. On a connection that is not kept
-  alive (DoNormalRequest) the False used to be ignored altogether and the
-  request "succeeded" with status 0 and no body. }
+{ Raises ERALfpConnectionClosed when the connection closed before a status line:
+  SendUrl resends properly, fphttpclient's own resend does not. }
 function TRALfpHttpClientCore.ReadResponse(Stream: TStream;
   const AllowedResponseCodes: array of Integer; HeadersOnly: Boolean): Boolean;
 begin
@@ -445,13 +439,9 @@ begin
   TRALfpNoDelaySSLHandler(AHandler).Engine := Self;
 
   if CertCheckWanted or (Parent.SSL.Verify = svAlways) then
-    { only the callback, and deliberately NOT VerifyPeerCert: that one maps to
-      SSL_VERIFY_PEER with a nil callback (opensslsockets, InitContext), so
-      OpenSSL aborts the handshake on an unknown CA before FPC ever calls
-      DoVerifyCert - and a certificate trusted by a pin instead of by a store
-      would never get the chance to be looked at. With it off the handshake
-      completes, OpenSSL still records its verdict in VerifyResult, and the
-      callback below decides. }
+    { only the callback, never VerifyPeerCert, which aborts the handshake on an
+      unknown CA before a pin can be judged; OpenSSL's verdict stays in
+      VerifyResult for the callback }
     TSSLSocketHandler(AHandler).OnVerifyCertificate := @VerifyCert;
 end;
 
@@ -528,17 +518,7 @@ var
   vStart: QWord;
   vAuthority: String;
 
-  { SetTransportError resets compression, crypto and the content type - that
-    last one matters here because ResponseText runs the message through
-    DecodeBody, and leaving the failed response's multipart content type in
-    place made the decoder parse a plain error string as multipart and die with
-    an access violation inside the error handler itself.
-
-    There used to be an `AResponse.ResponseStream := nil` after ResponseText
-    here, which freed the very stream ResponseText had just filled: the message
-    was wiped and BeforeSendUrl raised with an empty text. SetResponseText
-    already frees the previous stream, so the line was redundant on top of
-    being harmful. }
+  /// Records a transport error: the code, and the message as the response text.
   procedure HandleException(AError: TRALTransportError; ACode: IntegerRAL;
     AMessage: StringRAL);
   begin
@@ -673,29 +653,16 @@ begin
       ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
     if ARequest.ContentDisposition <> '' then
       ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
-    { after TakeWireStream, on purpose: only now ContentEncoding says what
-      was actually done to the body - see the note above }
+    { after TakeWireStream: only now ContentEncoding says what was done to the
+      body }
     if ARequest.ContentCompress <> ctNone then
       ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
 
     ARequest.Params.AssignParams(FHttp.RequestHeaders, rpkHEADER, ': ');
 
-    { Reconnect-once loop. A kept-alive socket the server has already closed
-      fails on the very next use. When the WRITE fails nothing was delivered,
-      and reissuing is correct for any method, POST included (RFC 7230 6.3.1).
-      When the read fails the request is out, and only an idempotent method
-      goes again - see the EHTTPClient branch.
-
-      What must NOT be reissued is a read timeout, and fphttpclient reports
-      both the same way (EHTTPClient with SErrReadingSocket and StatusCode 0).
-      Two conditions separate them: the socket has to have been one this client
-      left open (FSocketReused), and the failure has to come back far too fast
-      to be a timeout. Without the second test, every timeout on a warm
-      connection would be sent again and waited out twice.
-
-      The retry lives here rather than in BeforeSendUrl because the token
-      routines (the authenticators' Prepare) call SendUrl through their own loops
-      and abort on any ErrorCode; only an engine-level reconnect covers them. }
+    { reconnect once on a dead kept-alive socket: a failed write goes again for any
+      method, a failed read only for an idempotent one, and a read timeout never
+      (RFC 7230 6.3.1) }
     vAttempt := 0;
     repeat
       vRetry := False;
@@ -710,27 +677,23 @@ begin
         vSource.Position := 0;
       FHttp.RequestBody := vSource;
 
-      { per attempt, not once: fphttpclient hands Cookies over to the wire and
-        drops the list on every send, so a request reissued after a dead
-        kept-alive socket went out without its cookies. They used to be
-        assigned twice before the loop, which also doubled every cookie. }
+      // per attempt: fphttpclient drops the cookie list on every send
       FHttp.Cookies.Clear;
       vCookies := ARequest.Params.CookieHeaderText;
       FCookieText := vCookies;
       if vCookies <> '' then
         FHttp.Cookies.Add(vCookies);
 
-    // não deve ser usado o método direto e sim como HTTPMethod,
-    // devido o parâmetro AllowedResponseCodes
+    // HTTPMethod rather than the per-verb calls, for AllowedResponseCodes
     try
       case AMethod of
         amGET    : FHttp.HTTPMethod('GET', AURL, vDest, []);
         amPOST   : FHttp.HTTPMethod('POST', AURL, vDest, []);
         amPUT    : FHttp.HTTPMethod('PUT', AURL, vDest, []);
-        amPATCH  : FHttp.HTTPMethod('PATCH', AURL, vDest, []); // sem funcao
+        amPATCH  : FHttp.HTTPMethod('PATCH', AURL, vDest, []);
         amDELETE : FHttp.HTTPMethod('DELETE', AURL, vDest, []);
-        amTRACE  : FHttp.HTTPMethod('TRACE', AURL, vDest, []); // sem funcao
-        amHEAD   : FHttp.HTTPMethod('HEAD', AURL, vDest, []); // trata diferente
+        amTRACE  : FHttp.HTTPMethod('TRACE', AURL, vDest, []);
+        amHEAD   : FHttp.HTTPMethod('HEAD', AURL, vDest, []);
         amOPTIONS: FHttp.HTTPMethod('OPTIONS', AURL, vDest, []);
         amQUERY  : FHttp.HTTPMethod('QUERY', AURL, vDest, []);
       end;
@@ -771,13 +734,8 @@ begin
         HTTP/1.0 answer that did not ask to keep the connection }
       if ServerCloses then
         FHttp.KeepConnection := False;
-      // the request went through; if the socket is still open, the NEXT
-      // request will be reusing it. Asked of fphttpclient, not assumed from
-      // KeepAlive: an answer carrying "Connection: close" makes it disconnect,
-      // and the next request then runs on a fresh socket, where a fast
-      // failure says nothing about an aged-out connection. Nor when a redirect
-      // elsewhere or the server's own answer turned KeepConnection off - see
-      // DoRedirect
+      { the next request reuses this socket only when fphttpclient still has it
+        open (Connection: close or a redirect elsewhere turn it off) }
       FSocketReused := Parent.KeepAlive and FHttp.KeepConnection and FHttp.SocketOpen;
     except
       { a stream handler cancelled: the socket goes, with the rest of the body }
@@ -813,22 +771,9 @@ begin
         else
           HandleException(rteOther, -1, Format(emConnectionClosedNoResponse, [AURL]));
       end;
-      { EHTTPClient means two different things in fphttpclient, and only the
-        StatusCode tells them apart:
-
-          StatusCode > 0 - the server ANSWERED and the status was not allowed
-            (SErrUnexpectedResponse). That belongs in StatusCode, not in
-            ErrorCode: BeforeSendUrl ends with "if vErrorCode <> 0 then raise",
-            so putting an HTTP status there turned every 4xx/5xx arriving on
-            this path into an exception instead of a response.
-
-          StatusCode = 0 - SErrReadingSocket: the socket was connected and the
-            answer could not be read. A read timeout lands here, NOT on
-            ESocketError; SocketIsDead tells that case apart from an aged-out
-            kept-alive connection. But the request WAS written, and a server
-            that ran it and died before answering fails just as fast - so only
-            a method that may run twice goes again (RFC 7230 6.3.1). A clean
-            close never gets here: it is ERALfpConnectionClosed, above. }
+      { StatusCode > 0: the server answered (a status, not an error); 0: the answer
+        could not be read after the request was written, so only an idempotent
+        method goes again }
       on e: EHTTPClient do
       begin
         if e.StatusCode > 0 then

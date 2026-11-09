@@ -7,13 +7,13 @@ uses
   Classes,
   RALnetHTTPClient;
 
+/// Registers the netHTTP components.
 procedure Register;
 
 implementation
 
 procedure Register;
 begin
-//  RegisterClass(TRALnetHTTPClientHTTP);
 end;
 
 end.

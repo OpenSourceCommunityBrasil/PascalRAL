@@ -1,7 +1,7 @@
-/// FastCGI 1.0 server engine (the protocol written here, the same on Delphi and
-/// FPC): nginx (fastcgi_pass) or Apache (mod_proxy_fcgi) hand requests to it
-/// over TCP; connections are kept (FCGI_KEEP_CONN) and a streamed response
-/// goes out live, record by record.
+{ FastCGI 1.0 server engine (the protocol written here, the same on Delphi and
+  FPC): nginx (fastcgi_pass) or Apache (mod_proxy_fcgi) hand requests to it
+  over TCP; connections are kept (FCGI_KEEP_CONN) and a streamed response
+  goes out live, record by record. }
 unit RALFastCGIServer;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -16,15 +16,25 @@ uses
 const
   /// FastCGI record types (the specification, section 8).
   FCGI_BEGIN_REQUEST = 1;
+  /// Record type: web server aborts a request.
   FCGI_ABORT_REQUEST = 2;
+  /// Record type: end of a request.
   FCGI_END_REQUEST = 3;
+  /// Record type: request params.
   FCGI_PARAMS = 4;
+  /// Record type: request body.
   FCGI_STDIN = 5;
+  /// Record type: response bytes.
   FCGI_STDOUT = 6;
+  /// Record type: error output.
   FCGI_STDERR = 7;
+  /// Record type: extra data (filter role).
   FCGI_DATA = 8;
+  /// Record type: query of the application's values.
   FCGI_GET_VALUES = 9;
+  /// Record type: answer to it.
   FCGI_GET_VALUES_RESULT = 10;
+  /// Record type: answer to an unknown record type.
   FCGI_UNKNOWN_TYPE = 11;
   /// The responder role, the only one served.
   FCGI_RESPONDER = 1;
@@ -39,8 +49,11 @@ type
     kept while the web server asks for it. }
   TRALFastCGIConnection = class(TThread)
   private
+    /// Socket to the web server.
     FChannel: TRALSocketChannel;
+    /// The RAL server.
     FServer: TRALFastCGIServer;
+    /// Serialises the records written.
     FWriteLock: TCriticalSection;
   protected
     procedure Execute; override;
@@ -61,13 +74,18 @@ type
     thread. Port is the TCP port nginx's fastcgi_pass points at. }
   TRALFastCGIServer = class(TRALServer)
   private
+    /// Thread that accepts connections.
     FAcceptThread: TThread;
+    /// Open connections.
     FConnections: TList;
+    /// Guards FConnections.
     FConnLock: TCriticalSection;
+    /// Listening socket.
     FListener: TRALSocket;
     FMaxConnections: IntegerRAL;
     FReadTimeout: IntegerRAL;
 
+    /// Takes AConnection out of the list.
     procedure ConnectionDone(AConnection: TRALFastCGIConnection);
   protected
     function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
@@ -89,20 +107,28 @@ type
 implementation
 
 type
-  { what a streamed answer writes through: the connection and the request id }
+  /// What a streamed answer writes through: the connection and the request id.
   TRALFastCGIContext = class
   public
+    /// Connection of the request.
     Connection: TRALFastCGIConnection;
+    /// FCGI_END_REQUEST was sent.
     Ended: boolean;
+    /// Status and headers went out.
     HeadSent: boolean;
+    /// FastCGI request id.
     RequestId: Word;
+    /// The RAL server.
     Server: TRALFastCGIServer;
   end;
 
+  /// Writer of a streamed response as STDOUT records.
   TRALFastCGIStreamWriter = class(TRALStreamWriter)
   private
+    /// Request the stream belongs to.
     FContext: TRALFastCGIContext;
   public
+    /// A writer for AContext.
     constructor Create(AContext: TRALFastCGIContext);
 
     function Alive: boolean; override;
@@ -111,12 +137,15 @@ type
     function WriteRaw(const ABuffer; ASize: IntegerRAL): boolean; override;
   end;
 
+  /// Thread that accepts the web server's connections.
   TRALFastCGIAccept = class(TThread)
   private
+    /// Server it accepts for.
     FServer: TRALFastCGIServer;
   protected
     procedure Execute; override;
   public
+    /// The accept thread of AServer, started.
     constructor Create(AServer: TRALFastCGIServer);
   end;
 
@@ -286,7 +315,7 @@ begin
   Result := WriteRecord(FCGI_END_REQUEST, ARequestId, vBody, 8);
 end;
 
-{ reads a name-value length: one byte below 128, else four }
+/// Reads a name-value length: one byte below 128, else four.
 function ReadLength(const AData: RawByteString; var APos: IntegerRAL; out ALen: IntegerRAL): boolean;
 begin
   Result := False;
@@ -308,6 +337,7 @@ begin
   Result := True;
 end;
 
+/// Reads the name-value pairs of FCGI_PARAMS into AList.
 procedure ParseParams(const AData: RawByteString; AList: TStrings);
 var
   vPos, vNameLen, vValueLen: IntegerRAL;

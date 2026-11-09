@@ -1,3 +1,4 @@
+/// fpHTTP server engine: TRALServer over fcl-web's HTTP server (FPC).
 unit RALfpHTTPServer;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -25,23 +26,28 @@ uses
 
 type
 
-  { TRALfpHTTPCertData }
-
+  /// Certificate files of the fpHTTP server.
   TRALfpHTTPCertData = class(TCertificateData)
   private
     function GetFileName(AIndex: Integer) : string;
     procedure SetFileName(AIndex: Integer; AValue : string);
   published
+    /// File of the CA chain.
     property CertCAFile: string Index 4 read GetFileName write SetFileName;
+    /// Certificate file (PEM).
     property CertificateFile: string Index 0 read GetFileName write SetFileName;
     property CipherList;
     Property HostName;
     property KeyPassword;
+    /// PFX file, in place of certificate and key.
     property PFXFile: string Index 3 read GetFileName write SetFileName;
+    /// Private key file (PEM).
     property PrivateKeyFile: string Index 2 read GetFileName write SetFileName;
+    /// Trusted certificates for client authentication.
     property TrustCertificateFile: string Index 1 read GetFileName write SetFileName;
   end;
 
+  /// TLS settings of the fpHTTP server.
   TRALfpHTTPSSL = class(TRALSSL)
   private
     FSSLOptions: TRALfpHTTPCertData;
@@ -51,6 +57,7 @@ type
     constructor Create;
     destructor Destroy; override;
   published
+    /// Certificate files.
     property SSLOptions: TRALfpHTTPCertData read FSSLOptions write SetSSLOptions;
   end;
 
@@ -58,41 +65,43 @@ type
 
   TRALfpHttpServerCore = class;
 
-  { TRALfpHttpWorker }
-
-  { A thread of the server's pool: it takes the connections the accept loop
-    queues, one at a time, and handles each. fcl-web starts a thread per
-    connection and serves one request per connection, so every request paid
-    a thread created and destroyed - about 220 us of wall time and 125 us of
-    CPU each on FPC 3.2 for Windows, measured on 05/10/2026, and on FPC every
-    new thread also builds a heap of its own. A worker waits for the next
-    connection for WorkerIdleTimeout and then ends }
+  { A thread of the server's pool: takes the connections the accept loop queues,
+    one at a time, and ends after WorkerIdleTimeout without work. }
   TRALfpHttpWorker = class(TThread)
   private
+    /// Server whose queue it serves.
     FCore: TRALfpHttpServerCore;
   protected
     procedure Execute; override;
   public
+    /// A worker of ACore, started.
     constructor Create(ACore: TRALfpHttpServerCore);
   end;
 
-  { TRALfpHttpServerCore }
-
+  /// fcl-web's server with the RAL worker pool and connection count.
   TRALfpHttpServerCore = class(TFPHttpServer)
   private
+    /// Connections being served.
     FActive: TList;
+    /// Guards the certificate while it is swapped.
     FCertLock: TCriticalSection;
+    /// Workers waiting for a connection.
     FIdle: Integer;
     { the pool: connections accepted and not taken yet, the ones being
       handled, how many workers wait for one and how many are alive }
     FPoolLock: TCriticalSection;
+    /// Accepted connections waiting for a worker.
     FQueue: TList;
+    /// The server stops: workers end.
     FStopping: Boolean;
+    /// Wakes a waiting worker.
     FWake: TEvent;
+    /// Workers alive.
     FWorkers: Integer;
 
     /// Closes the socket of every connection queued or being handled.
     procedure CloseConnections;
+    /// Takes AConnection out of the list and frees it.
     procedure ConnectionDone(AConnection: TFPHTTPConnection);
     /// How many connections are queued or being handled.
     function PoolCount: Integer;
@@ -103,7 +112,7 @@ type
       WorkerIdleTimeout for nothing or the server is stopping }
     function TakeConnection: TFPHTTPConnection;
   protected
-    { turns Nagle off on the accepted socket - see the implementation }
+    /// Turns Nagle off on the accepted socket - see the implementation.
     function CreateConnection(Data: TSocketStream): TFPHTTPConnection; override;
     { every TLS connection copies CertificateData into a socket handler of its
       own (CreateSSLSocketHandler): under the lock, so a certificate replaced
@@ -135,24 +144,28 @@ type
     procedure WaitHandlers(ATimeoutMs: Integer);
   end;
 
-  { TRALfpHttpServerThread }
-
+  /// Thread of the accept loop.
   TRALfpHttpServerThread = class(TThread)
   private
+    /// The fcl-web server.
     FHttp: TRALfpHttpServerCore;
+    /// Why the port could not be opened; empty when it listens.
     FListenError: string;
     { set once the port listens (or failed to): Active := True waits for it,
       so a client connecting right after finds the port open }
     FListening: TEvent;
+    /// The RAL server.
     FParent: TRALfpHttpServer;
+    /// Accept idle timeout configured, put back once the socket listens.
     FUserIdleTimeout: Integer;
 
-    { the accept loop runs its first round with a 1 ms idle timeout: the idle
-      call (or the first connection asked about) says the socket listens, and
-      puts the timeout back to the configured one }
+    { The socket listens (first idle call or first connection of the accept loop):
+      the configured idle timeout goes back. }
     procedure ListenConfirmed(Sender: TObject);
+    /// Idle call of the accept loop: confirms the socket listens.
     procedure OnAcceptIdle(Sender: TObject);
   protected
+    /// Files the Authorization header of ARequest into AResult.
     procedure DecodeAuth(ARequest: TFPHTTPConnectionRequest; AResult: TRALRequest);
     procedure Execute; override;
     { The status, headers and cookies of AResponse into fcl-web's response, after
@@ -163,6 +176,7 @@ type
     function GetPort: IntegerRAL;
     function GetQueueSize: Word;
     function GetSessionTimeout: IntegerRAL;
+    /// Base URL of the server.
     function GetURLServer: StringRAL;
     procedure SetActive(AValue: boolean);
     procedure SetPort(AValue: IntegerRAL);
@@ -175,20 +189,29 @@ type
     { fcl-web asks before it accepts, which is where a connection ceiling has
       to be answered - see TRALfpHttpServer.MaxConnections }
     procedure OnAllowConnect(Sender: TObject; ASocket: Longint; var AAllow: Boolean);
+    { Handles a request: turns it into a TRALRequest, runs the server, writes the
+      answer. }
     procedure OnCommandProcess(Sender: TObject; var ARequest: TFPHTTPConnectionRequest;
                                var AResponse: TFPHTTPConnectionResponse);
   public
+    /// The thread of AOwner.
     constructor Create(AOwner: TRALfpHttpServer);
     destructor Destroy; override;
   published
+    /// The server listens.
     property Active: boolean read GetActive write SetActive;
+    /// Port listened.
     property Port: IntegerRAL read GetPort write SetPort;
+    /// Listen backlog.
     property QueueSize: Word read GetQueueSize write SetQueueSize;
+    /// Milliseconds an idle connection is kept.
     property SessionTimeout: IntegerRAL read GetSessionTimeout write SetSessionTimeout;
   end;
 
+  /// fpHTTP server engine (fcl-web), one request per connection.
   TRALfpHttpServer = class(TRALServer)
   private
+    /// Thread of the accept loop.
     FHttpThread: TRALfpHttpServerThread;
     FMaxConnections: IntegerRAL;
   protected
@@ -215,24 +238,19 @@ type
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
   published
-    /// Ceiling on how many connections may be open AT THE SAME TIME, the same
-    /// knob TRALIndyServer, TRALSaguiServer and TRALSynopseServer publish under
-    /// this name: past it a NEW connection is refused, so no existing client is
-    /// dropped to make room. 0 means no ceiling.
-    ///
-    /// fcl-web 3.2 has no such setting of its own - what it has is the question
-    /// it asks before accepting (OnAllowConnect) and the count of connections it
-    /// already has (ConnectionCount), and the two together are exactly this.
-    /// fcl-web 3.3 has one, MaxLiveConnectionCount, which this sets.
+    { Most connections open at once; past it a new connection is refused, no open
+      one is dropped. 0 is no limit. }
     property MaxConnections: IntegerRAL read FMaxConnections write SetMaxConnections default 0;
+    /// Listen backlog (SOMAXCONN by default).
     property QueueSize : Word read GetQueueSize write SetQueueSize;
+    /// TLS settings.
     property SSL: TRALfpHTTPSSL read GetSSL write SetSSL;
   end;
 
 implementation
 
 uses
-  // units usadas para capturar a constante SOMAXCONN
+  // the SOMAXCONN constant
   {$IFDEF RALWINDOWS}
     WinSock2,
   {$ELSE}
@@ -244,21 +262,28 @@ uses
   RALMIMETypes;
 
 type
-  { what the stream writer needs of one request, kept for as long as its callback runs }
+  /// What the stream writer needs of one request, kept for as long as its callback runs.
   TRALfpHttpStreamContext = class
   public
+    /// The fcl-web request.
     HttpRequest: TFPHTTPConnectionRequest;
+    /// The fcl-web response.
     HttpResponse: TFPHTTPConnectionResponse;
+    /// The RAL request.
     Request: TRALRequest;
+    /// Thread that serves it.
     Thread: TRALfpHttpServerThread;
   end;
 
   { TRALfpHttpStreamWriter }
 
+  /// Writer of a streamed response straight on the connection socket.
   TRALfpHttpStreamWriter = class(TRALStreamWriter)
   private
+    /// Request and connection the stream belongs to.
     FContext: TRALfpHttpStreamContext;
   public
+    /// A writer for AContext.
     constructor Create(AContext: TRALfpHttpStreamContext);
 
     function Alive: boolean; override;
@@ -389,12 +414,8 @@ begin
   Result := vMax;
 end;
 
-{ The answer to a request whose handling raised outside ProcessCommands -
-  decoding it, or building the answer. The exception used to be swallowed and
-  fcl-web then sent the response as it stood: 200 by default, over a failure.
-  Whatever the answer had been given already goes with it, since a
-  Content-Encoding or a cipher header over a plain-text error would have the
-  client misread it }
+{ Answers a request whose handling raised outside ProcessCommands with the
+  server's error rules, dropping the headers set on the answer. }
 procedure AnswerFailure(AResponse: TFPHTTPConnectionResponse; const AMessage: string);
 begin
   if AResponse.HeadersSent then
@@ -468,10 +489,8 @@ begin
         try
           vConnection.HandleRequest;
         finally
-          { out of the list first, then the connection (and the server's
-            count of them): WaitHandlers frees the server only once both are
-            gone - fcl-web's own thread did it the other way round and freed
-            the server under a thread still on its way out (07/09/2026) }
+          { out of the list first, then the connection (and the server's count):
+            WaitHandlers frees the server only once both are gone }
           vCore.ConnectionDone(vConnection);
           vConnection.Free;
         end;
@@ -832,12 +851,8 @@ begin
         if ClientInfo.IP = '' then
           ClientInfo.IP := ARequest.RemoteHost;
 
-        { the socket of THIS connection: fcl-web keeps one TFPHTTPConnection
-          per connection, so a kept-alive client's requests all report the same
-          handle. With the peer's port above it, as http.sys is keyed: the
-          system hands a closed socket's handle to the next connection, and a
-          hundred connections one after another counted as one. The port is
-          the client's too, which this engine never reported }
+        { the socket of this connection with the peer's port above it: the system
+          hands a closed socket's handle to the next connection }
         if (ARequest.Connection <> nil) and (ARequest.Connection.Socket <> nil) then
         begin
           ClientInfo.Port := NToHs(ARequest.Connection.Socket.RemoteAddress.sin_port);
@@ -1023,12 +1038,8 @@ begin
     end;
 
     AHttpResponse.Server := 'RAL_fpHTTP';
-    { Always, whatever the client asked for: this server answers ONE
-      request per connection (TRALfpHttpWorker.Execute calls
-      HandleRequest once per connection, whatever keep-alive fcl-web could offer) and
-      closes the socket right after - and RFC 9112 9.6 says a server that
-      does not keep the connection MUST send "close". It is set here, after
-      ProcessCommands, so a request ValidateRequest refused says it too. }
+    { always: one request per connection (RFC 9112 9.6), set after
+      ProcessCommands so a refused request says it too }
     AHttpResponse.Connection := 'close';
 
     { every cookie whole, on its own Set-Cookie line, from the builder all
@@ -1093,11 +1104,8 @@ procedure TRALfpHttpServerThread.WakeUpAccept;
 var
   vFP : TFPHTTPClient;
 begin
-  // fernando - 30/07/2023
-  // POG para fechar o socket assim q ele for desativado
-  // ao ativar o Server ele congela a thread e ao desativar ele mantem ela
-  // congelada ate que uma conexao client tente conectar, permitindo assim
-  // destruir a thread.
+  { a connection to the server's own port wakes the thread blocked in accept(),
+    so it sees it was terminated }
   vFP := TFPHTTPClient.Create(nil);
   try
     try
@@ -1185,11 +1193,8 @@ procedure TRALfpHttpServerThread.OnAllowConnect(Sender: TObject; ASocket: Longin
 begin
   if FListening.WaitFor(0) <> wrSignaled then
     ListenConfirmed(Sender);
-  { ConnectionCount is kept by TFPHTTPConnection's own constructor and
-    destructor on fcl-web 3.2, and is the pool's count on 3.3 - interlocked or
-    locked either way. The connection being asked about is NOT in it yet:
-    "<" is what makes MaxConnections the number of connections that may be
-    open, and not one more than that. }
+  { the connection asked about is not in ConnectionCount yet: "<" makes
+    MaxConnections the number that may be open }
   AAllow := (FParent.MaxConnections <= 0) or
             (FHttp.ConnectionCount < FParent.MaxConnections);
 end;
@@ -1211,27 +1216,15 @@ begin
   FHttp.OnAllowConnect := @OnAllowConnect;
   FHttp.OnAcceptIdle := @OnAcceptIdle;
   FListening := TEvent.Create(nil, True, False, '');
-  { AcceptIdleTimeout stays at fcl-web's default (0, a blocking accept):
-    with an idle loop the server stops on its own within the timeout, but
-    that faster teardown races fcl-web's own connection-thread cleanup on
-    Windows and took the FPC matrix down with an access violation nine
-    cases into the next server (07/09/2026). The stop keeps relying on
-    the wake-up connection made in TerminatedSet }
+  { AcceptIdleTimeout stays at fcl-web's default (a blocking accept): stopping
+    relies on the wake-up connection of TerminatedSet }
 
   inherited Create(True);
 end;
 
 destructor TRALfpHttpServerThread.Destroy;
 begin
-  { This destructor never called inherited, so TThread.Destroy - the one
-    that terminates and waits for the thread - never ran: the object was
-    released with the accept loop still running on it. A server stopped
-    with Active := False and then freed left a thread parked in accept()
-    with the port still bound; the next connection to that port (another
-    server on it, in the same process or a child of it) woke the thread up
-    on freed memory and took the process down, and on Linux the process
-    would not exit at all (07/09/2026). The thread ends first, and only
-    then does anything it touches go away }
+  { the thread ends first, and only then does anything it touches go away }
   if not Finished then
   begin
     { TerminatedSet wakes accept() up when the server is still listening }
@@ -1240,11 +1233,8 @@ begin
       Execute is skipped once Terminated is set }
     if Suspended then
       Start;
-    { a server freed right after it was activated: the thread read Active a
-      moment before Terminate and is on its way into accept(), so TerminatedSet
-      found nothing listening yet and woke nobody - the WaitFor below then
-      waited forever (found by the RALSelfSigned tests, 28/09/2026). Whatever
-      it opens is closed again, and woken, until it has really ended }
+    { a server freed right after activation may have the thread on its way into
+      accept(): whatever it opens is closed and woken until it has ended }
     while not Finished do
     begin
       if FHttp.Active then
@@ -1342,11 +1332,8 @@ begin
   SSL.SSLOptions.CertificateFile := string(ACertificate.CertificateFile);
   SSL.SSLOptions.PrivateKeyFile := string(ACertificate.PrivateKeyFile);
   SSL.SSLOptions.KeyPassword := string(ACertificate.PrivateKeyPassword);
-  { a PFX would be loaded on top of the files. Bytes in Value win over a file
-    name: fcl-web loads the certificate for EVERY connection, so the DER in
-    memory, when the provider gives it, spares each handshake a file read -
-    and a renewal rewriting the files can never hand a connection a new
-    certificate with the old key }
+  { no PFX on top of the files; bytes in Value win over a file name (fcl-web loads
+    the certificate for every connection) }
   SSL.SSLOptions.PFXFile := '';
   SSL.SSLOptions.Certificate.Value := ACertificate.CertificateDER;
   SSL.SSLOptions.PrivateKey.Value := ACertificate.PrivateKeyDER;

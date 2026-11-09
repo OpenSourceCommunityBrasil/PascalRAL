@@ -7,13 +7,13 @@ uses
   Classes,
   RALOkHttpClient;
 
+/// Registers the OkHttp components.
 procedure Register;
 
 implementation
 
 procedure Register;
 begin
-//  RegisterClass(TRALOkHttpClientHTTP);
 end;
 
 end.

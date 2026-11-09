@@ -1,12 +1,12 @@
-/// Unit that register RAL Kwik Engine components in the IDE
-///
-/// There is no component to put on a palette - Kwik is a client engine and
-/// TRALClient chooses it by name - so this unit exists only to give the
-/// package a registration point. RALKwikClient registers the engine itself,
-/// from its own initialization, on every platform: the property editor behind
-/// EngineType lists what RegisterEngine filled in, and a name missing from
-/// that list can never be chosen, not even for an Android target built on a
-/// Windows IDE.
+{ Unit that register RAL Kwik Engine components in the IDE
+
+  There is no component to put on a palette - Kwik is a client engine and
+  TRALClient chooses it by name - so this unit exists only to give the
+  package a registration point. RALKwikClient registers the engine itself,
+  from its own initialization, on every platform: the property editor behind
+  EngineType lists what RegisterEngine filled in, and a name missing from
+  that list can never be chosen, not even for an Android target built on a
+  Windows IDE. }
 unit RALKwikReg;
 
 interface
@@ -15,6 +15,7 @@ uses
   Classes,
   RALKwikClient;
 
+/// Registers the Kwik components.
 procedure Register;
 
 implementation

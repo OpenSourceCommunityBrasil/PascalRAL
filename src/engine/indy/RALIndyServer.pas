@@ -13,15 +13,19 @@ uses
   RALCustomObjects;
 
 type
+  /// Indy TLS options with the key password.
   TIdSSLOptionsRAL = class(TIdSSLOptions)
   private
     FKeyPassword: StringRAL;
   public
+    /// Gives Key to OpenSSL as the key password.
     procedure GetPassword(var Password: string);
   published
+    /// Password of the private key.
     property Key: StringRAL read FKeyPassword write FKeyPassword;
   end;
 
+  /// TLS settings of the Indy server.
   TRALIndySSL = class(TRALSSL)
   private
     FSSLOptions: TIdSSLOptionsRAL;
@@ -31,36 +35,34 @@ type
     constructor Create;
     destructor Destroy; override;
   published
+    /// Certificate files and TLS versions.
     property SSLOptions: TIdSSLOptionsRAL read FSSLOptions write SetSSLOptions;
   end;
 
-  { TRALIdServerIOHandlerSSL }
-
-  /// Indy's server TLS handler, able to take a new certificate while the
-  /// server runs. Every accepted connection is handed the OpenSSL context the
-  /// handler holds at that moment (Accept), so publishing a new context is the
-  /// whole swap. The contexts it replaced stay alive until the server stops:
-  /// a connection accepted a moment before may not have run its handshake on
-  /// the old one yet
+  { Indy's server TLS handler that takes a new certificate while the server runs:
+    each connection gets the context of the moment it is accepted. }
   TRALIdServerIOHandlerSSL = class(TIdServerIOHandlerSSLOpenSSL)
   private
+    /// Contexts replaced, freed when the server stops.
     FRetired: TList;
 
+    /// Frees the replaced contexts.
     procedure FreeRetired;
   public
     destructor Destroy; override;
 
-    /// A new context with these files, then published. Raises, and keeps the
-    /// current one, when OpenSSL refuses them
+    { A new context with these files, then published. Raises, and keeps the
+      current one, when OpenSSL refuses them. }
     procedure ReplaceCertificate(const ACertFile, AKeyFile: string);
     procedure Shutdown; override;
   end;
 
-  { TRALIndyServer }
-
+  /// Indy server engine (TIdHTTPServer).
   TRALIndyServer = class(TRALServer)
   private
+    /// TLS handler of FHttp.
     FHandlerSSL: TRALIdServerIOHandlerSSL;
+    /// The Indy server.
     FHttp: TIdHTTPServer;
   protected
     function CreateRALSSL: TRALSSL; override;
@@ -72,6 +74,7 @@ type
     function GetMaxConnections: IntegerRAL;
     function GetSSL: TRALIndySSL;
     function IPv6IsImplemented: Boolean; override;
+    /// Says Indy the server's port speaks TLS.
     procedure QuerySSLPort(APort: TIdPort; var VUseSSL: Boolean);
     procedure SetActive(const AValue: Boolean); override;
     procedure SetListenQueue(const AValue: IntegerRAL);
@@ -79,6 +82,8 @@ type
     procedure SetPort(const AValue: IntegerRAL); override;
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetSSL(const AValue: TRALIndySSL);
+    { Handles a request: turns it into a TRALRequest, runs the server, writes the
+      answer. }
     procedure OnCommandProcess(AContext: TIdContext; ARequestInfo: TIdHTTPRequestInfo;
       AResponseInfo: TIdHTTPResponseInfo);
     { Where Indy writes the body it receives. Left to Indy (a TMemoryStream)
@@ -87,6 +92,7 @@ type
       limits plugin's SpoolAbove - so it is never one contiguous buffer }
     procedure OnCreatePostStream(AContext: TIdContext; AHeaders: TIdHeaderList;
       var VPostStream: TStream);
+    /// Files the Authorization of the request for RAL to decode; Indy decodes nothing.
     procedure OnParseAuthentication(AContext: TIdContext;
       const AAuthType, AAuthData: String; var VUsername, VPassword: String;
       var VHandled: Boolean);
@@ -103,34 +109,40 @@ type
     class function SupportsLiveStream: boolean; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
   published
+    /// Listen backlog.
     property ListenQueue: IntegerRAL read GetListenQueue write SetListenQueue;
-    /// Ceiling on how many connections may be open AT THE SAME TIME, the same
-    /// knob TRALfpHTTPServer, TRALSaguiServer and TRALSynopseServer publish
-    /// under this name: past it Indy refuses a NEW connection
-    /// (DoMaxConnectionsExceeded), so no existing client is dropped to make
-    /// room. 0 means no ceiling.
+    { Most connections open at once; past it a new connection is refused, no open
+      one is dropped. 0 is no limit. }
     property MaxConnections: IntegerRAL read GetMaxConnections write SetMaxConnections;
+    /// TLS settings.
     property SSL: TRALIndySSL read GetSSL write SetSSL;
   end;
 
 implementation
 
 type
-  { what the stream writer needs of one request, kept for as long as its callback runs }
+  /// What the stream writer needs of one request, kept for as long as its callback runs.
   TRALIndyStreamContext = class
   public
+    /// Indy connection.
     Context: TIdContext;
+    /// The connection stays open after the stream.
     KeepAlive: boolean;
+    /// Indy response.
     ResponseInfo: TIdHTTPResponseInfo;
+    /// The RAL server.
     Server: TRALIndyServer;
   end;
 
   { TRALIndyStreamWriter }
 
+  /// Writer of a streamed response straight on the Indy connection.
   TRALIndyStreamWriter = class(TRALStreamWriter)
   private
+    /// Connection the stream goes to.
     FContext: TRALIndyStreamContext;
   public
+    /// A writer for AContext.
     constructor Create(AContext: TRALIndyStreamContext);
 
     function Alive: boolean; override;
@@ -196,11 +208,8 @@ begin
   end;
 end;
 
-{ The answer to a request whose handling raised outside ProcessCommands -
-  decoding it, or building the answer. The exception used to be swallowed and
-  Indy then wrote its own default page: "200 OK" over a failure. Whatever the
-  answer had been given already goes with it, since a Content-Encoding or a
-  cipher header over a plain-text error would have the client misread it }
+{ Answers a request whose handling raised outside ProcessCommands with the
+  server's error rules, dropping the headers set on the answer. }
 procedure AnswerFailure(AResponseInfo: TIdHTTPResponseInfo; const AMessage: string);
 begin
   if AResponseInfo.HeaderHasBeenWritten then
@@ -238,28 +247,13 @@ begin
     thing on its own, in TCrtSocket.SetupConnection. }
   FHttp.UseNagle := False;
 
-  { RAL reads the query string and the form from QueryParams and FormParams,
-    which Indy fills whatever this says, and parses them itself; the Params
-    list Indy decodes into was only ever cleared. Decoding it cost a lookup of
-    the charset by name on every request - a walk of Indy's whole table with
-    AnsiCompareText, which on FPC converts both names to UTF-16 at each step:
-    about a third of the CPU of a GET on that compiler (profiled on
-    05/10/2026) }
+  { RAL parses QueryParams and FormParams itself: Indy's Params decoding is not
+    needed }
   FHttp.ParseParams := False;
 
 {$IFDEF FPC}
-  { on FPC a thread of a connection that ended waits for the next one instead
-    of being destroyed: Indy's default scheduler starts a thread per
-    connection and destroys it with the connection, so a client that opens a
-    connection per request - what JMeter does by default - paid a thread
-    created and destroyed on every request, and on FPC a new thread also
-    builds a heap of its own. A connection that finds no thread in the pool
-    still gets a new one, so nothing waits that did not wait before; the pool
-    only keeps up to PoolSize idle threads for the next ones. Measured on
-    05/10/2026, 64 clients opening a connection per request: 5.4k -> 8.5k
-    requests per second on FPC. Not on Delphi: there the same pool HALVED it
-    (1.5k -> 0.6-0.9k, the CPU idle - a pooled thread waking up is slower
-    than a new one), so Delphi keeps Indy's default }
+  { on FPC the thread of an ended connection waits for the next one (up to
+    PoolSize idle); Delphi keeps Indy's default scheduler }
   FHttp.Scheduler := TIdSchedulerOfThreadPool.Create(FHttp);
   TIdSchedulerOfThreadPool(FHttp.Scheduler).PoolSize := 2 * RALCPUCount;
 {$ENDIF}
@@ -400,18 +394,16 @@ begin
         AddHeader('RALEngine', ENGINEINDY);
         ClientInfo.IP := ARequestInfo.RemoteIP;
         ClientInfo.Port := AContext.Binding.PeerPort;
-        { the socket of THIS connection: Indy keeps one TIdContext per
-          connection, so a kept-alive client's requests all report the same
-          handle. With the peer's port above it, as http.sys is keyed: the
-          system hands a closed socket's handle to the next connection, and
-          a hundred connections one after another counted as one }
+        { the socket of this connection with the peer's port above it: the system
+          hands a closed socket's handle to the next connection }
         ClientInfo.ConnectionID := (Int64RAL(AContext.Binding.PeerPort) shl 48) xor
           Int64RAL(AContext.Binding.Handle);
         ClientInfo.MACAddress := '';
         ClientInfo.UserAgent := ARequestInfo.UserAgent;
 
         ContentType := ARequestInfo.ContentType;
-        ContentDisposition := ARequestInfo.ContentDisposition; // the REQUEST's, not the empty response's
+        // the request's own, not the empty response's
+        ContentDisposition := ARequestInfo.ContentDisposition;
         ContentEncoding := ARequestInfo.ContentEncoding;
         AcceptEncoding := ARequestInfo.AcceptEncoding;
         ContentSize := ARequestInfo.ContentLength;
@@ -465,8 +457,8 @@ begin
           SetWireBody(ARequestInfo.PostStream, boBorrowedWritable);
 
           Host := ARequestInfo.Host;
-          { HttpVersion is the scheme, which the request line does not carry -
-            it says HTTP/1.1 over TLS too, and this used to copy the 'HTTP' }
+          { HttpVersion is the scheme, which the request line does not carry (it
+            says HTTP/1.1 over TLS too) }
           if Self.SSLEnabled then
             HttpVersion := 'HTTPS'
           else
@@ -477,8 +469,8 @@ begin
           else
             Protocol := '1.0';
 
-          { PostStream is NOT emptied here any more: it is the body now, and
-            the params read from it until the request is freed }
+          { PostStream is not emptied: it is the body, and the params read from it
+            until the request is freed }
           ARequestInfo.RawHeaders.Clear;
           ARequestInfo.CustomHeaders.Clear;
           ARequestInfo.Cookies.Clear;
@@ -713,9 +705,8 @@ begin
 
   FHttp.DefaultPort := AValue;
 
-  { inherited BEFORE reactivating: SetActive binds Self.Port, which is still
-    the old value until the base class stores the new one - a port changed on
-    a live server came back up listening on the old port }
+  { inherited before reactivating: SetActive binds Port, which the base class
+    stores }
   inherited;
   Active := vActive;
 end;
@@ -747,7 +738,7 @@ end;
 { TRALIdServerIOHandlerSSL }
 
 type
-  { InitContext is protected in TIdSSLContext }
+  /// InitContext is protected in TIdSSLContext.
   TIdSSLContextAccess = class(TIdSSLContext);
 
 destructor TRALIdServerIOHandlerSSL.Destroy;

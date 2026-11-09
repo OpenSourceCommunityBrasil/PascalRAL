@@ -10,6 +10,7 @@ uses
   Classes,
   RALIndyServer, RALIndyClient;
 
+/// Registers the Indy components.
 procedure Register;
 
 implementation

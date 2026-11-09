@@ -1,3 +1,4 @@
+/// FPC part of RALWebBrokerServer: an Apache 2.4 module through fcl-web.
 uses
   Classes, SysUtils, DateUtils,
   custweb, httpDefs, custapache24, httpd24, apr24,
@@ -5,9 +6,8 @@ uses
   RALMIMETypes, RALStream;
 
 type
-  { The server of the Apache module. Active registers it as the one the
-    requests reach (one per module); Active := False at unload stops its
-    plugins. }
+  { The server of the Apache module: activating registers it as the one the
+    requests reach (one per module); deactivating at unload stops its plugins. }
   TRALWebBrokerServer = class(TRALServer)
   private
     FExtraHeaders: TStrings;
@@ -48,6 +48,7 @@ function RALWebBrokerActiveServer: TRALWebBrokerServer;
 implementation
 
 var
+  /// The server of the module.
   gServer: TRALWebBrokerServer;
 
 function RALWebBrokerActiveServer: TRALWebBrokerServer;
@@ -65,7 +66,7 @@ begin
   custapache24.Application.Initialize;
 end;
 
-{ every header of the request, from Apache's own table }
+/// Every header of the request, from Apache's own table.
 procedure ReadHeaders(ARequest: TRequest; ARALRequest: TRALRequest);
 var
   vArray: Papr_array_header_t;

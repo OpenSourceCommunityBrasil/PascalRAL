@@ -22,74 +22,86 @@ uses
 {$IFEND}
 
 type
-  { TRALnetHTTPClientHTTP }
 
+  { netHTTP client engine (System.Net.HttpClient: WinHTTP, libcurl, NSURLSession,
+    HttpURLConnection). }
   TRALnetHTTPClientHTTP = class(TRALClientHTTP)
   private
     { the request being sent, for the redirect handlers: the next hop's Cookie
       header is rebuilt from its params and the client's jar }
     FCurrent: TRALRequest;
-    { this engine's own transport, used when it is not sharing }
+    /// This engine's own transport, used when it is not sharing.
     FHttp: TNetHTTPClient;
     { what FSharedKey was built from - a TRALnetHTTPSetup, see the
       implementation - so a call to the same place with the same settings does
       not build the key again }
     FSetupAuthority: StringRAL;
+    /// ConnectTimeout the transport was set up with.
     FSetupConnect: IntegerRAL;
+    /// KeepAliveInterval the transport was set up with.
     FSetupKeepAlive: IntegerRAL;
+    /// TLSRequired the transport was set up with.
     FSetupNoDowngrade: boolean;
+    /// Certificate policy the transport was set up with.
     FSetupPolicy: StringRAL;
+    /// MaxRedirects the transport was set up with.
     FSetupRedirects: IntegerRAL;
+    /// RequestTimeout the transport was set up with.
     FSetupRequest: IntegerRAL;
+    /// UserAgent the transport was set up with.
     FSetupUserAgent: StringRAL;
+    /// HTTPVersion the transport was set up with.
     FSetupVersion: TRALHTTPVersion;
     { the borrowed one, and the key it was asked for - '' when there is none.
       The key is also how the holder is found again: the connection cap is
       state of the shared TRANSPORT, not of one client - see PoolMatchCap }
     FShared: TNetHTTPClient;
+    /// Pool key of the shared transport; empty for an own one.
     FSharedKey: StringRAL;
 
-    /// Whether this call may run over a transport shared with other clients:
-    /// ShareConnection, and no say over the certificate - see the body for
-    /// why the RTL rules that out.
+    { Whether this call may run over a transport shared with other clients:
+      ShareConnection, and no say over the certificate - see the body for
+      why the RTL rules that out. }
     function CanShare: boolean;
-    /// a redirect is about to be followed: keeps the cookies the 3xx set and
-    /// rewrites ARequest's Cookie header for where it is going
+    { a redirect is about to be followed: keeps the cookies the 3xx set and
+      rewrites ARequest's Cookie header for where it is going. }
     procedure FollowCookies(const ARequest: IHTTPRequest;
                             const AResponse: IHTTPResponse);
     /// what the client's jar holds for AURL, as a Cookie value
     function JarCookiesFor(const AURL: TURI): StringRAL;
     /// keeps ACookies - an answer's - in the client's jar
     procedure StoreCookies(ACookies: TCookies; const AURL: TURI);
+    /// Judges the server certificate by the client's rule.
     procedure ValidateCert(const Sender: TObject; const ARequest: TURLRequest;
                            const Certificate: TCertificate; var Accepted: boolean);
-    /// Whether this client wants a say over the server certificate. With no
-    /// pin, no event and Verify left alone, the RTL keeps the behaviour it
-    /// always had and does not even go fetch the certificate to show it.
+    { Whether this client wants a say over the server certificate. With no
+      pin, no event and Verify left alone, the RTL keeps the behaviour it
+      always had and does not even go fetch the certificate to show it. }
     function WantsCertHandler: boolean;
     {$IFDEF RALNETHTTP_REDIRECTEVENT}
-    /// Refuses a redirect that would take a TLS call to plain http. Installed
-    /// only where TLS is required (SSL.Required or a pin), and stateless, so
-    /// a shared transport can carry it.
+    { Refuses a redirect that would take a TLS call to plain http. Installed
+      only where TLS is required (SSL.Required or a pin), and stateless, so
+      a shared transport can carry it. }
     class procedure KeepOnTLS(const Sender: TObject; const ARequest: IHTTPRequest;
                               const AResponse: IHTTPResponse; ARedirections: Integer;
                               var AAllow: Boolean);
-    /// The same on the own transport, where the engine is Self, after the
-    /// KeepOnTLS check when TLS is required
+    { The same on the own transport, where the engine is Self, after the
+      KeepOnTLS check when TLS is required. }
     procedure OwnRedirect(const Sender: TObject; const ARequest: IHTTPRequest;
                           const AResponse: IHTTPResponse; ARedirections: Integer;
                           var AAllow: Boolean);
-    /// The cookies of a redirect, on a shared transport: the engine is the one
-    /// sending on this thread - see vSendingEngine
+    { The cookies of a redirect, on a shared transport: the engine is the one
+      sending on this thread - see vSendingEngine. }
     class procedure SharedRedirect(const Sender: TObject; const ARequest: IHTTPRequest;
                                    const AResponse: IHTTPResponse; ARedirections: Integer;
                                    var AAllow: Boolean);
     {$ENDIF}
   protected
+    /// Gives the shared transport back.
     procedure DropShared;
     class function NewCookieJar: TObject; override;
-    /// Picks the transport for this call, borrowing or giving back as the
-    /// settings require, and returns it already configured.
+    { Picks the transport for this call, borrowing or giving back as the
+      settings require, and returns it already configured. }
     function PickTransport(const AURL: StringRAL): TNetHTTPClient;
   public
     constructor Create(AOwner: TRALClient); override;
@@ -102,20 +114,20 @@ type
     class function PackageDependency : StringRAL; override;
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest; AResponse: TRALResponse;
                       AMethod: TRALMethod); override;
-    /// True on Windows, where the server certificate fingerprint is reachable
-    /// - see ServerCertFingerprint. It stays False on every other platform,
-    /// and SSL.Pins then refuses on the first request instead of quietly
-    /// checking something weaker.
+    { True on Windows, where the server certificate fingerprint is reachable
+      - see ServerCertFingerprint. It stays False on every other platform,
+      and SSL.Pins then refuses on the first request instead of quietly
+      checking something weaker. }
     class function SupportsCertPin: boolean; override;
     class function SupportsHTTP2: boolean; override;
     /// True on Windows - see SetHttp2KeepAlive and the body below
     class function SupportsKeepAliveInterval: boolean; override;
     class function SupportsMethod(AMethod: TRALMethod): boolean; override;
-    /// True: WinHTTP (and every other library the RTL puts under this engine)
-    /// keeps a connection pool of its own, so one shared transport still opens
-    /// as many sockets as the traffic needs - and multiplexes onto one under
-    /// HTTP/2. Sharing costs nothing in parallelism here, which is exactly what
-    /// is not true of the one-socket-per-object engines.
+    { True: WinHTTP (and every other library the RTL puts under this engine)
+      keeps a connection pool of its own, so one shared transport still opens
+      as many sockets as the traffic needs - and multiplexes onto one under
+      HTTP/2. Sharing costs nothing in parallelism here, which is exactly what
+      is not true of the one-socket-per-object engines. }
     class function SupportsSharedConnection: boolean; override;
   end;
 
@@ -132,59 +144,41 @@ implementation
   {$DEFINE RALNETHTTP_VERSIONED}
 {$IFEND}
 
-{ ---------------------------------------------------------------------------
-  Shared transports
-
-  RAL asks for one TRALClient per dataset, because Request is one object per
-  client. Each of them bringing its own TNetHTTPClient means one HTTP session -
-  and therefore one TCP connection - per dataset, and a cold open (TCP + TLS)
-  on every first use. A handset with 80 datasets pays for it 80 times.
-
-  Here the clients aimed at the same place WITH THE SAME SETTINGS get the same
-  transport, and therefore the same connection. The key is the whole
-  configuration, deliberately: that way everything SendUrl used to write on the
-  object per call is identical among the sharers, can be applied ONCE at
-  creation, and the race of two threads reconfiguring the same transport over
-  each other is gone. What is left is Content-Type, which became a request
-  header.
-
-  Reference counted, not cached: the transport dies when the last client that
-  asked for it gives it back. A pool that keeps what nobody uses holds sockets
-  and memory with no owner.
-  --------------------------------------------------------------------------- }
+{ Shared transports: clients aimed at the same place with the same settings share
+  one, reference counted; the key is the whole configuration. }
 
 type
-  { everything that tells one transport from another; whatever is not here may
-    NOT be written per call, or one client would change another's }
+  { Everything that tells one transport from another; nothing else may be written per
+    call. }
   TRALnetHTTPSetup = record
+    /// scheme://host:port the transport talks to.
     Authority: StringRAL;   // scheme://host:port - who is being talked to
+    /// User-Agent.
     UserAgent: StringRAL;
+    /// Connect timeout, ms.
     ConnectTimeout: IntegerRAL;
+    /// Request timeout, ms.
     RequestTimeout: IntegerRAL;
+    /// Redirects followed.
     MaxRedirects: IntegerRAL;
+    /// HTTP version asked for.
     Version: TRALHTTPVersion;
-    { THE PING INTERVAL ALSO TELLS ONE TRANSPORT FROM ANOTHER, for the same
-      reason as the certificate policy below: it is a SESSION option, installed
-      by whoever gets there first. Out of the key, two clients asking for
-      different intervals would share a transport and one would decide for the
-      other. }
+    /// HTTP/2 ping interval, a session option.
     KeepAlive: IntegerRAL;
-    { THE CERTIFICATE POLICY ALSO TELLS ONE TRANSPORT FROM ANOTHER. Only the
-      clients that leave the certificate to the engine share at all (see
-      CanShare), and for them it is little more than the Verify mode - but with
-      it in the key no rule can ever put two policies on one transport by
-      accident: a TLS connection is judged once, at its handshake, and whoever
-      reuses it inherits the verdict of whoever opened it. }
+    /// Certificate policy: a TLS connection is judged once, at its handshake.
     CertPolicy: StringRAL;
     { whether a redirect may leave TLS - see KeepOnTLS. On a shared transport
       it is SSL.Required alone (a pin keeps its client off the pool), and it
       is a handler on the object, so it is part of the key too }
     NoDowngrade: boolean;
+    /// The pool key: every field as text.
     function Key: StringRAL;
   end;
 
+  /// A shared transport: the client and its connection cap.
   TRALnetHTTPHolder = class
   public
+    /// The shared client.
     Http: TNetHTTPClient;
     { Who shares this transport. It is also the reference count - an empty list
       is the sign that the holder may die - and it is a list rather than a
@@ -196,6 +190,7 @@ type
       value it really had, not a guess at the default. See the cap block of
       LimitToOneConnection's comment. }
     ConnCapped: boolean;
+    /// WinHTTP's connection limit before the cap; 0 when not capped.
     ConnWas: DWORD;
     {$ENDIF}
     constructor Create;
@@ -204,14 +199,15 @@ type
     { Caps this transport at one connection, which is what turns h2 into
       multiplexing. Called before the first request, from PoolAcquire. }
     procedure CapConnections;
-    { Takes the cap off when an answer says the version is NOT h2. THE POOL
-      LOCK MUST ALREADY BE HELD - PoolMatchCap takes it, because finding the
-      holder needs it anyway. }
+    { Takes the cap off when an answer says the version is not h2; the caller holds
+      the pool lock. }
     procedure MatchConnectionCap(AVersion: TRALHTTPVersion);
   end;
 
 var
+  /// Shared transports by setup key.
   vPool: TStringList = nil;        // sorted: key -> TRALnetHTTPHolder
+  /// Guards vPool.
   vPoolLock: TCriticalSection = nil;
 
 { The engine inside SendUrl on this thread. A shared transport serves many
@@ -219,6 +215,7 @@ var
   it runs on the calling thread (SynchronizeEvents is off there - see
   PoolAcquire), and this tells it whose request it is. }
 threadvar
+  /// Engine sending on this thread, for the RTL callbacks.
   vSendingEngine: TRALnetHTTPClientHTTP;
 
 function TRALnetHTTPSetup.Key: StringRAL;
@@ -246,66 +243,32 @@ end;
 
 
 {$IFDEF RALWindows}
-{ ONE CONNECTION FOR EVERY REQUEST, which is what HTTP/2 promises and WinHTTP
-  does not do on its own.
-
-  The problem, measured: even with h2 negotiated, WinHTTP would rather open one
-  TCP connection per CONCURRENT request. Twenty simultaneous requests become
-  twenty connections, and multiplexing - the reason HTTP/2 exists - never
-  happens. One option is enough to change it:
-  WINHTTP_OPTION_MAX_CONNS_PER_SERVER = 1. Those same twenty requests then
-  become twenty streams of ONE connection (measured: 20 connections -> 1, and
-  faster).
-
-  The problem with the problem: that option belongs to WinHTTP's SESSION
-  handle, and Delphi's RTL keeps it private, in a class declared in the
-  implementation section - no property exposing it, no inheritance possible,
-  and WinHttpSetOption(nil, ...) to make it process-wide is refused with 12018.
-  Every door was tried.
-
-  What is left is RTTI, and it is enough: in Delphi, FIELD RTTI covers every
-  visibility by default (only methods and properties are restricted to
-  public/published). Two steps down - TNetHTTPClient.FHttpClient and
-  TWinHTTPClient.FWSession - and the handle is in hand.
-
-  This DEPENDS ON THE NAMES of those two fields, and one day Embarcadero may
-  rename them. That is why every step is checked and the routine gives up in
-  silence: without the limit the client keeps working exactly as before, with
-  more connections. Degrade without breaking, the way SupportsCertPin already
-  does.
-
-  AND IT IS APPLIED ONLY ONCE HTTP/2 IS CONFIRMED, never because it was asked
-  for. ALPN may always settle on 1.1 - an older server, a proxy, or plain http,
-  which has no h2 at all - and under 1.1 a single connection does not multiplex,
-  it QUEUES. Capping on the request instead of on the answer made "ask for h2"
-  slower than asking for nothing whenever the other side did not have it, with
-  nothing to show for it. So the holder caps after the first response that says
-  rhv2, and puts back what it found if the answer ever says otherwise.
-
-  Outside Windows none of this exists nor is needed: on Android
-  HttpURLConnection is OkHttp underneath, which multiplexes h2 in its own pool,
-  and on macOS/iOS NSURLSession does the same. }
+{ One connection for every request under HTTP/2 (WINHTTP_OPTION_MAX_CONNS_PER_SERVER
+  on the session handle, reached through field RTTI; silent when the RTL changes). }
 
 type
-  { a private field found by RTTI, for one class }
+  /// A private field found by RTTI, for one class.
   PRALRttiSlot = ^TRALRttiSlot;
+  /// A private field of an RTL class, found by RTTI once.
   TRALRttiSlot = record
+    /// Class the field was found in.
     Cls: TClass;
+    /// The field.
     Field: TRttiField;
   end;
 
 var
-  { ONE RTTI context for the life of the unit. A context created and freed per
-    call - one per response, in NegotiatedProtocol - rebuilt the RTTI pool
-    whenever no other context was alive, and a TRttiField found is only good
-    while some context keeps that pool }
+  /// RTTI context of the unit, kept alive so the fields found stay valid.
   gRttiContext: TRttiContext;
   { each private field the engine reads, found once: the classes behind
     THTTPClient are always the same ones, and GetField walked the class's
     fields comparing names on every response }
   gSlotHttpClient: PRALRttiSlot = nil;
+  /// TWinHTTPClient.FWSession.
   gSlotWSession: PRALRttiSlot = nil;
+  /// The request handle of a WinHTTP response.
   gSlotRespRequest: PRALRttiSlot = nil;
+  /// The request handle of a WinHTTP request.
   gSlotReqRequest: PRALRttiSlot = nil;
 
 { The field AName of AClass, kept in ASlot by whichever thread looks first -
@@ -339,6 +302,7 @@ begin
   end;
 end;
 
+/// Frees ASlot.
 procedure FreeRttiSlot(var ASlot: PRALRttiSlot);
 begin
   if ASlot <> nil then
@@ -346,6 +310,7 @@ begin
   ASlot := nil;
 end;
 
+/// WinHTTP session handle of AHttp; nil when it cannot be reached.
 function WinHttpSessionOf(AHttp: TNetHTTPClient): Pointer;
 var
   vField: TRttiField;
@@ -378,30 +343,17 @@ begin
 end;
 
 const
-  { NOT in Winapi.WinHTTP: the Delphi 12 RTL stops at 151, and this is 164 -
-    WINHTTP_OPTION_HTTP2_KEEPALIVE. With it WinHTTP itself sends the HTTP/2
-    PING frames, which is exactly what the OkHttp engine does on Android with
-    pingInterval. It is not traffic of our own invention: it is frame 0x6 of
-    RFC 7540, on stream 0, answered by the peer's HTTP/2 layer without the
-    server ever knowing.
-
-    Measured on 2026-09-15 with a probe on all three handle types:
-      Windows 11 24H2 (build 26100) - accepted, on the SESSION handle ONLY,
-                                      with a buffer of EXACTLY 4 bytes, and it
-                                      refuses any value below 5000 ms
-      Windows 10 22H2 (build 19045) - ERROR_WINHTTP_INVALID_OPTION on all three
-
-    Where it does not exist, WinHttpSetOption returns False and does NOT touch
-    the session - checked: in that same probe, two refused SetOption calls were
-    followed by requests that came back 200 over HTTP/2. That is why nothing
-    checks its result to raise: a missing feature is not an error. }
+  { WINHTTP_OPTION_HTTP2_KEEPALIVE, missing from Winapi.WinHTTP: WinHTTP sends the
+    HTTP/2 PING itself (Windows 11, session handle, 5000 ms or more). }
   WINHTTP_OPTION_HTTP2_KEEPALIVE = 164;
 
   { declared here because the RTL of Delphi 10 Seattle and older lacks them; the
     newer ones declare the same values, which these simply repeat }
   WINHTTP_OPTION_HTTP_PROTOCOL_USED = 147;
+  /// Flag of WINHTTP_OPTION_HTTP_PROTOCOL_USED for HTTP/2.
   WINHTTP_PROTOCOL_FLAG_HTTP2 = $1;
 
+/// Reads WINHTTP_OPTION_MAX_CONNS_PER_SERVER of AHttp's session.
 function GetMaxConnsPerServer(AHttp: TNetHTTPClient; out AValue: DWORD): boolean;
 var
   vSession: Pointer;
@@ -418,6 +370,7 @@ begin
                                AValue, vSize);
 end;
 
+/// Sets WINHTTP_OPTION_MAX_CONNS_PER_SERVER of AHttp's session.
 function SetMaxConnsPerServer(AHttp: TNetHTTPClient; AValue: DWORD): boolean;
 var
   vSession: Pointer;
@@ -431,17 +384,8 @@ begin
                              @AValue, SizeOf(AValue));
 end;
 
-{ THE HTTP/2 PING, SENT BY WINDOWS ITSELF - see the constant further up.
-
-  It is a SESSION option, so it holds for every connection of that transport -
-  and that is why the interval goes into the pool key: two clients asking for
-  different intervals on one transport would get whichever arrived first, and
-  the second would never know.
-
-  Silent on purpose. On a Windows without the option this is not a failure, it
-  is a feature that does not exist there - the same rule as ShareConnection on
-  an engine that cannot share. The request goes out just the same, over HTTP/2,
-  without a ping. }
+{ Sets the HTTP/2 ping of AHttp's session to AMs; False where Windows has no such
+  option. }
 function SetHttp2KeepAlive(AHttp: TNetHTTPClient; AMs: IntegerRAL): boolean;
 var
   vSession: Pointer;
@@ -462,14 +406,10 @@ begin
 end;
 {$ENDIF}
 
-{ The three below are declared for every platform and only DO something on
-  Windows, so they live outside the Windows block - inside it they left the
-  declarations without a body everywhere else, and the unit stopped compiling
-  for Android, Linux and macOS. }
+{ The three below are declared everywhere and act on Windows only. }
 
-{ ONE CONNECTION FOR THIS TRANSPORT - see the long note on LimitToOneConnection.
-  Remembers what WinHTTP had, so taking it off puts back the real value and not
-  a guess at the default. Called from PoolAcquire, under the pool lock. }
+{ Caps the transport at one connection, keeping WinHTTP's value to restore; called
+  under the pool lock. }
 procedure TRALnetHTTPHolder.CapConnections;
 {$IFDEF RALWindows}
 var
@@ -535,12 +475,18 @@ type
   { CERT_CONTEXT as wincrypt.h lays it out. Winapi.Windows only declares it from
     Delphi 10.1 on, so the engine carries its own. }
   TRALCertContext = record
+    /// Field dwCertEncodingType of CERT_CONTEXT.
     dwCertEncodingType: DWORD;
+    /// Field pbCertEncoded of CERT_CONTEXT: the DER bytes.
     pbCertEncoded: PByte;
+    /// Field cbCertEncoded of CERT_CONTEXT.
     cbCertEncoded: DWORD;
+    /// Field pCertInfo of CERT_CONTEXT.
     pCertInfo: Pointer;
+    /// Field hCertStore of CERT_CONTEXT.
     hCertStore: Pointer;
   end;
+  /// Pointer to TRALCertContext.
   PRALCertContext = ^TRALCertContext;
 
 { Delphi's RTL declares CERT_CONTEXT but not this function - it only shows up
@@ -548,18 +494,8 @@ type
 function CertFreeCertificateContext(pCertContext: PRALCertContext): BOOL; stdcall;
   external 'crypt32.dll' name 'CertFreeCertificateContext';
 
-{ WHICH VERSION WAS REALLY NEGOTIATED, which IHTTPResponse.Version cannot say.
-
-  The RTL fills Version from the STATUS LINE, and an HTTP/2 response has none -
-  WinHTTP synthesises "HTTP/1.1" for it. So a connection really framed as h2
-  comes back reported as 1.1, and it is not a rounding error: it was measured
-  against an http.sys server serving h2 to Edge and to a Java 17 client alike.
-
-  WinHTTP does know, and it answers on the REQUEST handle, under
-  WINHTTP_OPTION_HTTP_PROTOCOL_USED. TWinHTTPResponse keeps that handle in a
-  private FWRequest of its own, which is the same door ServerCertFingerprint
-  already opens one level up - and the same RTTI caveat applies: any step that
-  fails gives rhvDefault back, and the caller falls back to what the RTL said. }
+{ The HTTP version WinHTTP negotiated for AResponse (the status line says 1.1 for
+  h2 too); rhvDefault when it cannot be read. }
 function NegotiatedProtocol(const AResponse: IHTTPResponse): TRALHTTPVersion;
 var
   vField: TRttiField;
@@ -600,23 +536,8 @@ begin
   end;
 end;
 
-{ THE SERVER CERTIFICATE FINGERPRINT, which is what makes SSL.Pins work - and
-  what this engine did not have.
-
-  The TCertificate the RTL hands to the validation event carries Subject,
-  Issuer, serial number and dates: all of it copyable, none of it identifying
-  the certificate itself. Comparing those fields WOULD LOOK like pinning and
-  would not be.
-
-  But the certificate is right there, one level down: the event's ARequest is
-  the platform's THTTPRequest, and on Windows it holds the WinHTTP handle, from
-  which WINHTTP_OPTION_SERVER_CERT_CONTEXT returns the CERT_CONTEXT with the
-  raw bytes (pbCertEncoded). SHA-256 over them is the fingerprint - the same
-  one openssl prints with "x509 -fingerprint -sha256".
-
-  Through RTTI for the same reason as LimitToOneConnection: the field is
-  private. Should any step fail it returns '', and RAL then treats it as an
-  engine that cannot read a fingerprint, exactly as before. }
+{ SHA-256 fingerprint of the server certificate of ARequest (WinHTTP's
+  CERT_CONTEXT); empty when it cannot be read. }
 function ServerCertFingerprint(const ARequest: TURLRequest): StringRAL;
 var
   vField: TRttiField;
@@ -660,9 +581,7 @@ begin
 end;
 {$ENDIF}
 
-{ Creation happens INSIDE the critical section on purpose: whoever arrives
-  second has to find a transport already configured, never a freshly created
-  one still waiting for its timeouts and version. }
+/// The transport of ASetup, created and configured inside the pool lock.
 function PoolAcquire(const ASetup: TRALnetHTTPSetup;
   AClient: TRALnetHTTPClientHTTP): TNetHTTPClient;
 var
@@ -722,15 +641,8 @@ begin
       {$ENDIF}
 
       {$IFDEF RALWindows}
-      { The cap goes on HERE, before the first request, when h2 was asked for -
-        and it has to be here. Measured: 20 threads on a fresh transport all
-        open their socket in the first burst, BEFORE any response comes back,
-        and WinHTTP does not close what it already pooled. Capping only after
-        the answer left 16 connections where 1 was the point.
-
-        Asking is not getting, so MatchConnectionCap takes it off again the
-        moment an answer says the version is not h2 - one burst pays for the
-        wrong guess, and it is right from there on. }
+      { the cap goes on before the first request when h2 was asked for (a new
+        transport opens its sockets in the first burst); an answer in 1.x lifts it }
       if ASetup.Version = rhv2 then
         vHolder.CapConnections;
 
@@ -749,6 +661,7 @@ begin
   end;
 end;
 
+/// Gives the transport of AKey back; the last holder frees it.
 procedure PoolRelease(const AKey: StringRAL; AClient: TRALnetHTTPClientHTTP);
 var
   vIdx: IntegerRAL;
@@ -855,10 +768,8 @@ begin
   end;
 end;
 
-{ Called before the RTL moves the request to the Location, with the 3xx in
-  AResponse: the next hop goes out with the headers ARequest has, and the RTL
-  no longer touches its Cookie, so it is rewritten here. Where it lands is
-  computed the way the RTL computes it (ComposeRedirectURL) }
+{ Writes the cookies for the next hop of a redirect (the RTL leaves Cookie alone),
+  the target computed as the RTL does. }
 procedure TRALnetHTTPClientHTTP.FollowCookies(const ARequest: IHTTPRequest;
   const AResponse: IHTTPResponse);
 var
@@ -877,23 +788,8 @@ begin
     ARequest.RemoveHeader('Cookie');
 end;
 
-{ Most platforms this engine compiles for have a library able to frame HTTP/2,
-  and the RTL hands ProtocolVersion to each of them: WinHTTP on Windows,
-  libcurl on Linux (System.Net.HttpClient.Curl sets CURLOPT_HTTP_VERSION),
-  NSURLSession on macOS/iOS. So the first thing to decide is whether the RTL
-  declares the property at all, which is what the conditional above answers.
-
-  ANDROID IS THE EXCEPTION, and it is not a matter of the RTL version. There
-  the RTL goes through HttpURLConnection, which runs on the copy of OkHttp
-  inside AOSP - and AOSP hands that copy a protocol list WITHOUT h2. Setting
-  ProtocolVersion there is accepted and then ignored: measured on a handset
-  against an http.sys server serving h2 to everything else, 70 of 71 requests
-  came back HTTP/1.1, with no error and nothing in any log. Answering True
-  would make HTTPVersion = rhv2 a silent no-op, which is the one outcome
-  TRALHTTPVersion exists to prevent - so it answers False, the request raises,
-  and the message points at the OkHttp engine, which does speak h2 there.
-
-  Note this is the Delphi RTL: under FPC there is no netHTTP engine. }
+{ HTTP/2 where the RTL has ProtocolVersion, except Android, where the platform
+  library ignores it. }
 class function TRALnetHTTPClientHTTP.SupportsHTTP2: boolean;
 begin
   {$IF Defined(RALNETHTTP_VERSIONED) and not Defined(ANDROID)}
@@ -919,10 +815,7 @@ end;
 
 class function TRALnetHTTPClientHTTP.MinKeepAliveInterval: IntegerRAL;
 begin
-  { WinHTTP answers ERROR_INVALID_PARAMETER to anything below this in
-    WINHTTP_OPTION_HTTP2_KEEPALIVE - measured, not assumed. Stating the floor
-    here, what corrects it is the property assignment, where the number stays
-    visible; the engine never has to fix anything behind anyone's back. }
+  { the floor WinHTTP accepts for the HTTP/2 ping, applied on assignment }
   {$IF Defined(RALWindows) and Defined(RALNETHTTP_VERSIONED)}
   Result := MINKEEPALIVEMS;
   {$ELSE}
@@ -932,17 +825,7 @@ end;
 
 class function TRALnetHTTPClientHTTP.SupportsKeepAliveInterval: boolean;
 begin
-  { The answer is about the PLATFORM, not about the machine answering.
-
-    What asks is the Object Inspector, at design time, of a class - with no
-    instance and no way of knowing where the program will run. Probing here
-    whether THIS Windows has option 164 would answer the wrong question: it
-    would hide the property from someone developing on Windows 10 and
-    deploying on 11.
-
-    So the class promises what the platform can give, and what decides whether
-    there is a ping is the machine the request leaves from - in silence, as the
-    rule that an irrelevant value is ignored and never refused requires. }
+  { about the platform, not this machine: the Object Inspector asks the class }
   {$IF Defined(RALWindows) and Defined(RALNETHTTP_VERSIONED)}
   Result := True;
   {$ELSE}
@@ -1238,11 +1121,7 @@ begin
 
   vHttp := PickTransport(AURL);
 
-  { A borrowed transport was already configured at birth, inside the pool's
-    critical section and from the SAME key this client computed - writing it
-    again here would change no value and would open the very race sharing
-    exists to avoid. So the assignments below hold for the own transport only,
-    and they carry on exactly as they always were. }
+  { a borrowed transport was configured at creation: only an own one is set here }
   if vHttp = FHttp then
   begin
     { Hooked up per request and only when asked, exactly like the Indy engine:
@@ -1342,21 +1221,14 @@ begin
     SpoolAbove - and the response adopts it }
   vResult := TRALBodyStream.Create(-1, Parent.SpoolAbove);
   try
-    { Content-Type goes in this request's headers, and no longer into
-      FHttp.ContentType. That property is not a property at all: the RTL keeps
-      it as a CUSTOM HEADER on the client object (THTTPClient.GetContentType is
-      GetCustomHeaderValue), so it is state that outlives the call - which two
-      clients sharing one transport would overwrite for each other. Here it
-      travels with the request, where every other RAL header already travels.
-
-      Only when there is one: an empty value would add an empty Content-Type,
-      which is worse than sending none. }
+    { Content-Type in this request's headers (FHttp.ContentType is state of the
+      shared client), only when there is one }
     if ARequest.ContentType <> '' then
       ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
     if ARequest.ContentDisposition <> '' then
       ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
-    { after TakeWireStream, on purpose: only now ContentEncoding says what
-      was actually done to the body - see the note above }
+    { after TakeWireStream: only now ContentEncoding says what was done to the
+      body }
     if ARequest.ContentCompress <> ctNone then
       ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
 
@@ -1418,15 +1290,8 @@ begin
 	  
       if vResponse <> nil then // Antonio c Gomes AV
       begin
-        { What the transport says it spoke, which is not necessarily what was
-          asked: ALPN settles it, and a server without h2 answers 1.1 to a
-          client that asked for 2. Reported per response, never cached on the
-          client - two BaseURLs may well negotiate differently.
-
-          Windows is asked FIRST and separately, because the RTL's own answer
-          under-reports there: it reads the status line, which an HTTP/2
-          response does not have - see NegotiatedProtocol. The RTL is the
-          fallback, for when that door is shut. }
+        { what the transport spoke (ALPN), per response; Windows asked first, the RTL as
+          the fallback }
         {$IFDEF RALWindows}
         AResponse.ProtocolVersion := NegotiatedProtocol(vResponse);
         {$ENDIF}
@@ -1442,25 +1307,14 @@ begin
           end;
         {$ENDIF}
 
-        { AND ONLY NOW the one-connection cap, because only now is there an
-          answer to cap for. Asking for h2 is not getting it, and one connection
-          under HTTP/1.1 queues what it should run in parallel. Only where the
-          cap can be on - Windows, a shared transport opened for h2 - and an
-          answer in 1.x takes it off: the pool's global lock was taken for every
-          response, everywhere, to find there was nothing to do }
+        { only now the one-connection cap, and an answer in 1.x takes it off }
         {$IFDEF RALWindows}
         if (FSharedKey <> '') and (FSetupVersion = rhv2) and
            (AResponse.ProtocolVersion in [rhv10, rhv11]) then
           PoolMatchCap(FSharedKey, AResponse.ProtocolVersion);
         {$ENDIF}
 
-        { Order matters, and it used to be wrong: CompressType and the crypto
-          options were assigned BEFORE the response headers were appended, so
-          ContentCompress and ContentEncription were still empty and both came
-          out as "none". Handing the body over right after decoded it with
-          that, and the caller got the body still gzipped - and still
-          encrypted when AES was on. Every response of this engine was affected;
-          it only stayed invisible while tests looked at StatusCode alone. }
+        { the headers first: compression and crypto are read from them }
         for vInt := 0 to Pred(Length(vResponse.Headers)) do
           AResponse.AddHeader(vResponse.Headers[vInt].Name, vResponse.Headers[vInt].Value);
 

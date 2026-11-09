@@ -10,6 +10,7 @@ uses
   Classes,
   RALSaguiServer;
 
+/// Registers the Sagui components.
 procedure Register;
 
 implementation

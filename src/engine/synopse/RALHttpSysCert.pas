@@ -1,5 +1,5 @@
-/// The certificate of an http.sys port: which one is bound, and binding
-/// another one (Windows only)
+{ The certificate of an http.sys port: which one is bound, and binding
+  another one (Windows only). }
 unit RALHttpSysCert;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -28,29 +28,29 @@ uses
   Windows, SysUtils,
   RALExceptions, RALErrorCodes, RALTypes, RALConsts;
 
-/// The DER of the certificate bound to 0.0.0.0:APort, or to [::]:APort when
-/// the IPv4 one is not bound; empty when neither is, or the certificate is
-/// not in the store the binding names
+{ The DER of the certificate bound to 0.0.0.0:APort, or to [::]:APort when
+  the IPv4 one is not bound; empty when neither is, or the certificate is
+  not in the store the binding names. }
 function HttpSysBoundCertificate(APort: Word): TBytes;
 /// The SHA-1 (thumbprint) bound to 0.0.0.0:APort or [::]:APort; empty when none
 function HttpSysBoundThumbprint(APort: Word): TBytes;
-/// Imports APfx into LocalMachine\My and binds it to 0.0.0.0:APort and
-/// [::]:APort. Raises, saying what failed, when Windows refuses (not
-/// administrator, wrong password)
+{ Imports APfx into LocalMachine\My and binds it to 0.0.0.0:APort and
+  [::]:APort. Raises, saying what failed, when Windows refuses (not
+  administrator, wrong password). }
 procedure HttpSysBindCertificate(APort: Word; const APfx: TBytes;
   const APassword: StringRAL; const AThumbprint: TBytes);
-/// Removes the bindings of 0.0.0.0:APort and [::]:APort - what "netsh http
-/// delete sslcert" does. Nothing bound is not an error. Needs administrator
-/// rights
+{ Removes the bindings of 0.0.0.0:APort and [::]:APort - what "netsh http
+  delete sslcert" does. Nothing bound is not an error. Needs administrator
+  rights. }
 procedure HttpSysUnbindCertificate(APort: Word);
-/// The DER of the certificate that carries the key in a PKCS#12, read by
-/// Windows (so every cipher Windows reads is read); nothing is kept in any
-/// store or key container. Empty when the file does not open with APassword
+{ The DER of the certificate that carries the key in a PKCS#12, read by
+  Windows (so every cipher Windows reads is read); nothing is kept in any
+  store or key container. Empty when the file does not open with APassword. }
 function WinPfxCertificate(const APfx: TBytes; const APassword: StringRAL): TBytes;
-/// Deletes from LocalMachine\My the certificate with this thumbprint, and the
-/// key its import left in the machine key set, when its friendly name starts
-/// with AFriendlyNamePrefix - only certificates this process put there, never
-/// somebody else's. False when it did nothing
+{ Deletes from LocalMachine\My the certificate with this thumbprint, and the
+  key its import left in the machine key set, when its friendly name starts
+  with AFriendlyNamePrefix - only certificates this process put there, never
+  somebody else's. False when it did nothing. }
 function HttpSysRemoveCertificate(const AThumbprint: TBytes;
   const AFriendlyNamePrefix: string): boolean;
 
@@ -61,153 +61,239 @@ implementation
 {$IFDEF RALWindows}
 
 const
+  /// Library of the HTTP Server API.
   cHttpApi = 'httpapi.dll';
+  /// Library of the certificate store API.
   cCrypt32 = 'crypt32.dll';
 
+  /// HTTP_INITIALIZE_CONFIG of http.h.
   HTTP_INITIALIZE_CONFIG = $00000002;
+  /// HttpServiceConfigSSLCertInfo of http.h.
   HttpServiceConfigSSLCertInfo = 1;
+  /// HttpServiceConfigQueryExact of http.h.
   HttpServiceConfigQueryExact = 0;
 
+  /// CERT_STORE_PROV_SYSTEM_W of wincrypt.h.
   CERT_STORE_PROV_SYSTEM_W = PAnsiChar(10);
+  /// CERT_SYSTEM_STORE_LOCAL_MACHINE of wincrypt.h.
   CERT_SYSTEM_STORE_LOCAL_MACHINE = $00020000;
+  /// CERT_STORE_OPEN_EXISTING_FLAG of wincrypt.h.
   CERT_STORE_OPEN_EXISTING_FLAG = $00004000;
+  /// CERT_STORE_READONLY_FLAG of wincrypt.h.
   CERT_STORE_READONLY_FLAG = $00008000;
+  /// CRYPT_MACHINE_KEYSET of wincrypt.h.
   CRYPT_MACHINE_KEYSET = $00000020;
+  /// PKCS12_INCLUDE_EXTENDED_PROPERTIES of wincrypt.h.
   PKCS12_INCLUDE_EXTENDED_PROPERTIES = $00000010;
+  /// X509_ASN_ENCODING of wincrypt.h.
   X509_ASN_ENCODING = $00000001;
+  /// PKCS_7_ASN_ENCODING of wincrypt.h.
   PKCS_7_ASN_ENCODING = $00010000;
+  /// CERT_FIND_SHA1_HASH of wincrypt.h.
   CERT_FIND_SHA1_HASH = $00010000;
+  /// CERT_STORE_ADD_REPLACE_EXISTING of wincrypt.h.
   CERT_STORE_ADD_REPLACE_EXISTING = 3;
+  /// CERT_KEY_PROV_INFO_PROP_ID of wincrypt.h.
   CERT_KEY_PROV_INFO_PROP_ID = 2;
+  /// PKCS12_NO_PERSIST_KEY of wincrypt.h.
   PKCS12_NO_PERSIST_KEY = $00008000;
+  /// CERT_FRIENDLY_NAME_PROP_ID of wincrypt.h.
   CERT_FRIENDLY_NAME_PROP_ID = 11;
+  /// CRYPT_DELETEKEYSET of wincrypt.h.
   CRYPT_DELETEKEYSET = $00000010;
+  /// CRYPT_SILENT of wincrypt.h.
   CRYPT_SILENT = $00000040;
+  /// NCRYPT_MACHINE_KEY_FLAG of ncrypt.h.
   NCRYPT_MACHINE_KEY_FLAG = $00000020;
+  /// NCRYPT_SILENT_FLAG of ncrypt.h.
   NCRYPT_SILENT_FLAG = $00000040;
 
-  { the application of the bindings RAL makes; netsh shows it as appid }
+  /// The application of the bindings RAL makes; netsh shows it as appid.
   cRALAppId: TGUID = '{68DF0CEA-997C-49FF-AA33-56E8BB609C8F}';
 
 type
+  /// The HttpApiVersion structure of http.h.
   THttpApiVersion = record
+    /// Field Major of the C structure.
     Major: Word;
+    /// Field Minor of the C structure.
     Minor: Word;
   end;
 
+  /// The HttpServiceConfigSslKey structure of http.h.
   THttpServiceConfigSslKey = record
+    /// Field pIpPort of the C structure.
     pIpPort: Pointer;
   end;
 
+  /// The HttpServiceConfigSslParam structure of http.h.
   THttpServiceConfigSslParam = record
+    /// Field SslHashLength of the C structure.
     SslHashLength: Cardinal;
+    /// Field pSslHash of the C structure.
     pSslHash: Pointer;
+    /// Field AppId of the C structure.
     AppId: TGUID;
+    /// Field pSslCertStoreName of the C structure.
     pSslCertStoreName: PWideChar;
+    /// Field DefaultCertCheckMode of the C structure.
     DefaultCertCheckMode: Cardinal;
+    /// Field DefaultRevocationFreshnessTime of the C structure.
     DefaultRevocationFreshnessTime: Cardinal;
+    /// Field DefaultRevocationUrlRetrievalTimeout of the C structure.
     DefaultRevocationUrlRetrievalTimeout: Cardinal;
+    /// Field pDefaultSslCtlIdentifier of the C structure.
     pDefaultSslCtlIdentifier: PWideChar;
+    /// Field pDefaultSslCtlStoreName of the C structure.
     pDefaultSslCtlStoreName: PWideChar;
+    /// Field DefaultFlags of the C structure.
     DefaultFlags: Cardinal;
   end;
 
+  /// The HttpServiceConfigSslSet structure of http.h.
   THttpServiceConfigSslSet = record
+    /// Field KeyDesc of the C structure.
     KeyDesc: THttpServiceConfigSslKey;
+    /// Field ParamDesc of the C structure.
     ParamDesc: THttpServiceConfigSslParam;
   end;
+  /// Pointer to THttpServiceConfigSslSet.
   PHttpServiceConfigSslSet = ^THttpServiceConfigSslSet;
 
+  /// The HttpServiceConfigSslQuery structure of http.h.
   THttpServiceConfigSslQuery = record
+    /// Field QueryDesc of the C structure.
     QueryDesc: Integer;
+    /// Field KeyDesc of the C structure.
     KeyDesc: THttpServiceConfigSslKey;
+    /// Field dwToken of the C structure.
     dwToken: Cardinal;
   end;
 
+  /// Handle of a certificate store.
   HCERTSTORE = Pointer;
 
+  /// The CertContext structure of wincrypt.h.
   TCertContext = record
+    /// Field dwCertEncodingType of the C structure.
     dwCertEncodingType: Cardinal;
+    /// Field pbCertEncoded of the C structure.
     pbCertEncoded: PByte;
+    /// Field cbCertEncoded of the C structure.
     cbCertEncoded: Cardinal;
+    /// Field pCertInfo of the C structure.
     pCertInfo: Pointer;
+    /// Field hCertStore of the C structure.
     hCertStore: HCERTSTORE;
   end;
+  /// Pointer to TCertContext.
   PCCERT_CONTEXT = ^TCertContext;
 
+  /// The CryptDataBlob structure of wincrypt.h.
   TCryptDataBlob = record
+    /// Field cbData of the C structure.
     cbData: Cardinal;
+    /// Field pbData of the C structure.
     pbData: PByte;
   end;
+  /// Pointer to TCryptDataBlob.
   PCryptDataBlob = ^TCryptDataBlob;
 
-  { sockaddr_in6 is the larger of the two: 28 bytes }
+  /// Sockaddr_in6 is the larger of the two: 28 bytes.
   TSockAddrBuf = array[0..27] of Byte;
 
-  { CERT_KEY_PROV_INFO_PROP_ID: where the key of a certificate lives }
+  /// CERT_KEY_PROV_INFO_PROP_ID: where the key of a certificate lives.
   TCryptKeyProvInfo = record
+    /// Field pwszContainerName of the C structure.
     pwszContainerName: PWideChar;
+    /// Field pwszProvName of the C structure.
     pwszProvName: PWideChar;
+    /// Field dwProvType of the C structure.
     dwProvType: Cardinal;
+    /// Field dwFlags of the C structure.
     dwFlags: Cardinal;
+    /// Field cProvParam of the C structure.
     cProvParam: Cardinal;
+    /// Field rgProvParam of the C structure.
     rgProvParam: Pointer;
+    /// Field dwKeySpec of the C structure.
     dwKeySpec: Cardinal;
   end;
+  /// Pointer to TCryptKeyProvInfo.
   PCryptKeyProvInfo = ^TCryptKeyProvInfo;
 
+/// HttpInitialize of httpapi.dll.
 function HttpInitialize(Version: THttpApiVersion; Flags: Cardinal;
   pReserved: Pointer): Cardinal; stdcall; external cHttpApi;
+/// HttpTerminate of httpapi.dll.
 function HttpTerminate(Flags: Cardinal; pReserved: Pointer): Cardinal; stdcall;
   external cHttpApi;
+/// HttpSetServiceConfiguration of httpapi.dll.
 function HttpSetServiceConfiguration(ServiceHandle: THandle; ConfigId: Integer;
   pConfigInformation: Pointer; ConfigInformationLength: Cardinal;
   pOverlapped: Pointer): Cardinal; stdcall; external cHttpApi;
+/// HttpDeleteServiceConfiguration of httpapi.dll.
 function HttpDeleteServiceConfiguration(ServiceHandle: THandle; ConfigId: Integer;
   pConfigInformation: Pointer; ConfigInformationLength: Cardinal;
   pOverlapped: Pointer): Cardinal; stdcall; external cHttpApi;
+/// HttpQueryServiceConfiguration of httpapi.dll.
 function HttpQueryServiceConfiguration(ServiceHandle: THandle; ConfigId: Integer;
   pInput: Pointer; InputLength: Cardinal; pOutput: Pointer; OutputLength: Cardinal;
   pReturnLength: PCardinal; pOverlapped: Pointer): Cardinal; stdcall;
   external cHttpApi;
 
+/// PFXImportCertStore of crypt32.dll.
 function PFXImportCertStore(pPFX: PCryptDataBlob; szPassword: PWideChar;
   dwFlags: Cardinal): HCERTSTORE; stdcall; external cCrypt32;
+/// CertOpenStore of crypt32.dll.
 function CertOpenStore(lpszStoreProvider: PAnsiChar; dwEncodingType: Cardinal;
   hCryptProv: NativeUInt; dwFlags: Cardinal; pvPara: Pointer): HCERTSTORE;
   stdcall; external cCrypt32;
+/// CertCloseStore of crypt32.dll.
 function CertCloseStore(hCertStore: HCERTSTORE; dwFlags: Cardinal): BOOL;
   stdcall; external cCrypt32;
+/// CertEnumCertificatesInStore of crypt32.dll.
 function CertEnumCertificatesInStore(hCertStore: HCERTSTORE;
   pPrevCertContext: PCCERT_CONTEXT): PCCERT_CONTEXT; stdcall; external cCrypt32;
+/// CertFindCertificateInStore of crypt32.dll.
 function CertFindCertificateInStore(hCertStore: HCERTSTORE;
   dwCertEncodingType, dwFindFlags, dwFindType: Cardinal; pvFindPara: Pointer;
   pPrevCertContext: PCCERT_CONTEXT): PCCERT_CONTEXT; stdcall; external cCrypt32;
+/// CertAddCertificateContextToStore of crypt32.dll.
 function CertAddCertificateContextToStore(hCertStore: HCERTSTORE;
   pCertContext: PCCERT_CONTEXT; dwAddDisposition: Cardinal;
   ppStoreContext: Pointer): BOOL; stdcall; external cCrypt32;
+/// CertDeleteCertificateFromStore of crypt32.dll.
 function CertDeleteCertificateFromStore(pCertContext: PCCERT_CONTEXT): BOOL;
   stdcall; external cCrypt32;
+/// CertFreeCertificateContext of crypt32.dll.
 function CertFreeCertificateContext(pCertContext: PCCERT_CONTEXT): BOOL;
   stdcall; external cCrypt32;
+/// CertGetCertificateContextProperty of crypt32.dll.
 function CertGetCertificateContextProperty(pCertContext: PCCERT_CONTEXT;
   dwPropId: Cardinal; pvData: Pointer; pcbData: PCardinal): BOOL; stdcall;
   external cCrypt32;
 
+/// CryptAcquireContextW of advapi32.dll.
 function RALCryptAcquireContextW(var phProv: NativeUInt; pszContainer,
   pszProvider: PWideChar; dwProvType, dwFlags: Cardinal): BOOL; stdcall;
   external 'advapi32.dll' name 'CryptAcquireContextW';
+/// NCryptOpenStorageProvider of ncrypt.dll.
 function NCryptOpenStorageProvider(var phProvider: NativeUInt;
   pszProviderName: PWideChar; dwFlags: Cardinal): Integer; stdcall;
   external 'ncrypt.dll';
+/// NCryptOpenKey of ncrypt.dll.
 function NCryptOpenKey(hProvider: NativeUInt; var phKey: NativeUInt;
   pszKeyName: PWideChar; dwLegacyKeySpec, dwFlags: Cardinal): Integer; stdcall;
   external 'ncrypt.dll';
+/// NCryptDeleteKey of ncrypt.dll.
 function NCryptDeleteKey(hKey: NativeUInt; dwFlags: Cardinal): Integer; stdcall;
   external 'ncrypt.dll';
+/// NCryptFreeObject of ncrypt.dll.
 function NCryptFreeObject(hObject: NativeUInt): Integer; stdcall;
   external 'ncrypt.dll';
 
+/// Raises when AResult of the HTTP Server API call AWhat is an error.
 procedure CheckHttpApi(AResult: Cardinal; const AWhat: string);
 begin
   if AResult <> NO_ERROR then
@@ -215,7 +301,7 @@ begin
       SysErrorMessage(AResult)]);
 end;
 
-{ 0.0.0.0:APort (AIPv6 False) or [::]:APort }
+/// 0.0.0.0:APort (AIPv6 False) or [::]:APort.
 procedure FillAddress(out AAddr: TSockAddrBuf; APort: Word; AIPv6: boolean);
 begin
   FillChar(AAddr, SizeOf(AAddr), 0);
@@ -227,13 +313,14 @@ begin
   AAddr[3] := Lo(APort);
 end;
 
+/// HTTP Server API version 1.0.
 function HttpVersion1: THttpApiVersion;
 begin
   Result.Major := 1;
   Result.Minor := 0;
 end;
 
-{ the hash and the store bound to the address; False when nothing is }
+/// The hash and the store bound to the address; False when nothing is.
 function QueryBinding(APort: Word; AIPv6: boolean; out AHash: TBytes;
   out AStore: string): boolean;
 var
@@ -276,6 +363,7 @@ begin
   Result := Length(AHash) > 0;
 end;
 
+/// Opens the store AName of the local machine.
 function OpenMachineStore(const AName: string; AReadOnly: boolean): HCERTSTORE;
 var
   vName: WideString;
@@ -288,6 +376,7 @@ begin
   Result := CertOpenStore(CERT_STORE_PROV_SYSTEM_W, 0, 0, vFlags, PWideChar(vName));
 end;
 
+/// Certificate of AStore whose SHA-1 thumbprint is AHash, or nil.
 function FindByHash(AStore: HCERTSTORE; const AHash: TBytes): PCCERT_CONTEXT;
 var
   vBlob: TCryptDataBlob;
@@ -301,6 +390,7 @@ begin
     PKCS_7_ASN_ENCODING, 0, CERT_FIND_SHA1_HASH, @vBlob, nil);
 end;
 
+/// Whether ACert has its private key in the store.
 function HasKey(ACert: PCCERT_CONTEXT): boolean;
 var
   vSize: Cardinal;
@@ -508,6 +598,7 @@ begin
   end;
 end;
 
+/// Binds the certificate AThumbprint to APort (netsh http add sslcert).
 procedure BindAddress(APort: Word; AIPv6: boolean; const AThumbprint: TBytes);
 var
   vAddr: TSockAddrBuf;
@@ -589,6 +680,7 @@ begin
   end;
 end;
 
+/// Removes the certificate binding of APort.
 procedure DeleteBinding(APort: Word; AIPv6: boolean);
 var
   vAddr: TSockAddrBuf;

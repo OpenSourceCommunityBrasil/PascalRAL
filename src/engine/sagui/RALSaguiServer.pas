@@ -17,8 +17,8 @@ uses
   RALRoutes, RALStream;
 
 type
-  { TRALSaguiSSL }
 
+  /// TLS settings of the Sagui server.
   TRALSaguiSSL = class(TRALSSL)
   private
     FCertificate: StringRAL;
@@ -30,8 +30,8 @@ type
   published
     /// Content of the certificate (cert.pem) to be used by the HTTPS server.
     property Certificate: StringRAL read FCertificate write FCertificate;
-    /// Content of the Diffie-Hellman parameters (dh.pem) to be used by the HTTPS
-    ///  server for key exchange.
+    { Content of the Diffie-Hellman parameters (dh.pem) to be used by the HTTPS
+       server for key exchange. }
     property DHParams: StringRAL read FDHParams write FDHParams;
     /// Content of the cipher algorithm. Default: @code(NORMAL).
     property Priorities: StringRAL read FPriorities write FPriorities;
@@ -39,23 +39,26 @@ type
     property PrivateKey: StringRAL read FPrivateKey write FPrivateKey;
     /// { Password of the private key.
     property PrivatePassword: StringRAL read FPrivatePassword write FPrivatePassword;
-    /// Content of the certificate (ca.pem) to be used by the HTTPS server for
-    ///  client authentication.
+    { Content of the certificate (ca.pem) to be used by the HTTPS server for
+       client authentication. }
     property Trust: StringRAL read FTrust write FTrust;
   end;
 
-  { TRALSaguiServer }
-
+  /// Sagui server engine (libsagui over libmicrohttpd).
   TRALSaguiServer = class(TRALServer)
   private
+    /// The libsagui server.
     FHandle: Psg_httpsrv;
     FLibPath: TFileName;
     FMaxConnections: IntegerRAL;
+    /// Threads of the pool mode.
     FPoolCount: IntegerRAL;
     FThreadPerConnection: boolean;
 
+    /// libsagui callback: a client connected or disconnected.
     class procedure DoClientConnectionCallback(Acls: Pcvoid; const Aclient: Pcvoid;
       Aclosed: Pcbool); cdecl; static;
+    /// libsagui callback: an error of the library.
     class procedure DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar); cdecl; static;
     /// libmicrohttpd is done with a stream (sent or the client left).
     class procedure DoQueueFree(Acls: Pcvoid); cdecl; static;
@@ -63,11 +66,15 @@ type
       connection's thread until there is something, or the end }
     class function DoQueueRead(Acls: Pcvoid; Aoffset: cuint64_t; Abuf: Pcchar;
       Asize: csize_t): cssize_t; cdecl; static;
+    /// libsagui callback: handles a request through the RAL server.
     class procedure DoRequestCallback(Acls: Pcvoid; Areq: Psg_httpreq; Ares: Psg_httpres);
       cdecl; static;
+    /// libsagui callback: the stream of a response ended.
     class procedure DoStreamFree(Acls: Pcvoid); cdecl; static;
+    /// libsagui callback: the next bytes of a streamed response.
     class function DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t; Abuf: Pcchar;
       Asize: csize_t): cssize_t; cdecl; static;
+    /// libsagui callback: frees an upload.
     class procedure DoUploadFree(Ahandle: Pcvoid); cdecl; static;
     { Uploads backed by a TMemoryStream instead of the library's default, which
       writes every part to a temporary file. TRALSaguiUploadMap.AppendToParams
@@ -76,27 +83,34 @@ type
     class function DoUploadNew(Acls: Pcvoid; Ahandle: PPcvoid; const Adir: Pcchar;
       const Afield: Pcchar; const Aname: Pcchar; const Amime: Pcchar;
       const Aencoding: Pcchar): cint; cdecl; static;
+    /// libsagui callback: keeps an upload.
     class function DoUploadSave(Ahandle: Pcvoid; Aoverwritten: cbool): cint;
       cdecl; static;
+    /// libsagui callback: keeps an upload under APath.
     class function DoUploadSaveAs(Ahandle: Pcvoid; const Apath: Pcchar;
       Aoverwritten: cbool): cint; cdecl; static;
+    /// libsagui callback: writes a piece of an upload.
     class function DoUploadWrite(Ahandle: Pcvoid; Aoffset: cuint64_t;
       const Abuf: Pcchar; Asize: csize_t): cssize_t; cdecl; static;
     { The headers of AResponse into libsagui's response, after TakeWireStream
       said what was done to the body }
     class procedure FillHeaders(AServer: TRALSaguiServer; AResponse: TRALResponse;
       Ares: Psg_httpres);
+    /// Client address of AReq.
     class function GetSaguiIP(AReq: Psg_httpreq): StringRAL;
   protected
     function CreateRALSSL: TRALSSL; override;
+    /// Creates the libsagui server with the callbacks.
     procedure CreateServerHandle;
+    /// Frees the libsagui server.
     procedure FreeServerHandle;
     function GetPoolCount: IntegerRAL;
     function GetSSL: TRALSaguiSSL;
+    /// Loads libsagui and creates the server; False when the library is missing.
     function InitializeServer: boolean;
     function IPv6IsImplemented: boolean; override;
-    /// Creates the libsagui server and listens - the part of SetActive(True)
-    /// that a new certificate has to repeat. Raises when it does not listen
+    { Creates the libsagui server and listens - the part of SetActive(True)
+      that a new certificate has to repeat. Raises when it does not listen. }
     procedure OpenListener;
     /// Streaming-only reader for the old ConnectionLimit - see DefineProperties
     procedure ReadOldConnectionLimit(Reader: TReader);
@@ -107,6 +121,7 @@ type
     procedure SetPort(const AValue: IntegerRAL); override;
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetSSL(const AValue: TRALSaguiSSL);
+    /// Stops listening.
     procedure ShutdownServerHandle;
   public
     constructor Create(AOwner: TComponent); override;
@@ -131,39 +146,27 @@ type
     class function SupportsLiveStream: boolean; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
 
-    /// DEPRECATED, use MaxConnections - the old name of the same property,
-    /// kept so existing code still compiles. It is not published, so the
-    /// Object Inspector shows the new name only, and it carries no
-    /// "deprecated" directive because Delphi 12 does not accept one on a
-    /// property (FPC does, and a hint on one compiler only is worse than a
-    /// comment on both).
+    { DEPRECATED, use MaxConnections - the old name of the same property,
+      kept so existing code still compiles. It is not published, so the
+      Object Inspector shows the new name only, and it carries no
+      "deprecated" directive because Delphi 12 does not accept one on a
+      property (FPC does, and a hint on one compiler only is worse than a
+      comment on both). }
     property ConnectionLimit: IntegerRAL read FMaxConnections write SetMaxConnections;
   published
+    /// File or folder of libsagui; empty uses the system search.
     property LibPath: TFileName read FLibPath write SetLibPath;
-    /// Ceiling on how many connections may be open AT THE SAME TIME: past it
-    /// libmicrohttpd refuses a NEW one, so no existing client is dropped to
-    /// make room. 0 means no ceiling, the same as on the Indy, fpHTTP and
-    /// mORMot2 servers - this was called ConnectionLimit until 2026-09-15, and
-    /// the name is now the same on all four.
+    { Most connections open at once; past it a new connection is refused, no open
+      one is dropped. 0 is no limit. }
     property MaxConnections: IntegerRAL read FMaxConnections write SetMaxConnections default 0;
-    /// Size of libmicrohttpd's thread pool. Used only when ThreadPerConnection
-    /// is False. Takes effect on the next activation.
+    { Size of libmicrohttpd's thread pool. Used only when ThreadPerConnection
+      is False. Takes effect on the next activation. }
     property PoolCount: IntegerRAL read GetPoolCount write SetPoolCount;
+    /// TLS settings.
     property SSL: TRALSaguiSSL read GetSSL write SetSSL;
-    /// True (default): libmicrohttpd gives each connection a thread of its
-    /// own, the same model the Indy server uses, and PoolCount is ignored.
-    /// False: a pool of PoolCount threads, where each connection stays on the
-    /// thread that accepted it for its whole life - so while one route blocks
-    /// (a database query, a Sleep, a call to another server) every other
-    /// kept-alive connection on that thread waits for it, even with free
-    /// threads in the pool. Use False only for routes that never block.
-    /// Takes effect on the next activation. MaxConnections is also the thread
-    /// limit when this is True.
-    /// What it costs, on routes that never block: measured on 28/09/2026 with a
-    /// route answering a constant, 64 kept-alive connections, 15.1k requests
-    /// per second against 18.4k with False - about 18%. Kept as the default
-    /// because a route that waits on anything is the common case, and there
-    /// False serialises the connections of each pool thread behind it
+    { True: a thread per connection (PoolCount ignored, MaxConnections is also the
+      thread limit). False: PoolCount threads, a connection stays on the one that
+      accepted it, so a blocking route stalls the others there. Next activation. }
     property ThreadPerConnection: boolean read FThreadPerConnection
       write FThreadPerConnection default True;
   end;
@@ -171,13 +174,14 @@ type
 implementation
 
 const
-  { What the constructor uses, and where any invalid value goes back to }
+  /// What the constructor uses, and where any invalid value goes back to.
   DEFAULTPOOLCOUNT = 32;
   { what a content reader answers for the end of the body, and for a failure that
     cuts it (libmicrohttpd's MHD_CONTENT_READER_END_OF_STREAM and _END_WITH_ERROR).
     libsagui's sg_eor stands for them, and answered garbage on Linux x86-64: the
     body never ended }
   cSaguiEndOfStream = -1;
+  /// Read callback result that ends the stream with an error.
   cSaguiEndWithError = -2;
 
 type
@@ -188,20 +192,31 @@ type
     outlives either }
   TRALSaguiQueue = class
   private
+    /// The stream was cut: nothing more goes out.
     FAborted: boolean;
+    /// Bytes waiting to be pulled.
     FBuffer: RawByteString;
+    /// Signalled when bytes arrive or the stream ends.
     FData: TEvent;
+    /// The handler finished the stream.
     FEnded: boolean;
+    /// Guards the buffer and the flags.
     FLock: TCriticalSection;
+    /// Most bytes waiting before the writer blocks.
     FMaxPending: Int64RAL;
+    /// Bytes of FBuffer already pulled.
     FPos: IntegerRAL;
     FReaderGone: boolean;
+    /// Holders of the queue: writer and libsagui.
     FRefs: IntegerRAL;
+    /// Signalled when the reader makes room.
     FRoom: TEvent;
   public
+    /// A queue holding AMaxPending bytes at most.
     constructor Create(AMaxPending: Int64RAL);
     destructor Destroy; override;
 
+    /// Takes a reference.
     procedure AddRef;
     /// The end of the stream; AAborted ends it as an error.
     procedure Finish(AAborted: boolean);
@@ -214,35 +229,46 @@ type
     function Push(const ABuffer; ASize: IntegerRAL; ATimeout: IntegerRAL): boolean;
     /// libmicrohttpd let go: the client left or all was sent.
     procedure ReaderGone;
+    /// Drops a reference; the last frees the queue.
     procedure Release;
 
     /// True once libmicrohttpd let go.
     property IsReaderGone: boolean read FReaderGone;
   end;
 
-  { what a stream needs of the request being answered }
+  /// What a stream needs of the request being answered.
   TRALSaguiStreamContext = class
   public
     { set once the handler ended or committed: the callback waits on it for a
       route marked Streaming }
     Done: TEvent;
+    /// Status and headers went out.
     Headed: boolean;
+    /// Queue of the stream.
     Queue: TRALSaguiQueue;
+    /// libsagui response.
     Res: Psg_httpres;
+    /// The RAL server.
     Server: TRALSaguiServer;
+    /// Status of the response.
     Status: IntegerRAL;
 
+    /// A context of AServer for the response ARes.
     constructor Create(AServer: TRALSaguiServer; ARes: Psg_httpres);
     destructor Destroy; override;
   end;
 
   { TRALSaguiStreamWriter }
 
+  /// Writer of a streamed response into the queue libmicrohttpd pulls from.
   TRALSaguiStreamWriter = class(TRALStreamWriter)
   private
+    /// Response the stream belongs to.
     FContext: TRALSaguiStreamContext;
+    /// Queue the bytes go to.
     FQueue: TRALSaguiQueue;
   public
+    /// A writer for AContext.
     constructor Create(AContext: TRALSaguiStreamContext);
     destructor Destroy; override;
 
@@ -259,12 +285,16 @@ type
     the handler goes on sending }
   TRALSaguiHandlerThread = class(TThread)
   private
+    /// Stream of the request.
     FContext: TRALSaguiStreamContext;
+    /// Request it answers.
     FRequest: TRALRequest;
+    /// Response it writes.
     FResponse: TRALResponse;
   protected
     procedure Execute; override;
   public
+    /// A thread that runs the streaming route of ARequest.
     constructor Create(AContext: TRALSaguiStreamContext; ARequest: TRALRequest;
       AResponse: TRALResponse);
   end;
@@ -273,37 +303,51 @@ type
 
 { TRALSaguiStringMap }
 
+  /// A libsagui string map (headers, fields, cookies) as a list.
   TRALSaguiStringMap = class(TPersistent)
   private
+    /// Pair being read.
     FCurrent: PPsg_strmap;
     FFreeOnDestroy: boolean;
+    /// The libsagui map.
     FHandle: PPsg_strmap;
   protected
     function GetCount: integer;
   public
+    /// A list over the libsagui map AHandle.
     constructor Create(AHandle: Pointer);
     destructor Destroy; override;
 
+    /// Adds the pair AName, AValue.
     procedure Add(const AName, AValue: StringRAL);
+    /// Adds every pair to AParams as AKind.
     procedure AppendToParams(AParams: TRALParams; AKind: TRALParamKind);
+    /// Fills the map with the params of AKind.
     procedure AssignFromParams(AParams: TRALParams; AKind: TRALParamKind);
+    /// Moves to the first pair; False when empty.
     function First: boolean;
+    /// Name and value of the current pair.
     procedure GetPair(var AName, AValue: StringRAL);
+    /// Every pair as name=value lines; the caller frees the list.
     function MapList: TStringList;
+    /// Moves to the next pair; False at the end.
     function Next: boolean;
 
     /// Counts the total pairs present in the map.
     property Count: integer read GetCount;
+    /// Frees the libsagui map with the object.
     property FreeOnDestroy: boolean read FFreeOnDestroy write FFreeOnDestroy;
   end;
 
   { TRALSaguiUploadFile }
 
+  /// One uploaded file of a multipart request.
   TRALSaguiUploadFile = class(TPersistent)
   private
     FDirectory: StringRAL;
     FEncoding: StringRAL;
     FField: StringRAL;
+    /// The libsagui upload.
     FHandle: Psg_httpupld;
     FMime: StringRAL;
     FName: StringRAL;
@@ -312,6 +356,7 @@ type
   protected
     function GetHandle: Pointer;
   public
+    /// The upload AHandle.
     constructor Create(AHandle: Pointer);
 
     /// Handle of an upload.
@@ -335,22 +380,30 @@ type
 
   { TRALSaguiUploadMap }
 
+  /// The uploaded files of a multipart request.
   TRALSaguiUploadMap = class(TPersistent)
   private
+    /// Upload being read.
     FCurrent: Psg_httpupld;
+    /// First upload.
     FHandle: Psg_httpupld;
   protected
     function GetCount: integer;
   public
+    /// The uploads starting at AHandle.
     constructor Create(AHandle: Pointer);
     destructor Destroy; override;
 
+    /// Adds every upload to AParams as file params.
     procedure AppendToParams(AParams: TRALParams);
+    /// Moves to the first upload; False when none.
     function First: boolean;
+    /// The current upload.
     function GetFile: TRALSaguiUploadFile;
+    /// Moves to the next upload; False at the end.
     function Next: boolean;
 
-    // Counts the total pairs present in the map.
+    /// Number of pairs in the map.
     property Count: integer read GetCount;
   end;
 
@@ -417,7 +470,7 @@ end;
 
 class procedure TRALSaguiServer.DoErrorCallback(Acls: Pcvoid; const Aerr: Pcchar);
 begin
-  // procedure obrigatoria para instanciar o server (CreateServerHandle)
+  // required by CreateServerHandle
 end;
 
 { One TMemoryStream per part of a multipart body. The library owns the lifetime:
@@ -540,9 +593,7 @@ begin
           key the params named the cipher and DecodeBody left the body as
           ciphertext }
 
-        { the server's own decoder, like the other engines: it also reads
-          the raltoken cookie, which the copy this unit used to carry never
-          did - UseCookie on the JWT auth silently did nothing under Sagui }
+        { the server's own decoder, as on the other engines (raltoken cookie included) }
         vServer.DecodeAuth(vRequest);
 
         ClientInfo.IP := GetSaguiIP(Areq);
@@ -566,12 +617,8 @@ begin
         Query := sg_httpreq_path(Areq);
         Method := HTTPMethodToRALMethod(sg_httpreq_method(Areq));
 
-        { the real size, like Indy, fpHTTP and Synopse report. Zero here was
-          the server telling every handler that the request arrived empty.
-          A form or a multipart body never reaches the payload -
-          libmicrohttpd parses it into fields and files - so it is the
-          length the client declared there, as on Indy and fpHTTP. Read
-          BEFORE ValidateRequest, which compares it with MaxRequestSize }
+        { the real size, read before ValidateRequest; a form or multipart reaches the
+          fields, not the payload, so it is the declared length }
         vPayloadLen := 0;
         vPayLoad := sg_httpreq_payload(Areq);
         if Assigned(vPayLoad) then
@@ -615,14 +662,12 @@ begin
             FreeAndNil(vFileMap);
           end;
 
-          { a read-only view over the library's own buffer, which lives until
-            this callback returns - longer than the request. It used to be
-            copied into a string, then into a stream, then into the params }
+          { a read-only view over the library's buffer, alive until this callback
+            returns }
           if vPayloadLen > 0 then
             SetWireBody(sg_str_content(vPayLoad), vPayloadLen);
 
-          { HttpVersion is the scheme, which the request line does not carry -
-            it says HTTP/1.1 over TLS too, and this used to copy the 'HTTP' }
+          { HttpVersion is the scheme, which the request line does not carry }
           if vServer.SSLEnabled then
             HttpVersion := 'HTTPS'
           else
@@ -699,11 +744,8 @@ begin
     except
       on e: exception do
       begin
-        { the request failed before its response was queued - the stream
-          goes out last - and nothing answered it: a 500 goes out instead,
-          over headers and cookies cleared of whatever the answer had been
-          given already, and the stream that never reached libsagui is
-          freed here }
+        { the request failed before its response was queued: a 500 over cleared
+          headers and cookies, and the stream that never reached libsagui is freed }
         if sg_httpres_is_empty(Ares) then
         begin
           FreeAndNil(vRespStream);
@@ -1043,11 +1085,7 @@ end;
 class function TRALSaguiServer.DoStreamRead(Acls: Pcvoid; Aoffset: cuint64_t;
   Abuf: Pcchar; Asize: csize_t): cssize_t;
 begin
-  { no body: a normal end of stream. This used to call sg_eor(True) - the
-    ERROR end - and return garbage, so every empty response (413, 415, any
-    Answer(status) without text) went out as a chunked body with no
-    terminator and libmicrohttpd dropped the connection: Indy shrugged, but
-    WinHTTP (netHTTP) refused the whole response as invalid }
+  { no body: a normal end of stream }
   if Acls = nil then
     Exit(cSaguiEndOfStream);
 
@@ -1169,12 +1207,8 @@ begin
 
   SetEngine('Sagui ' + sg_version_str);
   CreateServerHandle;
-  { BEFORE listening: libmicrohttpd only takes the thread pool size while
-    the server is being set up, and applied after sg_httpsrv_listen the
-    value was silently ignored - every request was served one at a time,
-    whatever PoolCount said (found by the pooler suite, 07/09/2026: with
-    Sagui no two requests ever competed for the connection pool). The
-    connection limit goes first for the same reason. }
+  { before listening: libmicrohttpd only reads the pool size and the connection
+    limit while the server is set up }
   if FHandle <> nil then
   begin
     SetMaxConnections(FMaxConnections);
@@ -1184,15 +1218,8 @@ begin
       sg_httpsrv_set_thr_pool_size(FHandle, 0)
     else
       SetPoolCount(PoolCount);
-    { libsagui caps a request body (the payload) at 4 MB and the uploads of
-      a multipart at 64 MB by default, and past either it drops the
-      connection while the client is still sending - no 413, a reset, on
-      every client. RAL's limit is TRALLimitsPlugin.MaxRequestSize, which
-      answers 413 and is off unless set, like on every other engine: the
-      library's own limits are opened so the body reaches it. Found by the
-      orchestrator's 9 MB echo (27/09/2026); nothing bigger than 4 MB had
-      ever been sent to this engine. Half the range, not all of it, so no
-      sum inside the library can wrap }
+    { libsagui's own body (4 MB) and upload (64 MB) limits drop the connection with
+      no 413: opened (half the range) so MaxRequestSize answers instead }
     sg_httpsrv_set_payld_limit(FHandle, High(csize_t) div 2);
     sg_httpsrv_set_uplds_limit(FHandle, High(cuint64_t) div 2);
   end;
@@ -1216,10 +1243,7 @@ begin
   if FMaxConnections > 0 then
     sg_httpsrv_set_con_limit(FHandle, FMaxConnections)
   else
-    { 0 means NO ceiling, as it does on every other RAL server - and
-      libmicrohttpd reads a literal 0 as "accept nothing", so it never sees
-      one. This is the number this engine used as its own default until
-      2026-09-15. }
+    { 0 is no limit for RAL, and libmicrohttpd reads a literal 0 as "accept nothing" }
     sg_httpsrv_set_con_limit(FHandle, 9999999);
 end;
 
@@ -1291,7 +1315,7 @@ begin
   try
     OpenListener;
   except
-    { nothing listens any more: the server says so }
+    { nothing listens: the server says so }
     inherited SetActive(False);
     raise;
   end;
@@ -1335,8 +1359,8 @@ begin
   vActive := Self.Active;
   Active := False;
 
-  { inherited BEFORE reactivating: sg_httpsrv_listen reads Self.Port, still
-    the old value until the base class stores the new one }
+  { inherited before reactivating: sg_httpsrv_listen reads Port, which the base
+    class stores }
   inherited;
   Active := vActive;
 end;
@@ -1349,7 +1373,7 @@ begin
   begin
     if not Assigned(sg_httpsrv_tls_listen3) then
     begin
-      { it used to report the error and then call the nil pointer anyway }
+      { no TLS in this libsagui build: the error goes out, nothing else is called }
       e := ERALException.Create(ecSaguiServerUnsupportedTLS);
       if assigned(OnServerError) then
         OnServerError(e);

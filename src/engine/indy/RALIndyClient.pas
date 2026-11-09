@@ -15,8 +15,8 @@ uses
   RALResponse, RALStream;
 
 type
-  { TRALIndyClientHTTP }
 
+  /// Indy client engine: one TIdHTTP per engine, kept between requests.
   TRALIndyClientHTTP = class(TRALClientHTTP)
   private
     { True when it was OUR validation that refused the certificate: from the
@@ -25,13 +25,17 @@ type
     { the request being sent, for the redirect handler: the next hop's Cookie
       header is rebuilt from its params and the jar }
     FCurrent: TRALRequest;
+    /// TLS handler of FHttp.
     FHandlerSSL: TIdSSLIOHandlerSocketOpenSSL;
+    /// The Indy client.
     FHttp: TIdHTTP;
     /// The Accept TIdHTTP was created with, sent when the request names none
     FIndyAccept: string;
 
+    /// Takes the Set-Cookie headers of the answer into the client's cookie jar.
     procedure DoHeadersAvailable(Sender: TObject; AHeaders: TIdHeaderList;
                                  var VContinue: boolean);
+    /// Stops a redirect that would leave TLS where TLS is required.
     procedure DoRedirect(Sender: TObject; var dest: string; var NumRedirect: Integer;
                          var Handled: boolean; var VMethod: TIdHTTPMethod);
     /// what the client's jar holds for AURI, as a Cookie value
@@ -45,6 +49,7 @@ type
       refused here }
     procedure SelectAuthorization(Sender: TObject;
       var AuthenticationClass: TIdAuthenticationClass; AuthInfo: TIdHeaderList);
+    /// Judges the server certificate by the client's rule.
     function VerifyPeer(ACertificate: TIdX509; AOk: boolean;
                         ADepth, AError: Integer): boolean;
   protected
@@ -449,8 +454,8 @@ begin
       headers first. }
     FHttp.Request.ContentType := ARequest.ContentType;
     FHttp.Request.ContentDisposition := ARequest.ContentDisposition;
-    { after TakeWireStream, on purpose: only now ContentEncoding says what
-      was actually done to the body - see the note above }
+    { after TakeWireStream: only now ContentEncoding says what was done to the
+      body }
     if ARequest.ContentCompress <> ctNone then
       FHttp.Request.ContentEncoding := ARequest.ContentEncoding;
 
@@ -509,10 +514,8 @@ begin
         vSink.Finish;
       AResponse.SetWireBody(vResult.Detach, boOwned);
     except
-      // the timeouts come first on purpose: they are the two that must not be
-      // told apart by a numeric code, since Indy reports both as 10060 and
-      // only one of them (the read one) means the server already has the
-      // request and may have run it.
+      { the timeouts come first: Indy reports both as 10060, and only the read one
+        means the server has the request }
       // a stream handler cancelled: the socket is dropped below
       on e: ERALStreamCancelled do
         SetTransportError(AResponse, rteCancelled, -1, e.Message);
@@ -540,15 +543,9 @@ begin
           SetTransportError(AResponse, rteOther, -1, e.Message);
     end;
 
-    { A failed exchange leaves the socket in a state nobody knows, and TIdHTTP
-      keeps it: after a read timeout Response.KeepAlive is still True for any
-      1.1 connection the server has not closed, so the answer that arrived
-      late was read as the answer to the NEXT request on this engine - one
-      dataset delivered to another query, and every reply after it shifted by
-      one. The engine outlives the call (the pool, the kept engine), so it has
-      to be dropped here; the next request reconnects. The except is because
-      closing a broken TLS socket can raise, and the error being reported is
-      the one above. }
+    { a failed exchange drops the connection (a late answer would be read as the
+      next request's); closing a broken TLS socket may raise, and the error to
+      report is the one above }
     if AResponse.TransportError <> rteNone then
       try
         FHttp.Disconnect;

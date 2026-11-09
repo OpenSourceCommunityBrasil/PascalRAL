@@ -1,3 +1,4 @@
+/// Registers the CGI engine in the IDE (Lazarus).
 unit RALCGIReg;
 
 interface
@@ -9,6 +10,7 @@ uses
   Classes, SysUtils,
   RALCGIServer;
 
+/// Registers the CGI components.
 procedure Register;
 
 implementation

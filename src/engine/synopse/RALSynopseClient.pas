@@ -32,8 +32,8 @@ uses
   RALCompress, RALResponse, RALStream;
 
 type
-  { TRALSynopseClientHTTP }
 
+  /// mORMot2 client engine (THttpClientSocket), kept between requests.
   TRALSynopseClientHTTP = class(TRALClientHTTP)
   private
     { the last certificate EachPeerVerify saw, and whether it saw any.
@@ -42,22 +42,27 @@ type
       depth it is. SChannel never calls it at all (mormot.net.sock: "not
       implemented on SChannel"), which FCertSeen is what tells apart }
     FCert: TRALCertInfo;
+    /// The verification callback ran for this handshake.
     FCertSeen: boolean;
-    { whether EVERY call of this handshake said ok - see EachPeerVerify }
+    /// Whether every call of this handshake said ok (see EachPeerVerify).
     FChainOk: boolean;
     { the socket outlives one SendUrl: opening a TCP connection (and a TLS
       handshake) per request was the whole cost of small calls. Kept while
       the client asks for KeepAlive and the next URL points at the same
       scheme://host:port; dropped after any transport error }
     FHttp: THttpClientSocket;
+    /// scheme://host:port the socket is open to.
     FServer: StringRAL;
     { handed to OpenUri, so it has to outlive the call - and it is read at
       connection time, which is when the socket is opened, not per request }
     FTLS: TNetTlsContext;
 
+    /// Stops a redirect that would leave TLS where TLS is required.
     function DoRedirect(Sender: THttpClientSocket;
                         var Context: THttpClientRequest): boolean;
+    /// Closes and frees the kept socket.
     procedure DropSocket;
+    /// OpenSSL verification callback: keeps the chain verdict and judges the leaf.
     function EachPeerVerify(ASocket: TNetSocket; AContext: PNetTlsContext;
                             AWasOk: boolean; ATLS, APeer: pointer): boolean;
   protected
@@ -142,12 +147,8 @@ begin
 
   if AContext <> nil then
     FCert.Error := StringRAL(AContext^.LastError);
-  { the verdict of the whole chain, not of this call: OpenSSL reports an error
-    on the link where it happens and then calls again, with ok, for every link
-    down to the leaf - "the last error (if any) is still in the error value",
-    says its own source, but this callback only gets the flag. Taking the last
-    call's flag made the leaf of ANY chain come out trusted, a self-signed one
-    included, and an OnValidateServerCert answering ACert.Trusted accepted it }
+  { the verdict of the whole chain, not of this call: OpenSSL calls again with ok
+    for every link after the one that failed }
   FChainOk := FChainOk and AWasOk;
   FCert.Trusted := FChainOk;
   FCertSeen := True;
@@ -248,55 +249,26 @@ begin
     if (FHttp <> nil) and ((vServer = '') or (vServer <> FServer)) then
       DropSocket;
 
-    { a kept socket the server has since closed (restart, idle timeout) must
-      not be used: Request is called with AsRetry=True on purpose - RAL, not
-      mORMot, decides what may be replayed - so mORMot would not reopen it
-      and the request would fail without ever reaching the server. Zero wait:
-      this only asks the socket what it already knows }
+    { a kept socket the server closed is not used (Request runs with AsRetry, so
+      mORMot would not reopen it); asked without waiting }
     if (FHttp <> nil) and (FHttp.SockReceivePending(0) <> cspNoData) then
       DropSocket;
 
     if FHttp = nil then
     begin
-      { the TLS options have to be in place BEFORE the socket is opened - the
-        handshake happens inside OpenUri - so they are set here and not on the
-        vHttp lines below }
-      { IgnoreCertificateErrors is deliberately left alone: it maps to
-        SSL_VERIFY_NONE, and mORMot then does not install the verification
-        callback at all (mormot.lib.openssl11, SetupCtx) - the client would
-        accept everything and OnValidateServerCert would never be called. }
-      { cleared on every connection, not just on first use: TCrtSocket.Open
-        copies the context BACK to whoever passed it (aTLSContext^ := TLS), so
-        the field comes back from a connection carrying that one's Enabled,
-        CipherName, PeerSubject and LastError - and sending that again on the
-        next one feeds dirty input where mORMot expects a clean context.
-        InitNetTlsContext is mORMot's own reset-everything. }
+      { the TLS options before the socket opens (the handshake is inside OpenUri),
+        reset on every connection; IgnoreCertificateErrors stays off, or no
+        verification callback is installed }
       InitNetTlsContext(FTLS);
       {$IFDEF RALWindows}
-      { Windows only, and it is what makes https to a public CA work at all on
-        this engine once OpenSSL is loaded: OpenSSL has no certificate store of
-        its own on Windows, so mORMot's fallback - SSL_CTX_set_default_verify_paths
-        - finds nothing and EVERY certificate fails to verify. Filling
-        CASystemStores makes SetupCtx load the OS roots instead (cached, once
-        per process). [scsCA, scsRoot] is mORMot's own default set.
-
-        Not done on POSIX: there the default verify paths do find /etc/ssl/certs,
-        so there is nothing to fix and no reason to change what works.
-
-        This does not loosen anything: it teaches OpenSSL the roots the machine
-        already trusts - the same ones SChannel uses - so a self-signed
-        certificate is still refused unless a pin or the event says otherwise. }
+      { Windows: OpenSSL has no store of its own, so it loads the roots the system
+        trusts }
       FTLS.CASystemStores := [scsCA, scsRoot];
       {$ENDIF}
 
-      { THE NAME, which mORMot's OpenSSL layer checks only when told: it calls
-        SSL_set1_host for HostNamesCsv and for nothing else, and nobody filled
-        it - so under OpenSSL (always on POSIX, on Windows once it is loaded) a
-        certificate valid for ANY host was accepted for this one. SChannel
-        checks the name by itself and ignores the field. Brackets off an IPv6:
-        OpenSSL 3 takes an address literal as an IP check, and 1.1.1 compares
-        it as a name, against the subject CN when there are no DNS names. With
-        a pin or the event a mismatch only clears Trusted - they decide. }
+      { the host name, which mORMot's OpenSSL layer checks only through
+        HostNamesCsv (an IPv6 without brackets); with a pin or the event a
+        mismatch only clears Trusted }
       if vUri.Https then
       begin
         RALSplitHostPort(StringRAL(vUri.Server), vHostName, vHostPort);
@@ -345,11 +317,8 @@ begin
         included - has been sent yet. }
       if CertCheckWanted then
       begin
-        { Leaves through SetTransportError and Exit, not through a raise: a
-          raise from here would be caught by this very SendUrl's except, which
-          would reclassify it as a transport failure and replace the message.
-          What turns this into an exception for the caller is BeforeSendUrl, at
-          the "if vErrorCode <> 0", with the text left in the response. }
+        { leaves through SetTransportError and Exit: a raise would be caught by
+          this SendUrl's own except and reclassified }
         if not FCertSeen then
         begin
           { SChannel completed the handshake without ever asking us, or the
@@ -380,15 +349,11 @@ begin
     vHttp.Accept := '*/*';
     vHttp.RedirectMax := Parent.MaxRedirects;
 
-    { mORMot2 >= 2.4.15007 turned KeepAlive from a boolean into the keep-alive
-      time in milliseconds, and nothing in the 2.4 sources tells that commit
-      apart. On an older mORMot2 replace the line below with
-      "vHttp.KeepAlive := Parent.KeepAlive". }
+    { KeepAlive is the keep-alive time in milliseconds since mORMot2 2.4.15007; an
+      older mORMot2 takes Parent.KeepAlive, a boolean, here }
     vHttp.KeepAlive := Parent.ConnectTimeout;
 
-    { the value handed to Request: zero asks for "Connection: Close", so the
-      server hangs up and the socket cannot be reused. It used to be passed
-      uninitialised - whatever the stack held decided the header. }
+    { the value handed to Request: zero asks for "Connection: Close" }
     if Parent.KeepAlive then
       vKeepAlive := Parent.ConnectTimeout;
 
@@ -433,8 +398,8 @@ begin
         ARequest.Params.AddParam('Content-Type', ARequest.ContentType, rpkHEADER);
       if ARequest.ContentDisposition <> '' then
         ARequest.Params.AddParam('Content-Disposition', ARequest.ContentDisposition, rpkHEADER);
-      { after TakeWireStream, on purpose: only now ContentEncoding says what
-        was actually done to the body - see the note above }
+      { after TakeWireStream: only now ContentEncoding says what was done to the
+        body }
       if ARequest.ContentCompress <> ctNone then
         ARequest.Params.AddParam('Content-Encoding', ARequest.ContentEncoding, rpkHEADER);
 

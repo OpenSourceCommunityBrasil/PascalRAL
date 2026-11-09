@@ -10,13 +10,14 @@ uses
   {$ENDIF}
   RALUniGUIServer;
 
+/// Registers the UniGUI components.
 procedure Register;
 
 implementation
 
 {$IFDEF FPC}
-  // todo - verificar se nao existe no FPC
-  // https://forum.lazarus.freepascal.org/index.php?topic=30518.0
+  { Hides a published property in the Object Inspector (no such call on FPC; see
+    forum.lazarus.freepascal.org, topic 30518). }
   procedure UnlistPublishedProperty(ComponentClass: TPersistentClass; const PropertyName: string);
   var
     pi :PPropInfo;

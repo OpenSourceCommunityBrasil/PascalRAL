@@ -1,8 +1,8 @@
-/// The in-memory engine, for integration tests without a port: a
-/// TRALInProcServer listens on no socket, and a TRALClient with EngineType
-/// 'InProc' and BaseURL 'inproc://<ServerName>' hands its requests straight to
-/// it. Every plugin, module, encoder and the whole request pipeline run as
-/// over the network; only the bytes never leave the process.
+{ The in-memory engine, for integration tests without a port: a
+  TRALInProcServer listens on no socket, and a TRALClient with EngineType
+  'InProc' and BaseURL 'inproc://<ServerName>' hands its requests straight to
+  it. Every plugin, module, encoder and the whole request pipeline run as
+  over the network; only the bytes never leave the process. }
 unit RALInProc;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -54,7 +54,9 @@ function RALFindInProcServer(const AName: StringRAL): TRALInProcServer;
 implementation
 
 var
+  /// Active in-process servers by name.
   gServers: TStringList;
+  /// Guards gServers.
   gLock: TCriticalSection;
 
 function RALFindInProcServer(const AName: StringRAL): TRALInProcServer;

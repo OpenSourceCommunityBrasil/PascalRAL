@@ -10,6 +10,7 @@ uses
   Classes,
   RALInProc;
 
+/// Registers the InProc components.
 procedure Register;
 
 implementation

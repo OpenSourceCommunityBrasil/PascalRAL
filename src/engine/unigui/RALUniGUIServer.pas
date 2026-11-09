@@ -10,20 +10,25 @@ uses
   RALParams, RALTools, RALStream;
 
 type
-  { TRALUniGUIServer }
 
+  /// UniGUI server engine: RAL routes inside a UniGUI application's server.
   TRALUniGUIServer = class(TRALServer)
   private
+    /// UniGUI's own command handler, called for what RAL does not answer.
     FOnHTTPCommand: TUniHTTPCommandEvent;
+    /// UniGUI's own authentication parser.
     FOnParseAuthentication: TIdHTTPParseAuthenticationEvent;
   protected
+    /// Files the Authorization of ARequest into AResult.
     procedure DecodeAuth(ARequest: TIdHTTPRequestInfo; AResult: TRALRequest);
     procedure SetActive(const AValue: boolean); override;
 
+    /// Answers the request when it is a RAL route, else hands it to UniGUI.
     procedure OnRALHTTPCommand(ARequestInfo: TIdHTTPRequestInfo;
                                AResponseInfo: TIdHTTPResponseInfo;
                                var Handled: Boolean);
 
+    /// Files the Authorization for RAL; Indy decodes nothing.
     procedure OnRALParseAuthentication(AContext: TIdContext; const AAuthType,
                                        AAuthData: string; var VUsername,
                                        VPassword: string; var VHandled: Boolean);
@@ -83,10 +88,7 @@ begin
     with vRequest do
     begin
       ClientInfo.IP := ARequestInfo.RemoteIP;
-      { ClientInfo.ConnectionID stays 0 on purpose: the server here is UniGUI's,
-        RAL only hooks its events, and the hook hands over the request info
-        without the context that owns the socket. Zero is the documented
-        answer for "the engine cannot tell" - see TRALClientInfo.ConnectionID }
+      { ClientInfo.ConnectionID stays 0: the hook gets no context owning the socket }
       ClientInfo.MACAddress := '';
       ClientInfo.UserAgent := ARequestInfo.UserAgent;
 
@@ -138,8 +140,8 @@ begin
           Protocol := '1.0';
         end;
 
-        { PostStream is NOT emptied here any more: it is the body now, and
-          the params read from it until the request is freed }
+        { PostStream is not emptied: it is the body, and the params read from it until
+          the request is freed }
         ARequestInfo.RawHeaders.Clear;
         ARequestInfo.CustomHeaders.Clear;
         ARequestInfo.Cookies.Clear;

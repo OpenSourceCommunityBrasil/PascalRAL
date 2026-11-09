@@ -1,3 +1,4 @@
+/// CGI server engine: one process per request, run by a web server.
 unit RALCGIServer;
 
 interface

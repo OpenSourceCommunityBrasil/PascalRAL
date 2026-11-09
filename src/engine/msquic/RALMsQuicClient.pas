@@ -21,124 +21,129 @@ type
 
   /// How the server's certificate is judged on a connection.
   TRALMsQuicCertMode = (
-    /// the library validates - chain and host name - against the store
-    /// TRALMsQuicClientHTTP.DefaultCaFile describes, and its verdict stands
+    { the library validates - chain and host name - against the store
+      TRALMsQuicClientHTTP.DefaultCaFile describes, and its verdict stands. }
     qcmSystem,
     /// SSL.Verify = svNever with nobody else to ask: anything is accepted
     qcmNone,
-    /// SSL.Pins or OnValidateServerCert is set: the library still validates
-    /// but DEFERS its verdict, and TRALClientHTTP.AcceptServerCert decides -
-    /// the event, else the pin, else what the library concluded. Same rule as
-    /// every other engine.
+    { SSL.Pins or OnValidateServerCert is set: the library still validates
+      but DEFERS its verdict, and TRALClientHTTP.AcceptServerCert decides -
+      the event, else the pin, else what the library concluded. Same rule as
+      every other engine. }
     qcmJudge);
 
-  /// Raised by TRALMsQuicConnection.Open when the certificate is what failed,
-  /// so SendUrl reports rteCertificate and not a server being down.
+  { Raised by TRALMsQuicConnection.Open when the certificate is what failed,
+    so SendUrl reports rteCertificate and not a server being down. }
   ERALMsQuicCertError = class(ERALException);
 
-  { TRALMsQuicConnection }
+  { One QUIC connection, and the thing ShareConnection actually shares.
 
-  /// One QUIC connection, and the thing ShareConnection actually shares.
-  ///
-  /// It is reference counted because its sharers live on different threads and
-  /// any of them may be the last to let go. Requests never queue on it: each
-  /// one opens its own stream, which is the whole reason a shared QUIC
-  /// connection does not serialise the way a shared HTTP/1.1 socket would.
+    It is reference counted because its sharers live on different threads and
+    any of them may be the last to let go. Requests never queue on it: each
+    one opens its own stream, which is the whole reason a shared QUIC
+    connection does not serialise the way a shared HTTP/1.1 socket would. }
   TRALMsQuicConnection = class
   private
+    /// ALPN of the connection.
     FAlpn: AnsiString;
+    /// The certificate was refused.
     FCertRefused: boolean;
+    /// Configuration it was opened with.
     FConfiguration: HQUIC;
     FConnected: boolean;
+    /// Signalled when the handshake ends.
     FConnectedEvent: TEvent;
     FConnection: HQUIC;
+    /// Status of the handshake.
     FConnectStatus: QUIC_STATUS;
     { the engine whose policy judges the certificate. Valid only while Open is
       waiting for the handshake, which is when PEER_CERTIFICATE_RECEIVED
       arrives; the connection is shared afterwards and belongs to nobody. }
     FJudge: TRALMsQuicClientHTTP;
     FKey: StringRAL;
+    /// Holders: the pool, the sharers, the callbacks.
     FRefCount: IntegerRAL;
 
+    /// Shuts the connection down.
     procedure Close;
+    /// Judges the server certificate by the client's rule.
     function JudgeCertificate(AData: PQuicPeerCertificateReceivedData): QUIC_STATUS;
   public
+    /// A connection for AKey with AAlpn.
     constructor Create(const AKey: StringRAL; const AAlpn: AnsiString);
     destructor Destroy; override;
 
+    /// Takes a reference.
     procedure AddRef;
-    /// Opens the connection and waits for the handshake. Raises on failure -
-    /// ERALMsQuicCertError when the certificate is the reason.
+    { Opens the connection and waits for the handshake. Raises on failure -
+      ERALMsQuicCertError when the certificate is the reason. }
     procedure Open(const AHost: StringRAL; APort: IntegerRAL;
                    ACertMode: TRALMsQuicCertMode; AJudge: TRALMsQuicClientHTTP;
                    AConnectTimeout, AKeepAlive: IntegerRAL);
+    /// Drops a reference; the last frees it.
     procedure Release;
 
+    /// The handshake succeeded.
     property Connected: boolean read FConnected;
+    /// MsQuic connection handle.
     property Handle: HQUIC read FConnection;
+    /// Pool key: host, port and settings.
     property Key: StringRAL read FKey;
   end;
 
-  { TRALMsQuicPending }
-
-  /// One request in flight. Released by whichever of the calling thread and the
-  /// MsQuic callback finishes last, so a request that timed out cannot have its
-  /// context freed while a callback still holds it.
+  { One request in flight. Released by whichever of the calling thread and the
+    MsQuic callback finishes last, so a request that timed out cannot have its
+    context freed while a callback still holds it. }
   TRALMsQuicPending = class
   public
+    /// Signalled when the answer is complete.
     Done: TEvent;
+    /// The stream ended without an answer.
     Failed: boolean;
+    /// Answer bytes.
     Received: TMemoryStream;
+    /// Holders: the engine and the callbacks.
     RefCount: IntegerRAL;
+    /// MsQuic stream handle.
     Stream: HQUIC;
 
     constructor Create;
     destructor Destroy; override;
 
+    /// Drops a reference; the last frees it.
     procedure Release;
-    /// Puts it back to the state Create leaves it in. The receive buffer is
-    /// kept - only the position is rewound, so the next answer writes over
-    /// the previous one and the capacity is reached once instead of once per
-    /// request - unless it grew past RALMSQUIC_KEEP_BUFFER: one large
-    /// download must not pin that much memory to every pooled engine for the
-    /// life of the client.
+    { Puts it back to the state Create leaves it in. The receive buffer is
+      kept - only the position is rewound, so the next answer writes over
+      the previous one and the capacity is reached once instead of once per
+      request - unless it grew past RALMSQUIC_KEEP_BUFFER: one large
+      download must not pin that much memory to every pooled engine for the
+      life of the client. }
     procedure Reset;
   end;
 
-  { TRALMsQuicClientHTTP }
-
-  /// RALClient over QUIC, talking to TRALMsQuicServer.
-  ///
-  /// NOT HTTP. What travels is the binary frame TRALMsQuicServer documents -
-  /// method, URL, header pairs, body, each length prefixed - over one QUIC
-  /// stream per request. SupportsHTTP2 is False for that reason and not
-  /// because something is missing: this engine is below HTTP, not beside it.
-  ///
-  /// WHY ShareConnection MATTERS MORE HERE THAN ANYWHERE ELSE
-  ///
-  /// Every other engine is one-object-one-connection, so sharing a transport
-  /// between threads would make them wait for each other. QUIC streams are
-  /// independent: N threads on ONE connection is not contention, it is
-  /// multiplexing - one handshake, one congestion controller, and a lost
-  /// packet that delays only the request it belongs to.
-  ///
-  /// With ShareConnection False this engine opens a connection per client
-  /// instance, which is what TRALClient hands each thread - correct, and the
-  /// arrangement that leaves the transport's main advantage on the table.
-  /// ShareConnection is on by default for that reason.
+  { TRALClient over QUIC to a TRALMsQuicServer: RAL's own frame, one stream per
+    request (not HTTP); ShareConnection multiplexes the threads on one connection. }
   TRALMsQuicClientHTTP = class(TRALClientHTTP)
   private
+    /// ALPN asked for.
     FAlpn: AnsiString;
     { ConnectionKey as last built and what it was built from: the same place
       with the same settings keeps it, where a Format of six values ran on
       every request }
     FKey: StringRAL;
+    /// CA file the connection was opened with.
     FKeyCaFile: TFileName;
+    /// Host the connection was opened to.
     FKeyHost: StringRAL;
+    /// Keep-alive the connection was opened with.
     FKeyKeepAlive: IntegerRAL;
+    /// Certificate policy the connection was opened with.
     FKeyPolicy: StringRAL;
+    /// Port the connection was opened to.
     FKeyPort: IntegerRAL;
+    /// Connection of this engine alone (ShareConnection off).
     FOwnConnection: TRALMsQuicConnection;
+    /// Shared connection held.
     FShared: TRALMsQuicConnection;
     { The context of the last request, kept for the next one. An engine belongs
       to one thread and runs one request at a time, so reusing it saves an
@@ -147,66 +152,74 @@ type
       is where the multiplexed arrangement was losing its transport advantage.
       A context a callback still holds (the timeout path) is never reused. }
     FSpare: TRALMsQuicPending;
+    /// Host of the request URL.
     FTargetHost: StringRAL;
+    /// Port of the request URL.
     FTargetPort: IntegerRAL;
     { host and port of the last URL: a client hammering one route does not
       split the same string on every request }
     FTargetUrl: StringRAL;
 
+    /// The answer context for the next request, reused when free.
     function AcquirePending: TRALMsQuicPending;
+    /// How the certificate is judged: engine, client rule, none.
     function CertMode: TRALMsQuicCertMode;
+    /// Pool key of the current settings.
     function ConnectionKey: StringRAL;
+    /// Closes the own connection.
     procedure DropOwn;
+    /// Gives the shared connection back.
     procedure DropShared;
+    /// The connection for the target: shared or own, connected.
     function PickConnection: TRALMsQuicConnection;
+    /// Takes host and port of AURL.
     procedure ResolveTarget(const AURL: StringRAL);
   public
-    /// ALPN offered to the server. Both ends must agree or the handshake never
-    /// completes; RALQUICALPN is what TRALMsQuicServer offers by default. A
-    /// class variable because the engine object is built by TRALClient and
-    /// never seen by the application.
+    { ALPN offered to the server. Both ends must agree or the handshake never
+      completes; RALQUICALPN is what TRALMsQuicServer offers by default. A
+      class variable because the engine object is built by TRALClient and
+      never seen by the application. }
     class var DefaultAlpn: StringRAL;
-    /// PEM file with the certificate authorities a server's chain is checked
-    /// against, for the OpenSSL build of msquic. Empty, the default, means the
-    /// platform's own store: the Windows one on Windows; on Android the system
-    /// CAs, gathered by this unit into one file, once per process (Android
-    /// names its CA files in a way OpenSSL 3 cannot look up); on Linux
-    /// OpenSSL's default paths, which SSL_CERT_FILE and SSL_CERT_DIR can
-    /// redirect. Set, it replaces the system store on Windows too - the way to
-    /// trust a private CA without installing it on the machine. Read when the
-    /// first connection under a certificate policy is configured, so set it
-    /// before the first request.
+    { PEM file with the certificate authorities a server's chain is checked
+      against, for the OpenSSL build of msquic. Empty, the default, means the
+      platform's own store: the Windows one on Windows; on Android the system
+      CAs, gathered by this unit into one file, once per process (Android
+      names its CA files in a way OpenSSL 3 cannot look up); on Linux
+      OpenSSL's default paths, which SSL_CERT_FILE and SSL_CERT_DIR can
+      redirect. Set, it replaces the system store on Windows too - the way to
+      trust a private CA without installing it on the machine. Read when the
+      first connection under a certificate policy is configured, so set it
+      before the first request. }
     class var DefaultCaFile: TFileName;
-    /// Where to load msquic from; empty means the platform default name -
-    /// msquic.dll on Windows, libmsquic.so.2 on POSIX and libmsquic.so on
-    /// Android, where the packager carries no versioned soname. The first load
-    /// wins for the whole process.
-    ///
-    /// Leave it empty on Android too: the library deployed to
-    /// library\lib\arm64-v8a\ (library\lib\armeabi-v7a\ for the 32-bit slice)
-    /// lands in the application's own folder, which is where dlopen looks for
-    /// a plain name. It is here for the odd case of a library kept somewhere
-    /// else.
+    { Where to load msquic from; empty means the platform default name -
+      msquic.dll on Windows, libmsquic.so.2 on POSIX and libmsquic.so on
+      Android, where the packager carries no versioned soname. The first load
+      wins for the whole process.
+      Leave it empty on Android too: the library deployed to
+      library\lib\arm64-v8a\ (library\lib\armeabi-v7a\ for the 32-bit slice)
+      lands in the application's own folder, which is where dlopen looks for
+      a plain name. It is here for the odd case of a library kept somewhere
+      else. }
     class var DefaultLibPath: TFileName;
 
     constructor Create(AOwner: TRALClient); override;
     destructor Destroy; override;
 
     class function EngineName: StringRAL; override;
-    /// The version of the msquic actually loaded, asked of the library itself.
-    /// Empty when it has not been loaded yet - there is nothing to report
-    /// before the first request, and inventing a number would be worse.
+    { The version of the msquic actually loaded, asked of the library itself.
+      Empty when it has not been loaded yet - there is nothing to report
+      before the first request, and inventing a number would be worse. }
     class function EngineVersion: StringRAL; override;
-    /// The single decision about a server certificate, reached from the
-    /// connection's callback: the event, else the pin, else the library.
+    { The single decision about a server certificate, reached from the
+      connection's callback: the event, else the pin, else the library. }
     function JudgeServerCert(const AInfo: TRALCertInfo): boolean;
     class function PackageDependency: StringRAL; override;
     procedure SendUrl(AURL: StringRAL; ARequest: TRALRequest;
                       AResponse: TRALResponse; AMethod: TRALMethod); override;
     /// True: the certificate arrives as DER and its SHA-256 is computed here.
     class function SupportsCertPin: boolean; override;
-    /// False: this engine is below HTTP, so there is no version to ask for.
-    /// It is what hides HTTPVersion in the IDE and keeps it at rhvDefault.
+    { False: this engine is below HTTP, so there is no version to ask for.
+      It is what hides HTTPVersion in the IDE and keeps it at rhvDefault. }
     class function SupportsHTTPVersion: boolean; override;
     class function SupportsKeepAliveInterval: boolean; override;
     class function SupportsMethod(AMethod: TRALMethod): boolean; override;
@@ -215,16 +228,17 @@ type
   end;
 
 {$IFDEF RALMSQUIC_PROFILE}
-/// Where the time of a request goes, phase by phase, accumulated across every
-/// thread. Only compiled with RALMSQUIC_PROFILE - the counters are lock free but
-/// they are still six atomic adds per request, which is not something to carry
-/// in production for a number nobody reads.
-///
-/// It exists because measuring from the outside could only ever rule
-/// hypotheses out: the server was not CPU bound, no lock was shared by all the
-/// engines, and still every transport landed on the same ceiling. The only way
-/// left was to time the inside.
+{ Where the time of a request goes, phase by phase, accumulated across every
+  thread. Only compiled with RALMSQUIC_PROFILE - the counters are lock free but
+  they are still six atomic adds per request, which is not something to carry
+  in production for a number nobody reads.
+
+  It exists because measuring from the outside could only ever rule
+  hypotheses out: the server was not CPU bound, no lock was shared by all the
+  engines, and still every transport landed on the same ceiling. The only way
+  left was to time the inside. }
 function RALMsQuicProfileReport: StringRAL;
+/// Zeroes the profiling counters (RALMSQUIC_PROFILE builds).
 procedure RALMsQuicProfileReset;
 {$ENDIF}
 
@@ -240,9 +254,13 @@ const
   RALMSQUIC_KEEP_BUFFER = 1024 * 1024;
 
 type
+  /// Pointer to TRALMsQuicSendCtx.
   PRALMsQuicSendCtx = ^TRALMsQuicSendCtx;
+  /// A buffer in flight: kept alive until MsQuic reports it sent.
   TRALMsQuicSendCtx = record
+    /// MsQuic buffer descriptor.
     Buffer: QUIC_BUFFER;
+    /// Bytes sent.
     Data: TBytes;
   end;
 
@@ -251,41 +269,24 @@ var
     which policy - the same shape TRALnetHTTPClientHTTP uses for its pooled
     transports. }
   vPool: TStringList = nil;
+  /// Guards the shared connections.
   vPoolLock: TCriticalSection = nil;
 
-  { ONE registration for the process, and this is not a micro-optimisation.
-    A registration is the container MsQuic hangs its worker threads off: it
-    creates a set of them, sized to the machine, and every connection under it
-    shares them. Opening one PER CONNECTION - which is what this unit did at
-    first - gives twenty connections twenty thread pools on a four core box,
-    and the threads then spend their time changing context instead of moving
-    packets. Measured: it was most of why adding threads stopped adding
-    throughput.
-
-    Configurations are cached beside it for the same reason, keyed by what
-    actually distinguishes them: the ALPN, how the certificate is judged and
-    the two timeouts. Building one costs a credential load. }
+  { one registration for the process (its worker threads serve every connection),
+    and the configurations cached by what tells them apart }
   vRegistration: HQUIC = nil;
+  /// Cached configurations by ALPN, certificate mode and timeouts.
   vConfigs: TStringList = nil;
+  /// Guards the registration, the configurations and the CA file.
   vGlobalLock: TCriticalSection = nil;
 
 {$IF Defined(ANDROID) and not Defined(FPC)}
 var
+  /// PEM file of the Android trusted CAs, gathered once.
   vAndroidCaFile: UTF8String = '';
 
-{ The system's trusted CAs as ONE PEM file, for OpenSSL to load.
-
-  Android keeps them one certificate per file, named by the old MD5 subject
-  hash, and OpenSSL 3 looks a directory up by the new one - pointed at that
-  folder it would find nothing. Its compiled-in default paths do not exist on a
-  handset either. A single file needs no lookup, so the store is copied into
-  the cache folder, once per process. Android 14 moved the store into the
-  Conscrypt module, which updates it without a system update, and that copy
-  wins when it exists.
-
-  Called with vGlobalLock held. Returns '' when nothing could be gathered, and
-  validation then fails closed - an unpinned host is refused, a pin still
-  decides for its own. }
+{ The system's trusted CAs as one PEM file for OpenSSL (Android keeps one file per
+  certificate); called with vGlobalLock held, empty when nothing was found. }
 function AndroidCaBundle: UTF8String;
 const
   cStores: array[0..1] of string = ('/apex/com.android.conscrypt/cacerts',
@@ -383,6 +384,7 @@ begin
   end;
 end;
 
+/// The cached configuration for these settings, opened on first use.
 function SharedConfiguration(const AAlpn: AnsiString; ACertMode: TRALMsQuicCertMode;
   AHandshakeTimeout, AKeepAlive: IntegerRAL): HQUIC;
 var
@@ -421,25 +423,10 @@ begin
     end;
 
     FillChar(vSettings, SizeOf(vSettings), 0);
-    { How long a connection may sit idle before QUIC closes it. Its OWN
-      number, the same one the server starts from: it used to be the client's
-      ConnectTimeout, which is a different question - with ConnectTimeout at
-      5 s the shared connection died after five quiet seconds and every pause
-      cost a handshake, and since QUIC negotiates the smaller of the two
-      peers' values, the server's setting was silently capped by it. }
+    { how long a connection may sit idle before QUIC closes it: its own number, the
+      one the server starts from }
     vSettings.IdleTimeoutMs := RALQUICIDLETIMEOUT;
-    { THE PROTOCOL DEFAULT, 25 ms, and not the 1 ms this used to force.
-
-      Sitting on an acknowledgement only stalls the peer's next send when the
-      answers stop coming back to back - which is what MORE THAN ONE dispatch
-      thread on the server produced, and the server now has exactly one. With
-      the answers serialised, the ACK rides along with the next one and the
-      delay never has a chance to bite.
-
-      Measured with 1, 5 and 25 ms against twenty connections: 240, 242 and
-      251 us of server CPU per request, which is the same number three times.
-      Forcing 1 ms bought nothing and cost an acknowledgement packet per
-      millisecond on every idle connection - on a handset, that is battery. }
+    { the protocol default, 25 ms }
     vSettings.MaxAckDelayMs := 25;
     vSettings.IsSetFlags := QUIC_SETTING_IdleTimeoutMs or QUIC_SETTING_MaxAckDelayMs;
 
@@ -500,14 +487,8 @@ begin
                        QUIC_CREDENTIAL_FLAG_DEFER_CERTIFICATE_VALIDATION or
                        QUIC_CREDENTIAL_FLAG_USE_PORTABLE_CERTIFICATES;
     end;
-    { WHO VALIDATES. On Windows msquic asks the system - chain, host name, the
-      machine's store. Everywhere else that platform check is a stub: without
-      DEFER it refuses every certificate, a valid one included, and under DEFER
-      it hands back SUCCESS as its verdict - TRALCertInfo.Trusted would read
-      True for any certificate, and an OnValidateServerCert that relies on it
-      would accept anything. OpenSSL's own validation is the real one there -
-      chain and host name, against vCaFile plus OpenSSL's default paths - and
-      on Windows it is what a DefaultCaFile asks for. }
+    { who validates: the system on Windows; elsewhere msquic's platform check is a
+      stub, so OpenSSL does (chain and host name, against the CA file) }
     if ACertMode <> qcmNone then
     begin
       {$IFDEF MSWINDOWS}
@@ -540,20 +521,26 @@ end;
 
 {$IFDEF RALMSQUIC_PROFILE}
 type
+  /// Phases of a request, for the profiling counters.
   TRALMsQuicPhase = (qpSetup, qpConnect, qpBuild, qpAlloc, qpStart, qpWait,
                    qpParse, qpFree);
 
 const
+  /// Name of each phase.
   RALMsQuicPhaseName: array[TRALMsQuicPhase] of StringRAL = (
     'prepare headers', 'pick connection', 'build frame',
     'create pending', 'open+send stream', 'wait for the answer',
     'parse the answer', 'release pending');
 
 var
+  /// Ticks spent per phase.
   gPhase: array[TRALMsQuicPhase] of Int64;
+  /// Requests profiled.
   gPhaseReqs: Int64;
+  /// Tick frequency.
   gPhaseFreq: Int64;
 
+/// A high-resolution tick.
 function ProfTicks: Int64;
 begin
   {$IFDEF RALWindows}
@@ -563,8 +550,8 @@ begin
   {$ENDIF}
 end;
 
-/// Adds the elapsed time to a phase and moves the mark forward, so the caller
-/// only carries one variable through SendUrl.
+{ Adds the elapsed time to a phase and moves the mark forward, so the caller
+  only carries one variable through SendUrl. }
 procedure ProfMark(APhase: TRALMsQuicPhase; var AFrom: Int64);
 var
   vNow: Int64;
@@ -651,6 +638,7 @@ end;
 
 { callbacks }
 
+/// MsQuic callback of a request stream: answer bytes, end, shutdown.
 function RALMsQuicClientStreamCallback(Stream: HQUIC; Context: Pointer;
   Event: PQUIC_STREAM_EVENT): QUIC_STATUS; cdecl;
 var
@@ -697,6 +685,7 @@ begin
   end;
 end;
 
+/// MsQuic callback of a connection: connected, certificate, shutdown.
 function RALMsQuicClientConnCallback(Connection: HQUIC; Context: Pointer;
   Event: PQUIC_CONNECTION_EVENT): QUIC_STATUS; cdecl;
 var
@@ -741,6 +730,7 @@ begin
   end;
 end;
 
+/// Sends ABytes on AStream and closes its send side.
 function SendAndFinish(AStream: HQUIC; const ABytes: TBytes): QUIC_STATUS;
 var
   vCtx: PRALMsQuicSendCtx;
@@ -1007,7 +997,7 @@ begin
 
   if FSpare <> nil then
   begin
-    { a callback still holds the old one - let it go and start fresh }
+    { a callback still holds the previous one: let it go and start fresh }
     FSpare.Release;
     FSpare := nil;
   end;
@@ -1072,13 +1062,7 @@ procedure TRALMsQuicClientHTTP.DropShared;
 begin
   if FShared = nil then
     Exit;
-  { THE POOL OWNS THE CONNECTION, and this method only gives back the sharer's
-    reference. It used to remove the entry once the last sharer left, and that
-    made ShareConnection unusable in the arrangement it exists for: with an
-    engine created per request - which is what TRALClient hands every thread
-    but the first - the last sharer leaves on EVERY request, so the connection
-    was closed and the next request paid a full handshake, inside the pool lock,
-    with every other thread queued behind it. The run did not finish. }
+  { the pool owns the connection: this only gives back the sharer's reference }
   FShared.Release;
   FShared := nil;
 end;
@@ -1128,8 +1112,7 @@ begin
   end;
   DropShared;
 
-  { Opened INSIDE the lock on purpose: whoever arrives second has to find a
-    connection already through its handshake, not one still negotiating. }
+  { opened inside the lock: whoever arrives next finds the handshake done }
   vPoolLock.Enter;
   try
     vIdx := vPool.IndexOf(vKey);
@@ -1295,9 +1278,8 @@ begin
   ProfMark(qpParse, vMark);
   RALAtomicInc(gPhaseReqs, 1);
   {$ENDIF}
-  { deliberately NOT released here: the engine keeps the context for the next
-    request (see AcquirePending), and the callback chain gives its own
-    reference back on SHUTDOWN_COMPLETE }
+  { not released here: the engine keeps the context for the next request, and the
+    callbacks give their reference back on SHUTDOWN_COMPLETE }
 end;
 
 initialization
