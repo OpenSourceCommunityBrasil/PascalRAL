@@ -70,16 +70,19 @@ Sections in the order `private`, `protected`, `public`, `published` (`strict pri
 before `private`; an empty section is not written). Inside each section, in this order
 and each group alphabetical:
 
-1. fields (and `class var`);
+1. fields;
 2. `constructor`;
 3. `destructor`;
 4. methods (`procedure` and `function` mixed; the keyword does not count);
 5. event methods (names starting with `On`);
 6. properties.
 
-- Directives (`{$IFDEF}`...), section keywords and nested `type`/`const` blocks are
-  fixed points: members are ordered only between two of them, and nothing moves into
-  or out of an `{$IFDEF}`.
+- Directives (`{$IFDEF}`...), section keywords, nested `type`/`const` blocks and
+  `class var` are fixed points: members are ordered only between two of them, and
+  nothing moves into or out of an `{$IFDEF}`.
+- Every field declared after a `class var` is a class field too, so a plain field never
+  goes below one: the `class var` closes its section, after the methods, alone on its
+  line with its fields on the lines below.
 - Overloads stay together; the description moves with its member.
 - **Not reordered**: records (C layouts), enums, sets, initialized constants,
   interfaces (the order is the vtable), form classes (the designer's section), and

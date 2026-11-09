@@ -991,7 +991,6 @@ type
   public
     /// Holds AEvent and ASender.
     constructor Create(AEvent: TNotifyEvent; ASender: TObject);
-
     /// The event.
     property Event: TNotifyEvent read FEvent;
     /// The sender it is called with.
@@ -1012,15 +1011,14 @@ type
     /// Creates the list, guarded by ACS.
     constructor Create(ACS: TCriticalSection); virtual;
     destructor Destroy; override;
-
     /// Registers an event; raises ESgUnloadEvent when it is registered.
     procedure Add(AEvent: TNotifyEvent; ASender: TObject); virtual;
-    /// Calls every event.
-    procedure Call; virtual;
-    /// Removes every event.
-    procedure Clear; virtual;
     /// Removes an event.
     procedure Remove(AEvent: TNotifyEvent); virtual;
+    /// Removes every event.
+    procedure Clear; virtual;
+    /// Calls every event.
+    procedure Call; virtual;
   end;
 
   { SgLib }
