@@ -29,10 +29,12 @@ type
 implementation
 
 const
+  /// Message type byte of each kind; -1 when 1.2 has none.
   cTypes: array[TRALMQTTSNKind] of Integer = ($00, $01, $02, -1, $04, $05, $06, $07, $08,
     $09, $0A, $0B, $0C, $0D, $0E, $0F, $10, -1, $12, $13, $14, $15, $16, $17, $18, $1A,
     $1B, $1C, $1D, $FE);
 
+/// The flag bits of AQoS (-1 to 2).
 function QoSBits(AQoS: ShortInt): Byte;
 begin
   if AQoS < 0 then
@@ -41,6 +43,7 @@ begin
     Result := (AQoS and 3) shl 5;
 end;
 
+/// The QoS (-1 to 2) of the flags AFlags.
 function QoSOf(AFlags: Byte): ShortInt;
 begin
   Result := (AFlags shr 5) and 3;

@@ -102,6 +102,7 @@ type
     Inner: TBytes;
     /// 2.0: keep alive of the CONNECT.
     KeepAlive: Word;
+    /// Type of the packet.
     Kind: TRALMQTTSNKind;
     /// 2.0: largest packet the client takes.
     MaxPacketSize: Word;
@@ -121,7 +122,9 @@ type
     ReasonString: StringRAL;
     /// RETAIN.
     Retain: boolean;
+    /// Subscription option Retain As Published (2.0).
     RetainAsPublished: boolean;
+    /// Subscription option Retain Handling (2.0).
     RetainHandling: Byte;
     /// 2.0: keep the registrations while asleep.
     RetainRegistrations: boolean;
@@ -152,6 +155,7 @@ type
     /// 2.0 will topic type.
     WillTopicType: TRALMQTTSNTopicType;
 
+    /// A packet of AKind.
     constructor Create(AKind: TRALMQTTSNKind);
   end;
 
@@ -190,6 +194,7 @@ function RALMQTTSNKindName(AKind: TRALMQTTSNKind): StringRAL;
 implementation
 
 var
+  /// Codec of each MQTT-SN version, registered by its unit.
   GCodecs: array[TRALMQTTSNVersion] of TRALMQTTSNCodecClass;
 
 constructor TRALMQTTSNPacket.Create(AKind: TRALMQTTSNKind);

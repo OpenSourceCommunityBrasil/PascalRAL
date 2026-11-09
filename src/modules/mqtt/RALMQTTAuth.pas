@@ -47,6 +47,7 @@ type
     once }
   TRALMQTTAuthenticator = class(TRALComponent)
   private
+    /// Serialises an exchange.
     FLock: TCriticalSection;
     FRenewMargin: IntegerRAL;
   protected
@@ -62,12 +63,14 @@ type
       left False sends no field. May wait on the network (a token fetch) }
     procedure Credentials(const AClientID: StringRAL; var AUserName: StringRAL;
       var AHasUserName: boolean; var APassword: TBytes; var AHasPassword: boolean); virtual;
+    /// Takes FLock.
     procedure Lock;
     /// A new exchange for one connection; nil without enhanced authentication.
     function NewExchange: TRALMQTTAuthExchange; virtual;
     { Milliseconds until the credential should be renewed (its expiry minus
       RenewMargin); -1 when it does not expire }
     function RenewIn: Int64RAL;
+    /// Leaves FLock.
     procedure Unlock;
   published
     { Seconds before expiry when a token is renewed: before the next
@@ -228,6 +231,7 @@ type
     FKeyName: StringRAL;
     FLifetime: IntegerRAL;
     FResourceURI: StringRAL;
+    /// Token made last, reused until it is near expiry.
     FToken: StringRAL;
     FUserName: StringRAL;
   public
@@ -246,7 +250,7 @@ type
     property Lifetime: IntegerRAL read FLifetime write FLifetime default 3600;
     /// The resource signed ('myhub.azure-devices.net/devices/dev1').
     property ResourceURI: StringRAL read FResourceURI write FResourceURI;
-    /// User name sent with it ('myhub.azure-devices.net/dev1/?api-version=2021-04-12').
+    /// User name sent with it ('myhub.azure-devices.net/dev1/?api-version=...').
     property UserName: StringRAL read FUserName write FUserName;
   end;
 
@@ -289,6 +293,7 @@ type
     client proved the password }
   TRALMQTTSCRAMServer = class
   private
+    /// The SCRAM exchange of the server.
     FServer: TRALSCRAMServer;
 
     function GetAccepted: boolean;
@@ -337,8 +342,10 @@ type
   /// The client side of SCRAM.
   TRALMQTTSCRAMClient = class(TRALMQTTAuthExchange)
   private
+    /// The SCRAM exchange of the client.
     FClient: TRALSCRAMClient;
   public
+    /// An exchange of AAlg for AUserName with APassword.
     constructor Create(AAlg: TRALMQTTHashAlg; const AUserName, APassword,
       AClientNonce: StringRAL);
     destructor Destroy; override;
@@ -351,9 +358,12 @@ type
   /// The exchange of TRALMQTTCustomAuth: the events.
   TRALMQTTCustomExchange = class(TRALMQTTAuthExchange)
   private
+    /// Component whose events answer the steps.
     FOwner: TRALMQTTCustomAuth;
+    /// Step of the exchange, from 1.
     FStep: IntegerRAL;
 
+    /// The data of step AStep, from the owner's event.
     function Ask(AStep: IntegerRAL; const AData: TBytes): TBytes;
   public
     procedure Finish(const AServerData: TBytes); override;
@@ -361,6 +371,7 @@ type
     function Step(const AServerData: TBytes): TBytes; override;
   end;
 
+/// The SCRAM hash of AAlg.
 function SCRAMAlg(AAlg: TRALMQTTHashAlg): TRALSCRAMAlg;
 begin
   Result := TRALSCRAMAlg(Ord(AAlg));
@@ -406,6 +417,7 @@ begin
   Result := TRALMQTTSCRAMClient.Create(AAlg, AUserName, APassword, AClientNonce);
 end;
 
+/// Raises the authentication error AReason.
 procedure AuthFail(const AReason: string);
 begin
   raise ERALMQTTError.CreateReason(MQTTRC_NotAuthorized, Format(emMQTTAuthFailed, [AReason]));

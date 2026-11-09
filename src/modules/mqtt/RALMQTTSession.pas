@@ -24,7 +24,9 @@ type
   TRALMQTTPacketIds = class
   private
     FCount: IntegerRAL;
+    /// Last identifier handed out.
     FLast: Word;
+    /// Bitmap of the identifiers in use.
     FUsed: array[0..8191] of Byte;
   public
     /// Forgets every identifier.
@@ -47,8 +49,11 @@ type
   TRALMQTTAliasOut = class
   private
     FMaximum: IntegerRAL;
+    /// Use counter, for the least recently used alias.
     FTick: Int64RAL;
+    /// Topic of each alias.
     FTopics: array of StringRAL;
+    /// Last use of each alias.
     FUsed: array of Int64RAL;
   public
     { The alias for ATopic: ANew True when the topic must go with it (first
@@ -64,7 +69,9 @@ type
   /// Topic Aliases a receiver keeps, alias to topic, for one connection [MQTT-3.3.2-7].
   TRALMQTTAliasIn = class
   private
+    /// Highest alias the peer may use.
     FMaximum: IntegerRAL;
+    /// Topic of each alias.
     FTopics: array of StringRAL;
   public
     /// Forgets every alias; AMaximum is what this side announced.

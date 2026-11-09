@@ -1,7 +1,5 @@
-{ The bytes of MQTT-SN 2.0, an OASIS draft (the working text of the MQTT-SN
-  subcommittee as read on 26/10/2026). It may change until it is published;
-  a change touches this unit only. The PROTECTION envelope (0xFF), still
-  unfinished in the draft itself, is not implemented. }
+{ The bytes of MQTT-SN 2.0, an OASIS draft that may change until it is published
+  (a change touches this unit only); the PROTECTION envelope is not implemented. }
 unit RALMQTTSNPacket20;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -36,6 +34,7 @@ const
     -1, $0A, $0B, $0C, $0D, $0E, $0F, $10, $11, $12, $13, $14, $15, $16, $17, $18, -1,
     -1, -1, -1, $FE);
 
+/// The flag bits of AQoS (-1 to 2).
 function QoSBits(AQoS: ShortInt): Byte;
 begin
   if AQoS < 0 then
@@ -44,6 +43,7 @@ begin
     Result := (AQoS and 3) shl 5;
 end;
 
+/// The QoS (-1 to 2) of the flags AFlags.
 function QoSOf(AFlags: Byte): ShortInt;
 begin
   Result := (AFlags shr 5) and 3;

@@ -32,13 +32,15 @@ type
   /// Bytes kept as an object of a list.
   TRALMQTTJournalBytes = class
   public
+    /// The bytes.
     Data: TBytes;
   end;
 
   /// A subscription in the journal.
   TRALMQTTJournalSub = class
   public
-    /// The subscription options byte (QoS, No Local, Retain As Published, Retain Handling).
+    { The subscription options byte (QoS, No Local, Retain As Published, Retain
+      Handling). }
     Options: Byte;
     /// Subscription Identifier.
     SubId: Cardinal;
@@ -47,28 +49,38 @@ type
   /// A message of a session in the journal.
   TRALMQTTJournalMessage = class
   public
+    /// The message as stored.
     Data: TBytes;
+    /// Journal identifier of the message.
     Id: Int64RAL;
+    /// Packet identifier it was sent with; 0 when not yet sent.
     PacketId: Word;
+    /// QoS of the delivery.
     QoS: Byte;
+    /// PUBREL was sent (QoS 2).
     Released: boolean;
+    /// Retain flag of the delivery.
     Retain: boolean;
   end;
 
   /// A session in the journal.
   TRALMQTTJournalSession = class
   public
+    /// Client identifier.
     ClientID: StringRAL;
+    /// Session Expiry Interval, in seconds.
     Expiry: Cardinal;
     /// TRALMQTTJournalMessage, in order.
     Messages: TList;
     /// Filters, with a TRALMQTTJournalSub each.
     Subs: TStringList;
+    /// Protocol level of the session.
     Version: Byte;
 
     constructor Create;
     destructor Destroy; override;
 
+    /// Position of the message AId, or -1.
     function FindMessage(AId: Int64RAL): IntegerRAL;
   end;
 
@@ -77,22 +89,35 @@ type
     its lock }
   TRALMQTTBrokerJournal = class
   private
+    /// Records waiting for Flush to write them.
     FBuffer: TMemoryStream;
+    /// A compaction is running.
     FCompacting: boolean;
     FFileName: string;
+    /// Identifier of the next message.
     FNextId: Int64RAL;
+    /// Retained messages by topic.
     FRetained: TStringList;
+    /// Sessions by client identifier.
     FSessions: TStringList;
+    /// The open journal file.
     FStream: TFileStream;
+    /// Flush waits for the records to reach the disk.
     FSyncWrites: boolean;
 
+    /// Writes a record of AKind with AData and applies it in memory.
     procedure Append(AKind: Byte; const AData: TBytes);
+    /// Applies a record of AKind to the state in memory.
     procedure Apply(AKind: Byte; const AData: TBytes);
+    /// Writes the live state into a second file and swaps them.
     procedure Compact;
+    /// Bytes the live state takes as records.
     function LiveSize: Int64RAL;
+    /// Reads the journal into memory, stopping at the first damaged record.
     procedure Load;
     /// Writes a message of a session again, with its state (compaction).
     procedure RecordMessage(const AClientID: StringRAL; AMessage: TRALMQTTJournalMessage);
+    /// Session AClientID; ACreate makes it when missing.
     function Session(const AClientID: StringRAL; ACreate: boolean): TRALMQTTJournalSession;
   public
     /// Opens (or creates) AFileName and replays it; locked against a second broker.
@@ -134,54 +159,87 @@ type
 implementation
 
 const
+  /// First bytes of a journal file.
   cMagic: array[0..7] of AnsiChar = ('R', 'A', 'L', 'M', 'Q', 'B', '0', '1');
+  /// Record: a session created or changed.
   cSessionPut = 1;
+  /// Record: a session ended.
   cSessionDel = 2;
+  /// Record: a subscription added.
   cSubPut = 3;
+  /// Record: a subscription removed.
   cSubDel = 4;
+  /// Record: a message queued for a session.
   cOutPut = 5;
+  /// Record: a queued message sent with its packet identifier.
   cOutSent = 6;
+  /// Record: a QoS 2 message released (PUBREL sent).
   cOutReleased = 7;
+  /// Record: a queued message done.
   cOutDone = 8;
+  /// Record: a retained message set.
   cRetainedPut = 9;
+  /// Record: a retained message cleared.
   cRetainedDel = 10;
+  /// Journal size from which a compaction is considered.
   cCompactAbove = 4 * 1024 * 1024;
+  /// Largest record read; a bigger length is damage.
   cMaxRecord = 300 * 1024 * 1024;
 
 type
   /// A record being built.
   TRALMQTTRecord = class
   private
+    /// Bytes written, with room.
     FData: TBytes;
+    /// Bytes used of FData.
     FSize: IntegerRAL;
 
+    /// Makes room for ACount more bytes.
     procedure Need(ACount: IntegerRAL);
   public
+    /// Appends a byte.
     procedure AddByte(AValue: Byte);
+    /// Appends the bytes as they are.
     procedure AddBytes(const AValue: TBytes);
+    /// Appends a 32-bit integer.
     procedure AddCardinal(AValue: Cardinal);
+    /// Appends a 64-bit integer.
     procedure AddInt64(AValue: Int64RAL);
+    /// Appends a length and the UTF-8 text.
     procedure AddString(const AValue: StringRAL);
+    /// Appends a 16-bit integer.
     procedure AddWord(AValue: Word);
+    /// The record.
     function Bytes: TBytes;
   end;
 
   /// Reading a record back.
   TRALMQTTRecordReader = class
   private
+    /// Record being read.
     FData: TBytes;
+    /// Next byte.
     FPos: IntegerRAL;
   public
+    /// A reader of AData.
     constructor Create(const AData: TBytes);
 
+    /// Reads a byte.
     function ReadByte: Byte;
+    /// Reads a 32-bit integer.
     function ReadCardinal: Cardinal;
+    /// Reads a 64-bit integer.
     function ReadInt64: Int64RAL;
+    /// The bytes left.
     function ReadRest: TBytes;
+    /// Reads a length and the text.
     function ReadString: StringRAL;
+    /// Reads a 16-bit integer.
     function ReadWord: Word;
   end;
 
+/// Flushes AStream to the disk (fsync, FlushFileBuffers).
 procedure SyncFile(AStream: TFileStream);
 begin
   {$IFDEF FPC}
@@ -609,8 +667,8 @@ var
   vMessage: TRALMQTTJournalMessage;
   vSaveSync: boolean;
 begin
-  { the live state into a new file, which then takes the old one's place; a
-    crash in between leaves the old file whole }
+  { the live state goes into a second file, which then takes the first one's place:
+    a crash in between leaves the current file whole }
   FCompacting := True;
   vSaveSync := FSyncWrites;
   vOldSessions := FSessions;

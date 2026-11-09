@@ -34,7 +34,9 @@ type
 
     procedure SetClient(AValue: TRALMQTTCustomClient);
     procedure SetDataSet(AValue: TDataSet);
+    /// Deletes the oldest records past MaxRows.
     procedure Trim_;
+    /// Whether AMessage passes the Subscription filter.
     function Wanted(AMessage: TRALMQTTMessage): boolean;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;

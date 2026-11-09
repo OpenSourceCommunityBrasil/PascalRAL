@@ -62,12 +62,18 @@ type
     same in a file. Thread-safe: every method takes the lock }
   TRALMQTTSessionStore = class
   private
+    /// Client identifier of the session.
     FClientID: StringRAL;
+    /// QoS 2 packet identifiers received and not released.
     FIncoming: TList;
+    /// Guards the lists.
     FLock: TCriticalSection;
+    /// Messages queued or in flight, in order.
     FMessages: TList;
+    /// Sequence of the next message.
     FNextSeq: Int64RAL;
 
+    /// Position of the message ASeq in FMessages, or -1.
     function FindIndex(ASeq: Int64RAL): IntegerRAL;
   protected
     /// A message was added or changed (the file store writes a record).
@@ -111,6 +117,7 @@ type
     function GetClientID: StringRAL;
     /// True when APacketId was received and not released yet.
     function HasIncoming(APacketId: Word): boolean;
+    /// Takes FLock.
     procedure Lock;
     /// Removes and frees the message of ASeq.
     procedure Remove(ASeq: Int64RAL);
@@ -118,6 +125,7 @@ type
     procedure RemoveIncoming(APacketId: Word);
     /// Keeps a generated client identifier.
     procedure SetClientID(const AValue: StringRAL);
+    /// Leaves FLock.
     procedure Unlock;
     /// Stores the new State and PacketId of AMessage.
     procedure Update(AMessage: TRALMQTTStoredMessage);
@@ -129,16 +137,23 @@ type
     second client with the same identifier in the same folder is refused }
   TRALMQTTFileStore = class(TRALMQTTSessionStore)
   private
+    /// A compaction is running: no other one starts.
     FCompacting: boolean;
     FFileName: string;
+    /// The open session file.
     FStream: TFileStream;
+    /// Every record reaches the disk before the call returns.
     FSyncWrites: boolean;
 
+    /// Writes a record of AKind with AData.
     procedure Append(AKind: Byte; const AData: TBytes);
+    /// Writes the live state into a second file and swaps them.
     procedure Compact;
     /// Bytes the live state takes in a compacted file.
     function LiveSize: Int64RAL;
+    /// Reads the file into memory, stopping at the first damaged record.
     procedure Load;
+    /// The record bytes of AMessage.
     function MessageRecord(AMessage: TRALMQTTStoredMessage): TBytes;
   protected
     procedure Persist(AMessage: TRALMQTTStoredMessage); override;
@@ -174,19 +189,30 @@ uses
 {$IFEND}
 
 const
+  /// First bytes of a session file.
   cMagic: array[0..7] of AnsiChar = ('R', 'A', 'L', 'M', 'Q', 'S', '0', '1');
+  /// Record: a message queued or changed.
   cKindPut = 1;
+  /// Record: a message done.
   cKindDel = 2;
+  /// Record: a QoS 2 packet identifier received.
   cKindInAdd = 3;
+  /// Record: that identifier released.
   cKindInDel = 4;
+  /// Record: the client identifier.
   cKindClientID = 5;
+  /// Record: the session cleared.
   cKindClear = 6;
+  /// Largest record read; a bigger length is damage.
   cMaxRecord = 300 * 1024 * 1024;
+  /// File size from which a compaction is considered.
   cCompactAbove = 1024 * 1024;
 
 var
+  /// CRC-32 table of the records.
   GCRCTable: array[0..255] of Cardinal;
 
+/// Fills GCRCTable.
 procedure BuildCRCTable;
 var
   vInt, vBit: IntegerRAL;
@@ -268,6 +294,7 @@ begin
   ForceDirectories(Result);
 end;
 
+/// Flushes AStream to the disk (fsync, FlushFileBuffers).
 procedure SyncFile(AStream: TFileStream);
 begin
   {$IFDEF FPC}
@@ -281,6 +308,7 @@ begin
   {$ENDIF}
 end;
 
+/// Writes AValue little-endian into ABuf at APos.
 procedure PutInt64(var ABuf: TBytes; var APos: IntegerRAL; AValue: Int64RAL);
 var
   vInt: IntegerRAL;
@@ -292,6 +320,7 @@ begin
   end;
 end;
 
+/// Reads a little-endian Int64 of ABuf at APos.
 function GetInt64(const ABuf: TBytes; var APos: IntegerRAL): Int64RAL;
 var
   vInt: IntegerRAL;
@@ -715,8 +744,8 @@ var
   vInt: IntegerRAL;
   vSaveSync: boolean;
 begin
-  { the live state into a new file, which then takes the place of the old one;
-    a crash in between leaves the old file whole }
+  { the live state goes into a second file, which then takes the first one's place:
+    a crash in between leaves the current file whole }
   vTemp := FFileName + '.new';
   vOld := FStream;
   vSaveSync := FSyncWrites;

@@ -261,7 +261,9 @@ type
   TRALMQTTUserProperties = class(TPersistent)
   private
     FCount: IntegerRAL;
+    /// Names, in the order received.
     FNames: array of StringRAL;
+    /// Values, one per name.
     FValues: array of StringRAL;
 
     function GetName(AIndex: IntegerRAL): StringRAL;
@@ -295,10 +297,15 @@ type
     PUBLISH, so it is a list; the User Property is a list of pairs }
   TRALMQTTProperties = class(TPersistent)
   private
+    /// Binary values, by property identifier.
     FBinaries: array[0..MQTTP_Last] of TBytes;
+    /// Integer values, by property identifier.
     FInts: array[0..MQTTP_Last] of Cardinal;
+    /// Which properties are set.
     FPresent: array[0..MQTTP_Last] of boolean;
+    /// Text values, by property identifier.
     FStrings: array[0..MQTTP_Last] of StringRAL;
+    /// Subscription identifiers (the one property that repeats).
     FSubscriptionIds: array of Cardinal;
     FUserProperties: TRALMQTTUserProperties;
 
@@ -407,6 +414,7 @@ type
     FBuffer: TBytes;
     FSize: IntegerRAL;
 
+    /// Makes room for ANeeded more bytes.
     procedure Grow(ANeeded: IntegerRAL);
   public
     /// Empties the writer, keeping its buffer.
@@ -442,6 +450,7 @@ type
     reading past the end }
   TRALMQTTReader = class
   private
+    /// Bytes being read.
     FData: PByte;
     FLength: IntegerRAL;
     FPosition: IntegerRAL;

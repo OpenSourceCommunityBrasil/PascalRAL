@@ -42,6 +42,7 @@ type
     FPredefinedTopics: TStrings;
     FRetryCount: IntegerRAL;
     FRetryInterval: IntegerRAL;
+    /// Thread that serves the clients.
     FThread: TRALMQTTSNGatewayThread;
     FVersions: TRALMQTTSNVersions;
 
@@ -85,47 +86,80 @@ type
   /// The gateway's thread: both sockets, every client, the timers.
   TRALMQTTSNGatewayThread = class(TThread)
   private
+    /// Broker whose sessions the clients use.
     FBroker: TRALMQTTBroker;
+    /// Clients by client identifier.
     FByClient: TStringList;
+    /// Codec of each version.
     FCodecs: array[TRALMQTTSNVersion] of TRALMQTTSNCodec;
+    /// DTLS context of the secure port.
     FDTLSContext: TRALTLSContext;
+    /// The gateway component.
     FGateway: TRALMQTTSNGateway;
+    /// Guards the clients.
     FLock: TCriticalSection;
+    /// Tick of the next ADVERTISE.
     FNextAdvertise: Int64RAL;
+    /// Clients by address.
     FPeers: TStringList;
+    /// UDP socket of Port.
     FPlain: TRALSocket;
+    /// UDP socket of the DTLS port.
     FSecure: TRALSocket;
+    /// Wake datagrams sent and not yet read.
     FWakePending: IntegerRAL;
+    /// Socket the thread wakes itself through.
     FWaker: TRALSocket;
+    /// Address of FWaker.
     FWakerAddress: TRALSocketAddress;
 
+    /// Takes the acknowledgement APacket of a delivery to APeer.
     procedure Acked(APeer: TObject; APacket: TRALMQTTSNPacket);
+    /// Publishes a QoS -1 PUBLISH of a client without a connection.
     procedure Anonymous(APacket: TRALMQTTSNPacket);
+    /// Answers a CONNECT: will, authentication or CONNACK.
     procedure Connect_(APeer: TObject; APacket: TRALMQTTSNPacket);
+    /// Opens the broker session of APeer and sends CONNACK.
     procedure FinishConnect(APeer: TObject);
+    /// Acts on a packet from APeer.
     procedure Handle(APeer: TObject; APacket: TRALMQTTSNPacket);
+    /// Ends APeer; APublishWill publishes its will.
     procedure Lost(APeer: TObject; APublishWill: boolean);
+    /// Client of AAddress on ASocket; ACreate makes it when missing.
     function PeerOf(ASocket: TRALSocket; const AAddress: TRALSocketAddress; ASecure: boolean;
       ACreate: boolean): TObject;
+    /// Decodes a datagram from AFrom and handles it.
     procedure Process(ASocket: TRALSocket; const AFrom: TRALSocketAddress; ASecure: boolean;
       APeer: TObject; const AData: TBytes);
+    /// Publishes a PUBLISH of APeer to the broker.
     procedure Publish_(APeer: TObject; APacket: TRALMQTTSNPacket);
+    /// Sends APeer its next delivery when none is waiting for an answer.
     procedure Pump(APeer: TObject);
+    /// Reads the datagrams waiting on ASocket.
     procedure Receive(ASocket: TRALSocket; ASecure: boolean);
+    /// Sends APeer a short answer of AKind.
     procedure Reply(APeer: TObject; AKind: TRALMQTTSNKind; AMsgId: Word; ACode: Byte;
       ATopicId: Word = 0);
+    /// Gives the deliveries not acknowledged back to the session.
     procedure ReturnPending(APeer: TObject);
+    /// Encodes and sends APacket to APeer.
     procedure Send(APeer: TObject; APacket: TRALMQTTSNPacket);
+    /// Sends bytes to AAddress, through DTLS on the secure socket.
     procedure SendTo(ASocket: TRALSocket; const AAddress: TRALSocketAddress;
       APacket: TRALMQTTSNPacket; AVersion: TRALMQTTSNVersion);
+    /// Subscribes APeer in the broker and answers SUBACK.
     procedure Subscribe_(APeer: TObject; APacket: TRALMQTTSNPacket);
+    /// Resends, keep alive, sleep and ADVERTISE.
     procedure Timers;
+    /// Topic name of AId of AType for APeer; empty when unknown.
     function TopicOf(APeer: TObject; AType: TRALMQTTSNTopicType; AId: Word;
       const AName: StringRAL): StringRAL;
+    /// Callback of the broker: a session of a client has something to deliver.
     procedure WakeSession(Sender: TObject);
   protected
     procedure Execute; override;
   public
+    /// The thread of AGateway, started.
     constructor Create(AGateway: TRALMQTTSNGateway);
     destructor Destroy; override;
 
@@ -141,19 +175,29 @@ uses
   RALTools;
 
 type
+  { Where a client of the gateway is: new, asking the will, authenticating, active,
+    asleep, awake, lost. }
   TRALMQTTSNPeerState = (spsNew, spsWillTopic, spsWillMsg, spsAuth, spsActive, spsAsleep,
     spsAwake, spsLost);
 
   /// A transaction from the gateway to a client: one at a time.
   TRALMQTTSNOut = class
   public
+    /// Delivery of the broker being sent.
     Delivery: TRALMQTTBrokerDelivery;
+    /// Packet kind that answers it.
     Expect: TRALMQTTSNKind;
+    /// Message identifier.
     MsgId: Word;
+    /// Tick of the next resend.
     NextAt: Int64RAL;
+    /// Encoded packet, sent again as it is.
     Packet: TBytes;
+    /// A REGISTER of its topic goes first.
     Registering: boolean;
+    /// Resends done.
     Retries: IntegerRAL;
+    /// Topic identifier.
     TopicId: Word;
 
     destructor Destroy; override;
@@ -162,35 +206,65 @@ type
   /// One MQTT-SN client.
   TRALMQTTSNPeer = class
   public
+    /// Address of the client.
     Address: TRALSocketAddress;
+    /// Last data of the authentication exchange.
     AuthFinal: TBytes;
+    /// Authentication method (2.0).
     AuthMethod: StringRAL;
+    /// CONNECT asked for a new session.
     CleanStart: boolean;
+    /// Client identifier.
     ClientID: StringRAL;
+    /// Correlation byte of the CONNECT (2.0).
     Correlation: Byte;
+    /// Delivery waiting for its answer.
     Current: TRALMQTTSNOut;
+    /// DTLS session; nil on the plain port.
     DTLS: TRALDTLSSession;
+    /// Session expiry, in seconds.
     Expiry: Cardinal;
+    /// The client has a will.
     HasWill: boolean;
+    /// Message identifiers in use.
     Ids: TRALMQTTPacketIds;
+    /// QoS 2 identifiers received and not released.
     Incoming: TList;
+    /// Keep alive, in milliseconds.
     KeepAliveMS: Int64RAL;
+    /// Key of FPeers: address, port and socket.
     Key: string;
+    /// Tick of the last datagram.
     LastReceived: Int64RAL;
+    /// Largest datagram the client takes.
     MaxPacket: Word;
+    /// Next topic identifier the gateway assigns.
     NextTopicId: Word;
+    /// Deliveries waiting their turn.
     Queue: TList;
+    /// SCRAM exchange of the CONNECT (2.0).
     SCRAM: TRALMQTTSCRAMServer;
+    /// It came through the DTLS port.
     Secure: boolean;
+    /// Broker session of the client.
     Session: TRALMQTTBrokerSession;
+    /// Sleep duration, in milliseconds.
     SleepMS: Int64RAL;
+    /// Socket the client talks to.
     Socket: TRALSocket;
+    /// Where the client is.
     State: TRALMQTTSNPeerState;
+    /// Topic identifiers by name, both directions.
     Topics: TStringList;
+    /// MQTT-SN version of the client.
     Version: TRALMQTTSNVersion;
+    /// Will message.
     WillData: TBytes;
+    /// QoS of the will.
     WillQoS: Byte;
+    /// Retain flag of the will.
     WillRetain: boolean;
+    /// Topic of the will.
     WillTopic: StringRAL;
 
     constructor Create;

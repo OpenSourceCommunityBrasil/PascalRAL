@@ -27,15 +27,23 @@ type
     the next levels, by name, plus the '+' and '#' wildcards apart }
   TRALMQTTTopicNode = class
   private
+    /// Child levels by name.
     FChildren: TStringList;
+    /// Child of the # wildcard.
     FHash: TRALMQTTTopicNode;
+    /// Subscriptions that end at this level.
     FItems: TList;
+    /// Name of the level.
     FName: StringRAL;
+    /// Level above; nil for the root.
     FParent: TRALMQTTTopicNode;
+    /// Child of the + wildcard.
     FPlus: TRALMQTTTopicNode;
 
+    /// No subscription and no child: the node may go.
     function IsEmpty: boolean;
   public
+    /// A level AName below AParent.
     constructor Create(AParent: TRALMQTTTopicNode; const AName: StringRAL);
     destructor Destroy; override;
   end;
@@ -47,9 +55,12 @@ type
   TRALMQTTTopicTree = class
   private
     FCount: IntegerRAL;
+    /// Root of the tree.
     FRoot: TRALMQTTTopicNode;
 
+    /// Node of AFilter; ACreate makes the missing levels.
     function FindNode(const AFilter: StringRAL; ACreate: boolean): TRALMQTTTopicNode;
+    /// Frees ANode and the empty levels above it.
     procedure Prune(ANode: TRALMQTTTopicNode);
   public
     constructor Create;
@@ -92,6 +103,7 @@ function RALMQTTHasWildcard(const AFilter: StringRAL): boolean;
 implementation
 
 const
+  /// Prefix of a shared subscription.
   cShare: StringRAL = '$share/';
 
 function RALMQTTHasWildcard(const AFilter: StringRAL): boolean;
@@ -113,6 +125,7 @@ begin
             (not RALMQTTHasWildcard(AName)) and RALMQTTValidString(AName);
 end;
 
+/// Whether AFilter is a valid filter without the $share prefix.
 function ValidPlainFilter(const AFilter: StringRAL): boolean;
 var
   vInt, vLen: IntegerRAL;

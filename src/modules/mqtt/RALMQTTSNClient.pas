@@ -36,74 +36,115 @@ type
   TRALMQTTSNClient = class(TRALMQTTCustomClient)
   private
     FAuthentication: TRALMQTTAuthenticator;
+    /// SASL exchange of the CONNECT (2.0).
     FAuthExchange: TRALMQTTAuthExchange;
     FCleanStart: boolean;
     FClientID: StringRAL;
+    /// Disconnect asked: no reconnection.
     FClosing: boolean;
+    /// Codec of Version.
     FCodec: TRALMQTTSNCodec;
+    /// Signalled when the CONNACK (or a failure) arrives.
     FConnectDone: TEvent;
+    /// The gateway accepted the CONNECT.
     FConnected: boolean;
+    /// Why the last connection failed.
     FConnectError: string;
     FConnectTimeout: IntegerRAL;
+    /// Correlation byte of the last CONNECT (2.0).
     FCorrelation: Byte;
+    /// Request waiting for its answer (one at a time).
     FCurrent: TObject;
     FDTLS: boolean;
+    /// DTLS context, when SSL is on.
     FDTLSContext: TRALTLSContext;
+    /// DTLS session with the gateway.
     FDTLSSession: TRALDTLSSession;
+    /// Address of the gateway.
     FGateway: TRALSocketAddress;
     FGatewayDiscovery: boolean;
     FGatewayId: Byte;
     FHost: StringRAL;
+    /// Message identifiers in use.
     FIds: TRALMQTTPacketIds;
+    /// QoS 2 identifiers received and not released.
     FIncomingQoS2: TList;
     FKeepAlive: Word;
+    /// Tick of the last datagram received.
     FLastReceived: Int64RAL;
+    /// Tick of the last datagram sent.
     FLastSent: Int64RAL;
+    /// Guards the queue and the state.
     FLock: TCriticalSection;
     FMaxPacketSize: Word;
     FOfflineQueueSize: IntegerRAL;
     FOnGateway: TRALMQTTSNOnGateway;
     FOnValidateServerCert: TRALOnValidateCert;
+    /// Requests waiting their turn.
     FPending: TList;
     FPort: IntegerRAL;
     FPredefinedTopics: TStrings;
+    /// Topic identifiers registered, by name.
     FRegistered: TStringList;
     FRetryCount: IntegerRAL;
     FRetryInterval: IntegerRAL;
     FSearchRadius: Byte;
     FSessionExpiry: Cardinal;
     FSleepDuration: Word;
+    /// The client is asleep (sleeping state of the standard).
     FSleeping: boolean;
+    /// UDP socket.
     FSocket: TRALSocket;
     FSSL: TRALMQTTSSL;
+    /// Thread that reads, resends and keeps alive.
     FThread: TRALMQTTSNClientThread;
     FVersion: TRALMQTTSNVersion;
     FWill: TRALMQTTWillSettings;
 
+    /// Sends the acknowledgement of a delivery (after OnMessage).
     procedure AckReceived(ASender: TObject);
+    /// Closes the DTLS session and the socket.
     procedure CloseTransport;
+    /// The packet of AData; nil when it is not one.
     function DecodeDatagram(const AData: TBytes): TRALMQTTSNPacket;
+    /// Broadcasts SEARCHGW and takes the first gateway that answers.
     procedure Discover;
+    /// Fails every pending request with AReason.
     procedure DropTransactions(const AReason: string);
+    /// Queues ARequest; AFront puts it first.
     procedure Enqueue(ARequest: TObject; AFront: boolean = False);
+    /// Ends the current request with AReply and starts the next.
     procedure FinishCurrent(AReply: TRALMQTTSNPacket);
+    /// Acts on a packet from the gateway.
     procedure HandlePacket(APacket: TRALMQTTSNPacket);
+    /// Delivers a PUBLISH to OnMessage and acknowledges it.
     procedure HandlePublish(APacket: TRALMQTTSNPacket);
+    /// Runs the DTLS handshake with the gateway.
     procedure Handshake;
+    /// Body of the thread: read, resend, keep alive, reconnect.
     procedure Loop;
+    /// A new correlation byte.
     function NextCorrelation: Byte;
+    /// Opens the socket and, with SSL, the DTLS session.
     procedure OpenTransport;
+    /// Waits ATimeout ms for a datagram from the gateway.
     function ReceiveDatagram(ATimeout: IntegerRAL; out AData: TBytes): boolean;
+    /// Encodes and sends APacket.
     procedure SendPacket(APacket: TRALMQTTSNPacket);
+    /// Sends AData, through DTLS when on.
     procedure SendRaw(const AData: TBytes);
     procedure SetAuthentication(AValue: TRALMQTTAuthenticator);
     procedure SetPredefinedTopics(AValue: TStrings);
     procedure SetSSL(AValue: TRALMQTTSSL);
     procedure SetWill(AValue: TRALMQTTWillSettings);
+    /// Sends the next queued request when none is waiting.
     procedure StartNext;
+    /// Sends the subscriptions of Subscriptions (not in publisher mode).
     procedure SubscribeAll;
+    /// Topic type and id of ATopic: predefined, short or registered; False when unknown.
     function TopicIdFor(const ATopic: StringRAL; out AType: TRALMQTTSNTopicType;
       out AId: Word): boolean;
+    /// Topic name of AId of AType; empty when unknown.
     function TopicNameOf(AType: TRALMQTTSNTopicType; AId: Word): StringRAL;
   protected
     procedure DoStart; override;
@@ -205,11 +246,13 @@ type
   /// The thread of a TRALMQTTSNClient.
   TRALMQTTSNClientThread = class(TThread)
   private
+    /// Client it runs for.
     FClient: TRALMQTTSNClient;
     FDone: boolean;
   protected
     procedure Execute; override;
   public
+    /// The thread of AClient, started.
     constructor Create(AClient: TRALMQTTSNClient);
 
     /// Asked to stop.
@@ -236,23 +279,39 @@ type
   /// One request: what to send, the answer it waits for, its retries.
   TRALMQTTSNRequest = class
   public
+    /// Freed when it ends (nobody waits for it).
     AutoFree: boolean;
+    /// Return code of the answer.
     Code: Byte;
+    /// Signalled when it ends.
     Done: TEvent;
     /// srkDisconnect: seconds to sleep; 0 is the end of the connection.
     Duration: Word;
+    /// Packet kind that answers it.
     Expect: TRALMQTTSNKind;
+    /// Why it failed; empty on success.
     Failed: string;
+    /// What the request does.
     Kind: TRALMQTTSNRequestKind;
+    /// Message identifier.
     MsgId: Word;
+    /// Tick of the next resend.
     NextAt: Int64RAL;
+    /// Encoded packet, sent again as it is.
     Packet: TBytes;
+    /// Payload of a PUBLISH.
     Payload: TBytes;
+    /// QoS (-1 to 2).
     QoS: ShortInt;
+    /// PUBREL stage of a QoS 2 PUBLISH.
     Released: boolean;
+    /// Retain flag.
     Retain: boolean;
+    /// Resends done; past RetryCount it fails.
     Retries: IntegerRAL;
+    /// Topic name.
     Topic: StringRAL;
+    /// Topic identifier.
     TopicId: Word;
 
     constructor Create;
@@ -262,8 +321,11 @@ type
   /// What a delivery remembers for its acknowledgement.
   TRALMQTTSNAck = class
   public
+    /// Message identifier.
     MsgId: Word;
+    /// QoS of the delivery.
     QoS: ShortInt;
+    /// Topic identifier.
     TopicId: Word;
   end;
 

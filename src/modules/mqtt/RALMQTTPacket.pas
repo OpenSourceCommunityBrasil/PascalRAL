@@ -33,7 +33,8 @@ type
   private
     FProperties: TRALMQTTProperties;
   protected
-    /// Reads the variable header and the payload; AFlags are the low four bits of the first byte.
+    { Reads the variable header and the payload; AFlags are the low four bits of the
+      first byte. }
     procedure DecodeBody(AReader: TRALMQTTReader; AFlags: Byte;
       AVersion: TRALMQTTVersion); virtual; abstract;
     /// Writes the variable header and the payload.
@@ -249,6 +250,7 @@ type
   /// SUBSCRIBE: asks for messages of one or more Topic Filters.
   TRALMQTTSubscribePacket = class(TRALMQTTPacket)
   private
+    /// The subscriptions of the packet.
     FItems: array of TRALMQTTSubscription;
     FPacketId: Word;
 
@@ -381,9 +383,12 @@ type
     arrives: what comes over the network is never trusted }
   TRALMQTTFrameReader = class
   private
+    /// Bytes received and not yet framed.
     FBuffer: TBytes;
+    /// Start of the bytes waiting in FBuffer.
     FHead: IntegerRAL;
     FMaxPacketSize: Cardinal;
+    /// End of the bytes waiting in FBuffer.
     FTail: IntegerRAL;
   public
     constructor Create;
@@ -410,6 +415,7 @@ function RALMQTTPeekConnectLevel(AData: Pointer; ALength: IntegerRAL): Byte;
 implementation
 
 const
+  /// Protocol name of CONNECT.
   cProtocolName: StringRAL = 'MQTT';
 
 function RALMQTTPacketClass(AType: TRALMQTTPacketType): TRALMQTTPacketClass;

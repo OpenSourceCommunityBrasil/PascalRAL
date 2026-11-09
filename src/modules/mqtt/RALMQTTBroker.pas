@@ -79,6 +79,7 @@ type
       at subscription time a Topic Filter); True with no rules at all }
     function Allowed(const AUser, AClientID, ATopic: StringRAL; AAccess: TRALMQTTAccess): boolean;
 
+    /// Permission AIndex.
     property Items[AIndex: IntegerRAL]: TRALMQTTPermissionItem read GetItem; default;
   end;
 
@@ -161,12 +162,16 @@ type
     the subscribers; OnPublish may change it before that }
   TRALMQTTBrokerMessage = class
   private
+    /// Tick it expires at; 0 when it does not.
     FExpiresAt: Int64RAL;
     FPayload: TBytes;
     FProperties: TRALMQTTProperties;
+    /// Session that published it; nil for the broker's own.
     FPublisher: TRALMQTTBrokerSession;
     FQoS: TRALMQTTQoS;
+    /// Tick it was received.
     FReceived: Int64RAL;
+    /// Holders of the message; the last frees it.
     FRefCount: IntegerRAL;
     FRetain: boolean;
     FTopic: StringRAL;
@@ -246,30 +251,46 @@ type
     connections until its expiry }
   TRALMQTTBrokerSession = class
   private
+    /// Broker of the session.
     FBroker: TRALMQTTBroker;
     FClientID: StringRAL;
     FConnection: TRALMQTTBrokerConnection;
+    /// Tick of the disconnection; 0 while connected.
     FDisconnectedAt: Int64RAL;
+    /// Session Expiry Interval, in seconds.
     FExpiry: Cardinal;
     { the client is served by an extension (MQTT-SN): every message waits in
       the queue, QoS 0 too, and FWake tells the extension }
     FExternal: boolean;
+    /// Packet identifiers in use.
     FIds: TRALMQTTPacketIds;
+    /// QoS 2 identifiers received and not released.
     FIncoming: TList;
+    /// Messages sent and not yet acknowledged.
     FInflight: TList;
+    /// The session outlives the connection (and the journal keeps it).
     FPersistent: boolean;
+    /// Messages waiting to be sent.
     FQueue: TList;
+    /// The last connection lasted under five seconds: resends start slowly.
     FShortLived: boolean;
+    /// Subscriptions by filter.
     FSubscriptions: TStringList;
+    /// User of the session, for the permissions.
     FUserName: StringRAL;
+    /// Protocol version of the session.
     FVersion: TRALMQTTVersion;
+    /// Called when a message is queued (the MQTT-SN gateway).
     FWake: TNotifyEvent;
+    /// Will of the session; nil when none.
     FWill: TRALMQTTWill;
+    /// Tick the will is due (Will Delay Interval).
     FWillAt: Int64RAL;
     { QoS 1/2 messages that may be on the wire to this client now: halved
       after a connection that dropped soon, grown with each acknowledgement }
     FWindow: IntegerRAL;
   public
+    /// A session of ABroker for AClientID.
     constructor Create(ABroker: TRALMQTTBroker; const AClientID: StringRAL);
     destructor Destroy; override;
 
@@ -287,36 +308,64 @@ type
     queue bytes in Outbox and wake the thread }
   TRALMQTTBrokerConnection = class(TRALSocketLoopConnection)
   private
+    /// Topic aliases the client uses.
     FAliasIn: TRALMQTTAliasIn;
+    /// Enhanced authentication exchange in progress.
     FAuthExchange: TObject;
+    /// Authentication method of the CONNECT (5.0).
     FAuthMethod: StringRAL;
+    /// Step of the enhanced authentication.
     FAuthStep: IntegerRAL;
+    /// Broker of the connection.
     FBroker: TRALMQTTBroker;
+    /// Information about the client for events and statistics.
     FClient: TRALMQTTBrokerClient;
+    /// Tick the connection was accepted.
     FConnectedAt: Int64RAL;
+    /// Reason code of the DISCONNECT the client sent.
     FDisconnectReason: Byte;
+    /// Splits the bytes received into packets.
     FFrames: TRALMQTTFrameReader;
+    /// QoS 1/2 publishes the client may still send (Receive Maximum).
     FIncomingQuota: IntegerRAL;
+    /// Keep alive, in milliseconds.
     FKeepAliveMS: Int64RAL;
+    /// Tick of the last packet received.
     FLastReceived: Int64RAL;
+    /// Listener it came through.
     FListener: IntegerRAL;
+    /// Largest packet the client takes.
     FMaxPacket: Cardinal;
+    /// Encoded packets waiting to be written.
     FOutbox: TRALMQTTWriter;
+    /// Bytes of FOutbox already written.
     FOutHead: IntegerRAL;
+    /// Guards FOutbox.
     FOutLock: TCriticalSection;
+    /// CONNECT waiting for the enhanced authentication to end.
     FPendingConnect: TRALMQTTConnectPacket;
+    { Where the connection is: TLS, WebSocket, CONNECT, authentication, connected,
+      closed. }
     FPhase: TRALMQTTBrokerPhase;
+    /// The client accepts reason strings and user properties on errors.
     FProblemInfo: boolean;
+    /// Receive Maximum of the client: deliveries in flight at most.
     FReceiveMax: IntegerRAL;
+    /// Session of the connection.
     FSession: TRALMQTTBrokerSession;
+    /// TLS of the connection; nil for plain.
     FTLS: TRALTLSChannel;
+    /// Protocol version of the connection.
     FVersion: TRALMQTTVersion;
+    /// WebSocket of the connection; nil for plain MQTT.
     FWebSocket: TRALWebSocketChannel;
+    /// The client disconnected normally: its will is discarded.
     FWillDiscard: boolean;
   protected
     /// Phase closed, and the broker told (the session goes or waits).
     procedure Closed; override;
   public
+    /// A connection of ABroker on ASocket of the listener AListener.
     constructor Create(ABroker: TRALMQTTBroker; ASocket: TRALSocket; AListener: IntegerRAL);
     destructor Destroy; override;
 
@@ -355,13 +404,19 @@ type
   private
     FAllowAnonymous: boolean;
     FAllowedVersions: TRALMQTTVersions;
+    /// Client identifiers the broker assigned, for unique names.
     FAssignedCount: Int64RAL;
     FAuthMethods: TStrings;
+    /// Module of the internal CONNECT route.
     FConnectModule: TRALModuleRoutes;
     FDataFolder: StringRAL;
+    /// Extensions linked (the MQTT-SN gateway).
     FExtensions: TList;
+    /// Listening sockets.
     FListeners: TList;
+    /// Guards sessions, subscriptions and retained messages.
     FLock: TCriticalSection;
+    /// The socket loop that runs every connection.
     FLoop: TRALSocketLoop;
     FMaxConnections: IntegerRAL;
     FMaximumQoS: TRALMQTTQoS;
@@ -381,25 +436,35 @@ type
     FReceiveMaximum: Word;
     FResponseInformation: StringRAL;
     FRetainAvailable: boolean;
+    /// Retained messages by topic.
     FRetained: TStringList;
+    /// TLS contexts replaced, freed when the broker stops.
     FRetiredContexts: TList;
+    /// The listeners are open.
     FRunning: boolean;
     FServerKeepAlive: Word;
+    /// Sessions by client identifier.
     FSessions: TStringList;
     FSessionStore: TRALMQTTSessionStoreKind;
     FSharedSubscriptions: boolean;
+    /// Shared subscription groups by share name and filter.
     FShares: TStringList;
+    /// Tick the broker started.
     FStarted: Int64RAL;
+    /// Counters of the statistics (RALMQTTStat* indexes).
     FStats: array[0..7] of Int64RAL;
+    /// Journal of the persistent sessions and retained messages.
     FStore: TRALMQTTBrokerJournal;
     FSubscriptionIdentifiers: boolean;
     FSyncWrites: boolean;
     FSysInterval: IntegerRAL;
     FSysTopics: boolean;
     FThreadCount: IntegerRAL;
+    /// TLS context of the TLS listeners.
     FTLSContext: TRALTLSContext;
     FTLSPort: IntegerRAL;
     FTopicAliasMaximum: Word;
+    /// Subscriptions by topic level.
     FTree: TRALMQTTTopicTree;
     FUsers: TStrings;
     FWebSocketPath: StringRAL;
@@ -407,57 +472,87 @@ type
     FWebSocketTLS: boolean;
     FWildcardSubscriptions: boolean;
 
+    /// Takes a new connection of AListener into the loop.
     procedure Accepted(ASocket: TRALSocket; AListener: IntegerRAL);
     /// Files a subscription (a TRALMQTTBrokerSub) in the tree or its share group.
     procedure AttachSub(ASub: TObject);
+    /// Runs the plugins and authenticators on the CONNECT; the CONNACK code (0 accepts).
     function CheckCredentials(AConnection: TRALMQTTBrokerConnection;
       APacket: TRALMQTTConnectPacket; AEnhanced: boolean): Byte;
+    /// Ends AConnection: session, will, statistics, OnDisconnect.
     procedure ConnectionClosed(AConnection: TRALMQTTBrokerConnection);
+    /// Handler of the internal CONNECT route: accepts what passed the plugins.
     procedure ConnectRoute(ARequest: TRALRequest; AResponse: TRALResponse);
     /// A message read back from the journal.
     function DecodeMessage(const AData: TBytes): TRALMQTTBrokerMessage;
+    /// Queues AMessage for ASession and sends what the window allows.
     procedure DeliverTo(ASession: TRALMQTTBrokerSession; AMessage: TRALMQTTBrokerMessage;
       AQoS: TRALMQTTQoS; ARetain: boolean; const ASubIds: array of Cardinal; AStore: boolean);
     /// Takes a subscription out of the tree or its share group.
     procedure DetachSub(ASub: TObject);
+    /// Removes every subscription of ASession.
     procedure DropSubscriptions(ASession: TRALMQTTBrokerSession);
     /// A message as the journal keeps it: a 5.0 PUBLISH.
     function EncodeMessage(AMessage: TRALMQTTBrokerMessage): TBytes;
+    /// Sends queued messages of ASession while its window allows.
     procedure FillFromQueue(ASession: TRALMQTTBrokerSession);
     /// The SCRAM credential of a user: OnSCRAMCredential, then Users.
     procedure FindSCRAMUser(const AUserName: StringRAL;
       out ACredential: TRALMQTTSCRAMCredential; out AFound: boolean);
+    /// The SCRAM credential of AUserName, from Users or OnSCRAMCredential.
     function FindSCRAMUser_(const AUserName: StringRAL;
       out ACredential: TRALMQTTSCRAMCredential): boolean;
+    /// Session of AClientID, or nil.
     function FindSession(const AClientID: StringRAL): TRALMQTTBrokerSession;
+    /// Opens or takes the session and sends CONNACK.
     procedure FinishConnect(AConnection: TRALMQTTBrokerConnection;
       APacket: TRALMQTTConnectPacket; const AAuthData: TBytes);
     function GetSSL: TRALMQTTBrokerSSL;
+    /// Takes PUBACK, PUBREC, PUBREL or PUBCOMP.
     procedure HandleAck(AConnection: TRALMQTTBrokerConnection; APacket: TRALMQTTAckPacket);
+    /// Takes an AUTH of the enhanced authentication.
     procedure HandleAuth(AConnection: TRALMQTTBrokerConnection; APacket: TRALMQTTAuthPacket);
+    /// Checks a CONNECT and starts its authentication.
     procedure HandleConnect(AConnection: TRALMQTTBrokerConnection; APacket: TRALMQTTConnectPacket);
+    /// Takes a DISCONNECT of the client.
     procedure HandleDisconnect(AConnection: TRALMQTTBrokerConnection; APacket: TRALMQTTDisconnectPacket);
+    /// Acts on a packet of AConnection.
     procedure HandlePacket(AConnection: TRALMQTTBrokerConnection; APacket: TRALMQTTPacket);
+    /// Takes a PUBLISH: permissions, QoS flow, routing.
     procedure HandlePublish(AConnection: TRALMQTTBrokerConnection; APacket: TRALMQTTPublishPacket);
+    /// Subscribes, answers SUBACK and sends the retained messages.
     procedure HandleSubscribe(AConnection: TRALMQTTBrokerConnection; APacket: TRALMQTTSubscribePacket);
+    /// Unsubscribes and answers UNSUBACK.
     procedure HandleUnsubscribe(AConnection: TRALMQTTBrokerConnection; APacket: TRALMQTTUnsubscribePacket);
+    /// Timer work: keep alive, expiries, wills, resends, $SYS.
     procedure Housekeeping;
+    /// Reads the journal into sessions and retained messages.
     procedure LoadStore;
     /// The loop's timer: Housekeeping every second.
     procedure LoopTimer(Sender: TObject);
+    /// A TLS context of SSL, with a child per certificate.
     function NewTLSContext: TRALTLSContext;
+    /// Publishes the $SYS statistics.
     procedure PublishSys;
+    /// Publishes the will of ASession.
     procedure PublishWill(ASession: TRALMQTTBrokerSession);
+    /// Answers a CONNACK with a refusal and closes.
     procedure RefuseConnect(AConnection: TRALMQTTBrokerConnection; AVersion: TRALMQTTVersion;
       AReasonCode: Byte; const AReason: StringRAL = '');
+    /// Removes ASession and its subscriptions.
     procedure RemoveSession(ASession: TRALMQTTBrokerSession);
+    /// Sends again, in order, what ASession had in flight.
     procedure ResendInflight(ASession: TRALMQTTBrokerSession);
+    /// Delivers AMessage to every matching subscription (shares included).
     procedure Route(AMessage: TRALMQTTBrokerMessage; APublisher: TRALMQTTBrokerSession);
+    /// Sends a DISCONNECT (5.0) with a reason and closes.
     procedure SendDisconnect(AConnection: TRALMQTTBrokerConnection; AReasonCode: Byte;
       const AReason: StringRAL = '');
+    /// Sends a PUBLISH of AMessage to ASession; False when it does not fit.
     function SendPublish(ASession: TRALMQTTBrokerSession; AMessage: TRALMQTTBrokerMessage;
       AQoS: TRALMQTTQoS; ARetain: boolean; const ASubIds: array of Cardinal;
       APacketId: Word; ADup: boolean): boolean;
+    /// Sends the retained messages a new subscription matches.
     procedure SendRetained(ASession: TRALMQTTBrokerSession; const AFilter: StringRAL;
       AQoS: TRALMQTTQoS; ASubId: Cardinal);
     procedure SetAuthMethods(AValue: TStrings);
@@ -466,8 +561,11 @@ type
     procedure SetUsers(AValue: TStrings);
     /// Inside, under FLock unless said.
     procedure StartListeners;
+    /// Adds ADelta to the counter AIndex.
     procedure Stat(AIndex: IntegerRAL; ADelta: Int64RAL = 1);
+    /// Closes the listeners and the connections.
     procedure StopAll;
+    /// Whether the user of ASession may publish or subscribe to ATopic.
     function UserAllowed(ASession: TRALMQTTBrokerSession; const ATopic: StringRAL;
       AAccess: TRALMQTTAccess): boolean;
   protected
@@ -494,14 +592,16 @@ type
     function ConnectionCount: IntegerRAL;
     /// For an extension: the session goes away (clean) or stays (expiry).
     procedure DetachSession(ASession: TRALMQTTBrokerSession; AClean: boolean);
-    /// Ends the connection of AClientID with AReasonCode (5.0); False when it is not connected.
+    { Ends the connection of AClientID with AReasonCode (5.0); False when it is not
+      connected. }
     function DisconnectClient(const AClientID: StringRAL;
       AReasonCode: Byte = MQTTRC_AdministrativeAction): boolean;
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     { Hides the HTTP properties in the Object Inspector: routes, pages,
       cookies, status page and the request events mean nothing to a broker }
     function IsPropertyRelevant(const AName: StringRAL): boolean; override;
-    /// For an extension: a SCRAM server exchange of AMethod with the broker's users, or nil.
+    { For an extension: a SCRAM server exchange of AMethod with the broker's users, or
+      nil. }
     function NewSCRAMServer(const AMethod: StringRAL): TRALMQTTSCRAMServer;
     /// For an extension: a TLS context of the broker's certificate (ADatagram: DTLS).
     function NewServerContext(ADatagram: boolean): TRALTLSContext;
@@ -572,12 +672,19 @@ type
     property MaxQueuedMessages: IntegerRAL read FMaxQueuedMessages write FMaxQueuedMessages default 1000;
     /// Longest session expiry granted, in seconds; 0 is what the client asks.
     property MaxSessionExpiry: Cardinal read FMaxSessionExpiry write FMaxSessionExpiry default 0;
+    /// Answers a step of a custom enhanced authentication.
     property OnAuthChallenge: TRALMQTTBrokerAuthEvent read FOnAuthChallenge write FOnAuthChallenge;
+    /// Fired when a client is accepted (poll thread).
     property OnConnect: TRALMQTTBrokerConnectEvent read FOnConnect write FOnConnect;
+    /// Fired when a client leaves (poll thread).
     property OnDisconnect: TRALMQTTBrokerDisconnectEvent read FOnDisconnect write FOnDisconnect;
+    /// Fired with each message routed (poll thread).
     property OnMessage: TRALMQTTBrokerMessageEvent read FOnMessage write FOnMessage;
+    /// Decides whether a publish goes on (reason code, discard); poll thread.
     property OnPublish: TRALMQTTBrokerPublishEvent read FOnPublish write FOnPublish;
+    /// Gives the SCRAM credential of a user not in Users.
     property OnSCRAMCredential: TRALMQTTBrokerSCRAMEvent read FOnSCRAMCredential write FOnSCRAMCredential;
+    /// Decides the QoS granted to a subscription (poll thread).
     property OnSubscribe: TRALMQTTBrokerSubscribeEvent read FOnSubscribe write FOnSubscribe;
     { The password is a token: it goes to the authenticators as a Bearer
       instead of Basic (a JWT checked by TRALServerJWTAuth) }
@@ -648,19 +755,28 @@ const
 implementation
 
 const
+  /// Tag of the MQTT listener.
   cListenerTCP = 0;
+  /// Tag of the MQTT over TLS listener.
   cListenerTLS = 1;
+  /// Tag of the WebSocket listener.
   cListenerWS = 2;
+  /// Tag of the WebSocket over TLS listener.
   cListenerWSS = 3;
+  /// Name of each listener, for the statistics.
   cListenerNames: array[0..3] of string = ('tcp', 'tls', 'ws', 'wss');
+  /// Session Expiry Interval that never expires.
   cSessionForever = $FFFFFFFF;
+  /// Internal route each CONNECT runs on, for the plugins and authenticators.
   cConnectRoute = 'mqtt/connect';
 
 type
   /// A listening socket and its kind.
   TRALMQTTListener = class
   public
+    /// Listener kind (cListener*).
     Kind: IntegerRAL;
+    /// Listening socket.
     Socket: TRALSocket;
 
     destructor Destroy; override;
@@ -669,23 +785,36 @@ type
   /// A subscription of a session.
   TRALMQTTBrokerSub = class
   public
+    /// Topic filter, without the share prefix.
     Filter: StringRAL;        // the filter itself
+    /// Messages of the same session are not delivered back.
     NoLocal: boolean;
+    /// QoS granted.
     QoS: TRALMQTTQoS;
+    /// Keeps the retain flag as published.
     RetainAsPublished: boolean;
+    /// When retained messages are sent on subscribe.
     RetainHandling: TRALMQTTRetainHandling;
+    /// Session that subscribed.
     Session: TRALMQTTBrokerSession;
+    /// Share name; empty when not shared.
     ShareName: StringRAL;
+    /// Subscription identifier; 0 when none.
     SubId: Cardinal;
+    /// Filter as subscribed, share prefix included.
     Text: StringRAL;          // as subscribed ($share/... included)
   end;
 
   /// A shared subscription group: its members, served in turn.
   TRALMQTTShareGroup = class
   public
+    /// Topic filter of the group.
     Filter: StringRAL;
+    /// Share name and filter.
     Key: StringRAL;
+    /// Subscriptions of the group.
     Members: TList;
+    /// Member that gets the next message.
     Next: IntegerRAL;
 
     constructor Create;
@@ -695,14 +824,20 @@ type
   /// A message in flight to a session, or waiting in its queue.
   TRALMQTTOutMessage = class
   public
+    /// Identifier in the journal; 0 when not kept.
     JournalId: Int64RAL;
     Message: TRALMQTTBrokerMessage;
+    /// Packet identifier; 0 before it is sent.
     PacketId: Word;
     /// In flight before this connection, not sent again yet.
     Pending: boolean;
+    /// QoS of the delivery.
     QoS: TRALMQTTQoS;
+    /// PUBREC came and PUBREL went (QoS 2).
     Released: boolean;
+    /// Retain flag of the delivery.
     Retain: boolean;
+    /// Subscription identifiers sent with it.
     SubIds: array of Cardinal;
 
     destructor Destroy; override;
@@ -714,6 +849,7 @@ type
   /// Exchange state of a SCRAM or custom enhanced authentication.
   TRALMQTTServerAuth = class
   public
+    /// SCRAM exchange of the server.
     SCRAM: TRALMQTTSCRAMServer;
 
     destructor Destroy; override;
@@ -1027,7 +1163,8 @@ begin
     Exit;
   vWriter := TRALMQTTWriter.Create;
   try
-    // the client's limit [MQTT-3.1.2-24]: optional parts go first, a PUBLISH that does not fit is dropped
+    // the client's limit [MQTT-3.1.2-24]: optional parts go first, a PUBLISH that does
+    // not fit is dropped
     if not APacket.EncodeTo(vWriter, FVersion, FMaxPacket) then
       Exit;
     FOutLock.Acquire;
@@ -1413,8 +1550,8 @@ begin
     Result := tarRestartNeeded;
     Exit;
   end;
-  { a new context for the connections to come; the old one stays alive for
-    the ones already open until the broker stops }
+  { a context for the connections to come; the replaced one serves the open ones
+    until the broker stops }
   vNew := NewTLSContext;
   FLock.Acquire;
   try
@@ -2750,9 +2887,13 @@ end;
 procedure TRALMQTTBroker.Route(AMessage: TRALMQTTBrokerMessage; APublisher: TRALMQTTBrokerSession);
 type
   TTarget = record
+    /// Session to deliver to.
     Session: TRALMQTTBrokerSession;
+    /// Highest QoS of its matching subscriptions.
     QoS: TRALMQTTQoS;
+    /// Retain flag of the delivery.
     Retain: boolean;
+    /// Identifiers of its matching subscriptions.
     SubIds: array of Cardinal;
   end;
 var
@@ -3151,7 +3292,8 @@ begin
       vMessage.FQoS := vWill.QoS;
       if Ord(vMessage.FQoS) > Ord(FMaximumQoS) then
         vMessage.FQoS := FMaximumQoS;
-      vMessage.FRetain := vWill.Retain and FRetainAvailable; // [MQTT-3.1.2-14], [MQTT-3.1.2-15]
+      // [MQTT-3.1.2-14], [MQTT-3.1.2-15]
+      vMessage.FRetain := vWill.Retain and FRetainAvailable;
       vMessage.FProperties.Assign(vWill.Properties);
       vMessage.FProperties.Remove(MQTTP_WillDelay);
       if vMessage.FProperties.Has(MQTTP_MessageExpiry) then
@@ -3777,7 +3919,7 @@ begin
     Result.FRetain := vPacket.Retain;
     Result.FProperties.Assign(vPacket.Properties);
     { the expiry restarts from the load: the time the broker was down does not
-      count against it, a deliberate choice for a restart }
+      count against it }
     if Result.FProperties.Has(MQTTP_MessageExpiry) then
       Result.FExpiresAt := Result.FReceived + Int64RAL(Result.FProperties.MessageExpiry) * 1000;
   finally

@@ -32,21 +32,35 @@ type
   TRALMQTTRestModule = class(TRALModuleRoutes)
   private
     FBroker: TRALMQTTBroker;
+    /// Route that lists the clients.
     FClientsRoute: TRALRoute;
+    /// Owner of the routes.
     FInternal: TRALRoutes;
+    /// Route that publishes.
     FPublishRoute: TRALRoute;
+    /// Route that reads a retained message.
     FRetainedRoute: TRALRoute;
+    /// Route of the statistics.
     FStatsRoute: TRALRoute;
 
+    /// Answers the connected clients as JSON.
     procedure DoClients(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Publishes the body to the topic of the path.
     procedure DoPublish(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers the retained message of the topic of the path.
     procedure DoRetained(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers the broker statistics as JSON.
     procedure DoStats(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Answers AStatus with AText as plain text.
     procedure Fail(AResponse: TRALResponse; AStatus: IntegerRAL; const AText: StringRAL);
+    /// Value of the param AName, else of the header AHeader; empty when neither came.
     function ParamText(ARequest: TRALRequest; const AName, AHeader: StringRAL): StringRAL;
+    /// Domain followed by AName.
     function Prefix(const AName: StringRAL): StringRAL;
     procedure SetBroker(AValue: TRALMQTTBroker);
+    /// Topic of the path after APrefix, URL-decoded.
     function TopicOf(ARequest: TRALRequest; const APrefix: StringRAL): StringRAL;
+    /// User the broker permissions are checked for: the Basic user or the token subject.
     function UserOf(ARequest: TRALRequest): StringRAL;
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -70,7 +84,9 @@ uses
   RALTools, RALUrlCoder;
 
 const
+  /// Path of the publish route.
   cPublish = '/publish/';
+  /// Path of the retained route.
   cRetained = '/retained/';
 
 { TRALMQTTRestModule }
