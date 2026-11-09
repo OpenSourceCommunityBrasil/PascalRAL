@@ -225,17 +225,15 @@ type
     procedure SetSessionTimeout(const AValue: IntegerRAL); override;
     procedure SetSSL(const AValue: TRALfpHTTPSSL);
   public
-    { The writer of a stream: headers by fcl-web, without Content-Length, then the
-      body straight on the socket, chunked on HTTP/1.1 }
-    function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
-    class function SupportsLiveStream: boolean; override;
-  protected
-  public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    { The writer of a stream: headers by fcl-web, without Content-Length, then the
+      body straight on the socket, chunked on HTTP/1.1 }
+    function CreateStreamWriter(ARequest: TRALRequest; AResponse: TRALResponse): TRALStreamWriter; override;
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
+    class function SupportsLiveStream: boolean; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
   published
     { Most connections open at once; past it a new connection is refused, no open
