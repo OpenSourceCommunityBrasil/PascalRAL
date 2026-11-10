@@ -656,6 +656,17 @@ the source address of the default route (IPv6: the stable address). CGI, Synopse
   none); several datasets are `multipart/mixed` (`TRALMultipartEncoder.MediaType`).
   Zeos binds through `ParamByName` (Zeos 8 has `TZParams`, not `TParams`).
 
+### Data API (`RALDBCrudModule`)
+
+`TRALDBCrudModule` links to a `TRALDBModule` (driver and pool) and serves `Resources`
+over tables: every SQL is generated with params, and every name of the URL is matched
+against the catalog (`RALDBTableInfo`, read from each database's own catalog, so it is
+the same through every driver). Filters (`RALDBFilter`): simple syntax and RQL into one
+tree. A generated key is read by the dialect (`LastInsertIdSQL`, Firebird `RETURNING`):
+the sqldb driver reports it only for MySQL. Tenants: column (added to every statement),
+schema (`search_path`/`USE`, undone on release) or database (a pool per tenant, freed
+when idle).
+
 ### Objects (`src/modules/objects`, `src/modules/controllers`)
 
 `RALModuleObjectsPackage`: the core only gained extension points - `TRALBaseRoute`
@@ -697,6 +708,22 @@ WS-Security (`RALWSSecurity`, `RALWSSecurityAuth`): the envelope is parsed once
 header block an authenticator processed is marked (`MarkUnderstood`) so mustUnderstand
 does not fault, and a refusal is answered as a fault through the core hook
 `TRALAuthServer.AnswerRefusal` (every authenticator is asked; none answers: 401/403).
+
+### Templates, JSON-RPC and MCP (`src/modules/web`, `jsonrpc`, `mcp`)
+
+- `RALTemplate` (`RALModuleWebPackage`): `TRALTemplateEngine` finds templates (`AddTemplate`,
+  `OnLoadTemplate`, files under `TemplateRoot`) and keeps them compiled per name and
+  indentation; a replaced compiled tree is retired, not freed (another thread may be
+  rendering it). `TRALMustacheEngine` passes the whole official `mustache/spec` but lambdas;
+  the parser works on line tokens (standalone lines, block reindentation). Data views
+  (`TRALTemplateData`) borrow the data; `RALTemplateDB` walks a dataset with one record view.
+- `RALJSONRPC` (`RALModuleJSONRPCPackage`): `TRALJSONRPCDispatcher` answers text with text,
+  any transport; `TRALJSONRPCModule` is one POST route (204 for notifications).
+- MCP (`RALModuleMCPPackage`, skill `ral-mcp`): only revision 2026-07-28 (stateless). The
+  core is `TRALMCPServer.Execute(text, channel, status)`; transports give a
+  `TRALMCPChannel` (notifications before the answer, cancellation). `requestState` of
+  input requests is sealed with HMAC-SHA256 (expiry, method, name). Tasks run in their own
+  thread and wait for `tasks/update` like a retried call.
 
 ### MQTT (`src/modules/mqtt`)
 

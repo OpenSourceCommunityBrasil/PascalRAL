@@ -80,6 +80,7 @@ skills load them by their description; others open the file when the task matche
 | `ral-document` | write doc comments, order class members, run pasdoc |
 | `ral-plugin` | write a server plugin (middleware, auth scheme) |
 | `ral-module` | write a module: a reusable group of routes |
+| `ral-mcp` | build an MCP server or client: tools, resources, prompts, stdio and HTTP |
 | `ral-engine` | add or change a transport engine |
 | `ral-rad-component` | design a feature for the Object Inspector |
 
