@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Web module"/>
     <Version Major="2"/>
-    <Files Count="3">
+    <Files Count="6">
       <Item1>
         <Filename Value="..\..\..\src\modules\web\RALWebModule.pas"/>
         <UnitName Value="RALWebModule"/>
@@ -40,6 +40,18 @@
         <Filename Value="ralmodulewebpackage.lrs"/>
         <Type Value="LRS"/>
       </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\modules\web\RALHtml.pas"/>
+        <UnitName Value="RALHtml"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\..\src\modules\web\RALTemplate.pas"/>
+        <UnitName Value="RALTemplate"/>
+      </Item5>
+      <Item6>
+        <Filename Value="..\..\..\src\modules\web\RALTemplateDB.pas"/>
+        <UnitName Value="RALTemplateDB"/>
+      </Item6>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

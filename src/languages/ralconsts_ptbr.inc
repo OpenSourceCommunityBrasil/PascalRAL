@@ -685,3 +685,9 @@
   emCronOutOfRange = 'O valor cron "%s" está fora da faixa.';
   emCronBadStep = 'O passo cron em "%s" não é válido.';
   emCronBadRange = 'A faixa cron "%s" não é válida.';
+  emTemplateUnclosedTag = 'Modelo "%s": a tag aberta na linha %d não foi fechada.';
+  emTemplateUnclosedSection = 'Modelo "%s": a seção "%s" não foi fechada.';
+  emTemplateUnexpectedClose = 'Modelo "%s": a tag de fechamento "%s" na linha %d não corresponde a nenhuma seção aberta.';
+  emTemplateBadDelimiter = 'Modelo "%s": a tag de delimitadores na linha %d não é válida.';
+  emTemplateTooDeep = 'Modelo "%s": os parciais se aninham além de %d níveis.';
+  emTemplateNotFound = 'O modelo "%s" não foi encontrado.';

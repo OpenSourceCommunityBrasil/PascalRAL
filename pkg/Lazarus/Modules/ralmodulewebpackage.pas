@@ -8,7 +8,7 @@ unit RALModuleWebPackage;
 interface
 
 uses
-  RALWebModule, RALModuleWebReg, LazarusPackageIntf;
+  RALWebModule, RALModuleWebReg, RALHtml, RALTemplate, RALTemplateDB, LazarusPackageIntf;
 
 implementation
 

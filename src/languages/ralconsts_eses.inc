@@ -685,3 +685,9 @@
   emCronOutOfRange = 'El valor cron "%s" está fuera de rango.';
   emCronBadStep = 'El paso cron en "%s" no es válido.';
   emCronBadRange = 'El rango cron "%s" no es válido.';
+  emTemplateUnclosedTag = 'Plantilla "%s": la etiqueta abierta en la línea %d no está cerrada.';
+  emTemplateUnclosedSection = 'Plantilla "%s": la sección "%s" no está cerrada.';
+  emTemplateUnexpectedClose = 'Plantilla "%s": la etiqueta de cierre "%s" en la línea %d no corresponde a ninguna sección abierta.';
+  emTemplateBadDelimiter = 'Plantilla "%s": la etiqueta de delimitadores en la línea %d no es válida.';
+  emTemplateTooDeep = 'Plantilla "%s": los parciales se anidan más de %d niveles.';
+  emTemplateNotFound = 'No se encontró la plantilla "%s".';

@@ -563,6 +563,18 @@ const
   ecCronBadStep = 6406;
   /// Error identifier for emCronBadRange.
   ecCronBadRange = 6407;
+  /// Error identifier for emTemplateUnclosedTag.
+  ecTemplateUnclosedTag = 6410;
+  /// Error identifier for emTemplateUnclosedSection.
+  ecTemplateUnclosedSection = 6411;
+  /// Error identifier for emTemplateUnexpectedClose.
+  ecTemplateUnexpectedClose = 6412;
+  /// Error identifier for emTemplateBadDelimiter.
+  ecTemplateBadDelimiter = 6413;
+  /// Error identifier for emTemplateTooDeep.
+  ecTemplateTooDeep = 6414;
+  /// Error identifier for emTemplateNotFound.
+  ecTemplateNotFound = 6415;
 
 /// Returns the localized template; an unknown code includes its number.
 function RALGetErrorMessage(AErrorCode: Integer): string;
@@ -849,6 +861,12 @@ begin
     ecCronOutOfRange: Result := emCronOutOfRange;
     ecCronBadStep: Result := emCronBadStep;
     ecCronBadRange: Result := emCronBadRange;
+    ecTemplateUnclosedTag: Result := emTemplateUnclosedTag;
+    ecTemplateUnclosedSection: Result := emTemplateUnclosedSection;
+    ecTemplateUnexpectedClose: Result := emTemplateUnexpectedClose;
+    ecTemplateBadDelimiter: Result := emTemplateBadDelimiter;
+    ecTemplateTooDeep: Result := emTemplateTooDeep;
+    ecTemplateNotFound: Result := emTemplateNotFound;
   else
     Result := Format(emUnknownError, [AErrorCode]);
   end;

@@ -685,3 +685,9 @@
   emCronOutOfRange = 'Cron value "%s" is out of range.';
   emCronBadStep = 'Cron step in "%s" is not valid.';
   emCronBadRange = 'Cron range "%s" is not valid.';
+  emTemplateUnclosedTag = 'Template "%s": the tag opened on line %d is not closed.';
+  emTemplateUnclosedSection = 'Template "%s": section "%s" is not closed.';
+  emTemplateUnexpectedClose = 'Template "%s": the closing tag "%s" on line %d matches no open section.';
+  emTemplateBadDelimiter = 'Template "%s": the delimiter tag on line %d is not valid.';
+  emTemplateTooDeep = 'Template "%s": partials nest deeper than %d.';
+  emTemplateNotFound = 'Template "%s" was not found.';

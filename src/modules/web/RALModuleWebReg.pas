@@ -10,7 +10,7 @@ uses
   LResources,
   {$ENDIF}
   Classes,
-  RALWebModule;
+  RALWebModule, RALTemplate;
 
 /// Registers the components of the package.
 procedure Register;
@@ -19,7 +19,7 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Modules', [TRALWebModule]);
+  RegisterComponents('RAL - Modules', [TRALWebModule, TRALMustacheEngine]);
 end;
 
 {$IFDEF FPC}

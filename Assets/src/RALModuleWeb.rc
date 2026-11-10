@@ -1,1 +1,2 @@
 TRALWebModule BITMAP "..\components\base\modules\TRALWebModule.bmp"
+TRALMustacheEngine BITMAP "..\components\base\modules\TRALMustacheEngine.bmp"

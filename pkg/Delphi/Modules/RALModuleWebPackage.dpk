@@ -30,10 +30,14 @@ package RALModuleWebPackage;
 {$IMPLICITBUILD ON}
 
 requires
-  PascalRAL;
+  PascalRAL,
+  dbrtl;
 
 contains
   RALWebModule in '..\..\..\src\modules\web\RALWebModule.pas',
-  RALModuleWebReg in '..\..\..\src\modules\web\RALModuleWebReg.pas';
+  RALModuleWebReg in '..\..\..\src\modules\web\RALModuleWebReg.pas',
+  RALHtml in '..\..\..\src\modules\web\RALHtml.pas',
+  RALTemplate in '..\..\..\src\modules\web\RALTemplate.pas',
+  RALTemplateDB in '..\..\..\src\modules\web\RALTemplateDB.pas';
 
 end.
