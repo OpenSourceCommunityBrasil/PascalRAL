@@ -1,0 +1,40 @@
+package RALCryptoCurvesPackage;
+
+{$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | Curve25519, Ed25519, HKDF and AES-GCM'}
+{$IMPLICITBUILD ON}
+
+requires
+  PascalRAL;
+
+contains
+  RALCurve25519 in '..\..\..\src\crypto\curves\RALCurve25519.pas',
+  RALEd25519 in '..\..\..\src\crypto\curves\RALEd25519.pas',
+  RALHKDF in '..\..\..\src\crypto\curves\RALHKDF.pas',
+  RALAESGCM in '..\..\..\src\crypto\curves\RALAESGCM.pas';
+
+end.

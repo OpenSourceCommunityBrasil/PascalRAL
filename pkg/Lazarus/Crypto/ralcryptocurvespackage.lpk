@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALCryptoCurvesPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\crypto\curves"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralcryptocurvespackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | Curve25519, Ed25519, HKDF and AES-GCM"/>
+    <Version Major="2"/>
+    <Files Count="4">
+      <Item1>
+        <Filename Value="..\..\..\src\crypto\curves\RALCurve25519.pas"/>
+        <UnitName Value="RALCurve25519"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\crypto\curves\RALEd25519.pas"/>
+        <UnitName Value="RALEd25519"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\crypto\curves\RALHKDF.pas"/>
+        <UnitName Value="RALHKDF"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\crypto\curves\RALAESGCM.pas"/>
+        <UnitName Value="RALAESGCM"/>
+      </Item4>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>
