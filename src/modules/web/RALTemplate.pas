@@ -393,6 +393,27 @@ type
     destructor Destroy; override;
   end;
 
+  /// One piece of Mustache source: text up to and with a line break, or a tag.
+  TRALMustacheToken = class
+  public
+    /// Whether the token begins a line of the output.
+    AtLineStart: Boolean;
+    /// What a block takes off the start of the lines of its content.
+    BlockIndent: StringRAL;
+    /// What a standalone line had before its first tag.
+    Indent: StringRAL;
+    /// Where the tag starts in the source, for error messages.
+    Pos: IntegerRAL;
+    /// Whether a standalone line dropped the text.
+    Removed: Boolean;
+    /// The tag sigil; #0 for a variable, #1 for text.
+    Sigil: AnsiChar;
+    /// Whether the tag is on a line holding only tags and blanks.
+    Standalone: Boolean;
+    /// The text, or the content of the tag.
+    Text: StringRAL;
+  end;
+
   /// Turns Mustache source into nodes.
   TRALMustacheParser = class
   private
@@ -406,18 +427,30 @@ type
     FOpen: StringRAL;
     /// The source.
     FSource: StringRAL;
+    /// The tokens of the source, owned.
+    FTokens: TObjectList;
 
     /// Adds AText as a text node of AList, when it is not empty.
     procedure AddText(AList: TObjectList; const AText: StringRAL);
-    /// Whether the bytes from AFrom to ATo are only spaces and tabs.
-    function IsBlank(AFrom, ATo: IntegerRAL): Boolean;
+    /// Adds the text from AFrom to ATo as tokens, one per line.
+    procedure AddTextTokens(AFrom, ATo: IntegerRAL);
+    /// Builds the nodes of the kept tokens into ARoot.
+    procedure Build(ARoot: TObjectList);
+    { Takes the indentation of the first line of each block off the lines of
+      its content (Mustache spec, block reindentation). }
+    procedure Dedent;
     /// The line of the byte at APos, from 1.
     function LineOf(APos: IntegerRAL): IntegerRAL;
+    /// Marks the lines holding only blanks and standalone tags.
+    procedure MarkStandalone;
     /// Reads the filters of a variable into ANode.
     procedure ReadFilters(ANode: TRALMustacheNode; const AContent: StringRAL);
+    /// Splits the source into tokens, following delimiter changes.
+    procedure Tokenize;
   public
     /// A parser of ASource, called AName in errors, reading filters when AFilters.
     constructor Create(const AName, ASource: StringRAL; AFilters: Boolean);
+    destructor Destroy; override;
 
     /// Parses the source into ARoot.
     procedure Parse(ARoot: TObjectList);
@@ -447,6 +480,8 @@ type
     procedure Pop;
     /// Adds AData as the innermost context.
     procedure Push(AData: TRALTemplateData; AOwned: Boolean);
+    /// Renders ANodes with AIndent before each line of what they write.
+    procedure RenderIndented(ANodes: TObjectList; const AIndent: StringRAL);
     /// Renders the parent ANode: its template with its blocks as overrides.
     procedure RenderParent(ANode: TRALMustacheNode);
     /// Renders the partial ANode.
@@ -1117,6 +1152,13 @@ begin
   FFilters := AFilters;
   FOpen := '{{';
   FClose := '}}';
+  FTokens := TObjectList.Create(True);
+end;
+
+destructor TRALMustacheParser.Destroy;
+begin
+  FTokens.Free;
+  inherited Destroy;
 end;
 
 procedure TRALMustacheParser.AddText(AList: TObjectList; const AText: StringRAL);
@@ -1125,130 +1167,49 @@ begin
     AList.Add(TRALMustacheNode.Create(mkText, AText));
 end;
 
-function TRALMustacheParser.IsBlank(AFrom, ATo: IntegerRAL): Boolean;
+procedure TRALMustacheParser.AddTextTokens(AFrom, ATo: IntegerRAL);
 var
-  vInt: IntegerRAL;
+  vInt, vStart: IntegerRAL;
+  vToken: TRALMustacheToken;
 begin
-  Result := True;
+  vStart := AFrom;
   for vInt := AFrom to ATo do
-    if (FSource[vInt] <> ' ') and (FSource[vInt] <> #9) then
+    if (FSource[vInt] = #10) or (vInt = ATo) then
     begin
-      Result := False;
-      Exit;
+      vToken := TRALMustacheToken.Create;
+      vToken.Sigil := #1;
+      vToken.Pos := vStart;
+      vToken.Text := Copy(FSource, vStart, vInt - vStart + 1);
+      FTokens.Add(vToken);
+      vStart := vInt + 1;
     end;
 end;
 
-function TRALMustacheParser.LineOf(APos: IntegerRAL): IntegerRAL;
+procedure TRALMustacheParser.Build(ARoot: TObjectList);
 var
   vInt: IntegerRAL;
-begin
-  Result := 1;
-  for vInt := 1 to APos - 1 do
-    if FSource[vInt] = #10 then
-      Inc(Result);
-end;
-
-procedure TRALMustacheParser.Parse(ARoot: TObjectList);
-var
-  vLen, vPos, vTag, vInner, vClosePos, vEnd, vLineStart, vAfter, vSpace: IntegerRAL;
-  vSigil: AnsiChar;
-  vCloseMark, vContent, vIndent: StringRAL;
-  vStandalone: Boolean;
+  vToken: TRALMustacheToken;
   vList: TObjectList;
   vOpenNodes: TList;
   vNode: TRALMustacheNode;
+  vContent: StringRAL;
 begin
-  vLen := Length(FSource);
-  vPos := 1;
   vList := ARoot;
   vOpenNodes := TList.Create;
   try
-    while vPos <= vLen do
+    for vInt := 0 to FTokens.Count - 1 do
     begin
-      vTag := FindFrom(FOpen, FSource, vPos);
-      if vTag = 0 then
-      begin
-        AddText(vList, Copy(FSource, vPos, vLen - vPos + 1));
-        Break;
-      end;
-
-      vInner := vTag + Length(FOpen);
-      vSigil := #0;
-      if (vInner <= vLen) and (FSource[vInner] in ['#', '^', '/', '!', '>', '=', '&', '{',
-        '<', '$']) then
-      begin
-        vSigil := FSource[vInner];
-        Inc(vInner);
-      end;
-      if vSigil = '=' then
-        vCloseMark := '=' + FClose
-      else if vSigil = '{' then
-        vCloseMark := '}' + FClose
-      else
-        vCloseMark := FClose;
-      vClosePos := FindFrom(vCloseMark, FSource, vInner);
-      if vClosePos = 0 then
-        raise ERALException.CreateFmt(ecTemplateUnclosedTag, [string(FName), LineOf(vTag)]);
-      vContent := RALTrim(Copy(FSource, vInner, vClosePos - vInner));
-      vEnd := vClosePos + Length(vCloseMark);
-
-      // A section, comment, partial, delimiter, parent or block tag alone on its
-      // line takes the whole line with it (Mustache spec, standalone tags).
-      vStandalone := False;
-      vIndent := '';
-      vLineStart := vTag;
-      if vSigil in ['#', '^', '/', '!', '>', '=', '<', '$'] then
-      begin
-        while (vLineStart > 1) and (FSource[vLineStart - 1] <> #10) do
-          Dec(vLineStart);
-        if (vLineStart >= vPos) and IsBlank(vLineStart, vTag - 1) then
-        begin
-          vAfter := vEnd;
-          while (vAfter <= vLen) and ((FSource[vAfter] = ' ') or (FSource[vAfter] = #9)) do
-            Inc(vAfter);
-          if vAfter > vLen then
-            vStandalone := True
-          else if FSource[vAfter] = #10 then
-          begin
-            vStandalone := True;
-            Inc(vAfter);
-          end
-          else if (FSource[vAfter] = #13) and (vAfter < vLen) and
-            (FSource[vAfter + 1] = #10) then
-          begin
-            vStandalone := True;
-            Inc(vAfter, 2);
-          end;
-          if vStandalone then
-          begin
-            vIndent := Copy(FSource, vLineStart, vTag - vLineStart);
-            vEnd := vAfter;
-          end;
-        end;
-      end;
-      if vStandalone then
-        AddText(vList, Copy(FSource, vPos, vLineStart - vPos))
-      else
-        AddText(vList, Copy(FSource, vPos, vTag - vPos));
-      vPos := vEnd;
-
-      case vSigil of
-        '!': ;
-        '=':
-        begin
-          vSpace := 1;
-          while (vSpace <= Length(vContent)) and (vContent[vSpace] <> ' ') and
-            (vContent[vSpace] <> #9) do
-            Inc(vSpace);
-          FOpen := RALTrim(Copy(vContent, 1, vSpace - 1));
-          FClose := RALTrim(Copy(vContent, vSpace + 1, Length(vContent)));
-          if (FOpen = '') or (FClose = '') or (FindFrom('=', FOpen, 1) > 0) or
-            (FindFrom('=', FClose, 1) > 0) then
-            raise ERALException.CreateFmt(ecTemplateBadDelimiter, [string(FName), LineOf(vTag)]);
-        end;
+      vToken := TRALMustacheToken(FTokens[vInt]);
+      if vToken.Removed then
+        Continue;
+      vContent := vToken.Text;
+      case vToken.Sigil of
+        #1:
+          AddText(vList, vContent);
+        '!', '=': ;
         '#', '^', '<', '$':
         begin
-          case vSigil of
+          case vToken.Sigil of
             '#': vNode := TRALMustacheNode.Create(mkSection, vContent);
             '^': vNode := TRALMustacheNode.Create(mkInverted, vContent);
             '<': vNode := TRALMustacheNode.Create(mkParent, vContent);
@@ -1256,8 +1217,11 @@ begin
             vNode := TRALMustacheNode.Create(mkBlock, vContent);
           end;
           vNode.Path := SplitPath(vContent);
-          vNode.Indent := vIndent;
-          if (vSigil = '<') and (Copy(vContent, 1, 1) = '*') then
+          if vToken.Sigil = '$' then
+            vNode.Indent := vToken.Indent + vToken.BlockIndent
+          else
+            vNode.Indent := vToken.Indent;
+          if (vToken.Sigil = '<') and (Copy(vContent, 1, 1) = '*') then
           begin
             vNode.Dynamic := True;
             vNode.Path := SplitPath(Copy(vContent, 2, Length(vContent)));
@@ -1270,11 +1234,11 @@ begin
         begin
           if vOpenNodes.Count = 0 then
             raise ERALException.CreateFmt(ecTemplateUnexpectedClose,
-              [string(FName), string(vContent), LineOf(vTag)]);
+              [string(FName), string(vContent), LineOf(vToken.Pos)]);
           vNode := TRALMustacheNode(vOpenNodes[vOpenNodes.Count - 1]);
           if vNode.Text <> vContent then
             raise ERALException.CreateFmt(ecTemplateUnexpectedClose,
-              [string(FName), string(vContent), LineOf(vTag)]);
+              [string(FName), string(vContent), LineOf(vToken.Pos)]);
           vOpenNodes.Delete(vOpenNodes.Count - 1);
           if vOpenNodes.Count = 0 then
             vList := ARoot
@@ -1284,7 +1248,7 @@ begin
         '>':
         begin
           vNode := TRALMustacheNode.Create(mkPartial, vContent);
-          vNode.Indent := vIndent;
+          vNode.Indent := vToken.Indent;
           if Copy(vContent, 1, 1) = '*' then
           begin
             vNode.Dynamic := True;
@@ -1310,6 +1274,181 @@ begin
   finally
     vOpenNodes.Free;
   end;
+end;
+
+procedure TRALMustacheParser.Dedent;
+var
+  vInt, vNext, vEnd, vDepth, vSpace: IntegerRAL;
+  vToken, vFirst: TRALMustacheToken;
+  vIndent: StringRAL;
+begin
+  for vInt := 0 to FTokens.Count - 1 do
+  begin
+    vToken := TRALMustacheToken(FTokens[vInt]);
+    if (vToken.Sigil <> '$') or not vToken.Standalone then
+      Continue;
+    // The first line of content gives the indentation the block takes off.
+    vNext := vInt + 1;
+    while (vNext < FTokens.Count) and TRALMustacheToken(FTokens[vNext]).Removed do
+      Inc(vNext);
+    if vNext >= FTokens.Count then
+      Continue;
+    vFirst := TRALMustacheToken(FTokens[vNext]);
+    vIndent := '';
+    if (vFirst.Sigil = #1) and vFirst.AtLineStart then
+    begin
+      vSpace := 1;
+      while (vSpace <= Length(vFirst.Text)) and ((vFirst.Text[vSpace] = ' ') or
+        (vFirst.Text[vSpace] = #9)) do
+        Inc(vSpace);
+      vIndent := Copy(vFirst.Text, 1, vSpace - 1);
+    end
+    else if (vFirst.Sigil <> '/') and vFirst.Standalone then
+      vIndent := vFirst.Indent;
+    vToken.BlockIndent := vIndent;
+    if vIndent = '' then
+      Continue;
+    vDepth := 1;
+    vEnd := vInt + 1;
+    while (vEnd < FTokens.Count) and (vDepth > 0) do
+    begin
+      vFirst := TRALMustacheToken(FTokens[vEnd]);
+      if vFirst.Sigil in ['#', '^', '<', '$'] then
+        Inc(vDepth)
+      else if vFirst.Sigil = '/' then
+        Dec(vDepth);
+      if (vDepth > 0) and not vFirst.Removed then
+      begin
+        if (vFirst.Sigil = #1) and vFirst.AtLineStart and
+          (Copy(vFirst.Text, 1, Length(vIndent)) = vIndent) then
+          Delete(vFirst.Text, 1, Length(vIndent))
+        else if (vFirst.Sigil <> #1) and vFirst.Standalone and
+          (Copy(vFirst.Indent, 1, Length(vIndent)) = vIndent) then
+          Delete(vFirst.Indent, 1, Length(vIndent));
+      end;
+      Inc(vEnd);
+    end;
+  end;
+end;
+
+function TRALMustacheParser.LineOf(APos: IntegerRAL): IntegerRAL;
+var
+  vInt: IntegerRAL;
+begin
+  Result := 1;
+  for vInt := 1 to APos - 1 do
+    if FSource[vInt] = #10 then
+      Inc(Result);
+end;
+
+procedure TRALMustacheParser.MarkStandalone;
+var
+  vInt, vEnd, vScan, vTags, vFirstTag: IntegerRAL;
+  vToken: TRALMustacheToken;
+  vOther, vKeepBreak, vLineStart: Boolean;
+  vIndent, vBody: StringRAL;
+
+  { Whether AText is only blanks, without its line break. }
+  function Blank(const AText: StringRAL): Boolean;
+  var
+    vChar: IntegerRAL;
+  begin
+    Result := True;
+    for vChar := 1 to Length(AText) do
+      if not (AText[vChar] in [' ', #9, #13, #10]) then
+      begin
+        Result := False;
+        Exit;
+      end;
+  end;
+
+begin
+  // Mustache spec: a line holding only blanks and section, comment, partial,
+  // delimiter, parent or block tags is dropped whole, its blanks becoming the
+  // indentation of a partial, parent or block that starts it.
+  vInt := 0;
+  while vInt < FTokens.Count do
+  begin
+    vEnd := vInt;
+    while (vEnd < FTokens.Count - 1) and not ((TRALMustacheToken(FTokens[vEnd]).Sigil = #1) and
+      (Copy(TRALMustacheToken(FTokens[vEnd]).Text,
+      Length(TRALMustacheToken(FTokens[vEnd]).Text), 1) = #10)) do
+      Inc(vEnd);
+    vTags := 0;
+    vOther := False;
+    vFirstTag := -1;
+    for vScan := vInt to vEnd do
+    begin
+      vToken := TRALMustacheToken(FTokens[vScan]);
+      if vToken.Sigil = #1 then
+      begin
+        if not Blank(vToken.Text) then
+          vOther := True;
+      end
+      else if vToken.Sigil in [#0, '&', '{'] then
+        vOther := True
+      else
+      begin
+        Inc(vTags);
+        if vFirstTag < 0 then
+          vFirstTag := vScan;
+      end;
+    end;
+    if (vTags > 0) and not vOther then
+    begin
+      vIndent := '';
+      if TRALMustacheToken(FTokens[vInt]).Sigil = #1 then
+        vIndent := TRALMustacheToken(FTokens[vInt]).Text;
+      TRALMustacheToken(FTokens[vFirstTag]).Indent := vIndent;
+      // An empty block alone on its line keeps the line break: its content
+      // takes the place of the line.
+      vKeepBreak := False;
+      for vScan := vInt to vEnd - 1 do
+        if (TRALMustacheToken(FTokens[vScan]).Sigil = '$') and
+          (TRALMustacheToken(FTokens[vScan + 1]).Sigil = '/') and
+          (TRALMustacheToken(FTokens[vScan + 1]).Text = TRALMustacheToken(FTokens[vScan]).Text) then
+          vKeepBreak := True;
+      for vScan := vInt to vEnd do
+      begin
+        vToken := TRALMustacheToken(FTokens[vScan]);
+        if vToken.Sigil <> #1 then
+          vToken.Standalone := True
+        else if vKeepBreak and (vScan = vEnd) and
+          (Copy(vToken.Text, Length(vToken.Text), 1) = #10) then
+        begin
+          vBody := vToken.Text;
+          if (Length(vBody) >= 2) and (vBody[Length(vBody) - 1] = #13) then
+            vToken.Text := Copy(vBody, Length(vBody) - 1, 2)
+          else
+            vToken.Text := Copy(vBody, Length(vBody), 1);
+        end
+        else
+          vToken.Removed := True;
+      end;
+    end;
+    vInt := vEnd + 1;
+  end;
+  // Where the kept tokens start lines; a dropped line starts none.
+  vLineStart := True;
+  for vInt := 0 to FTokens.Count - 1 do
+  begin
+    vToken := TRALMustacheToken(FTokens[vInt]);
+    if vToken.Removed then
+      Continue;
+    vToken.AtLineStart := vLineStart;
+    if vToken.Sigil = #1 then
+      vLineStart := Copy(vToken.Text, Length(vToken.Text), 1) = #10
+    else if not vToken.Standalone then
+      vLineStart := False;
+  end;
+end;
+
+procedure TRALMustacheParser.Parse(ARoot: TObjectList);
+begin
+  Tokenize;
+  MarkStandalone;
+  Dedent;
+  Build(ARoot);
 end;
 
 procedure TRALMustacheParser.ReadFilters(ANode: TRALMustacheNode; const AContent: StringRAL);
@@ -1374,6 +1513,65 @@ begin
     end;
   finally
     vParts.Free;
+  end;
+end;
+
+procedure TRALMustacheParser.Tokenize;
+var
+  vLen, vPos, vTag, vInner, vClosePos, vEnd, vSpace: IntegerRAL;
+  vSigil: AnsiChar;
+  vCloseMark, vContent: StringRAL;
+  vToken: TRALMustacheToken;
+begin
+  vLen := Length(FSource);
+  vPos := 1;
+  while vPos <= vLen do
+  begin
+    vTag := FindFrom(FOpen, FSource, vPos);
+    if vTag = 0 then
+    begin
+      AddTextTokens(vPos, vLen);
+      Break;
+    end;
+    if vTag > vPos then
+      AddTextTokens(vPos, vTag - 1);
+    vInner := vTag + Length(FOpen);
+    vSigil := #0;
+    if (vInner <= vLen) and (FSource[vInner] in ['#', '^', '/', '!', '>', '=', '&', '{',
+      '<', '$']) then
+    begin
+      vSigil := FSource[vInner];
+      Inc(vInner);
+    end;
+    if vSigil = '=' then
+      vCloseMark := '=' + FClose
+    else if vSigil = '{' then
+      vCloseMark := '}' + FClose
+    else
+      vCloseMark := FClose;
+    vClosePos := FindFrom(vCloseMark, FSource, vInner);
+    if vClosePos = 0 then
+      raise ERALException.CreateFmt(ecTemplateUnclosedTag, [string(FName), LineOf(vTag)]);
+    vContent := RALTrim(Copy(FSource, vInner, vClosePos - vInner));
+    vEnd := vClosePos + Length(vCloseMark);
+    if vSigil = '=' then
+    begin
+      vSpace := 1;
+      while (vSpace <= Length(vContent)) and (vContent[vSpace] <> ' ') and
+        (vContent[vSpace] <> #9) do
+        Inc(vSpace);
+      FOpen := RALTrim(Copy(vContent, 1, vSpace - 1));
+      FClose := RALTrim(Copy(vContent, vSpace + 1, Length(vContent)));
+      if (FOpen = '') or (FClose = '') or (FindFrom('=', FOpen, 1) > 0) or
+        (FindFrom('=', FClose, 1) > 0) then
+        raise ERALException.CreateFmt(ecTemplateBadDelimiter, [string(FName), LineOf(vTag)]);
+    end;
+    vToken := TRALMustacheToken.Create;
+    vToken.Sigil := vSigil;
+    vToken.Pos := vTag;
+    vToken.Text := vContent;
+    FTokens.Add(vToken);
+    vPos := vEnd;
   end;
 end;
 
@@ -1530,9 +1728,11 @@ begin
       begin
         vOverride := FindOverride(vNode.Text);
         if vOverride = nil then
-          Render(vNode.Children)
+          vOverride := vNode;
+        if vNode.Indent = '' then
+          Render(vOverride.Children)
         else
-          Render(vOverride.Children);
+          RenderIndented(vOverride.Children, vNode.Indent);
       end;
     end;
   end;
@@ -1566,6 +1766,32 @@ begin
     vContent.Free;
     vBlocks.Free;
   end;
+end;
+
+procedure TRALMustacheRenderer.RenderIndented(ANodes: TObjectList; const AIndent: StringRAL);
+var
+  vOuter: TRALTemplateWriter;
+  vBuffer: TMemoryStream;
+  vText: StringRAL;
+begin
+  vOuter := FWriter;
+  vBuffer := TMemoryStream.Create;
+  try
+    FWriter := TRALTemplateWriter.Create(vBuffer);
+    try
+      Render(ANodes);
+      FWriter.Flush;
+    finally
+      FWriter.Free;
+      FWriter := vOuter;
+    end;
+    SetLength(vText, vBuffer.Size);
+    if vBuffer.Size > 0 then
+      Move(vBuffer.Memory^, Pointer(vText)^, vBuffer.Size);
+  finally
+    vBuffer.Free;
+  end;
+  FWriter.Write(IndentSource(vText, AIndent));
 end;
 
 procedure TRALMustacheRenderer.RenderParent(ANode: TRALMustacheNode);
