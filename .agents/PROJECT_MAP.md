@@ -245,7 +245,8 @@ on its own sockets.
   collections, calls with progress, logs and input requests, `subscriptions/listen`,
   tasks), `RALMCPModule` (`TRALMCPModule`, Streamable HTTP, Origin and header checks,
   RFC 9728 metadata), `RALMCPStdio` (`TRALMCPStdio`), `RALMCPClient` (`TRALMCPClient`),
-  `RALModuleMCPReg`
+  `RALModuleMCPReg`; `db/RALMCPDBTools` (`TRALMCPDBTools`: tools that run fixed SQL over a
+  `TRALDBModule`), `db/RALModuleMCPDBReg` - RALModuleMCPDBPackage
 - `jsonrpc/` (RALModuleJSONRPCPackage): `RALJSONRPC` (methods, requests, results, the
   dispatcher of text or JSON), `RALJSONRPCModule` (`TRALJSONRPCModule`, one POST route),
   `RALJSONRPCClient` (`TRALJSONRPCClient`, `TRALJSONRPCBatch`), `RALJSONRPCObjects`

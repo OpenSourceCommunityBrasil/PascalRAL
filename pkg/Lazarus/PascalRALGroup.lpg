@@ -36,6 +36,7 @@
       <Target FileName="Modules\ralmodulewebpackage.lpk"/>
       <Target FileName="Modules\ralmodulejsonrpcpackage.lpk"/>
       <Target FileName="Modules\ralmodulemcppackage.lpk"/>
+      <Target FileName="Modules\ralmodulemcpdbpackage.lpk"/>
       <Target FileName="Modules\ralmoduleswaggerpackage.lpk"/>
       <Target FileName="Modules\ralmoduleobjectspackage.lpk"/>
       <Target FileName="Modules\ralmodulecontrollerspackage.lpk"/>
