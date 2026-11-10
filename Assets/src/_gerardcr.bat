@@ -19,6 +19,8 @@ echo RALPluginCache
 %path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginCachePackage.dcr" "RALPluginCache.rc"
 echo RALPluginForwarded
 %path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginForwardedPackage.dcr" "RALPluginForwarded.rc"
+echo RALModuleMCP
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleMCPPackage.dcr" "RALModuleMCP.rc"
 echo RALModuleJSONRPC
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleJSONRPCPackage.dcr" "RALModuleJSONRPC.rc"
 echo RALModuleProxy

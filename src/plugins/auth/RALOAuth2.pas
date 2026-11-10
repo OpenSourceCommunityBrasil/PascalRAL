@@ -156,6 +156,7 @@ type
     FPrivateKey: TStrings;
     FRedirectURIs: TStrings;
     FRefreshTokenLifetime: IntegerRAL;
+    FResourceMetadata: StringRAL;
     /// JWK set fetched from JWKSURL.
     FRemoteKeys: TRALJWKSet;
     /// When FRemoteKeys was fetched.
@@ -340,6 +341,9 @@ type
     /// Seconds a refresh token is good for; zero issues none
     property RefreshTokenLifetime: IntegerRAL read FRefreshTokenLifetime
       write FRefreshTokenLifetime default 1209600;
+    { The URL of this resource's protected resource metadata (RFC 9728), sent
+      in every Bearer challenge as resource_metadata; empty = not sent. }
+    property ResourceMetadata: StringRAL read FResourceMetadata write FResourceMetadata;
     { Revoked token ids are also kept here (keys 'jwt.jti:<jti>', the same as
       TRALServerJWTAuth), so servers sharing one store refuse a token revoked
       on any of them. Unlinked, Store alone keeps them. }
@@ -1823,12 +1827,22 @@ var
   vClaims: TRALJWTParams;
   vReason, vScope, vChallenge: StringRAL;
   vValid: boolean;
+
+  /// The resource_metadata parameter of a challenge (RFC 9728), or nothing.
+  function MetadataParam: StringRAL;
+  begin
+    if FResourceMetadata = '' then
+      Result := ''
+    else
+      Result := ', resource_metadata=' + RALQuoteString(FResourceMetadata);
+  end;
+
 begin
   AResponse.StatusCode := HTTP_OK;
   if ARequest.Authorization.AuthType <> ratBearer then
   begin
     AResponse.Answer(HTTP_Unauthorized);
-    RALAddChallenge(AResponse, 'Bearer realm="RAL"');
+    RALAddChallenge(AResponse, 'Bearer realm="RAL"' + MetadataParam);
     Exit;
   end;
 
@@ -1848,7 +1862,7 @@ begin
       if AResponse.StatusCode < HTTP_BadRequest then
         AResponse.Answer(HTTP_Unauthorized);
       RALAddChallenge(AResponse, 'Bearer realm="RAL", error="invalid_token"' +
-        ', error_description="' + RALChallengeText(vReason) + '"');
+        ', error_description="' + RALChallengeText(vReason) + '"' + MetadataParam);
       Exit;
     end;
 
@@ -1860,7 +1874,7 @@ begin
       AResponse.Answer(HTTP_Forbidden);
       vChallenge := 'Bearer realm="RAL", error="insufficient_scope", scope=' +
         RALQuoteString(vScope) + ', error_description="' +
-        RALChallengeText(wmOAuth2Scope) + '"';
+        RALChallengeText(wmOAuth2Scope) + '"' + MetadataParam;
       RALAddChallenge(AResponse, vChallenge);
     end;
   finally

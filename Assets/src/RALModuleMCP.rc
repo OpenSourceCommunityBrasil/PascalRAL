@@ -1,0 +1,4 @@
+TRALMCPServer BITMAP "..\components\base\modules\TRALMCPServer.bmp"
+TRALMCPModule BITMAP "..\components\base\modules\TRALMCPModule.bmp"
+TRALMCPStdio BITMAP "..\components\base\modules\TRALMCPStdio.bmp"
+TRALMCPClient BITMAP "..\components\base\client\TRALMCPClient.bmp"

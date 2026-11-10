@@ -16,6 +16,7 @@
       <Target FileName="Plugins\ralpluginauthpackage.lpk"/>
       <Target FileName="Plugins\ralplugintlspackage.lpk"/>
       <Target FileName="Crypto\ralcryptopasswordpackage.lpk"/>
+      <Target FileName="Crypto\ralcryptocurvespackage.lpk"/>
       <Target FileName="Plugins\ralpluginobservabilitypackage.lpk"/>
       <Target FileName="Hosting\ralhostingpackage.lpk"/>
       <Target FileName="Plugins\ralplugintrafficpackage.lpk"/>
@@ -34,6 +35,7 @@
       <Target FileName="Modules\ralmoduleproxydsgn.lpk"/>
       <Target FileName="Modules\ralmodulewebpackage.lpk"/>
       <Target FileName="Modules\ralmodulejsonrpcpackage.lpk"/>
+      <Target FileName="Modules\ralmodulemcppackage.lpk"/>
       <Target FileName="Modules\ralmoduleswaggerpackage.lpk"/>
       <Target FileName="Modules\ralmoduleobjectspackage.lpk"/>
       <Target FileName="Modules\ralmodulecontrollerspackage.lpk"/>

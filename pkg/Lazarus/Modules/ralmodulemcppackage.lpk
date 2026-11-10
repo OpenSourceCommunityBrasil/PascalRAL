@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALModuleMCPPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\modules\mcp"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralmodulemcppackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | MCP (Model Context Protocol) module"/>
+    <Version Major="2"/>
+    <Files Count="6">
+      <Item1>
+        <Filename Value="..\..\..\src\modules\mcp\RALMCPServer.pas"/>
+        <UnitName Value="RALMCPServer"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\modules\mcp\RALMCPModule.pas"/>
+        <UnitName Value="RALMCPModule"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\modules\mcp\RALMCPStdio.pas"/>
+        <UnitName Value="RALMCPStdio"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\modules\mcp\RALMCPClient.pas"/>
+        <UnitName Value="RALMCPClient"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\..\src\modules\mcp\RALModuleMCPReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALModuleMCPReg"/>
+      </Item5>
+      <Item6>
+        <Filename Value="ralmodulemcppackage.lrs"/>
+        <Type Value="LRS"/>
+      </Item6>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="3">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="RALModuleJSONRPCPackage"/>
+      </Item3>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

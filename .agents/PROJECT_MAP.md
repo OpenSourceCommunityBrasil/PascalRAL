@@ -36,6 +36,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/compress/brotli/` | `RALCompressBrotliPackage` | Brotli (submodule in `src/others/pascal_brotli`) |
 | `src/compress/zstd/` | `RALCompressZStdPackage` | ZStd (submodule in `src/others/ZSTD`) |
 | `src/crypto/` | `PascalRAL` | hashes, AES, OpenSSL, BigInt/ASN.1/RSA/X.509, JWS, JWT (`RALToken`), SCRAM (`RALSCRAM`), BLAKE2b, Blowfish, Salsa20, HOTP/TOTP (`RALOTP`) |
+| `src/crypto/curves/` | `RALCryptoCurvesPackage` | pure Pascal X25519 (`RALCurve25519`), Ed25519 (`RALEd25519`), HKDF (`RALHKDF`), AES-GCM (`RALAESGCM`) |
 | `src/crypto/password/` | `RALCryptoPasswordPackage` | password hashing: Argon2, bcrypt, scrypt, PBKDF2 in the PHC format (`RALPassword`) |
 | `src/database/` | `RALDBPackage` | DBWare: module, connection, pool, SQL cache, driver base |
 | `src/database/FireDAC/` | `RALDBFireDACPackage`, `RALDBFireDACDAOPackage` | FireDAC driver and memtable; the DAO |
@@ -59,6 +60,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/swagger/` | `RALModuleSwaggerPackage` | Swagger module, Swagger and Postman exporters, swagger.yaml |
 | `src/modules/objects/` | `RALModuleObjectsPackage` | objects in the body: serializer, formatters, binding, validation, typed client, OpenAPI import |
 | `src/modules/controllers/` | `RALModuleControllersPackage` | controllers by attributes and the interface client (Delphi 2010+) |
+| `src/modules/mcp/` | `RALModuleMCPPackage` | MCP server (revision 2026-07-28): tools, resources, prompts, tasks; HTTP and stdio transports; client |
 | `src/modules/jsonrpc/` | `RALModuleJSONRPCPackage` | JSON-RPC 2.0: dispatcher, HTTP module, client, objects by RTTI |
 | `src/modules/web/` | `RALModuleWebPackage` | Web module (static files, sessions), Mustache templates, HTML escaping |
 | `src/modules/xml/` | `RALModuleXMLPackage` | XML reader, writer, DOM, and the XML storage |
@@ -236,6 +238,11 @@ on its own sockets.
   `design/RALModuleSOAPReg` (RALModuleSOAPDsgn: Import/Export WSDL verbs)
 - `swagger/` (RALModuleSwaggerPackage): `RALSwaggerModule`, `RALSwaggerExporter`,
   `RALPostmanExporter`, `RALModuleSwaggerReg`
+- `mcp/` (RALModuleMCPPackage, requires JSON-RPC): `RALMCPServer` (`TRALMCPServer`,
+  collections, calls with progress, logs and input requests, `subscriptions/listen`,
+  tasks), `RALMCPModule` (`TRALMCPModule`, Streamable HTTP, Origin and header checks,
+  RFC 9728 metadata), `RALMCPStdio` (`TRALMCPStdio`), `RALMCPClient` (`TRALMCPClient`),
+  `RALModuleMCPReg`
 - `jsonrpc/` (RALModuleJSONRPCPackage): `RALJSONRPC` (methods, requests, results, the
   dispatcher of text or JSON), `RALJSONRPCModule` (`TRALJSONRPCModule`, one POST route),
   `RALJSONRPCClient` (`TRALJSONRPCClient`, `TRALJSONRPCBatch`), `RALJSONRPCObjects`
