@@ -8,7 +8,7 @@ unit RALMCPClient;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, SyncObjs,
   RALTypes, RALConsts, RALMIMETypes, RALTools, RALBase64, RALCustomObjects, RALClient, RALRequest,
   RALResponse, RALJson, RALJSONRPC, RALMCPServer;
 
@@ -21,22 +21,30 @@ type
     var AResponse: TRALJSON) of object;
 
   { Talks to an MCP server through Client (its engine, BaseURL, TLS and
-    authentication) at Path. Results are JSON objects the caller frees;
-    protocol errors raise ERALJSONRPCError. }
+    authentication) at Path, or, when Command is set, through the standard
+    input and output of that program. Results are JSON objects the caller
+    frees; protocol errors raise ERALJSONRPCError. }
   TRALMCPClient = class(TRALComponent)
   private
+    FArguments: TStrings;
     FCapabilities: StringRAL;
     FClient: TRALClient;
     FClientName: StringRAL;
     FClientVersion: StringRAL;
+    /// The program to run for the stdio transport; empty = HTTP through Client.
+    FCommand: StringRAL;
     /// Whether CallTool already prepared the headers of the next request.
     FHeadersSet: Boolean;
     /// The last request id used.
     FLastId: IntegerRAL;
+    /// Allows one request at a time on the stdio pipes.
+    FLock: TCriticalSection;
     FMaxRounds: IntegerRAL;
     FOnInputRequest: TRALMCPInputEvent;
     FOnNotification: TRALMCPNotificationEvent;
     FPath: StringRAL;
+    /// The child process of the stdio transport (internal); nil when not started.
+    FProcess: TObject;
     /// The tools of the server, kept for the x-mcp-header parameters; owned.
     FTools: TRALJSONArray;
 
@@ -44,6 +52,13 @@ type
     procedure AddParamHeaders(const AName: StringRAL; AArguments: TRALJSON);
     /// The answer of an event stream: notifications go to OnNotification.
     function ReadEvents(const AText: StringRAL): StringRAL;
+    /// Request after the lock is taken.
+    function RequestLocked(const AMethod: StringRAL; AParams: TRALJSONObject;
+      const AName: StringRAL): TRALJSONObject;
+    { Writes ALine to the child (started when needed) and returns the line that
+      answers AId; notifications go to OnNotification. }
+    function RequestStdio(const ALine: StringRAL; AId: Int64): StringRAL;
+    procedure SetArguments(AValue: TStrings);
     procedure SetClient(AValue: TRALClient);
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -55,6 +70,9 @@ type
       input requests through OnInputRequest; the result (content, isError,
       structuredContent, or a task) is the caller's. }
     function CallTool(const AName: StringRAL; AArguments: TRALJSON = nil): TRALJSONObject;
+    { Closes the stdin of the stdio child, waits up to 2 s and kills it; the
+      next request starts it again. }
+    procedure Close;
     /// The result of server/discover.
     function Discover: TRALJSONObject;
     /// Gets the prompt AName with AArguments (an object of strings, not owned).
@@ -75,6 +93,8 @@ type
     function Request(const AMethod: StringRAL; AParams: TRALJSONObject;
       const AName: StringRAL = ''): TRALJSONObject;
   published
+    /// The arguments of Command, one per line.
+    property Arguments: TStrings read FArguments write SetArguments;
     /// The client capabilities sent in every request, as JSON.
     property Capabilities: StringRAL read FCapabilities write FCapabilities;
     /// The HTTP client that carries the requests.
@@ -83,6 +103,8 @@ type
     property ClientName: StringRAL read FClientName write FClientName;
     /// The version sent in clientInfo.
     property ClientVersion: StringRAL read FClientVersion write FClientVersion;
+    /// The program of the stdio transport (not on Delphi outside Windows); empty = HTTP.
+    property Command: StringRAL read FCommand write FCommand;
     /// How many rounds of input requests one call may take.
     property MaxRounds: IntegerRAL read FMaxRounds write FMaxRounds default 8;
     /// Answers the input requests of the server.
@@ -95,6 +117,332 @@ type
   end;
 
 implementation
+
+uses
+  {$IFDEF FPC}
+  Process;
+  {$ELSE}
+  {$IFDEF MSWINDOWS}
+  Windows;
+  {$ELSE}
+  RALConsts;
+  {$ENDIF}
+  {$ENDIF}
+
+type
+  /// The child process of the stdio transport, with its pipes.
+  TStdioProcess = class
+  private
+    /// Bytes read from the child that do not make a line yet.
+    FBuffer: StringRAL;
+    {$IFDEF FPC}
+    /// The child process.
+    FProcess: TProcess;
+    {$ELSE}
+    {$IFDEF MSWINDOWS}
+    /// Write end of the child's stdin.
+    FInput: THandle;
+    /// Read end of the child's stdout.
+    FOutput: THandle;
+    /// The process handle.
+    FProcess: THandle;
+    {$ENDIF}
+    {$ENDIF}
+  public
+    destructor Destroy; override;
+
+    /// Whether the child is running.
+    function Alive: Boolean;
+    /// Reads one line of the child's stdout; False when it ended.
+    function ReadLine(out ALine: StringRAL): Boolean;
+    /// Starts ACommand with AArguments and pipes on stdin and stdout.
+    procedure Start(const ACommand: StringRAL; AArguments: TStrings);
+    /// Closes the stdin, waits up to 2 s and kills the child.
+    procedure Stop;
+    /// Writes ALine and a line feed to the stdin of the child.
+    procedure WriteLine(const ALine: StringRAL);
+  end;
+
+{$IFDEF FPC}
+
+destructor TStdioProcess.Destroy;
+begin
+  Stop;
+  inherited Destroy;
+end;
+
+function TStdioProcess.Alive: Boolean;
+begin
+  Result := (FProcess <> nil) and FProcess.Running;
+end;
+
+function TStdioProcess.ReadLine(out ALine: StringRAL): Boolean;
+var
+  vPos, vCount: Integer;
+  vBytes: array[0..4095] of Byte;
+  vRead: Integer;
+  vOld: Integer;
+begin
+  Result := False;
+  ALine := '';
+  repeat
+    vPos := Pos(#10, string(FBuffer));
+    if vPos > 0 then
+    begin
+      ALine := Copy(FBuffer, 1, vPos - 1);
+      Delete(FBuffer, 1, vPos);
+      if (ALine <> '') and (ALine[Length(ALine)] = #13) then
+        SetLength(ALine, Length(ALine) - 1);
+      Result := True;
+      Exit;
+    end;
+    vCount := FProcess.Output.NumBytesAvailable;
+    // The error output is read and dropped, so the child never blocks on it.
+    while FProcess.Stderr.NumBytesAvailable > 0 do
+      FProcess.Stderr.Read(vBytes, SizeOf(vBytes));
+    if vCount > 0 then
+    begin
+      if vCount > SizeOf(vBytes) then
+        vCount := SizeOf(vBytes);
+      vRead := FProcess.Output.Read(vBytes, vCount);
+      if vRead > 0 then
+      begin
+        vOld := Length(FBuffer);
+        SetLength(FBuffer, vOld + vRead);
+        Move(vBytes[0], FBuffer[vOld + 1], vRead);
+      end;
+    end
+    else if not FProcess.Running then
+    begin
+      if FProcess.Output.NumBytesAvailable = 0 then
+        Exit;
+    end
+    else
+      Sleep(2);
+  until False;
+end;
+
+procedure TStdioProcess.Start(const ACommand: StringRAL; AArguments: TStrings);
+begin
+  Stop;
+  FBuffer := '';
+  FProcess := TProcess.Create(nil);
+  try
+    FProcess.Executable := string(ACommand);
+    FProcess.Parameters.Assign(AArguments);
+    FProcess.Options := [poUsePipes];
+    FProcess.ShowWindow := swoHide;
+    FProcess.Execute;
+  except
+    FreeAndNil(FProcess);
+    raise;
+  end;
+end;
+
+procedure TStdioProcess.Stop;
+var
+  vTick: QWord;
+begin
+  if FProcess = nil then
+    Exit;
+  try
+    if FProcess.Running then
+    begin
+      FProcess.CloseInput;
+      vTick := GetTickCount64;
+      while FProcess.Running and (GetTickCount64 - vTick < 2000) do
+        Sleep(10);
+      if FProcess.Running then
+        FProcess.Terminate(1);
+    end;
+  finally
+    FreeAndNil(FProcess);
+  end;
+end;
+
+procedure TStdioProcess.WriteLine(const ALine: StringRAL);
+var
+  vText: StringRAL;
+begin
+  vText := ALine + #10;
+  FProcess.Input.WriteBuffer(vText[1], Length(vText));
+end;
+
+{$ELSE}
+{$IFDEF MSWINDOWS}
+
+destructor TStdioProcess.Destroy;
+begin
+  Stop;
+  inherited Destroy;
+end;
+
+function TStdioProcess.Alive: Boolean;
+begin
+  Result := (FProcess <> 0) and (WaitForSingleObject(FProcess, 0) = WAIT_TIMEOUT);
+end;
+
+function TStdioProcess.ReadLine(out ALine: StringRAL): Boolean;
+var
+  vPos: Integer;
+  vBytes: array[0..4095] of Byte;
+  vRead: DWORD;
+  vOld: Integer;
+begin
+  Result := False;
+  ALine := '';
+  repeat
+    vPos := Pos(#10, string(FBuffer));
+    if vPos > 0 then
+    begin
+      ALine := Copy(FBuffer, 1, vPos - 1);
+      Delete(FBuffer, 1, vPos);
+      if (ALine <> '') and (ALine[Length(ALine)] = #13) then
+        SetLength(ALine, Length(ALine) - 1);
+      Result := True;
+      Exit;
+    end;
+    // Closing the pipe (the child ended) makes ReadFile fail.
+    if (not ReadFile(FOutput, vBytes, SizeOf(vBytes), vRead, nil)) or (vRead = 0) then
+      Exit;
+    vOld := Length(FBuffer);
+    SetLength(FBuffer, vOld + Integer(vRead));
+    Move(vBytes[0], FBuffer[vOld + 1], vRead);
+  until False;
+end;
+
+procedure TStdioProcess.Start(const ACommand: StringRAL; AArguments: TStrings);
+var
+  vAttr: TSecurityAttributes;
+  vInRead, vInWrite, vOutRead, vOutWrite, vNul: THandle;
+  vStartup: TStartupInfo;
+  vInfo: TProcessInformation;
+  vLine: string;
+  vInt: Integer;
+
+  function Quote(const AText: string): string;
+  begin
+    if (AText <> '') and (Pos(' ', AText) = 0) and (Pos('"', AText) = 0) then
+      Result := AText
+    else
+      Result := '"' + StringReplace(AText, '"', '\"', [rfReplaceAll]) + '"';
+  end;
+
+begin
+  Stop;
+  FBuffer := '';
+  FillChar(vAttr, SizeOf(vAttr), 0);
+  vAttr.nLength := SizeOf(vAttr);
+  vAttr.bInheritHandle := True;
+  if not CreatePipe(vInRead, vInWrite, @vAttr, 0) then
+    RaiseLastOSError;
+  if not CreatePipe(vOutRead, vOutWrite, @vAttr, 0) then
+    RaiseLastOSError;
+  // Only the child's ends are inheritable.
+  SetHandleInformation(vInWrite, HANDLE_FLAG_INHERIT, 0);
+  SetHandleInformation(vOutRead, HANDLE_FLAG_INHERIT, 0);
+  vNul := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_WRITE, @vAttr, OPEN_EXISTING, 0, 0);
+  FillChar(vStartup, SizeOf(vStartup), 0);
+  vStartup.cb := SizeOf(vStartup);
+  vStartup.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
+  vStartup.wShowWindow := SW_HIDE;
+  vStartup.hStdInput := vInRead;
+  vStartup.hStdOutput := vOutWrite;
+  vStartup.hStdError := vNul;
+  vLine := Quote(string(ACommand));
+  for vInt := 0 to AArguments.Count - 1 do
+    vLine := vLine + ' ' + Quote(AArguments[vInt]);
+  UniqueString(vLine);
+  FillChar(vInfo, SizeOf(vInfo), 0);
+  try
+    if not CreateProcess(nil, PChar(vLine), nil, nil, True, CREATE_NO_WINDOW, nil, nil,
+      vStartup, vInfo) then
+    begin
+      CloseHandle(vInWrite);
+      CloseHandle(vOutRead);
+      RaiseLastOSError;
+    end;
+  finally
+    CloseHandle(vInRead);
+    CloseHandle(vOutWrite);
+    if vNul <> INVALID_HANDLE_VALUE then
+      CloseHandle(vNul);
+  end;
+  CloseHandle(vInfo.hThread);
+  FProcess := vInfo.hProcess;
+  FInput := vInWrite;
+  FOutput := vOutRead;
+end;
+
+procedure TStdioProcess.Stop;
+begin
+  if FInput <> 0 then
+    CloseHandle(FInput);
+  FInput := 0;
+  if FProcess <> 0 then
+  begin
+    if WaitForSingleObject(FProcess, 2000) = WAIT_TIMEOUT then
+      TerminateProcess(FProcess, 1);
+    CloseHandle(FProcess);
+  end;
+  FProcess := 0;
+  if FOutput <> 0 then
+    CloseHandle(FOutput);
+  FOutput := 0;
+end;
+
+procedure TStdioProcess.WriteLine(const ALine: StringRAL);
+var
+  vText: StringRAL;
+  vDone, vTotal: DWORD;
+  vOffset: Integer;
+begin
+  vText := ALine + #10;
+  vOffset := 1;
+  vTotal := Length(vText);
+  while vTotal > 0 do
+  begin
+    if (not WriteFile(FInput, vText[vOffset], vTotal, vDone, nil)) or (vDone = 0) then
+      RaiseLastOSError;
+    Inc(vOffset, vDone);
+    Dec(vTotal, vDone);
+  end;
+end;
+
+{$ELSE}
+
+destructor TStdioProcess.Destroy;
+begin
+  inherited Destroy;
+end;
+
+function TStdioProcess.Alive: Boolean;
+begin
+  Result := False;
+end;
+
+function TStdioProcess.ReadLine(out ALine: StringRAL): Boolean;
+begin
+  ALine := '';
+  Result := False;
+end;
+
+procedure TStdioProcess.Start(const ACommand: StringRAL; AArguments: TStrings);
+begin
+  raise ERALJSONRPCError.CreateRPC(cRALJSONRPCInternalError,
+    'stdio transport is not available on this platform');
+end;
+
+procedure TStdioProcess.Stop;
+begin
+end;
+
+procedure TStdioProcess.WriteLine(const ALine: StringRAL);
+begin
+end;
+
+{$ENDIF}
+{$ENDIF}
 
 /// A header value: as it is when visible ASCII, else =?base64?...?=.
 function HeaderValue(const AValue: StringRAL): StringRAL;
@@ -123,11 +471,16 @@ begin
   FClientName := 'PascalRAL';
   FClientVersion := '2.0';
   FMaxRounds := 8;
+  FArguments := TStringList.Create;
+  FLock := TCriticalSection.Create;
 end;
 
 destructor TRALMCPClient.Destroy;
 begin
+  Close;
   FTools.Free;
+  FArguments.Free;
+  FLock.Free;
   inherited Destroy;
 end;
 
@@ -137,7 +490,8 @@ var
   vTool, vProps, vProp, vHeader, vValue: TRALJSON;
   vText: StringRAL;
 begin
-  if (AArguments = nil) or (AArguments.Kind <> rjkObject) or (FTools = nil) then
+  if (FCommand <> '') or (AArguments = nil) or (AArguments.Kind <> rjkObject) or
+    (FTools = nil) then
     Exit;
   vTool := nil;
   for vInt := 0 to FTools.Count - 1 do
@@ -205,9 +559,12 @@ begin
       end;
       if vState <> nil then
         vParams.Add('requestState', RALJSONClone(vState));
-      FClient.Request.Clear;
-      AddParamHeaders(AName, AArguments);
-      FHeadersSet := True;
+      if FCommand = '' then
+      begin
+        FClient.Request.Clear;
+        AddParamHeaders(AName, AArguments);
+        FHeadersSet := True;
+      end;
       FreeAndNil(Result);
       Result := Request('tools/call', vParams, AName);
       if (Result.Find('resultType') = nil) or
@@ -236,6 +593,16 @@ begin
   finally
     vResponses.Free;
     vState.Free;
+  end;
+end;
+
+procedure TRALMCPClient.Close;
+begin
+  FLock.Enter;
+  try
+    FreeAndNil(FProcess);
+  finally
+    FLock.Leave;
   end;
 end;
 
@@ -364,14 +731,26 @@ end;
 
 function TRALMCPClient.Request(const AMethod: StringRAL; AParams: TRALJSONObject;
   const AName: StringRAL): TRALJSONObject;
+begin
+  FLock.Enter;
+  try
+    Result := RequestLocked(AMethod, AParams, AName);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRALMCPClient.RequestLocked(const AMethod: StringRAL; AParams: TRALJSONObject;
+  const AName: StringRAL): TRALJSONObject;
 var
   vCall, vMeta, vInfo: TRALJSONObject;
   vResponse: TRALResponse;
   vText: StringRAL;
   vAnswer, vError: TRALJSON;
   vData: StringRAL;
+  vId: Int64;
 begin
-  if FClient = nil then
+  if (FCommand = '') and (FClient = nil) then
     raise ERALJSONRPCError.CreateRPC(cRALJSONRPCInternalError, 'TRALMCPClient.Client is not set');
   if AParams = nil then
     AParams := TRALJSONObject.Create;
@@ -390,33 +769,44 @@ begin
     vMeta.Add(cRALMCPMetaClientInfo, vInfo);
     AParams.Add('_meta', vMeta);
     vCall.Add('jsonrpc', '2.0');
-    vCall.Add('id', Int64(RALAtomicInc(FLastId)));
+    vId := RALAtomicInc(FLastId);
+    vCall.Add('id', Int64(vId));
     vCall.Add('method', AMethod);
     vCall.Add('params', AParams);
-    // CallTool adds the Mcp-Param headers before; anything else starts clean.
-    if not FHeadersSet then
-      FClient.Request.Clear;
-    FHeadersSet := False;
-    FClient.Request.AddHeader('Accept', 'application/json, text/event-stream');
-    FClient.Request.AddHeader('MCP-Protocol-Version', cRALMCPProtocolVersion);
-    FClient.Request.AddHeader('Mcp-Method', AMethod);
-    if AName <> '' then
-      FClient.Request.AddHeader('Mcp-Name', HeaderValue(AName));
-    FClient.Request.AddBody(vCall.ToJSON, rctAPPLICATIONJSON);
+    if FCommand <> '' then
+      vText := vCall.ToJSON
+    else
+    begin
+      // CallTool adds the Mcp-Param headers before; anything else starts clean.
+      if not FHeadersSet then
+        FClient.Request.Clear;
+      FHeadersSet := False;
+      FClient.Request.AddHeader('Accept', 'application/json, text/event-stream');
+      FClient.Request.AddHeader('MCP-Protocol-Version', cRALMCPProtocolVersion);
+      FClient.Request.AddHeader('Mcp-Method', AMethod);
+      if AName <> '' then
+        FClient.Request.AddHeader('Mcp-Name', HeaderValue(AName));
+      FClient.Request.AddBody(vCall.ToJSON, rctAPPLICATIONJSON);
+    end;
   finally
     vCall.Free;
   end;
-  vResponse := nil;
-  FClient.Post(FPath, vResponse);
-  try
-    vText := vResponse.ResponseText;
-    if Pos('text/event-stream', string(vResponse.ContentType)) > 0 then
-      vText := ReadEvents(vText);
-    if vText = '' then
-      raise ERALJSONRPCError.CreateRPC(cRALJSONRPCInternalError,
-        Format('HTTP %d', [vResponse.StatusCode]));
-  finally
-    vResponse.Free;
+  if FCommand <> '' then
+    vText := RequestStdio(vText, vId)
+  else
+  begin
+    vResponse := nil;
+    FClient.Post(FPath, vResponse);
+    try
+      vText := vResponse.ResponseText;
+      if Pos('text/event-stream', string(vResponse.ContentType)) > 0 then
+        vText := ReadEvents(vText);
+      if vText = '' then
+        raise ERALJSONRPCError.CreateRPC(cRALJSONRPCInternalError,
+          Format('HTTP %d', [vResponse.StatusCode]));
+    finally
+      vResponse.Free;
+    end;
   end;
   vAnswer := TRALJSON.ParseJSON(vText);
   try
@@ -447,6 +837,57 @@ begin
   vParams := TRALJSONObject.Create;
   vParams.Add('uri', AURI);
   Result := Request('resources/read', vParams, AURI);
+end;
+
+function TRALMCPClient.RequestStdio(const ALine: StringRAL; AId: Int64): StringRAL;
+var
+  vProc: TStdioProcess;
+  vText: StringRAL;
+  vMessage: TRALJSON;
+  vFound: Boolean;
+begin
+  Result := '';
+  if FProcess = nil then
+    FProcess := TStdioProcess.Create;
+  vProc := TStdioProcess(FProcess);
+  if not vProc.Alive then
+    vProc.Start(FCommand, FArguments);
+  try
+    vProc.WriteLine(ALine);
+    while Result = '' do
+    begin
+      if not vProc.ReadLine(vText) then
+        raise ERALJSONRPCError.CreateRPC(cRALJSONRPCInternalError,
+          'stdio server closed the connection');
+      if vText = '' then
+        Continue;
+      vMessage := TRALJSON.ParseJSON(vText);
+      try
+        if vMessage.Kind <> rjkObject then
+          Continue;
+        vFound := TRALJSONObject(vMessage).Find('id') <> nil;
+        if vFound then
+        begin
+          if (TRALJSONObject(vMessage).Find('method') = nil) and
+            (TRALJSONObject(vMessage).Find('id').AsInt64 = AId) then
+            Result := vText;
+        end
+        else if Assigned(FOnNotification) then
+          FOnNotification(Self, TRALJSONObject(vMessage));
+      finally
+        vMessage.Free;
+      end;
+    end;
+  except
+    // The child is in an unknown state: the next request starts a new one.
+    FreeAndNil(FProcess);
+    raise;
+  end;
+end;
+
+procedure TRALMCPClient.SetArguments(AValue: TStrings);
+begin
+  FArguments.Assign(AValue);
 end;
 
 procedure TRALMCPClient.SetClient(AValue: TRALClient);
