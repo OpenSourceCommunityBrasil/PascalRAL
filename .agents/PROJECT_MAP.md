@@ -134,6 +134,9 @@ bcrypt core), `RALSalsa20` (the Salsa20 core), `RALOTP` (HOTP/TOTP, base32, otpa
 
 ### `src/database/`
 
+- `RALDBCatalog` (table catalog `RALDBTableInfo` read from each database, the SQL dialects),
+  `RALDBFilter` (URL filters: simple syntax and RQL, to parameterized SQL), `RALDBCrudModule`
+  (`TRALDBCrudModule`: REST resources over tables with roles, paging, ETag and tenants)
 - `RALDBBase`, `RALDBConnection`, `RALDBModule`, `RALDBPool`, `RALDBSQLCache` -
   RALDBPackage; `design/RALDBReg` - RALDBDsgn
 - `FireDAC/RALDBFireDAC`, `FireDAC/RALDBFiredacMemTable` - RALDBFireDACPackage;

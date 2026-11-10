@@ -179,6 +179,9 @@
         <DCCReference Include="..\..\..\src\database\RALDBSQLCache.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBConnection.pas"/>
         <DCCReference Include="..\..\..\src\database\RALDBModule.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBCatalog.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBFilter.pas"/>
+        <DCCReference Include="..\..\..\src\database\RALDBCrudModule.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

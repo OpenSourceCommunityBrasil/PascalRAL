@@ -129,7 +129,7 @@ Item_57=src\modules\jsonrpc
 Item_58=src\modules\mcp
 Item_59=src\crypto\curves
 [Files]
-Count=232
+Count=235
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -362,6 +362,9 @@ Item_228=src\crypto\curves\RALCurve25519.pas
 Item_229=src\crypto\curves\RALEd25519.pas
 Item_230=src\crypto\curves\RALHKDF.pas
 Item_231=src\crypto\curves\RALAESGCM.pas
+Item_232=src\database\RALDBCatalog.pas
+Item_233=src\database\RALDBFilter.pas
+Item_234=src\database\RALDBCrudModule.pas
 [AdditionalFiles]
 Count=0
 

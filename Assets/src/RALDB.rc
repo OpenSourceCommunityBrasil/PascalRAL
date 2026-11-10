@@ -1,2 +1,3 @@
 TRALDBConnection BITMAP "..\components\database\TRALDBConnection.bmp"
 TRALDBModule BITMAP "..\components\database\TRALDBModule.bmp"
+TRALDBCrudModule BITMAP "..\components\database\TRALDBCrudModule.bmp"

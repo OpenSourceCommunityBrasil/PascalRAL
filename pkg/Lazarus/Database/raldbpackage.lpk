@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | DBWare"/>
     <Version Major="2"/>
-    <Files Count="5">
+    <Files Count="8">
       <Item1>
         <Filename Value="..\..\..\src\database\RALDBBase.pas"/>
         <UnitName Value="RALDBBase"/>
@@ -47,6 +47,18 @@
         <Filename Value="..\..\..\src\database\RALDBModule.pas"/>
         <UnitName Value="RALDBModule"/>
       </Item5>
+      <Item6>
+        <Filename Value="..\..\..\src\database\RALDBCatalog.pas"/>
+        <UnitName Value="RALDBCatalog"/>
+      </Item6>
+      <Item7>
+        <Filename Value="..\..\..\src\database\RALDBFilter.pas"/>
+        <UnitName Value="RALDBFilter"/>
+      </Item7>
+      <Item8>
+        <Filename Value="..\..\..\src\database\RALDBCrudModule.pas"/>
+        <UnitName Value="RALDBCrudModule"/>
+      </Item8>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

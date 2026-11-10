@@ -37,6 +37,9 @@ contains
   RALDBPool in '..\..\..\src\database\RALDBPool.pas',
   RALDBSQLCache in '..\..\..\src\database\RALDBSQLCache.pas',
   RALDBConnection in '..\..\..\src\database\RALDBConnection.pas',
-  RALDBModule in '..\..\..\src\database\RALDBModule.pas';
+  RALDBModule in '..\..\..\src\database\RALDBModule.pas',
+  RALDBCatalog in '..\..\..\src\database\RALDBCatalog.pas',
+  RALDBFilter in '..\..\..\src\database\RALDBFilter.pas',
+  RALDBCrudModule in '..\..\..\src\database\RALDBCrudModule.pas';
 
 end.

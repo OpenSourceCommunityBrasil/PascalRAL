@@ -8,7 +8,8 @@ unit RALDBPackage;
 interface
 
 uses
-  RALDBBase, RALDBPool, RALDBSQLCache, RALDBConnection, RALDBModule;
+  RALDBBase, RALDBPool, RALDBSQLCache, RALDBConnection, RALDBModule, 
+  RALDBCatalog, RALDBFilter, RALDBCrudModule;
 
 implementation
 

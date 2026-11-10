@@ -16,7 +16,7 @@ uses
       DesignEditors, DesignIntf,
   {$ENDIF}
   Classes, SysUtils,
-  RALDBModule, RALDBConnection, RALDBBase, RALTypes;
+  RALDBModule, RALDBCrudModule, RALDBConnection, RALDBBase, RALTypes;
 
 type
   {$IFNDEF FPC}
@@ -48,7 +48,7 @@ implementation
 procedure Register;
 begin
   RegisterComponents('RAL - Client', [TRALDBConnection]);
-  RegisterComponents('RAL - Modules', [TRALDBModule]);
+  RegisterComponents('RAL - Modules', [TRALDBModule, TRALDBCrudModule]);
 
   RegisterPropertyEditor(TypeInfo(String), TRALDBModule, 'DatabaseLink', TRALDBDatabases);
 
