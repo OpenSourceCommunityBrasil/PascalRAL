@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=57
+Count=58
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -125,8 +125,9 @@ Item_53=src\engine\fastcgi
 Item_54=src\engine\inproc
 Item_55=src\engine\webbroker
 Item_56=src\hosting
+Item_57=src\modules\jsonrpc
 [Files]
-Count=215
+Count=223
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -342,6 +343,14 @@ Item_211=src\hosting\RALHostingReg.pas
 Item_212=src\modules\xml\RALXMLC14N.pas
 Item_213=src\modules\soap\RALWSSecurity.pas
 Item_214=src\modules\soap\RALWSSecurityAuth.pas
+Item_215=src\modules\web\RALHtml.pas
+Item_216=src\modules\web\RALTemplate.pas
+Item_217=src\modules\web\RALTemplateDB.pas
+Item_218=src\modules\jsonrpc\RALJSONRPC.pas
+Item_219=src\modules\jsonrpc\RALJSONRPCModule.pas
+Item_220=src\modules\jsonrpc\RALJSONRPCClient.pas
+Item_221=src\modules\jsonrpc\RALModuleJSONRPCReg.pas
+Item_222=src\modules\jsonrpc\RALJSONRPCObjects.pas
 [AdditionalFiles]
 Count=0
 

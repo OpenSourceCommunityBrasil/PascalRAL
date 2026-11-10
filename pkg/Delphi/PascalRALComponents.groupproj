@@ -105,6 +105,9 @@
         <Projects Include="Modules\RALModuleWebPackage.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
+        <Projects Include="Modules\RALModuleJSONRPCPackage.dproj">
+            <Dependencies>PascalRAL.dproj</Dependencies>
+        </Projects>
         <Projects Include="Modules\RALModuleSwaggerPackage.dproj">
             <Dependencies>Plugins\RALPluginAuthPackage.dproj</Dependencies>
         </Projects>
@@ -455,6 +458,15 @@
     <Target Name="RALModuleWebPackage:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Modules\RALModuleWebPackage.dproj" Targets="Make"/>
     </Target>
+    <Target Name="RALModuleJSONRPCPackage" DependsOnTargets="PascalRAL">
+        <MSBuild Projects="Modules\RALModuleJSONRPCPackage.dproj"/>
+    </Target>
+    <Target Name="RALModuleJSONRPCPackage:Clean" DependsOnTargets="PascalRAL:Clean">
+        <MSBuild Projects="Modules\RALModuleJSONRPCPackage.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALModuleJSONRPCPackage:Make" DependsOnTargets="PascalRAL:Make">
+        <MSBuild Projects="Modules\RALModuleJSONRPCPackage.dproj" Targets="Make"/>
+    </Target>
     <Target Name="RALModuleSwaggerPackage" DependsOnTargets="RALPluginAuthPackage">
         <MSBuild Projects="Modules\RALModuleSwaggerPackage.dproj"/>
     </Target>
@@ -564,13 +576,13 @@
         <MSBuild Projects="Compression\RALCompressBrotliPackage.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="PascalRAL;PascalRALDsgn;RALWizardDsgn;IndyRAL;SynopseRAL;SaguiRAL;FastCGIRAL;InProcRAL;WebBrokerRAL;MsQuicRAL;NetHttpRAL;OkHttpRAL;KwikRAL;UniGUIRAL;RALStoragePackage;RALStorageBSONPackage;RALDBPackage;RALDBFireDACPackage;RALDBZeosPackage;RALDBDsgn;RALDBFireDACDsgn;RALDBFireDACDAOPackage;RALDBZeosDsgn;RALPluginAuthPackage;RALPluginTLSPackage;RALCryptoPasswordPackage;RALPluginObservabilityPackage;RALHostingPackage;RALPluginTrafficPackage;RALPluginCachePackage;RALPluginForwardedPackage;RALModuleProxyPackage;RALModuleProxyDsgn;RALModuleWebPackage;RALModuleSwaggerPackage;RALModuleObjectsPackage;RALModuleControllersPackage;RALModuleXMLPackage;RALModuleSOAPPackage;RALModuleSOAPDsgn;RALModuleMQTTPackage;RALModuleMQTTDsgn;RALModuleMQTTDBPackage;RALCompressZStdPackage;RALCompressBrotliPackage"/>
+        <CallTarget Targets="PascalRAL;PascalRALDsgn;RALWizardDsgn;IndyRAL;SynopseRAL;SaguiRAL;FastCGIRAL;InProcRAL;WebBrokerRAL;MsQuicRAL;NetHttpRAL;OkHttpRAL;KwikRAL;UniGUIRAL;RALStoragePackage;RALStorageBSONPackage;RALDBPackage;RALDBFireDACPackage;RALDBZeosPackage;RALDBDsgn;RALDBFireDACDsgn;RALDBFireDACDAOPackage;RALDBZeosDsgn;RALPluginAuthPackage;RALPluginTLSPackage;RALCryptoPasswordPackage;RALPluginObservabilityPackage;RALHostingPackage;RALPluginTrafficPackage;RALPluginCachePackage;RALPluginForwardedPackage;RALModuleProxyPackage;RALModuleProxyDsgn;RALModuleWebPackage;RALModuleJSONRPCPackage;RALModuleSwaggerPackage;RALModuleObjectsPackage;RALModuleControllersPackage;RALModuleXMLPackage;RALModuleSOAPPackage;RALModuleSOAPDsgn;RALModuleMQTTPackage;RALModuleMQTTDsgn;RALModuleMQTTDBPackage;RALCompressZStdPackage;RALCompressBrotliPackage"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;RALWizardDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;SaguiRAL:Clean;FastCGIRAL:Clean;InProcRAL:Clean;WebBrokerRAL:Clean;MsQuicRAL:Clean;NetHttpRAL:Clean;OkHttpRAL:Clean;KwikRAL:Clean;UniGUIRAL:Clean;RALStoragePackage:Clean;RALStorageBSONPackage:Clean;RALDBPackage:Clean;RALDBFireDACPackage:Clean;RALDBZeosPackage:Clean;RALDBDsgn:Clean;RALDBFireDACDsgn:Clean;RALDBFireDACDAOPackage:Clean;RALDBZeosDsgn:Clean;RALPluginAuthPackage:Clean;RALPluginTLSPackage:Clean;RALCryptoPasswordPackage:Clean;RALPluginObservabilityPackage:Clean;RALHostingPackage:Clean;RALPluginTrafficPackage:Clean;RALPluginCachePackage:Clean;RALPluginForwardedPackage:Clean;RALModuleProxyPackage:Clean;RALModuleProxyDsgn:Clean;RALModuleWebPackage:Clean;RALModuleSwaggerPackage:Clean;RALModuleObjectsPackage:Clean;RALModuleControllersPackage:Clean;RALModuleXMLPackage:Clean;RALModuleSOAPPackage:Clean;RALModuleSOAPDsgn:Clean;RALModuleMQTTPackage:Clean;RALModuleMQTTDsgn:Clean;RALModuleMQTTDBPackage:Clean;RALCompressZStdPackage:Clean;RALCompressBrotliPackage:Clean"/>
+        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;RALWizardDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;SaguiRAL:Clean;FastCGIRAL:Clean;InProcRAL:Clean;WebBrokerRAL:Clean;MsQuicRAL:Clean;NetHttpRAL:Clean;OkHttpRAL:Clean;KwikRAL:Clean;UniGUIRAL:Clean;RALStoragePackage:Clean;RALStorageBSONPackage:Clean;RALDBPackage:Clean;RALDBFireDACPackage:Clean;RALDBZeosPackage:Clean;RALDBDsgn:Clean;RALDBFireDACDsgn:Clean;RALDBFireDACDAOPackage:Clean;RALDBZeosDsgn:Clean;RALPluginAuthPackage:Clean;RALPluginTLSPackage:Clean;RALCryptoPasswordPackage:Clean;RALPluginObservabilityPackage:Clean;RALHostingPackage:Clean;RALPluginTrafficPackage:Clean;RALPluginCachePackage:Clean;RALPluginForwardedPackage:Clean;RALModuleProxyPackage:Clean;RALModuleProxyDsgn:Clean;RALModuleWebPackage:Clean;RALModuleJSONRPCPackage:Clean;RALModuleSwaggerPackage:Clean;RALModuleObjectsPackage:Clean;RALModuleControllersPackage:Clean;RALModuleXMLPackage:Clean;RALModuleSOAPPackage:Clean;RALModuleSOAPDsgn:Clean;RALModuleMQTTPackage:Clean;RALModuleMQTTDsgn:Clean;RALModuleMQTTDBPackage:Clean;RALCompressZStdPackage:Clean;RALCompressBrotliPackage:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;RALWizardDsgn:Make;IndyRAL:Make;SynopseRAL:Make;SaguiRAL:Make;FastCGIRAL:Make;InProcRAL:Make;WebBrokerRAL:Make;MsQuicRAL:Make;NetHttpRAL:Make;OkHttpRAL:Make;KwikRAL:Make;UniGUIRAL:Make;RALStoragePackage:Make;RALStorageBSONPackage:Make;RALDBPackage:Make;RALDBFireDACPackage:Make;RALDBZeosPackage:Make;RALDBDsgn:Make;RALDBFireDACDsgn:Make;RALDBFireDACDAOPackage:Make;RALDBZeosDsgn:Make;RALPluginAuthPackage:Make;RALPluginTLSPackage:Make;RALCryptoPasswordPackage:Make;RALPluginObservabilityPackage:Make;RALHostingPackage:Make;RALPluginTrafficPackage:Make;RALPluginCachePackage:Make;RALPluginForwardedPackage:Make;RALModuleProxyPackage:Make;RALModuleProxyDsgn:Make;RALModuleWebPackage:Make;RALModuleSwaggerPackage:Make;RALModuleObjectsPackage:Make;RALModuleControllersPackage:Make;RALModuleXMLPackage:Make;RALModuleSOAPPackage:Make;RALModuleSOAPDsgn:Make;RALModuleMQTTPackage:Make;RALModuleMQTTDsgn:Make;RALModuleMQTTDBPackage:Make;RALCompressZStdPackage:Make;RALCompressBrotliPackage:Make"/>
+        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;RALWizardDsgn:Make;IndyRAL:Make;SynopseRAL:Make;SaguiRAL:Make;FastCGIRAL:Make;InProcRAL:Make;WebBrokerRAL:Make;MsQuicRAL:Make;NetHttpRAL:Make;OkHttpRAL:Make;KwikRAL:Make;UniGUIRAL:Make;RALStoragePackage:Make;RALStorageBSONPackage:Make;RALDBPackage:Make;RALDBFireDACPackage:Make;RALDBZeosPackage:Make;RALDBDsgn:Make;RALDBFireDACDsgn:Make;RALDBFireDACDAOPackage:Make;RALDBZeosDsgn:Make;RALPluginAuthPackage:Make;RALPluginTLSPackage:Make;RALCryptoPasswordPackage:Make;RALPluginObservabilityPackage:Make;RALHostingPackage:Make;RALPluginTrafficPackage:Make;RALPluginCachePackage:Make;RALPluginForwardedPackage:Make;RALModuleProxyPackage:Make;RALModuleProxyDsgn:Make;RALModuleWebPackage:Make;RALModuleJSONRPCPackage:Make;RALModuleSwaggerPackage:Make;RALModuleObjectsPackage:Make;RALModuleControllersPackage:Make;RALModuleXMLPackage:Make;RALModuleSOAPPackage:Make;RALModuleSOAPDsgn:Make;RALModuleMQTTPackage:Make;RALModuleMQTTDsgn:Make;RALModuleMQTTDBPackage:Make;RALCompressZStdPackage:Make;RALCompressBrotliPackage:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

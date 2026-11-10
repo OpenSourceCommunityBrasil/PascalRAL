@@ -59,7 +59,8 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/swagger/` | `RALModuleSwaggerPackage` | Swagger module, Swagger and Postman exporters, swagger.yaml |
 | `src/modules/objects/` | `RALModuleObjectsPackage` | objects in the body: serializer, formatters, binding, validation, typed client, OpenAPI import |
 | `src/modules/controllers/` | `RALModuleControllersPackage` | controllers by attributes and the interface client (Delphi 2010+) |
-| `src/modules/web/` | `RALModuleWebPackage` | Web module (static files, sessions) |
+| `src/modules/jsonrpc/` | `RALModuleJSONRPCPackage` | JSON-RPC 2.0: dispatcher, HTTP module, client, objects by RTTI |
+| `src/modules/web/` | `RALModuleWebPackage` | Web module (static files, sessions), Mustache templates, HTML escaping |
 | `src/modules/xml/` | `RALModuleXMLPackage` | XML reader, writer, DOM, and the XML storage |
 | `src/others/` | (the package that uses each) | submodules only: ZSTD, pascal_brotli (kxBSON is registered but unused) |
 | `src/plugins/` | `PascalRAL` | core plugins: security, CORS, content (limits, compression, cipher, JSON body), concurrency |
@@ -235,7 +236,13 @@ on its own sockets.
   `design/RALModuleSOAPReg` (RALModuleSOAPDsgn: Import/Export WSDL verbs)
 - `swagger/` (RALModuleSwaggerPackage): `RALSwaggerModule`, `RALSwaggerExporter`,
   `RALPostmanExporter`, `RALModuleSwaggerReg`
-- `web/` (RALModuleWebPackage): `RALWebModule`, `RALModuleWebReg`
+- `jsonrpc/` (RALModuleJSONRPCPackage): `RALJSONRPC` (methods, requests, results, the
+  dispatcher of text or JSON), `RALJSONRPCModule` (`TRALJSONRPCModule`, one POST route),
+  `RALJSONRPCClient` (`TRALJSONRPCClient`, `TRALJSONRPCBatch`), `RALJSONRPCObjects`
+  (public methods of an object by extended RTTI, Delphi 2010+), `RALModuleJSONRPCReg`
+- `web/` (RALModuleWebPackage): `RALWebModule`, `RALTemplate` (`TRALTemplateEngine`,
+  `TRALMustacheEngine`, data views, `TRALTemplateMap`), `RALTemplateDB` (datasets as
+  template data), `RALHtml` (HTML, attribute, JavaScript and URL escaping), `RALModuleWebReg`
 - `xml/` (RALModuleXMLPackage): `RALXMLReader` (pull parser), `RALXMLWriter`,
   `RALXML` (DOM with a fluent API and paths), `RALXMLC14N` (canonical XML), `RALStorageXML`
   (`TRALStorageXMLLink`), `RALModuleXMLReg`
