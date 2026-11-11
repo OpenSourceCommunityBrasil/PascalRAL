@@ -234,6 +234,7 @@
         <DCCReference Include="..\..\src\crypto\RALSalsa20.pas"/>
         <DCCReference Include="..\..\src\crypto\RALOTP.pas"/>
         <DCCReference Include="..\..\src\common\RALYAML.pas"/>
+        <DCCReference Include="..\..\src\core\RALUpgrade.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

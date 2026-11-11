@@ -7,7 +7,7 @@ uses
   Classes, SysUtils, StrUtils, TypInfo, DateUtils, SyncObjs,
   RALExceptions, RALErrorCodes, RALAuthBase, RALRoutes, RALTypes, RALTools, RALMIMETypes,
   RALConsts, RALParams, RALRequest, RALResponse, RALThreadSafe, RALCustomObjects,
-  RALResponsePages, RALCompressZLib, RALPlugin, RALResponseStream;
+  RALResponsePages, RALCompressZLib, RALPlugin, RALResponseStream, RALUpgrade;
 
 const
   /// Start of the friendly name of the certificates RALSelfSigned makes in the store.
@@ -274,6 +274,9 @@ type
     /// Guards FStreams.
     FStreamsLock: TCriticalSection;
 
+    { Raises when a route of the server or of a linked module is a WebSocket one
+      and the engine, as set up, does not serve them (WebSocketAvailable) }
+    procedure CheckWebSocketRoutes;
     /// First module of the modules loop: -1, the internal module, when it has work.
     function FirstModule: IntegerRAL;
     /// Module at AIndex: -1 is the internal module, from 0 on the linked ones.
@@ -418,10 +421,27 @@ type
     { True when the engine sends the pieces of TRALResponse.Send as they come;
       False keeps them and sends the body whole when the handler returns }
     class function SupportsLiveStream: boolean; virtual;
+    { True when the engine can hand a connection over after a 101 (TakeUpgrade),
+      which WebSocket routes need }
+    class function SupportsWebSocket: boolean; virtual;
+    { ENGINE API: called when the handler returned and FinishStream said False.
+      nil when the answer is not a 101 with an upgrade handler: send it as always.
+      Otherwise the request is finished (a concurrency slot goes back: an upgraded
+      connection never holds one) and the engine writes UpgradeHead, wraps its
+      connection in a TRALUpgradeTransport, hands it to the handler (Attached,
+      Feed, Detached; TRALBlockingUpgradeTransport.Run does all three) and calls
+      Release on the handler at the end }
+    function TakeUpgrade(ARequest: TRALRequest; AResponse: TRALResponse): TRALUpgradeHandler;
     /// How the engine takes a certificate; tpNone when TLS is not its own.
     function TLSProvisioning: TRALTLSProvisioning; virtual;
+    { ENGINE API: the status line and the headers of the 101 in AResponse, ending
+      with the empty line, as they go on the wire }
+    function UpgradeHead(AResponse: TRALResponse): StringRAL;
     /// Runs the ppValidate plugins before the body is decoded; 501 for an unknown method.
     procedure ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
+    { True when the server, as set up now, serves WebSocket routes: SupportsWebSocket,
+      unless a mode of the engine cannot (mORMot2's smHttpSys) }
+    function WebSocketAvailable: boolean; virtual;
 
     /// Requests being answered now (between ValidateRequest and Finish).
     property ActiveRequests: Integer read FActiveRequests;
@@ -912,6 +932,74 @@ end;
 class function TRALServer.SupportsLiveStream: boolean;
 begin
   Result := False;
+end;
+
+class function TRALServer.SupportsWebSocket: boolean;
+begin
+  Result := False;
+end;
+
+function TRALServer.WebSocketAvailable: boolean;
+begin
+  Result := SupportsWebSocket;
+end;
+
+procedure TRALServer.CheckWebSocketRoutes;
+
+  procedure CheckRoutes(ARoutes: TRALRoutes);
+  var
+    vInt: IntegerRAL;
+  begin
+    if ARoutes = nil then
+      Exit;
+    for vInt := 0 to ARoutes.Count - 1 do
+      if TRALBaseRoute(ARoutes.Items[vInt]).WebSocket then
+        raise ERALException.CreateFmt(ecWebSocketUnsupported,
+          [string(FEngine), string(TRALBaseRoute(ARoutes.Items[vInt]).GetFullRoute)]);
+  end;
+
+var
+  vInt: IntegerRAL;
+begin
+  if (csDesigning in ComponentState) or WebSocketAvailable then
+    Exit;
+  CheckRoutes(FRoutes);
+  for vInt := 0 to FListSubModules.Count - 1 do
+    CheckRoutes(TRALModuleRoutes(FListSubModules.Items[vInt]).Routes);
+end;
+
+function TRALServer.TakeUpgrade(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALUpgradeHandler;
+begin
+  Result := nil;
+  if (AResponse.Upgrade = nil) or (AResponse.StatusCode <> HTTP_SwitchingProtocols) then
+    Exit;
+  Result := AResponse.TakeUpgrade;
+  ARequest.ResponseStatus := HTTP_SwitchingProtocols;
+  ARequest.BytesSent := -1;
+  { the request is over: what a plugin took for it - a concurrency slot - goes
+    back now, while the connection lives on }
+  try
+    ARequest.Finish;
+  except
+    on e: Exception do
+      PluginError(e);
+  end;
+end;
+
+function TRALServer.UpgradeHead(AResponse: TRALResponse): StringRAL;
+var
+  vHeaders: StringRAL;
+begin
+  Result := 'HTTP/1.1 101 Switching Protocols'#13#10;
+  vHeaders := AResponse.Params.AssignParamsListText(rpkHEADER, ': ');
+  if vHeaders <> '' then
+  begin
+    Result := Result + vHeaders;
+    if (Length(vHeaders) < 2) or (vHeaders[Length(vHeaders)] <> #10) then
+      Result := Result + #13#10;
+  end;
+  Result := Result + #13#10;
 end;
 
 function TRALServer.CreateStreamWriter(ARequest: TRALRequest;
@@ -1631,6 +1719,8 @@ begin
     { plugins first: they set up what the engine opens with - the certificate,
       for one. A refusal keeps the server stopped }
     try
+      // a WebSocket route the engine cannot serve: a choice that cannot work raises
+      CheckWebSocketRoutes;
       NotifyPlugins(True);
     except
       FActive := False;

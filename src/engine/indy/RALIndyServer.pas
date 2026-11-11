@@ -10,7 +10,7 @@ uses
   {$IFDEF FPC}IdSchedulerOfThreadPool,{$ENDIF}
   RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools, RALStream, RALPlugin, RALContent, RALResponseStream,
-  RALCustomObjects;
+  RALCustomObjects, RALUpgrade;
 
 type
   /// Indy TLS options with the key password.
@@ -107,6 +107,9 @@ type
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
     class function SupportsLiveStream: boolean; override;
+    { True: an upgraded connection stays on the thread of its TIdContext until it
+      ends (one thread per WebSocket, from the scheduler's pool) }
+    class function SupportsWebSocket: boolean; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
   published
     /// Listen backlog.
@@ -119,6 +122,25 @@ type
   end;
 
 implementation
+
+uses
+  IdStack, IdIOHandler,
+  {$IFDEF FPC}
+  sockets;
+  {$ELSE}
+  {$IFDEF MSWINDOWS}WinSock{$ELSE}Posix.SysSocket{$ENDIF};
+  {$ENDIF}
+
+{ shutdown() of a socket Indy owns: a read waiting on it returns, the handle
+  stays Indy's to close }
+procedure ShutdownSocket(AHandle: TIdStackSocketHandle);
+begin
+  {$IFDEF FPC}
+  fpshutdown(AHandle, 2);
+  {$ELSE}
+  shutdown(AHandle, 2);
+  {$ENDIF}
+end;
 
 type
   /// What the stream writer needs of one request, kept for as long as its callback runs.
@@ -206,6 +228,98 @@ begin
   except
     Result := False;
   end;
+end;
+
+type
+  { An upgraded connection on the IOHandler of its context (TLS included): the
+    thread of the context runs it until it ends }
+  TRALIndyUpgradeTransport = class(TRALBlockingUpgradeTransport)
+  private
+    /// The Indy connection.
+    FContext: TIdContext;
+  protected
+    procedure DoClose; override;
+    function DoRead(var ABuffer; ACount: IntegerRAL): IntegerRAL; override;
+    function DoWrite(const ABuffer; ASize: IntegerRAL): boolean; override;
+    function WaitReadable(ATimeout: IntegerRAL): boolean; override;
+  public
+    /// A transport over the connection of AContext, which Indy keeps.
+    constructor Create(AContext: TIdContext);
+
+    procedure SetSendTimeout(AMilliseconds: IntegerRAL); override;
+  end;
+
+{ TRALIndyUpgradeTransport }
+
+constructor TRALIndyUpgradeTransport.Create(AContext: TIdContext);
+begin
+  inherited Create;
+  FContext := AContext;
+end;
+
+procedure TRALIndyUpgradeTransport.DoClose;
+begin
+  // the wait of the context returns; Indy closes the socket itself
+  if (FContext.Binding <> nil) and (FContext.Binding.HandleAllocated) then
+    ShutdownSocket(FContext.Binding.Handle);
+end;
+
+function TRALIndyUpgradeTransport.DoRead(var ABuffer; ACount: IntegerRAL): IntegerRAL;
+var
+  vIO: TIdIOHandler;
+  vBytes: TIdBytes;
+begin
+  Result := -1;
+  try
+    vIO := FContext.Connection.IOHandler;
+    if vIO.InputBufferIsEmpty then
+    begin
+      vIO.CheckForDataOnSource(0);
+      vIO.CheckForDisconnect(True, True);
+    end;
+    Result := vIO.InputBuffer.Size;
+    if Result <= 0 then
+    begin
+      // readable and nothing came: the peer closed
+      Result := -1;
+      Exit;
+    end;
+    if Result > ACount then
+      Result := ACount;
+    vIO.ReadBytes(vBytes, Result, False);
+    Move(vBytes[0], ABuffer, Result);
+  except
+    Result := -1;
+  end;
+end;
+
+function TRALIndyUpgradeTransport.DoWrite(const ABuffer; ASize: IntegerRAL): boolean;
+begin
+  Result := True;
+  try
+    FContext.Connection.IOHandler.Write(RawToBytes(ABuffer, ASize));
+  except
+    Result := False;
+  end;
+end;
+
+function TRALIndyUpgradeTransport.WaitReadable(ATimeout: IntegerRAL): boolean;
+begin
+  try
+    Result := (not FContext.Connection.IOHandler.InputBufferIsEmpty) or
+      FContext.Binding.Readable(ATimeout);
+  except
+    Result := True;
+  end;
+end;
+
+procedure TRALIndyUpgradeTransport.SetSendTimeout(AMilliseconds: IntegerRAL);
+begin
+  {$IFDEF MSWINDOWS}
+  // a client that stops reading cannot hold a Send for good
+  if AMilliseconds > 0 then
+    FContext.Binding.SetSockOpt(Id_SOL_SOCKET, Id_SO_SNDTIMEO, AMilliseconds);
+  {$ENDIF}
 end;
 
 { Answers a request whose handling raised outside ProcessCommands with the
@@ -310,6 +424,11 @@ begin
   Result := TRALIndySSL(GetDefaultSSL);
 end;
 
+class function TRALIndyServer.SupportsWebSocket: boolean;
+begin
+  Result := True;
+end;
+
 class function TRALIndyServer.SupportsLiveStream: boolean;
 begin
   Result := True;
@@ -382,6 +501,9 @@ var
   vInt: IntegerRAL;
   vKeepAlive: boolean;
   vContext: TRALIndyStreamContext;
+  vUpgrade: TRALUpgradeHandler;
+  vTransport: TRALIndyUpgradeTransport;
+  vHead: StringRAL;
 begin
   vContext := nil;
   vRequest := CreateRequest;
@@ -490,6 +612,28 @@ begin
         holds it; Indy then finds the headers written and nothing to send }
       if FinishStream(vRequest, vResponse) then
         Exit;
+      { a 101: the 101 goes out, and this thread serves the connection until it
+        ends; Indy then finds the headers written, nothing to send, and closes }
+      vUpgrade := TakeUpgrade(vRequest, vResponse);
+      if vUpgrade <> nil then
+      begin
+        try
+          vHead := UpgradeHead(vResponse);
+          AResponseInfo.HeaderHasBeenWritten := True;
+          AResponseInfo.CloseConnection := True;
+          AContext.Connection.IOHandler.Write(RawToBytes(Pointer(vHead)^, Length(vHead)));
+          vTransport := TRALIndyUpgradeTransport.Create(AContext);
+          try
+            vTransport.RemoteIP := vRequest.ClientInfo.IP;
+            vTransport.Run(vUpgrade);
+          finally
+            vTransport.Free;
+          end;
+        finally
+          vUpgrade.Release;
+        end;
+        Exit;
+      end;
 
       { the body first, handed to Indy at once so nothing can leak it: only
         after TakeWireStream do ContentEncoding and ContentType say what

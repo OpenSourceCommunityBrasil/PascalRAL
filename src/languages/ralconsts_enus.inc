@@ -691,3 +691,10 @@
   emTemplateBadDelimiter = 'Template "%s": the delimiter tag on line %d is not valid.';
   emTemplateTooDeep = 'Template "%s": partials nest deeper than %d.';
   emTemplateNotFound = 'Template "%s" was not found.';
+  emWebSocketUnsupported = 'The %s engine does not serve WebSocket routes (route "%s").';
+  emWebSocketNotConnected = 'The WebSocket is not connected.';
+  emWebSocketRefused = 'The server refused the WebSocket handshake: %s';
+  emWebSocketBadURL = '"%s" is not a ws:// or wss:// URL.';
+  emHubUnknownMethod = 'The hub has no method "%s".';
+  emHubTimeout = 'The hub did not answer "%s" within %d ms.';
+  emHubError = 'The hub answered "%s" with an error: %s';

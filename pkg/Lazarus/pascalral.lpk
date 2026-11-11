@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Core"/>
     <Version Major="2"/>
-    <Files Count="62">
+    <Files Count="63">
       <Item1>
         <Filename Value="..\..\src\core\RALTypes.pas"/>
         <UnitName Value="RALTypes"/>
@@ -275,6 +275,10 @@
         <Filename Value="..\..\src\common\RALYAML.pas"/>
         <UnitName Value="RALYAML"/>
       </Item62>
+      <Item63>
+        <Filename Value="..\..\src\core\RALUpgrade.pas"/>
+        <UnitName Value="RALUpgrade"/>
+      </Item63>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

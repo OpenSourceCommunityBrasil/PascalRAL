@@ -127,6 +127,8 @@ const
   RALMAXTOKENTRIES = 4;
   /// Line break of the HTTP protocol (CR LF).
   HTTPLineBreak = #13#10;
+  /// HTTP status 101 Switching Protocols (an upgrade, such as WebSocket).
+  HTTP_SwitchingProtocols  = 101;
   /// HTTP status 200 OK.
   HTTP_OK                  = 200;
   /// HTTP status 201 Created.
@@ -161,6 +163,8 @@ const
   HTTP_UnsupportedMedia    = 415;
   /// HTTP status 416 Range Not Satisfiable.
   HTTP_RangeNotSatisfiable = 416;
+  /// HTTP status 426 Upgrade Required (a plain GET on a WebSocket route).
+  HTTP_UpgradeRequired     = 426;
   /// HTTP status 429 Too Many Requests.
   HTTP_TooManyRequests     = 429;
   /// HTTP status 500 Internal Server Error.

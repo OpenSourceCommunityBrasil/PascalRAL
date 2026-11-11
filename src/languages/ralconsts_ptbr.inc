@@ -691,3 +691,10 @@
   emTemplateBadDelimiter = 'Modelo "%s": a tag de delimitadores na linha %d não é válida.';
   emTemplateTooDeep = 'Modelo "%s": os parciais se aninham além de %d níveis.';
   emTemplateNotFound = 'O modelo "%s" não foi encontrado.';
+  emWebSocketUnsupported = 'O motor %s não atende rotas WebSocket (rota "%s").';
+  emWebSocketNotConnected = 'O WebSocket não está conectado.';
+  emWebSocketRefused = 'O servidor recusou o handshake WebSocket: %s';
+  emWebSocketBadURL = '"%s" não é uma URL ws:// ou wss://.';
+  emHubUnknownMethod = 'O hub não tem o método "%s".';
+  emHubTimeout = 'O hub não respondeu "%s" em %d ms.';
+  emHubError = 'O hub respondeu "%s" com um erro: %s';

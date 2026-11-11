@@ -691,3 +691,10 @@
   emTemplateBadDelimiter = 'Plantilla "%s": la etiqueta de delimitadores en la línea %d no es válida.';
   emTemplateTooDeep = 'Plantilla "%s": los parciales se anidan más de %d niveles.';
   emTemplateNotFound = 'No se encontró la plantilla "%s".';
+  emWebSocketUnsupported = 'El motor %s no atiende rutas WebSocket (ruta "%s").';
+  emWebSocketNotConnected = 'El WebSocket no está conectado.';
+  emWebSocketRefused = 'El servidor rechazó el handshake WebSocket: %s';
+  emWebSocketBadURL = '"%s" no es una URL ws:// o wss://.';
+  emHubUnknownMethod = 'El hub no tiene el método "%s".';
+  emHubTimeout = 'El hub no respondió "%s" en %d ms.';
+  emHubError = 'El hub respondió "%s" con un error: %s';

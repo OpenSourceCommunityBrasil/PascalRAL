@@ -12,13 +12,13 @@ uses
   RALRoutes, RALPlugin, RALAuthBase, RALServer, RALClient, RALTools, 
   RALStream, RALThreadSafe, RALJson, RALMIMETypes, RALUrlCoder, 
   RALMultipartCoder, RALNetwork, RALBase64, RALHexadecimal, RALResponsePages, 
-  RALDynLibs, RALErrorCodes, RALExceptions, RALBSON, RALQuicFrame, RALCompress, RALCompressZLib, 
-  RALHashBase, RALHashes, RALMD5, RALSHA1, RALSHA2_32, RALSHA2_64, RALCRC32, 
-  RALCripto, RALCriptoAES, RALCriptoOpenSSL, RALOpenSSL, RALBigInt, RALASN1, 
-  RALRSA, RALX509, RALJWS, RALToken, RALSecurity, RALCORS, RALContent, 
-  RALConcurrency, RALResponseStream, RALSSE, RALRegex, RALRoutesAnon, 
-  RALKeyValueStore, RALSCRAM, RALBLAKE2, RALBlowfish, RALSalsa20, RALOTP, 
-  RALYAML;
+  RALDynLibs, RALErrorCodes, RALExceptions, RALBSON, RALQuicFrame, 
+  RALCompress, RALCompressZLib, RALHashBase, RALHashes, RALMD5, RALSHA1, 
+  RALSHA2_32, RALSHA2_64, RALCRC32, RALCripto, RALCriptoAES, RALCriptoOpenSSL, 
+  RALOpenSSL, RALBigInt, RALASN1, RALRSA, RALX509, RALJWS, RALToken, 
+  RALSecurity, RALCORS, RALContent, RALConcurrency, RALResponseStream, RALSSE, 
+  RALRegex, RALRoutesAnon, RALKeyValueStore, RALSCRAM, RALBLAKE2, RALBlowfish, 
+  RALSalsa20, RALOTP, RALYAML, RALUpgrade;
 
 implementation
 

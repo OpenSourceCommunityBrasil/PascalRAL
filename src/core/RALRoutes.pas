@@ -271,6 +271,7 @@ type
     FURIParams: TRALRouteParams;
     FValidationRules: TRALValidationRules;
     FVersions: StringRAL;
+    FWebSocket: boolean;
   protected
     procedure AssignTo(Dest: TPersistent); override;
     function GetDisplayName: string; override;
@@ -382,6 +383,10 @@ type
     { API versions the route answers ('1,2'; a leading 'v' is ignored); empty =
       the group's, or any. Another route of the same path may answer the others. }
     property Versions: StringRAL read FVersions write FVersions;
+    { The route answers a WebSocket handshake (RALModuleWebSocketPackage sets it
+      on its routes): a server whose engine cannot hand the connection over
+      refuses to start with it (TRALServer.SupportsWebSocket) }
+    property WebSocket: boolean read FWebSocket write FWebSocket default False;
   published
     /// Description of the route, for the API documentation.
     property Description: TStrings read FDescription write SetDescription;
@@ -1195,6 +1200,7 @@ begin
   vDest.OnAfterExecute := FOnAfterExecute;
   vDest.OnBeforeExecute := FOnBeforeExecute;
   vDest.Streaming := FStreaming;
+  vDest.WebSocket := FWebSocket;
   vDest.Callback := FCallback;
   vDest.Description.Assign(FDescription);
   vDest.Name := FName;

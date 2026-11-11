@@ -114,6 +114,9 @@ type
   protected
     /// Turns Nagle off on the accepted socket - see the implementation.
     function CreateConnection(Data: TSocketStream): TFPHTTPConnection; override;
+    { a response that can be told to write nothing more: the 101 of an upgrade
+      goes straight on the socket, and fcl-web must add nothing after it }
+    function CreateResponse(ARequest: TFPHTTPConnectionRequest): TFPHTTPConnectionResponse; override;
     { every TLS connection copies CertificateData into a socket handler of its
       own (CreateSSLSocketHandler): under the lock, so a certificate replaced
       meanwhile is copied whole, never half }
@@ -234,6 +237,9 @@ type
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
     class function SupportsLiveStream: boolean; override;
+    { True: an upgraded connection stays on the worker thread that answered its
+      handshake (the pool grows as needed), TLS included }
+    class function SupportsWebSocket: boolean; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
   published
     { Most connections open at once; past it a new connection is refused, no open
@@ -257,7 +263,7 @@ uses
   {$ENDIF}
   // CloseSocket for the handlers still open past the wait
   sockets,
-  RALMIMETypes;
+  RALMIMETypes, RALUpgrade;
 
 type
   /// What the stream writer needs of one request, kept for as long as its callback runs.
@@ -373,6 +379,139 @@ begin
   except
     Result := False;
   end;
+end;
+
+type
+  { fcl-web's response, silent once an upgrade wrote its own 101: what fcl-web
+    sends when the handler returns would land after the last WebSocket frame }
+  TRALfpHttpResponse = class(TFPHTTPConnectionResponse)
+  private
+    FSilent: boolean;
+  protected
+    procedure DoSendContent; override;
+    procedure DoSendHeaders(Headers: TStrings); override;
+  public
+    /// Nothing more goes out.
+    property Silent: boolean read FSilent write FSilent;
+  end;
+
+  { The connection of an upgraded request on fcl-web's socket stream (TLS
+    included): the worker thread of the request runs it until it ends }
+  TRALfpHttpUpgradeTransport = class(TRALBlockingUpgradeTransport)
+  private
+    /// The socket stream of the connection.
+    FSocket: TSocketStream;
+  protected
+    procedure DoClose; override;
+    function DoRead(var ABuffer; ACount: IntegerRAL): IntegerRAL; override;
+    function DoWrite(const ABuffer; ASize: IntegerRAL): boolean; override;
+    function WaitReadable(ATimeout: IntegerRAL): boolean; override;
+  public
+    /// A transport over ASocket, which fcl-web keeps and frees.
+    constructor Create(ASocket: TSocketStream);
+
+    procedure SetSendTimeout(AMilliseconds: IntegerRAL); override;
+  end;
+
+{ TRALfpHttpResponse }
+
+procedure TRALfpHttpResponse.DoSendContent;
+begin
+  if not FSilent then
+    inherited DoSendContent;
+end;
+
+procedure TRALfpHttpResponse.DoSendHeaders(Headers: TStrings);
+begin
+  if not FSilent then
+    inherited DoSendHeaders(Headers);
+end;
+
+{ TRALfpHttpUpgradeTransport }
+
+constructor TRALfpHttpUpgradeTransport.Create(ASocket: TSocketStream);
+begin
+  inherited Create;
+  FSocket := ASocket;
+end;
+
+procedure TRALfpHttpUpgradeTransport.DoClose;
+begin
+  // the read waiting on the socket returns; fcl-web closes the handle (2: both ways)
+  fpshutdown(FSocket.Handle, 2);
+end;
+
+function TRALfpHttpUpgradeTransport.DoRead(var ABuffer; ACount: IntegerRAL): IntegerRAL;
+begin
+  try
+    Result := FSocket.Read(ABuffer, ACount);
+  except
+    Result := -1;
+  end;
+end;
+
+function TRALfpHttpUpgradeTransport.DoWrite(const ABuffer; ASize: IntegerRAL): boolean;
+var
+  vData: PByte;
+  vSent: LongInt;
+begin
+  Result := False;
+  vData := @ABuffer;
+  while ASize > 0 do
+  begin
+    vSent := FSocket.Write(vData^, ASize);
+    if vSent <= 0 then
+      Exit;
+    Inc(vData, vSent);
+    Dec(ASize, vSent);
+  end;
+  Result := True;
+end;
+
+function TRALfpHttpUpgradeTransport.WaitReadable(ATimeout: IntegerRAL): boolean;
+var
+  vHandle: LongInt;
+  {$IFDEF RALWindows}
+  vSet: WinSock2.TFDSet;
+  vTime: WinSock2.TTimeVal;
+  {$ELSE}
+  vSet: TFDSet;
+  vTime: TTimeVal;
+  {$ENDIF}
+begin
+  vHandle := FSocket.Handle;
+  vTime.tv_sec := ATimeout div 1000;
+  vTime.tv_usec := (ATimeout mod 1000) * 1000;
+  { a whole TLS record is read at once (16 KB at most), so nothing waits inside
+    OpenSSL that the socket does not show }
+  {$IFDEF RALWindows}
+  WinSock2.FD_ZERO(vSet);
+  WinSock2.FD_SET(WinSock2.TSocket(vHandle), vSet);
+  Result := WinSock2.select(0, @vSet, nil, nil, @vTime) <> 0;
+  {$ELSE}
+  fpFD_ZERO(vSet);
+  fpFD_SET(vHandle, vSet);
+  Result := fpSelect(vHandle + 1, @vSet, nil, nil, @vTime) <> 0;
+  {$ENDIF}
+end;
+
+procedure TRALfpHttpUpgradeTransport.SetSendTimeout(AMilliseconds: IntegerRAL);
+var
+  vMs: LongInt;
+  {$IFNDEF RALWindows}
+  vTime: TTimeVal;
+  {$ENDIF}
+begin
+  if AMilliseconds <= 0 then
+    Exit;
+  vMs := AMilliseconds;
+  {$IFDEF RALWindows}
+  fpsetsockopt(FSocket.Handle, SOL_SOCKET, SO_SNDTIMEO, @vMs, SizeOf(vMs));
+  {$ELSE}
+  vTime.tv_sec := vMs div 1000;
+  vTime.tv_usec := (vMs mod 1000) * 1000;
+  fpsetsockopt(FSocket.Handle, SOL_SOCKET, SO_SNDTIMEO, @vTime, SizeOf(vTime));
+  {$ENDIF}
 end;
 
 {$IFDEF RALFPHTTPHANDLER}
@@ -645,6 +784,11 @@ begin
   Result := inherited CreateConnection(Data);
 end;
 
+function TRALfpHttpServerCore.CreateResponse(ARequest: TFPHTTPConnectionRequest): TFPHTTPConnectionResponse;
+begin
+  Result := TRALfpHttpResponse.Create(ARequest);
+end;
+
 {$IFDEF RALFPHTTPHANDLER}
 function TRALfpHttpServerCore.CreateConnectionHandler: TFPHTTPServerConnectionHandler;
 begin
@@ -795,10 +939,17 @@ end;
 procedure TRALfpHttpServerThread.SetPort(AValue: IntegerRAL);
 var
   vActive: boolean;
+  vDeadline: QWord;
 begin
   vActive := Self.Active;
   Active := False;
 
+  { fcl-web's Active turns False only once its accept loop, on its own thread,
+    saw the stop: a Port set right after Active := False raised "Operation not
+    allowed while server is active" now and then }
+  vDeadline := GetTickCount64 + 5000;
+  while FHttp.Active and (GetTickCount64 < vDeadline) do
+    Sleep(10);
   FHttp.Port := AValue;
 
   Active := vActive;
@@ -836,6 +987,9 @@ var
   {$IFDEF RALFPHTTPBYTES}
   vBody: TBytes;
   {$ENDIF}
+  vUpgrade: TRALUpgradeHandler;
+  vTransport: TRALfpHttpUpgradeTransport;
+  vHead: RawByteString;
 begin
   vContext := nil;
   vRequest := FParent.CreateRequest;
@@ -967,6 +1121,28 @@ begin
         holds it; fcl-web then finds the headers sent and adds nothing }
       if FParent.FinishStream(vRequest, vResponse) then
         Exit;
+      { a 101: the 101 goes out, and this worker serves the connection until it
+        ends; fcl-web then writes nothing and closes it }
+      vUpgrade := FParent.TakeUpgrade(vRequest, vResponse);
+      if vUpgrade <> nil then
+      begin
+        try
+          vHead := RawByteString(FParent.UpgradeHead(vResponse));
+          if AResponse is TRALfpHttpResponse then
+            TRALfpHttpResponse(AResponse).Silent := True;
+          ARequest.Connection.Socket.WriteBuffer(vHead[1], Length(vHead));
+          vTransport := TRALfpHttpUpgradeTransport.Create(ARequest.Connection.Socket);
+          try
+            vTransport.RemoteIP := vRequest.ClientInfo.IP;
+            vTransport.Run(vUpgrade);
+          finally
+            vTransport.Free;
+          end;
+        finally
+          vUpgrade.Release;
+        end;
+        Exit;
+      end;
       with vResponse do
       begin
         { the body first, handed to fcl-web at once so nothing can leak it:
@@ -1350,6 +1526,11 @@ begin
 end;
 
 class function TRALfpHttpServer.SupportsLiveStream: boolean;
+begin
+  Result := True;
+end;
+
+class function TRALfpHttpServer.SupportsWebSocket: boolean;
 begin
   Result := True;
 end;

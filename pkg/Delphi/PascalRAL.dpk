@@ -93,6 +93,7 @@ contains
   RALBlowfish in '..\..\src\crypto\RALBlowfish.pas',
   RALSalsa20 in '..\..\src\crypto\RALSalsa20.pas',
   RALOTP in '..\..\src\crypto\RALOTP.pas',
-  RALYAML in '..\..\src\common\RALYAML.pas';
+  RALYAML in '..\..\src\common\RALYAML.pas',
+  RALUpgrade in '..\..\src\core\RALUpgrade.pas';
 
 end.

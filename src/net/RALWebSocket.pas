@@ -1,7 +1,10 @@
-{ WebSocket (RFC 6455) as a channel over another one (RALNetPackage), client
-  and server: the handshake with an optional subprotocol (Protocol; MQTT
-  asks for "mqtt"), binary frames, the bytes as one stream that may cross
-  frame boundaries either way, ping/pong and closing with a status code. }
+{ WebSocket (RFC 6455) in two shapes. TRALWebSocketChannel is a channel over
+  another one (MQTT over WebSocket): the handshake with an optional subprotocol,
+  binary frames as one byte stream, ping/pong and closing with a status code.
+  TRALWSCodec is the frames alone, with no I/O, fed the bytes as they arrive
+  (WebSocket routes and TRALWebSocketClient): text and binary messages put back
+  together from their fragments, UTF-8 checked, control frames between fragments,
+  close codes, and permessage-deflate (RFC 7692) without context takeover. }
 unit RALWebSocket;
 
 {$I ..\core\PascalRAL.inc}
@@ -30,6 +33,30 @@ const
   RALWSCloseUnsupported = 1003;
   /// Message too big.
   RALWSCloseTooBig = 1009;
+  /// No status code in the close frame (never sent, RFC 6455 7.4.1).
+  RALWSCloseNoStatus = 1005;
+  /// The connection dropped without a close frame (never sent).
+  RALWSCloseAbnormal = 1006;
+  /// Data inconsistent with the type of the message (text that is not UTF-8).
+  RALWSCloseInvalidData = 1007;
+  /// Policy violation (a send queue that stays full).
+  RALWSClosePolicy = 1008;
+  /// The endpoint met a condition it did not expect.
+  RALWSCloseInternalError = 1011;
+  /// Opcode of a continuation frame.
+  RALWSOpContinuation = 0;
+  /// Opcode of a text frame.
+  RALWSOpText = 1;
+  /// Opcode of a binary frame.
+  RALWSOpBinary = 2;
+  /// Opcode of a close frame.
+  RALWSOpClose = 8;
+  /// Opcode of a ping frame.
+  RALWSOpPing = 9;
+  /// Opcode of a pong frame.
+  RALWSOpPong = 10;
+  /// Name of the compression extension (RFC 7692).
+  RALWSDeflateName = 'permessage-deflate';
 
 type
   /// Raised when the handshake or a frame breaks RFC 6455.
@@ -137,13 +164,152 @@ type
     property RequestHeaders: TStringList read FRequestHeaders;
   end;
 
+  /// Kind of a WebSocket message.
+  TRALWSMessageKind = (
+    /// Text, UTF-8.
+    wmkText,
+    /// Bytes.
+    wmkBinary);
+
+  TRALWSCodec = class;
+
+  /// A whole message arrived (fragments joined, decompressed, UTF-8 checked).
+  TRALWSOnMessage = procedure(ASender: TRALWSCodec; AKind: TRALWSMessageKind;
+    const AData: TBytes) of object;
+  /// A ping or a pong arrived, with its data.
+  TRALWSOnControl = procedure(ASender: TRALWSCodec; const AData: TBytes) of object;
+  { A close frame arrived: ACode is RALWSCloseNoStatus when it had none. Nothing
+    is parsed after it }
+  TRALWSOnClose = procedure(ASender: TRALWSCodec; ACode: Word;
+    const AReason: StringRAL) of object;
+
+  { The frames of RFC 6455 with no I/O: Feed takes the bytes as they arrive, in
+    pieces of any size, and fires an event per message, ping, pong and close;
+    the Encode functions give the bytes to send. A breach of the protocol raises
+    ERALWebSocketError with the close code it calls for. One thread at a time
+    feeds it; the Encode functions keep no state and may run on any thread }
+  TRALWSCodec = class
+  private
+    FCloseReceived: boolean;
+    FDeflate: boolean;
+    FFragmentSize: IntegerRAL;
+    /// Bytes fed and not yet parsed.
+    FIn: TBytes;
+    /// Start of the unparsed bytes in FIn.
+    FInHead: IntegerRAL;
+    /// End of the bytes in FIn.
+    FInTail: IntegerRAL;
+    FMaxMessage: Int64RAL;
+    /// Payload of the message being put together.
+    FMessage: TBytes;
+    /// The message being put together was compressed (RSV1 on its first frame).
+    FMessageCompressed: boolean;
+    /// Bytes in FMessage.
+    FMessageLen: IntegerRAL;
+    /// Opcode of the message being put together; 0 when none is.
+    FMessageOpcode: Byte;
+    FOnClose: TRALWSOnClose;
+    FOnMessage: TRALWSOnMessage;
+    FOnPing: TRALWSOnControl;
+    FOnPong: TRALWSOnControl;
+    FRole: TRALWSRole;
+
+    /// Adds ACount bytes of AData to the message being put together.
+    procedure AppendMessage(AData: PByte; ACount: IntegerRAL);
+    /// The last fragment arrived: decompresses, checks and hands the message out.
+    procedure EndMessage;
+    /// Decompresses ACount bytes of AData (a message of permessage-deflate).
+    function Inflate(AData: PByte; ACount: IntegerRAL): TBytes;
+    /// Takes every whole frame out of the bytes fed.
+    procedure ParseFrames;
+  public
+    /// A codec of ARole: a client masks what it sends, a server takes only masked frames.
+    constructor Create(ARole: TRALWSRole);
+
+    { The close frame of ACode, with AReason (cut to fit the 125 bytes of a control
+      frame); ACode 0 sends a close frame with no status }
+    function EncodeClose(ACode: Word; const AReason: StringRAL = ''): TBytes;
+    { One frame of AOpcode with ACount bytes of AData; AFinal sets FIN, ACompressed
+      RSV1. Masked when the role is client }
+    function EncodeFrame(AOpcode: Byte; AData: PByte; ACount: IntegerRAL;
+      AFinal: boolean = True; ACompressed: boolean = False): TBytes;
+    { The frames of a whole message: compressed when Deflate was agreed, cut into
+      fragments of FragmentSize bytes when it is above 0 }
+    function EncodeMessage(AKind: TRALWSMessageKind; AData: PByte;
+      ACount: IntegerRAL): TBytes;
+    { Takes ACount bytes of ABuffer that arrived; fires the events of every frame
+      they complete. Raises ERALWebSocketError (CloseCode says why) on a breach }
+    procedure Feed(const ABuffer; ACount: IntegerRAL);
+    /// Forgets what was fed: a new connection.
+    procedure Reset;
+
+    /// A close frame arrived; what follows it is ignored.
+    property CloseReceived: boolean read FCloseReceived;
+    { permessage-deflate was agreed in the handshake: RSV1 marks compressed
+      messages, and EncodeMessage compresses }
+    property Deflate: boolean read FDeflate write FDeflate;
+    /// Largest fragment EncodeMessage sends; 0 sends each message in one frame.
+    property FragmentSize: IntegerRAL read FFragmentSize write FFragmentSize;
+    { Largest message accepted, in bytes, compressed or not; past it the
+      connection fails with 1009. 0 is no limit }
+    property MaxMessage: Int64RAL read FMaxMessage write FMaxMessage;
+    /// Fired by a close frame.
+    property OnClose: TRALWSOnClose read FOnClose write FOnClose;
+    /// Fired by each whole message.
+    property OnMessage: TRALWSOnMessage read FOnMessage write FOnMessage;
+    /// Fired by a ping; the owner answers it (EncodeFrame RALWSOpPong).
+    property OnPing: TRALWSOnControl read FOnPing write FOnPing;
+    /// Fired by a pong.
+    property OnPong: TRALWSOnControl read FOnPong write FOnPong;
+    /// Client or server.
+    property Role: TRALWSRole read FRole;
+  end;
+
+  /// A message received, on a WebSocket route or by TRALWebSocketClient.
+  TRALWebSocketMessage = class
+  private
+    FData: TBytes;
+    FKind: TRALWSMessageKind;
+  public
+    /// A message of AKind with AData.
+    constructor Create(AKind: TRALWSMessageKind; const AData: TBytes);
+
+    /// True for a text message.
+    function IsText: boolean;
+    /// The message as text (UTF-8).
+    function Text: StringRAL;
+
+    /// The bytes of the message.
+    property Data: TBytes read FData;
+    /// Text or binary.
+    property Kind: TRALWSMessageKind read FKind;
+  end;
+
 /// Sec-WebSocket-Accept for AKey (RFC 6455 4.2.2).
 function RALWSAccept(const AKey: StringRAL): StringRAL;
+{ Server side of permessage-deflate: True when one of the offers in AOffers (the
+  Sec-WebSocket-Extensions of the request) can be taken, with the answer to send
+  in AAnswer. RAL compresses each message alone, so the answer always asks both
+  sides for no context takeover }
+function RALWSAcceptDeflate(const AOffers: StringRAL; out AAnswer: StringRAL): boolean;
+{ Client side of permessage-deflate: True when AAnswer (the
+  Sec-WebSocket-Extensions of the 101) agreed to RALWSDeflateOffer, False when it
+  is empty; raises ERALWebSocketError when it answered something else }
+function RALWSCheckDeflateAnswer(const AAnswer: StringRAL): boolean;
+/// The permessage-deflate offer of a client: no context takeover either way.
+function RALWSDeflateOffer: StringRAL;
+{ True when ACode may travel in a close frame (RFC 6455 7.4: 1000-1003,
+  1007-1014 and 3000-4999) }
+function RALWSValidCloseCode(ACode: Word): boolean;
+/// Text (UTF-8) as the bytes of a message.
+function RALWSTextBytes(const AText: StringRAL): TBytes;
+/// True when the ACount bytes of AData are well-formed UTF-8 (RFC 3629).
+function RALWSValidUTF8(AData: PByte; ACount: IntegerRAL): boolean;
 
 implementation
 
 uses
-  RALSHA1, RALBase64, RALTools;
+  RALSHA1, RALBase64, RALTools, RALCompress, RALCompressZLib;
 
 const
   /// The GUID of the Sec-WebSocket-Accept computation (RFC 6455).
@@ -792,6 +958,632 @@ begin
   QueueFrame(2, @ABuffer, ACount);
   FlushOut;
   Result := ACount;
+end;
+
+
+type
+  { A memory stream that refuses to grow past a size: a compressed message
+    cannot be inflated without a limit (a zip bomb) }
+  TRALWSCappedStream = class(TMemoryStream)
+  private
+    /// Largest size; 0 is no limit.
+    FLimit: Int64RAL;
+  public
+    function Write(const ABuffer; ACount: Longint): Longint; override;
+  end;
+
+function TRALWSCappedStream.Write(const ABuffer; ACount: Longint): Longint;
+begin
+  if (FLimit > 0) and (Position + ACount > FLimit) then
+    raise ERALWebSocketError.CreateClose(RALWSCloseTooBig,
+      Format(emWSBadFrame, ['size']));
+  Result := inherited Write(ABuffer, ACount);
+end;
+
+/// Raises ERALWebSocketError for a frame that breaks the protocol.
+procedure CodecError(ACode: Word; const AReason: string);
+begin
+  raise ERALWebSocketError.CreateClose(ACode, Format(emWSBadFrame, [AReason]));
+end;
+
+function RALWSValidUTF8(AData: PByte; ACount: IntegerRAL): boolean;
+var
+  vInt, vNeed: IntegerRAL;
+  vByte, vLow, vHigh: Byte;
+begin
+  Result := False;
+  vInt := 0;
+  while vInt < ACount do
+  begin
+    vByte := AData[vInt];
+    if vByte < $80 then
+    begin
+      Inc(vInt);
+      Continue;
+    end;
+    // the range of the second byte rules out overlongs, surrogates and > U+10FFFF
+    vLow := $80;
+    vHigh := $BF;
+    if (vByte >= $C2) and (vByte <= $DF) then
+      vNeed := 1
+    else if (vByte >= $E0) and (vByte <= $EF) then
+    begin
+      vNeed := 2;
+      if vByte = $E0 then
+        vLow := $A0
+      else if vByte = $ED then
+        vHigh := $9F;
+    end
+    else if (vByte >= $F0) and (vByte <= $F4) then
+    begin
+      vNeed := 3;
+      if vByte = $F0 then
+        vLow := $90
+      else if vByte = $F4 then
+        vHigh := $8F;
+    end
+    else
+      Exit;
+    if vInt + vNeed >= ACount then
+      Exit;
+    if (AData[vInt + 1] < vLow) or (AData[vInt + 1] > vHigh) then
+      Exit;
+    if (vNeed >= 2) and ((AData[vInt + 2] and $C0) <> $80) then
+      Exit;
+    if (vNeed = 3) and ((AData[vInt + 3] and $C0) <> $80) then
+      Exit;
+    Inc(vInt, vNeed + 1);
+  end;
+  Result := True;
+end;
+
+function RALWSValidCloseCode(ACode: Word): boolean;
+begin
+  Result := ((ACode >= 1000) and (ACode <= 1003)) or
+            ((ACode >= 1007) and (ACode <= 1014)) or
+            ((ACode >= 3000) and (ACode <= 4999));
+end;
+
+/// The parameters of one extension offer ("name; a; b=1"), trimmed, name first.
+procedure SplitExtension(const AText: string; AParts: TStrings);
+var
+  vInt: IntegerRAL;
+begin
+  AParts.Clear;
+  AParts.Delimiter := ';';
+  AParts.StrictDelimiter := True;
+  AParts.DelimitedText := AText;
+  for vInt := 0 to AParts.Count - 1 do
+    AParts[vInt] := Trim(AParts[vInt]);
+end;
+
+/// The value of the parameter "name=value" or "name" in AParts; '' when absent.
+function ExtensionParam(AParts: TStrings; const AName: string; out AFound: boolean): string;
+var
+  vInt, vPos: IntegerRAL;
+  vName: string;
+begin
+  Result := '';
+  AFound := False;
+  for vInt := 1 to AParts.Count - 1 do
+  begin
+    vPos := Pos('=', AParts[vInt]);
+    if vPos > 0 then
+      vName := Trim(Copy(AParts[vInt], 1, vPos - 1))
+    else
+      vName := AParts[vInt];
+    if SameText(vName, AName) then
+    begin
+      AFound := True;
+      if vPos > 0 then
+        Result := StringReplace(Trim(Copy(AParts[vInt], vPos + 1, MaxInt)), '"', '',
+          [rfReplaceAll]);
+      Exit;
+    end;
+  end;
+end;
+
+function RALWSAcceptDeflate(const AOffers: StringRAL; out AAnswer: StringRAL): boolean;
+var
+  vOffers, vParts: TStringList;
+  vInt, vParam, vBits: IntegerRAL;
+  vFound, vGood: boolean;
+  vValue, vName: string;
+begin
+  Result := False;
+  AAnswer := '';
+  vOffers := TStringList.Create;
+  vParts := TStringList.Create;
+  try
+    vOffers.Delimiter := ',';
+    vOffers.StrictDelimiter := True;
+    vOffers.DelimitedText := string(AOffers);
+    for vInt := 0 to vOffers.Count - 1 do
+    begin
+      SplitExtension(vOffers[vInt], vParts);
+      if (vParts.Count = 0) or not SameText(vParts[0], RALWSDeflateName) then
+        Continue;
+      vGood := True;
+      for vParam := 1 to vParts.Count - 1 do
+      begin
+        vName := vParts[vParam];
+        if Pos('=', vName) > 0 then
+          vName := Trim(Copy(vName, 1, Pos('=', vName) - 1));
+        if not (SameText(vName, 'server_no_context_takeover') or
+                SameText(vName, 'client_no_context_takeover') or
+                SameText(vName, 'server_max_window_bits') or
+                SameText(vName, 'client_max_window_bits')) then
+          vGood := False;
+      end;
+      // RAL compresses with a window of 4 KB (12 bits): a smaller one cannot be kept
+      vValue := ExtensionParam(vParts, 'server_max_window_bits', vFound);
+      if vFound then
+      begin
+        vBits := StrToIntDef(vValue, 0);
+        if (vBits < 12) or (vBits > 15) then
+          vGood := False;
+      end;
+      if not vGood then
+        Continue;
+      AAnswer := RALWSDeflateName + '; server_no_context_takeover; client_no_context_takeover';
+      Result := True;
+      Exit;
+    end;
+  finally
+    vParts.Free;
+    vOffers.Free;
+  end;
+end;
+
+function RALWSDeflateOffer: StringRAL;
+begin
+  Result := RALWSDeflateName + '; server_no_context_takeover; client_no_context_takeover';
+end;
+
+function RALWSCheckDeflateAnswer(const AAnswer: StringRAL): boolean;
+var
+  vParts: TStringList;
+  vFound: boolean;
+begin
+  Result := False;
+  if Trim(string(AAnswer)) = '' then
+    Exit;
+  vParts := TStringList.Create;
+  try
+    SplitExtension(string(AAnswer), vParts);
+    if (vParts.Count = 0) or not SameText(vParts[0], RALWSDeflateName) or
+       (Pos(',', string(AAnswer)) > 0) then
+      HandshakeError('Sec-WebSocket-Extensions');
+    // the server must keep no context, or a message alone cannot be inflated
+    ExtensionParam(vParts, 'server_no_context_takeover', vFound);
+    if not vFound then
+      HandshakeError('server_no_context_takeover');
+  finally
+    vParts.Free;
+  end;
+  Result := True;
+end;
+
+{ TRALWSCodec }
+
+constructor TRALWSCodec.Create(ARole: TRALWSRole);
+begin
+  inherited Create;
+  FRole := ARole;
+end;
+
+procedure TRALWSCodec.Reset;
+begin
+  FIn := nil;
+  FInHead := 0;
+  FInTail := 0;
+  FMessage := nil;
+  FMessageLen := 0;
+  FMessageOpcode := 0;
+  FMessageCompressed := False;
+  FCloseReceived := False;
+end;
+
+procedure TRALWSCodec.AppendMessage(AData: PByte; ACount: IntegerRAL);
+begin
+  if ACount <= 0 then
+    Exit;
+  if (FMaxMessage > 0) and (Int64RAL(FMessageLen) + ACount > FMaxMessage) then
+    CodecError(RALWSCloseTooBig, 'size');
+  if FMessageLen + ACount > Length(FMessage) then
+    SetLength(FMessage, (FMessageLen + ACount) * 2 + 256);
+  Move(AData^, FMessage[FMessageLen], ACount);
+  Inc(FMessageLen, ACount);
+end;
+
+function TRALWSCodec.Inflate(AData: PByte; ACount: IntegerRAL): TBytes;
+const
+  cTail: array[0..3] of Byte = (0, 0, $FF, $FF);
+var
+  vCoder: TRALStreamCoder;
+  vOut: TRALWSCappedStream;
+begin
+  vCoder := RALCreateStreamDecoder(ctDeflate);
+  if vCoder = nil then
+    CodecError(RALWSCloseInternalError, 'deflate');
+  vOut := TRALWSCappedStream.Create;
+  try
+    vOut.FLimit := FMaxMessage;
+    try
+      // the 4 bytes RFC 7692 7.2.2 has the sender drop, and the receiver put back
+      if ACount > 0 then
+        vCoder.Update(AData^, ACount, vOut);
+      vCoder.Update(cTail, SizeOf(cTail), vOut);
+    except
+      on e: ERALWebSocketError do
+        raise;
+      on e: Exception do
+        CodecError(RALWSCloseInvalidData, 'deflate');
+    end;
+    SetLength(Result, vOut.Size);
+    if vOut.Size > 0 then
+      Move(vOut.Memory^, Result[0], vOut.Size);
+  finally
+    vOut.Free;
+    vCoder.Free;
+  end;
+end;
+
+procedure TRALWSCodec.EndMessage;
+var
+  vData: TBytes;
+  vKind: TRALWSMessageKind;
+begin
+  if FMessageCompressed then
+    vData := Inflate(PByte(FMessage), FMessageLen)
+  else
+  begin
+    SetLength(vData, FMessageLen);
+    if FMessageLen > 0 then
+      Move(FMessage[0], vData[0], FMessageLen);
+  end;
+  if FMessageOpcode = RALWSOpText then
+    vKind := wmkText
+  else
+    vKind := wmkBinary;
+  FMessageOpcode := 0;
+  FMessageLen := 0;
+  FMessageCompressed := False;
+  // a large buffer is not kept between messages
+  if Length(FMessage) > 65536 then
+    FMessage := nil;
+  if (vKind = wmkText) and not RALWSValidUTF8(PByte(vData), Length(vData)) then
+    CodecError(RALWSCloseInvalidData, 'UTF-8');
+  if Assigned(FOnMessage) then
+    FOnMessage(Self, vKind, vData);
+end;
+
+procedure TRALWSCodec.Feed(const ABuffer; ACount: IntegerRAL);
+begin
+  if (ACount <= 0) or FCloseReceived then
+    Exit;
+  if FInHead > 0 then
+  begin
+    if FInTail > FInHead then
+      Move(FIn[FInHead], FIn[0], FInTail - FInHead);
+    Dec(FInTail, FInHead);
+    FInHead := 0;
+  end;
+  if FInTail + ACount > Length(FIn) then
+    SetLength(FIn, (FInTail + ACount) * 2 + 1024);
+  Move(ABuffer, FIn[FInTail], ACount);
+  Inc(FInTail, ACount);
+  ParseFrames;
+  // what is left is a part of a frame: a large buffer goes once it is used up
+  if (FInHead = FInTail) and (Length(FIn) > 65536) then
+  begin
+    FIn := nil;
+    FInHead := 0;
+    FInTail := 0;
+  end;
+end;
+
+procedure TRALWSCodec.ParseFrames;
+var
+  vAvail, vHeader, vInt, vSize: IntegerRAL;
+  vFirst, vSecond, vOpcode: Byte;
+  vLen: Int64RAL;
+  vMasked, vFinal, vCompressed: boolean;
+  vMask: array[0..3] of Byte;
+  vData: PByte;
+  vBytes: TBytes;
+  vCode: Word;
+  vReason: StringRAL;
+begin
+  while not FCloseReceived do
+  begin
+    vAvail := FInTail - FInHead;
+    if vAvail < 2 then
+      Exit;
+    vFirst := FIn[FInHead];
+    vSecond := FIn[FInHead + 1];
+    vFinal := (vFirst and $80) <> 0;
+    vCompressed := (vFirst and $40) <> 0;
+    vOpcode := vFirst and $0F;
+    // RSV2 and RSV3: no extension uses them; RSV1 only for permessage-deflate
+    if (vFirst and $30) <> 0 then
+      CodecError(RALWSCloseProtocolError, 'RSV');
+    if vCompressed and ((not FDeflate) or (vOpcode = RALWSOpContinuation) or
+       (vOpcode >= RALWSOpClose)) then
+      CodecError(RALWSCloseProtocolError, 'RSV1');
+    if not (vOpcode in [RALWSOpContinuation, RALWSOpText, RALWSOpBinary,
+       RALWSOpClose, RALWSOpPing, RALWSOpPong]) then
+      CodecError(RALWSCloseProtocolError, 'opcode');
+    vMasked := (vSecond and $80) <> 0;
+    // a server takes only masked frames, a client only unmasked ones (5.1)
+    if vMasked <> (FRole = mwrServer) then
+      CodecError(RALWSCloseProtocolError, 'mask');
+    vLen := vSecond and $7F;
+    vHeader := 2;
+    if vLen = 126 then
+    begin
+      if vAvail < 4 then
+        Exit;
+      vLen := (Int64RAL(FIn[FInHead + 2]) shl 8) or FIn[FInHead + 3];
+      vHeader := 4;
+    end
+    else if vLen = 127 then
+    begin
+      if vAvail < 10 then
+        Exit;
+      // the most significant bit must be 0 (5.2)
+      if (FIn[FInHead + 2] and $80) <> 0 then
+        CodecError(RALWSCloseProtocolError, 'length');
+      vLen := 0;
+      for vInt := 2 to 9 do
+        vLen := (vLen shl 8) or FIn[FInHead + vInt];
+      vHeader := 10;
+    end;
+    if vOpcode >= RALWSOpClose then
+    begin
+      // control frames: whole and small (5.5)
+      if (not vFinal) or (vLen > 125) then
+        CodecError(RALWSCloseProtocolError, 'control');
+    end
+    else
+    begin
+      if (vOpcode = RALWSOpContinuation) and (FMessageOpcode = 0) then
+        CodecError(RALWSCloseProtocolError, 'continuation');
+      if (vOpcode <> RALWSOpContinuation) and (FMessageOpcode <> 0) then
+        CodecError(RALWSCloseProtocolError, 'fragment');
+      if (FMaxMessage > 0) and (Int64RAL(FMessageLen) + vLen > FMaxMessage) then
+        CodecError(RALWSCloseTooBig, 'size');
+    end;
+    if vLen > MaxInt - 1024 then
+      CodecError(RALWSCloseTooBig, 'size');
+    if vMasked then
+    begin
+      if vAvail < vHeader + 4 then
+        Exit;
+      Move(FIn[FInHead + vHeader], vMask[0], 4);
+      Inc(vHeader, 4);
+    end;
+    if vAvail < vHeader + vLen then
+      Exit;
+
+    vSize := IntegerRAL(vLen);
+    vData := @FIn[FInHead + vHeader];
+    if vMasked then
+      for vInt := 0 to vSize - 1 do
+        vData[vInt] := vData[vInt] xor vMask[vInt and 3];
+    Inc(FInHead, vHeader + vSize);
+
+    case vOpcode of
+      RALWSOpText, RALWSOpBinary, RALWSOpContinuation:
+      begin
+        if vOpcode <> RALWSOpContinuation then
+        begin
+          FMessageOpcode := vOpcode;
+          FMessageCompressed := vCompressed;
+        end;
+        AppendMessage(vData, vSize);
+        if vFinal then
+          EndMessage;
+      end;
+      RALWSOpClose:
+      begin
+        if vSize = 1 then
+          CodecError(RALWSCloseProtocolError, 'close');
+        vCode := RALWSCloseNoStatus;
+        vReason := '';
+        if vSize >= 2 then
+        begin
+          vCode := (Word(vData[0]) shl 8) or vData[1];
+          if not RALWSValidCloseCode(vCode) then
+            CodecError(RALWSCloseProtocolError, 'close code');
+          if not RALWSValidUTF8(@vData[2], vSize - 2) then
+            CodecError(RALWSCloseInvalidData, 'UTF-8');
+          SetString(vReason, PAnsiChar(@vData[2]), vSize - 2);
+        end;
+        FCloseReceived := True;
+        if Assigned(FOnClose) then
+          FOnClose(Self, vCode, vReason);
+        Exit;
+      end;
+      RALWSOpPing, RALWSOpPong:
+      begin
+        SetLength(vBytes, vSize);
+        if vSize > 0 then
+          Move(vData^, vBytes[0], vSize);
+        if (vOpcode = RALWSOpPing) and Assigned(FOnPing) then
+          FOnPing(Self, vBytes)
+        else if (vOpcode = RALWSOpPong) and Assigned(FOnPong) then
+          FOnPong(Self, vBytes);
+      end;
+    end;
+  end;
+end;
+
+function TRALWSCodec.EncodeFrame(AOpcode: Byte; AData: PByte; ACount: IntegerRAL;
+  AFinal, ACompressed: boolean): TBytes;
+var
+  vLen, vInt: IntegerRAL;
+  vMask: TBytes;
+begin
+  if ACount < 0 then
+    ACount := 0;
+  vLen := 2;
+  if ACount >= 65536 then
+    vLen := 10
+  else if ACount >= 126 then
+    vLen := 4;
+  if FRole = mwrClient then
+    Inc(vLen, 4);
+  SetLength(Result, vLen + ACount);
+  Result[0] := AOpcode and $0F;
+  if AFinal then
+    Result[0] := Result[0] or $80;
+  if ACompressed then
+    Result[0] := Result[0] or $40;
+  if ACount >= 65536 then
+  begin
+    Result[1] := 127;
+    for vInt := 0 to 3 do
+      Result[2 + vInt] := 0;
+    Result[6] := Byte(ACount shr 24);
+    Result[7] := Byte(ACount shr 16);
+    Result[8] := Byte(ACount shr 8);
+    Result[9] := Byte(ACount);
+  end
+  else if ACount >= 126 then
+  begin
+    Result[1] := 126;
+    Result[2] := Byte(ACount shr 8);
+    Result[3] := Byte(ACount);
+  end
+  else
+    Result[1] := ACount;
+  if ACount > 0 then
+    Move(AData^, Result[vLen], ACount);
+  if FRole = mwrClient then
+  begin
+    Result[1] := Result[1] or $80;
+    vMask := RandomBytes(4);
+    Move(vMask[0], Result[vLen - 4], 4);
+    for vInt := 0 to ACount - 1 do
+      Result[vLen + vInt] := Result[vLen + vInt] xor vMask[vInt and 3];
+  end;
+end;
+
+function TRALWSCodec.EncodeClose(ACode: Word; const AReason: StringRAL): TBytes;
+var
+  vData: TBytes;
+  vLen: IntegerRAL;
+begin
+  if ACode = 0 then
+  begin
+    Result := EncodeFrame(RALWSOpClose, nil, 0);
+    Exit;
+  end;
+  vLen := Length(AReason);
+  if vLen > 123 then
+    vLen := 123;
+  SetLength(vData, 2 + vLen);
+  vData[0] := Byte(ACode shr 8);
+  vData[1] := Byte(ACode);
+  if vLen > 0 then
+    Move(Pointer(AReason)^, vData[2], vLen);
+  Result := EncodeFrame(RALWSOpClose, PByte(vData), Length(vData));
+end;
+
+function TRALWSCodec.EncodeMessage(AKind: TRALWSMessageKind; AData: PByte;
+  ACount: IntegerRAL): TBytes;
+var
+  vCoder: TRALStreamCoder;
+  vOut: TMemoryStream;
+  vPayload: TBytes;
+  vData: PByte;
+  vSize, vPos, vPiece, vTotal: IntegerRAL;
+  vOpcode: Byte;
+  vFrame: TBytes;
+  vCompressed: boolean;
+begin
+  vData := AData;
+  vSize := ACount;
+  vCompressed := False;
+  // an empty message goes as it is: RSV1 is the sender's choice per message
+  if FDeflate and (ACount > 0) then
+  begin
+    vCoder := RALCreateStreamEncoder(ctDeflate);
+    if vCoder <> nil then
+    begin
+      vOut := TMemoryStream.Create;
+      try
+        vCoder.Update(AData^, ACount, vOut);
+        SetLength(vPayload, vOut.Size);
+        if vOut.Size > 0 then
+          Move(vOut.Memory^, vPayload[0], vOut.Size);
+      finally
+        vOut.Free;
+        vCoder.Free;
+      end;
+      // the sync flush ends with 00 00 FF FF, which is not sent (7.2.1)
+      vSize := Length(vPayload);
+      if (vSize >= 4) and (vPayload[vSize - 4] = 0) and (vPayload[vSize - 3] = 0) and
+         (vPayload[vSize - 2] = $FF) and (vPayload[vSize - 1] = $FF) then
+        Dec(vSize, 4);
+      vData := PByte(vPayload);
+      vCompressed := True;
+    end;
+  end;
+  if AKind = wmkText then
+    vOpcode := RALWSOpText
+  else
+    vOpcode := RALWSOpBinary;
+  if (FFragmentSize <= 0) or (vSize <= FFragmentSize) then
+  begin
+    Result := EncodeFrame(vOpcode, vData, vSize, True, vCompressed);
+    Exit;
+  end;
+  Result := nil;
+  vTotal := 0;
+  vPos := 0;
+  while vPos < vSize do
+  begin
+    vPiece := vSize - vPos;
+    if vPiece > FFragmentSize then
+      vPiece := FFragmentSize;
+    vFrame := EncodeFrame(vOpcode, @vData[vPos], vPiece, vPos + vPiece >= vSize,
+      vCompressed and (vPos = 0));
+    SetLength(Result, vTotal + Length(vFrame));
+    Move(vFrame[0], Result[vTotal], Length(vFrame));
+    Inc(vTotal, Length(vFrame));
+    Inc(vPos, vPiece);
+    vOpcode := RALWSOpContinuation;
+  end;
+end;
+
+function RALWSTextBytes(const AText: StringRAL): TBytes;
+begin
+  SetLength(Result, Length(AText));
+  if AText <> '' then
+    Move(Pointer(AText)^, Result[0], Length(AText));
+end;
+
+{ TRALWebSocketMessage }
+
+constructor TRALWebSocketMessage.Create(AKind: TRALWSMessageKind; const AData: TBytes);
+begin
+  inherited Create;
+  FKind := AKind;
+  FData := AData;
+end;
+
+function TRALWebSocketMessage.IsText: boolean;
+begin
+  Result := FKind = wmkText;
+end;
+
+function TRALWebSocketMessage.Text: StringRAL;
+begin
+  SetLength(Result, Length(FData));
+  if Length(FData) > 0 then
+    Move(FData[0], Pointer(Result)^, Length(FData));
 end;
 
 end.

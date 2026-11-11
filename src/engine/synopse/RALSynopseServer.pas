@@ -19,7 +19,7 @@ uses
   {$ENDIF}
   RALExceptions, RALErrorCodes, RALServer, RALTypes, RALConsts, RALMIMETypes, RALRequest, RALResponse,
   RALParams, RALTools, RALBase64, RALRSA, RALX509, RALNetwork, RALStream,
-  RALResponseStream, RALCustomObjects;
+  RALResponseStream, RALCustomObjects, RALUpgrade, RALRoutes;
 
 type
 
@@ -87,6 +87,14 @@ type
     procedure FillHeaders(AResponse: TRALResponse; AContext: THttpServerRequestAbstract);
     function GetSSL: TRALSynopseSSL;
     function IPv6IsImplemented: boolean; override;
+    { True when APath (a request line's URL) is a WebSocket route of a linked
+      module: smAsync runs the pipeline of those while it decodes the headers }
+    function IsWebSocketPath(const APath: StringRAL): boolean;
+    { An answer of 101: the threads mode serves the connection here until it
+      ends; the async mode hands the handler to its connection (see
+      TRALAsyncConnection). Releases AUpgrade or passes it on }
+    function RunUpgrade(ARequest: TRALRequest; AResponse: TRALResponse;
+      AUpgrade: TRALUpgradeHandler): Cardinal;
     procedure SetActive(const AValue: boolean); override;
     procedure SetMaxConnections(const AValue: IntegerRAL);
     procedure SetMode(const AValue: TRALSynopseMode);
@@ -118,9 +126,16 @@ type
       takes effect on the next handshake with the server running }
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
     class function SupportsLiveStream: boolean; override;
+    { True: smThreads keeps an upgraded connection on its thread, smAsync on its
+      event loop; see WebSocketAvailable }
+    class function SupportsWebSocket: boolean; override;
     { tpPFXFile in the socket modes (one file that SChannel and OpenSSL both
       read), tpWindowsStore in smHttpSys. }
     function TLSProvisioning: TRALTLSProvisioning; override;
+    { False in smHttpSys: http.sys keeps the socket, and its own WebSocket API
+      (another URL registration, outside the request pipeline, no deflate) is not
+      used }
+    function WebSocketAvailable: boolean; override;
   published
     { smHttpSys only: the host part of the URL ('*', '+' or 'localhost'), the same
       text the netsh reservation used. }
@@ -166,6 +181,9 @@ type
     the server is created as a plain THttpAsyncServer again }
   TRALAsyncHttpServer = class(THttpAsyncServer)
   public
+    /// The RAL server this one serves.
+    RALServer: TRALSynopseServer;
+
     { the parameter names are not the ancestor's: FPC refuses a parameter
       named after a property of the class, ProcessName }
     constructor Create(const APort: RawUtf8; const AOnStart, AOnStop: TOnNotifyThread;
@@ -174,13 +192,27 @@ type
       ALog: TSynLogClass = nil); override;
   end;
 
+  TRALAsyncUpgradeTransport = class;
+
   /// One connection of TRALAsyncHttpServer.
   TRALAsyncConnection = class(THttpAsyncServerConnection)
   protected
+    /// Transport of an upgraded connection; nil otherwise.
+    FTransport: TRALAsyncUpgradeTransport;
+    /// Handler of an upgraded connection; nil otherwise.
+    FUpgrade: TRALUpgradeHandler;
+
     function AfterWrite: TPollAsyncSocketOnReadWrite; override;
+    { a WebSocket handshake of a WebSocket route: the pipeline runs here, and a
+      101 switches the connection to the handler (the bytes then go to it) }
+    function DecodeHeaders: integer; override;
+    /// The handler hears that the connection ended, and lets it go.
+    procedure EndUpgrade;
     { what a request starts with, where THttpRequestContext.Reset leaves it
       otherwise }
     procedure ResetRequestDefaults;
+    procedure OnClose; override;
+    function OnRead: TPollAsyncSocketOnReadWrite; override;
   public
     procedure Recycle(const aRemoteIP: TNetAddr); override;
   end;
@@ -191,6 +223,151 @@ type
     function ConnectionCreate(aSocket: TNetSocket; const aRemoteIp: TNetAddr;
       out aConnection: TAsyncConnection): boolean; override;
   end;
+
+  { An upgraded connection of the async mode: writes go to mORMot2's queue,
+    the bytes that arrive are pushed by TRALAsyncConnection.OnRead }
+  TRALAsyncUpgradeTransport = class(TRALUpgradeTransport)
+  private
+    /// The connection; nil once it closed.
+    FConnection: TRALAsyncConnection;
+  protected
+    procedure DoClose; override;
+    function DoWrite(const ABuffer; ASize: IntegerRAL): boolean; override;
+  public
+    /// A transport over AConnection.
+    constructor Create(AConnection: TRALAsyncConnection);
+
+    function PendingBytes: Int64RAL; override;
+  end;
+
+  { THttpServer - the smThreads mode - that keeps the socket of the request it
+    processes where OnCommandProcess (same thread) finds it for an upgrade }
+  TRALThreadHttpServer = class(THttpServer)
+  protected
+    procedure Process(ClientSock: THttpServerSocket;
+      ConnectionID: THttpServerConnectionID; ConnectionThread: TSynThread); override;
+  end;
+
+  { An upgraded connection of the threads mode, on mORMot2's socket (TLS
+    included): the thread of the connection runs it until it ends }
+  TRALThreadUpgradeTransport = class(TRALBlockingUpgradeTransport)
+  private
+    /// The socket of the connection.
+    FSock: THttpServerSocket;
+  protected
+    procedure DoClose; override;
+    function DoRead(var ABuffer; ACount: IntegerRAL): IntegerRAL; override;
+    function DoWrite(const ABuffer; ASize: IntegerRAL): boolean; override;
+    function WaitReadable(ATimeout: IntegerRAL): boolean; override;
+  public
+    /// A transport over ASock, which mORMot2 keeps and frees.
+    constructor Create(ASock: THttpServerSocket);
+
+    procedure SetSendTimeout(AMilliseconds: IntegerRAL); override;
+  end;
+
+threadvar
+  /// The socket of the request the threads mode processes on this thread.
+  GRALThreadSock: THttpServerSocket;
+  /// The async mode runs a handshake on this thread: RunUpgrade hands over.
+  GRALAsyncCapture: boolean;
+  /// What RunUpgrade handed over in the async mode.
+  GRALAsyncHandler: TRALUpgradeHandler;
+  /// The 101 RunUpgrade built in the async mode.
+  GRALAsyncHead: RawByteString;
+
+{ TRALThreadHttpServer }
+
+procedure TRALThreadHttpServer.Process(ClientSock: THttpServerSocket;
+  ConnectionID: THttpServerConnectionID; ConnectionThread: TSynThread);
+begin
+  GRALThreadSock := ClientSock;
+  try
+    inherited Process(ClientSock, ConnectionID, ConnectionThread);
+  finally
+    GRALThreadSock := nil;
+  end;
+end;
+
+{ TRALThreadUpgradeTransport }
+
+constructor TRALThreadUpgradeTransport.Create(ASock: THttpServerSocket);
+begin
+  inherited Create;
+  FSock := ASock;
+end;
+
+procedure TRALThreadUpgradeTransport.DoClose;
+begin
+  // the wait of the thread returns; mORMot2 closes the socket itself
+  if FSock.Sock <> nil then
+    FSock.Sock^.RawShutdown;
+end;
+
+function TRALThreadUpgradeTransport.DoRead(var ABuffer; ACount: IntegerRAL): IntegerRAL;
+var
+  vLen: integer;
+begin
+  // what mORMot2 already buffered while it read the headers goes first
+  vLen := FSock.SockInPending(-1);
+  if vLen > 0 then
+  begin
+    if vLen > ACount then
+      vLen := ACount;
+    Result := FSock.SockInRead(@ABuffer, vLen, False);
+    Exit;
+  end;
+  vLen := ACount;
+  if FSock.TrySockRecv(@ABuffer, vLen, True) and (vLen > 0) then
+    Result := vLen
+  else
+    Result := -1;
+end;
+
+function TRALThreadUpgradeTransport.DoWrite(const ABuffer; ASize: IntegerRAL): boolean;
+begin
+  Result := FSock.TrySndLow(@ABuffer, ASize);
+end;
+
+function TRALThreadUpgradeTransport.WaitReadable(ATimeout: IntegerRAL): boolean;
+begin
+  Result := (FSock.SockInPending(-1) > 0) or
+    (FSock.SockReceivePending(ATimeout) <> cspNoData);
+end;
+
+procedure TRALThreadUpgradeTransport.SetSendTimeout(AMilliseconds: IntegerRAL);
+begin
+  if AMilliseconds > 0 then
+    FSock.SendTimeout := AMilliseconds;
+end;
+
+{ TRALAsyncUpgradeTransport }
+
+constructor TRALAsyncUpgradeTransport.Create(AConnection: TRALAsyncConnection);
+begin
+  inherited Create;
+  FConnection := AConnection;
+end;
+
+procedure TRALAsyncUpgradeTransport.DoClose;
+begin
+  // the event loop sees the end and calls OnClose, which detaches the handler
+  if (FConnection <> nil) and (FConnection.fSocket <> nil) then
+    FConnection.fSocket^.RawShutdown;
+end;
+
+function TRALAsyncUpgradeTransport.DoWrite(const ABuffer; ASize: IntegerRAL): boolean;
+begin
+  Result := (FConnection <> nil) and
+    FConnection.fOwner.Write(FConnection, @ABuffer, ASize, 1000);
+end;
+
+function TRALAsyncUpgradeTransport.PendingBytes: Int64RAL;
+begin
+  Result := 0;
+  if FConnection <> nil then
+    Result := FConnection.fWr.Len;
+end;
 
 {$IFDEF RALWindows}
 /// Declared here: the Winsock units of the two compilers do not agree on it.
@@ -235,12 +412,134 @@ end;
 
 procedure TRALAsyncConnection.Recycle(const aRemoteIP: TNetAddr);
 begin
+  EndUpgrade;
   inherited Recycle(aRemoteIP);
   ResetRequestDefaults;
 end;
 
+function TRALAsyncConnection.DecodeHeaders: integer;
+var
+  vServer: TRALSynopseServer;
+  vRequest: THttpServerRequest;
+  vHandler: TRALUpgradeHandler;
+  vHead: RawByteString;
+  vStatus: integer;
+begin
+  Result := inherited DecodeHeaders;
+  if (Result <> HTTP_SUCCESS) or (fHttp.Upgrade = '') or
+     not (hfConnectionUpgrade in fHttp.HeaderFlags) or
+     not (fServer is TRALAsyncHttpServer) then
+    Exit;
+  vServer := TRALAsyncHttpServer(fServer).RALServer;
+  if (vServer = nil) or not vServer.IsWebSocketPath(StringRAL(fHttp.CommandUri)) then
+    Exit;
+  { the request goes through the whole pipeline now, while the headers are
+    decoded (as mORMot2's own WebSocket server does): an answer that is not a
+    101 is sent as a rejection with its status, and the connection closes }
+  vRequest := THttpServerRequest.Create(fServer, fConnectionID, fReadThread, fHandle,
+    fRequestFlags, GetConnectionOpaque);
+  try
+    vRequest.Prepare(fHttp, fRemoteIP, fServer.Authorize);
+    GRALAsyncCapture := True;
+    GRALAsyncHandler := nil;
+    GRALAsyncHead := '';
+    try
+      vStatus := vServer.OnCommandProcess(vRequest);
+    finally
+      GRALAsyncCapture := False;
+    end;
+    vHandler := GRALAsyncHandler;
+    vHead := GRALAsyncHead;
+    GRALAsyncHandler := nil;
+    GRALAsyncHead := '';
+    if vHandler = nil then
+    begin
+      Result := vStatus;
+      if (Result < HTTP_BADREQUEST) then
+        Result := HTTP_BADREQUEST;
+      Exit;
+    end;
+    fHttp.State := hrsUpgraded;
+    include(fInternalFlags, ifSeparateWLock);
+    if not fOwner.WriteString(Self, vHead, 1000) then
+    begin
+      vHandler.Release;
+      Result := HTTP_BADREQUEST;
+      Exit;
+    end;
+    FUpgrade := vHandler;
+    FTransport := TRALAsyncUpgradeTransport.Create(Self);
+    FTransport.RemoteIP := StringRAL(fRemoteIP);
+    FUpgrade.Attached(FTransport);
+    Result := HTTP_SUCCESS;
+  finally
+    vRequest.Free;
+  end;
+end;
+
+function TRALAsyncConnection.OnRead: TPollAsyncSocketOnReadWrite;
+begin
+  if FUpgrade = nil then
+  begin
+    Result := inherited OnRead;
+    if (Result <> soContinue) or (FUpgrade = nil) then
+      Exit;
+  end;
+  // the bytes of the upgraded connection, the first ones left after the head
+  Result := soContinue;
+  if fRd.Len > 0 then
+  begin
+    try
+      FUpgrade.Feed(fRd.Buffer^, fRd.Len);
+    except
+      Result := soClose;
+    end;
+    fRd.Reset;
+  end;
+  if FTransport.Closed then
+    Result := soClose;
+end;
+
+procedure TRALAsyncConnection.EndUpgrade;
+var
+  vHandler: TRALUpgradeHandler;
+  vTransport: TRALAsyncUpgradeTransport;
+begin
+  vHandler := FUpgrade;
+  vTransport := FTransport;
+  FUpgrade := nil;
+  FTransport := nil;
+  if vHandler = nil then
+    Exit;
+  vTransport.Close;
+  vTransport.Lock;
+  try
+    vTransport.FConnection := nil;
+  finally
+    vTransport.Unlock;
+  end;
+  try
+    vHandler.Detached;
+  finally
+    vHandler.Release;
+    vTransport.Free;
+  end;
+end;
+
+procedure TRALAsyncConnection.OnClose;
+begin
+  EndUpgrade;
+  inherited OnClose;
+end;
+
 function TRALAsyncConnection.AfterWrite: TPollAsyncSocketOnReadWrite;
 begin
+  // frames go out whole, the 101 included: nothing of HTTP follows them
+  if fHttp.State = hrsUpgraded then
+  begin
+    Result := soContinue;
+    Exit;
+  end;
   Result := inherited AfterWrite;
   { a kept-alive connection the inherited just reset for its next request -
     soContinue alone is also a body still going out }
@@ -344,8 +643,10 @@ begin
       FHttp := TRALAsyncHttpServer.Create(vAddr, nil, nil, '', FPoolCount,
                                           SessionTimeout, vOptions)
     else
-      FHttp := THttpServer.Create(vAddr, nil, nil, '', FPoolCount,
+      FHttp := TRALThreadHttpServer.Create(vAddr, nil, nil, '', FPoolCount,
                                   SessionTimeout, vOptions);
+    if FHttp is TRALAsyncHttpServer then
+      TRALAsyncHttpServer(FHttp).RALServer := Self;
 
     { as soon as the object exists, before any setting of ours }
     if FHttp is THttpAsyncServer then
@@ -678,6 +979,82 @@ begin
     Result := Result + StringRAL(IntToStr(AContext.RangeOffset + AContext.RangeLength - 1));
 end;
 
+class function TRALSynopseServer.SupportsWebSocket: boolean;
+begin
+  Result := True;
+end;
+
+function TRALSynopseServer.WebSocketAvailable: boolean;
+begin
+  Result := FMode <> smHttpSys;
+end;
+
+function TRALSynopseServer.IsWebSocketPath(const APath: StringRAL): boolean;
+var
+  vRequest: TRALRequest;
+  vRoute: TRALRoute;
+  vInt: IntegerRAL;
+begin
+  Result := False;
+  vRequest := CreateRequest;
+  try
+    vRequest.Query := APath;
+    vRequest.Method := amGET;
+    for vInt := 0 to CountSubModules - 1 do
+    begin
+      vRoute := SubModule[vInt].Routes.CanAnswerRoute(vRequest);
+      if (vRoute <> nil) and vRoute.WebSocket then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  finally
+    vRequest.Free;
+  end;
+end;
+
+function TRALSynopseServer.RunUpgrade(ARequest: TRALRequest; AResponse: TRALResponse;
+  AUpgrade: TRALUpgradeHandler): Cardinal;
+var
+  vHead: RawByteString;
+  vSock: THttpServerSocket;
+  vTransport: TRALThreadUpgradeTransport;
+begin
+  Result := HTTP_SwitchingProtocols;
+  vHead := RawByteString(UpgradeHead(AResponse));
+  if GRALAsyncCapture then
+  begin
+    GRALAsyncHandler := AUpgrade;
+    GRALAsyncHead := vHead;
+    Exit;
+  end;
+  vSock := GRALThreadSock;
+  if vSock = nil then
+  begin
+    // an upgrade the mode cannot hand over
+    AUpgrade.Release;
+    Result := HTTP_NotImplemented;
+    Exit;
+  end;
+  try
+    if vSock.TrySndLow(Pointer(vHead), Length(vHead)) then
+    begin
+      vTransport := TRALThreadUpgradeTransport.Create(vSock);
+      try
+        vTransport.RemoteIP := ARequest.ClientInfo.IP;
+        vTransport.Run(AUpgrade);
+      finally
+        vTransport.Free;
+      end;
+    end;
+  finally
+    AUpgrade.Release;
+    // what mORMot2 sends when this returns must not follow the frames
+    vSock.Close;
+  end;
+end;
+
 class function TRALSynopseServer.SupportsLiveStream: boolean;
 begin
   {$IF DECLARED(THttpServerChunkedState)}
@@ -728,6 +1105,7 @@ var
   vResponse: TRALResponse;
   vStream: TStream;
   vHasRange: boolean;
+  vUpgrade: TRALUpgradeHandler;
   {$IF DECLARED(THttpServerChunkedState)}
   vContext: TRALSynopseStreamContext;
   {$IFEND}
@@ -907,6 +1285,12 @@ begin
       if FinishStream(vRequest, vResponse) then
       begin
         Result := vResponse.StatusCode;
+        Exit;
+      end;
+      vUpgrade := TakeUpgrade(vRequest, vResponse);
+      if vUpgrade <> nil then
+      begin
+        Result := RunUpgrade(vRequest, vResponse, vUpgrade);
         Exit;
       end;
 

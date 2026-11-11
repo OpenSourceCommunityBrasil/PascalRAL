@@ -6,7 +6,7 @@ interface
 uses
   Classes, SysUtils,
   RALErrorCodes, RALTypes, RALParams, RALMIMETypes, RALCustomObjects, RALStream,
-  RALConsts, RALCompress, RALTools, RALResponseStream;
+  RALConsts, RALCompress, RALTools, RALResponseStream, RALUpgrade;
 
 type
   /// A response: status, headers, cookies and body.
@@ -43,6 +43,7 @@ type
     FStreamCompress: TRALCompressType;
     FStreamRequest: TObject;
     FTransportError: TRALTransportError;
+    FUpgrade: TRALUpgradeHandler;
     /// The wire handlers, run once by RunWireHandlers.
     FWireHandlers: TRALOnResponseWireList;
 
@@ -51,6 +52,7 @@ type
     /// The commit (D1 of the plan): headers out, the body so far as the first piece.
     procedure Commit;
     procedure SetStatusCode(const AValue: IntegerRAL);
+    procedure SetUpgrade(const AValue: TRALUpgradeHandler);
   protected
     function GetResponseStream: TStream;
     function GetResponseText: StringRAL;
@@ -150,6 +152,10 @@ type
     { ENGINE API: True when the response went out as a live stream, so the engine
       sends nothing more and calls TRALServer.FinishStream }
     function StreamLive: boolean;
+    { ENGINE API: the handler of an upgrade, handed over to the caller (it now holds
+      the reference the response held); nil when there is none. See
+      TRALServer.TakeUpgrade }
+    function TakeUpgrade: TRALUpgradeHandler;
     function TakeWireStream: TStream; override;
     function TakeWireString: RawByteString; override;
     { ENGINE API: called by TRALServer.ProcessCommands when the handler returned;
@@ -178,6 +184,11 @@ type
     property StreamCompress: TRALCompressType read FStreamCompress write FStreamCompress;
     /// The request this response answers, set by TRALServer.ProcessCommands.
     property StreamRequest: TObject read FStreamRequest write FStreamRequest;
+    { What takes the connection when the answer is 101 Switching Protocols (the
+      WebSocket package sets it). The response takes the reference it is given
+      (a handler is created with one) and releases it unless an engine took it
+      (TRALServer.TakeUpgrade) }
+    property Upgrade: TRALUpgradeHandler read FUpgrade write SetUpgrade;
   published
     /// Error of the transport on a client, 0 when an HTTP response arrived.
     property ErrorCode: IntegerRAL read FErrorCode write FErrorCode;
@@ -455,6 +466,7 @@ begin
   FErrorCode := 0;
   FTransportError := rteNone;
   FContentEncoded := False;
+  SetUpgrade(nil);
 end;
 
 procedure TRALResponse.Answer(AStatusCode: IntegerRAL);
@@ -588,7 +600,23 @@ begin
   // the channel lives on while a Detach holder keeps it
   FChannel := nil;
   FChannelRef := nil;
+  SetUpgrade(nil);
   inherited;
+end;
+
+procedure TRALResponse.SetUpgrade(const AValue: TRALUpgradeHandler);
+begin
+  if AValue = FUpgrade then
+    Exit;
+  if FUpgrade <> nil then
+    FUpgrade.Release;
+  FUpgrade := AValue;
+end;
+
+function TRALResponse.TakeUpgrade: TRALUpgradeHandler;
+begin
+  Result := FUpgrade;
+  FUpgrade := nil;
 end;
 
 procedure TRALResponse.SetStatusCode(const AValue: IntegerRAL);

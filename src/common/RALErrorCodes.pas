@@ -575,6 +575,20 @@ const
   ecTemplateTooDeep = 6414;
   /// Error identifier for emTemplateNotFound.
   ecTemplateNotFound = 6415;
+  /// Error identifier for emWebSocketUnsupported.
+  ecWebSocketUnsupported = 6420;
+  /// Error identifier for emWebSocketNotConnected.
+  ecWebSocketNotConnected = 6421;
+  /// Error identifier for emWebSocketRefused.
+  ecWebSocketRefused = 6422;
+  /// Error identifier for emWebSocketBadURL.
+  ecWebSocketBadURL = 6423;
+  /// Error identifier for emHubUnknownMethod.
+  ecHubUnknownMethod = 6424;
+  /// Error identifier for emHubTimeout.
+  ecHubTimeout = 6425;
+  /// Error identifier for emHubError.
+  ecHubError = 6426;
 
 /// Returns the localized template; an unknown code includes its number.
 function RALGetErrorMessage(AErrorCode: Integer): string;
@@ -867,6 +881,13 @@ begin
     ecTemplateBadDelimiter: Result := emTemplateBadDelimiter;
     ecTemplateTooDeep: Result := emTemplateTooDeep;
     ecTemplateNotFound: Result := emTemplateNotFound;
+    ecWebSocketUnsupported: Result := emWebSocketUnsupported;
+    ecWebSocketNotConnected: Result := emWebSocketNotConnected;
+    ecWebSocketRefused: Result := emWebSocketRefused;
+    ecWebSocketBadURL: Result := emWebSocketBadURL;
+    ecHubUnknownMethod: Result := emHubUnknownMethod;
+    ecHubTimeout: Result := emHubTimeout;
+    ecHubError: Result := emHubError;
   else
     Result := Format(emUnknownError, [AErrorCode]);
   end;
