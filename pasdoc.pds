@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=61
+Count=63
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -129,8 +129,10 @@ Item_57=src\modules\jsonrpc
 Item_58=src\modules\mcp
 Item_59=src\crypto\curves
 Item_60=src\modules\mcp\db
+Item_61=src\modules\websocket
+Item_62=src\modules\websocket\mqtt
 [Files]
-Count=237
+Count=245
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -368,6 +370,14 @@ Item_233=src\database\RALDBFilter.pas
 Item_234=src\database\RALDBCrudModule.pas
 Item_235=src\modules\mcp\db\RALMCPDBTools.pas
 Item_236=src\modules\mcp\db\RALModuleMCPDBReg.pas
+Item_237=src\core\RALUpgrade.pas
+Item_238=src\modules\websocket\RALWebSocketServer.pas
+Item_239=src\modules\websocket\RALWebSocketClient.pas
+Item_240=src\modules\websocket\RALWebSocketHub.pas
+Item_241=src\modules\websocket\RALWebSocketHubClient.pas
+Item_242=src\modules\websocket\RALModuleWebSocketReg.pas
+Item_243=src\modules\websocket\mqtt\RALWebSocketHubMQTT.pas
+Item_244=src\modules\websocket\mqtt\RALModuleWebSocketMQTTReg.pas
 [AdditionalFiles]
 Count=0
 

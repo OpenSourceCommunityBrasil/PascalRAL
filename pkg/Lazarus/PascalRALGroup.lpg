@@ -35,6 +35,8 @@
       <Target FileName="Modules\ralmoduleproxydsgn.lpk"/>
       <Target FileName="Modules\ralmodulewebpackage.lpk"/>
       <Target FileName="Modules\ralmodulejsonrpcpackage.lpk"/>
+      <Target FileName="Modules\ralmodulewebsocketpackage.lpk"/>
+      <Target FileName="Modules\ralmodulewebsocketmqttpackage.lpk"/>
       <Target FileName="Modules\ralmodulemcppackage.lpk"/>
       <Target FileName="Modules\ralmodulemcpdbpackage.lpk"/>
       <Target FileName="Modules\ralmoduleswaggerpackage.lpk"/>

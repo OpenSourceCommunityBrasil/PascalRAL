@@ -62,6 +62,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/controllers/` | `RALModuleControllersPackage` | controllers by attributes and the interface client (Delphi 2010+) |
 | `src/modules/mcp/` | `RALModuleMCPPackage` | MCP server (revision 2026-07-28): tools, resources, prompts, tasks; HTTP and stdio transports; client |
 | `src/modules/jsonrpc/` | `RALModuleJSONRPCPackage` | JSON-RPC 2.0: dispatcher, HTTP module, client, objects by RTTI |
+| `src/modules/websocket/` | `RALModuleWebSocketPackage` (requires `RALNetPackage`); `mqtt/` `RALModuleWebSocketMQTTPackage` | WebSocket routes, connections and hubs of connections, the client, hubs (JSON protocol, `ralhub.js`), the hub backplane over MQTT |
 | `src/modules/web/` | `RALModuleWebPackage` | Web module (static files, sessions), Mustache templates, HTML escaping |
 | `src/modules/xml/` | `RALModuleXMLPackage` | XML reader, writer, DOM, and the XML storage |
 | `src/others/` | (the package that uses each) | submodules only: ZSTD, pascal_brotli (kxBSON is registered but unused) |
@@ -86,6 +87,9 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 - `RALCustomObjects.pas` - `TRALComponent`, `TRALHTTPHeaderInfo` (the wire body API)
 - `RALParams.pas` - `TRALParams`/`TRALParam`: every param kind, body encode/decode
 - `RALRequest.pas`, `RALResponse.pas` - request and response
+- `RALUpgrade.pas` - a connection that leaves HTTP (101): the transport an engine hands
+  over (`TRALUpgradeTransport`, `TRALBlockingUpgradeTransport`) and the handler that
+  takes it (`TRALUpgradeHandler`, the WebSocket package's connection)
 - `RALResponseStream.pas` - a response sent in pieces (`Send`): the channel
   (`TRALResponseStream`, `IRALResponseStream`) and the writer each engine implements
 - `RALRoutes.pas` - routes, their params and constraints, route groups, the route tree
@@ -251,6 +255,13 @@ on its own sockets.
   dispatcher of text or JSON), `RALJSONRPCModule` (`TRALJSONRPCModule`, one POST route),
   `RALJSONRPCClient` (`TRALJSONRPCClient`, `TRALJSONRPCBatch`), `RALJSONRPCObjects`
   (public methods of an object by extended RTTI, Delphi 2010+), `RALModuleJSONRPCReg`
+- `websocket/` (RALModuleWebSocketPackage, requires PascalRAL and RALNetPackage):
+  `RALWebSocketServer` (`TRALWebSocketModule`, `TRALWebSocketRoute`,
+  `TRALWebSocketConnection`, `TRALWebSocketHub`), `RALWebSocketClient`
+  (`TRALWebSocketClient`), `RALWebSocketHub` (`TRALHubModule`, `TRALHubBackplane`, the
+  protocol and `ralhub.js`), `RALWebSocketHubClient` (`TRALHubClient`),
+  `RALModuleWebSocketReg`; `mqtt/RALWebSocketHubMQTT` (`TRALHubMQTTBackplane`),
+  `mqtt/RALModuleWebSocketMQTTReg` - RALModuleWebSocketMQTTPackage
 - `web/` (RALModuleWebPackage): `RALWebModule`, `RALTemplate` (`TRALTemplateEngine`,
   `TRALMustacheEngine`, data views, `TRALTemplateMap`), `RALTemplateDB` (datasets as
   template data), `RALHtml` (HTML, attribute, JavaScript and URL escaping), `RALModuleWebReg`

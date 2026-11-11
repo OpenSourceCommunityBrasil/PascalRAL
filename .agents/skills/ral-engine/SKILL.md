@@ -72,6 +72,18 @@ Streaming (`Send` in a handler) - without it the engine is buffered and still co
   HTTP/1.0, a client that leaves is seen, 1 GB at flat memory, `Active := False` with
   open streams returns promptly.
 
+WebSocket (`SupportsWebSocket`) - an engine that can give its connection away:
+
+- Right after `FinishStream`: `vUpgrade := TakeUpgrade(ARequest, AResponse)`; when not
+  nil, write `UpgradeHead(AResponse)` on the connection yourself (the library must add
+  nothing after it), wrap the connection in a `TRALUpgradeTransport` (a
+  `TRALBlockingUpgradeTransport` when the thread can block on it: `WaitReadable`,
+  `DoRead`, `DoWrite`, `DoClose` = shutdown, not close), `Run(vUpgrade)`, then
+  `vUpgrade.Release`. An event loop pushes with `Feed` and calls `Detached` when it closes.
+- Prove it: `.agents/local`-style end-to-end test (echo, 70000 bytes, fragments, deflate,
+  groups, 401 from the pipeline, 426, unmasked frame = 1002, keep-alive, 1001 on stop,
+  the concurrency slot given back); override `WebSocketAvailable` for a mode that cannot.
+
 Client streaming: override `ReadStreamHead` (status, `ContentType`, `ContentEncoding`
 while the body arrives) and write the body into `NewResponseSink(AResponse, ABody)`
 when it is not nil, calling its `Finish` after filling the head; an

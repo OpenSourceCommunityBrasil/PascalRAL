@@ -508,6 +508,47 @@ without copies and transforms happen at the edge, writing into the stream that g
   fpHTTP, mORMot2; netHTTP, OkHttp, MsQuic and Kwik hand the body over whole at the end
   (netHTTP exposes no response before `Execute` returns).
 
+### WebSocket (`RALUpgrade`, `src/modules/websocket`)
+
+- **The core only hands the connection over** (`src/core/RALUpgrade.pas`): a route
+  handler answers 101 and sets `TRALResponse.Upgrade` (a `TRALUpgradeHandler`, counted
+  by reference); after `FinishStream` the engine calls `TakeUpgrade` (it finishes the
+  request, so an upgraded connection never holds a concurrency slot), writes
+  `UpgradeHead`, wraps its connection in a `TRALUpgradeTransport` (push: `Write` from
+  any thread, `Close`, the engine calls `Feed` with what arrives) and calls `Release`
+  after `Detached`. `TRALBlockingUpgradeTransport.Run` is the loop of the engines whose
+  thread blocks (wait readable, read under the transport's lock - TLS shares one state
+  for both directions - feed). `SupportsWebSocket` (class, default False) and
+  `WebSocketAvailable` (per mode); a route with `WebSocket` on a server that cannot
+  raises in `SetActive` (`ecWebSocketUnsupported`).
+- **Engines**: Indy and fpHTTP keep the connection on the thread of its request
+  (fpHTTP's pool grows; TLS works, the 101 goes on the socket and a silent
+  `TRALfpHttpResponse` stops fcl-web writing after it); mORMot2 `smThreads` the same
+  (`TRALThreadHttpServer.Process` keeps the socket in a threadvar; read the bytes
+  mORMot2 buffered with `SockInPending(-1)`/`SockInRead(..., False)` - with
+  `UseOnlySockIn` True it loops); `smAsync` runs the pipeline in
+  `TRALAsyncConnection.DecodeHeaders` for a WebSocket route (`IsWebSocketPath`), sets
+  `hrsUpgraded` and feeds `fRd` from `OnRead` (no thread; `AfterWrite` must test
+  `hrsUpgraded`, not the handler, or the 101 closes the connection); a refused
+  handshake there is mORMot2's rejection with the status, headers dropped. `smHttpSys`,
+  Sagui, UniGUI, CGI, MsQuic, Kwik: no WebSocket.
+- **Frames are RAL's** (`TRALWSCodec` in `src/net/RALWebSocket.pas`, no I/O): messages
+  joined from fragments, control frames between them, UTF-8 checked (1007), close codes
+  checked, `MaxMessage` (1009, also after inflating), permessage-deflate without context
+  takeover (the server's answer asks it of both sides; a message is compressed alone, so
+  nothing is kept between messages). `TRALWebSocketChannel` is the old byte channel of MQTT.
+- **The package** (`RALModuleWebSocketPackage`, requires `RALNetPackage`):
+  `TRALWebSocketModule` + `TRALWebSocketRoute` (the handshake after the whole pipeline:
+  426 for a plain GET, 400, 403 by `AllowedOrigins`, subprotocol by the route's order,
+  `OnHandshake`), `TRALWebSocketConnection` (sends from any thread, under its lock;
+  `MaxQueued`/`SendTimeout` close with 1008), `TRALWebSocketHub` (broadcast, users,
+  groups; sends never run under the hub's lock, frames coded once per kind), one clock
+  thread per process for keep-alive pings and close handshakes (`RALWSCloseTimeout`).
+  `TRALWebSocketClient` is on RAL's sockets (TLS rule of `TRALClient`, proxies,
+  reconnection). Hubs: `TRALHubModule` (JSON protocol in `RALWebSocketHub`'s header,
+  `Methods`, `Emit` by scope, `ralhub.js` served by the module), `TRALHubClient`,
+  `TRALHubBackplane`; the MQTT one is `RALModuleWebSocketMQTTPackage`.
+
 ### Params, compression, cookies
 
 - `TRALParams` holds query, header, body, field, cookie and file params, with a name

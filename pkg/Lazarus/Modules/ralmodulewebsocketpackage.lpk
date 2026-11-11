@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALModuleWebSocketPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\modules\websocket"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralmodulewebsocketpackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | WebSocket routes, client and hubs"/>
+    <Version Major="2"/>
+    <Files Count="5">
+      <Item1>
+        <Filename Value="..\..\..\src\modules\websocket\RALWebSocketServer.pas"/>
+        <UnitName Value="RALWebSocketServer"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\modules\websocket\RALWebSocketClient.pas"/>
+        <UnitName Value="RALWebSocketClient"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\modules\websocket\RALWebSocketHub.pas"/>
+        <UnitName Value="RALWebSocketHub"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\modules\websocket\RALWebSocketHubClient.pas"/>
+        <UnitName Value="RALWebSocketHubClient"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\..\src\modules\websocket\RALModuleWebSocketReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALModuleWebSocketReg"/>
+      </Item5>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="3">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="ralnetpackage"/>
+      </Item3>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

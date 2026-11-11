@@ -25,6 +25,10 @@ echo RALModuleMCP
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleMCPPackage.dcr" "RALModuleMCP.rc"
 echo RALModuleJSONRPC
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleJSONRPCPackage.dcr" "RALModuleJSONRPC.rc"
+echo RALModuleWebSocket
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleWebSocketPackage.dcr" "RALModuleWebSocket.rc"
+echo RALModuleWebSocketMQTT
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleWebSocketMQTTPackage.dcr" "RALModuleWebSocketMQTT.rc"
 echo RALModuleProxy
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleProxyDsgn.dcr" "RALModuleProxy.rc"
 echo RALStorage

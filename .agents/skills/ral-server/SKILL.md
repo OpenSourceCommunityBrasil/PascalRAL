@@ -157,6 +157,13 @@ matching client. `tools/ralopenapi` writes classes and a client from an OpenAPI 
 - Swagger UI and Postman export: `TRALSwaggerModule` (`RALModuleSwaggerPackage`, which
   requires `RALPluginAuthPackage`). Route descriptions and `InputParams` feed it.
 - Database over HTTP: `ral-dbware`. SOAP: `ral-xml-soap`. Your own: `ral-module`.
+- WebSocket (`RALModuleWebSocketPackage`; Indy, fpHTTP, mORMot2 `smThreads`/`smAsync`):
+  `TRALWebSocketModule.CreateWebSocketRoute('/chat', OnMessage)`, then `OnOpen`,
+  `OnClose`, `Deflate`, `Protocols`, `AllowedOrigins`; the plugins and authenticators
+  judge the handshake (a refused GET never becomes a connection). Reply with
+  `AConnection.Send`, reach the others with `Route.Hub` (`Broadcast`, `Join`,
+  `SendToGroup`, `SendToUser`). Hubs with calls and events: `TRALHubModule` (`Methods`,
+  `Emit`), browsers load `<Domain>/ralhub.js`; several servers: `TRALHubMQTTBackplane`.
 
 ## Running as a service
 

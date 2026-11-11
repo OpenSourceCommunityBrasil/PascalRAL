@@ -1,0 +1,4 @@
+TRALWebSocketModule BITMAP "..\components\base\modules\TRALWebSocketModule.bmp"
+TRALHubModule BITMAP "..\components\base\modules\TRALHubModule.bmp"
+TRALWebSocketClient BITMAP "..\components\base\client\TRALWebSocketClient.bmp"
+TRALHubClient BITMAP "..\components\base\client\TRALHubClient.bmp"
