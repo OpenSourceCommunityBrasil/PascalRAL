@@ -311,8 +311,7 @@ var
   vSet: WinSock2.TFDSet;
   vTime: WinSock2.TTimeVal;
   {$ELSE}
-  vSet: TFDSet;
-  vTime: TTimeVal;
+  vPoll: pollfd;
   {$ENDIF}
 begin
   Result := True;
@@ -322,17 +321,19 @@ begin
   vHandle := FContext.HttpRequest.Connection.Socket.Handle;
   { the client sends nothing more on this connection: readable means it closed
     (recv answers 0) or broke }
+  {$IFDEF RALWindows}
   vTime.tv_sec := 0;
   vTime.tv_usec := 0;
-  {$IFDEF RALWindows}
   WinSock2.FD_ZERO(vSet);
   WinSock2.FD_SET(WinSock2.TSocket(vHandle), vSet);
   if WinSock2.select(0, @vSet, nil, nil, @vTime) > 0 then
     Result := WinSock2.recv(WinSock2.TSocket(vHandle), vByte, 1, MSG_PEEK) > 0;
   {$ELSE}
-  fpFD_ZERO(vSet);
-  fpFD_SET(vHandle, vSet);
-  if fpSelect(vHandle + 1, @vSet, nil, nil, @vTime) > 0 then
+  // poll, not select: a descriptor past FD_SETSIZE (1024) breaks select
+  vPoll.fd := vHandle;
+  vPoll.events := POLLIN;
+  vPoll.revents := 0;
+  if fpPoll(@vPoll, 1, 0) > 0 then
     Result := fpRecv(vHandle, @vByte, 1, MSG_PEEK) > 0;
   {$ENDIF}
 end;
@@ -475,23 +476,24 @@ var
   vSet: WinSock2.TFDSet;
   vTime: WinSock2.TTimeVal;
   {$ELSE}
-  vSet: TFDSet;
-  vTime: TTimeVal;
+  vPoll: pollfd;
   {$ENDIF}
 begin
   vHandle := FSocket.Handle;
-  vTime.tv_sec := ATimeout div 1000;
-  vTime.tv_usec := (ATimeout mod 1000) * 1000;
   { a whole TLS record is read at once (16 KB at most), so nothing waits inside
     OpenSSL that the socket does not show }
   {$IFDEF RALWindows}
+  vTime.tv_sec := ATimeout div 1000;
+  vTime.tv_usec := (ATimeout mod 1000) * 1000;
   WinSock2.FD_ZERO(vSet);
   WinSock2.FD_SET(WinSock2.TSocket(vHandle), vSet);
   Result := WinSock2.select(0, @vSet, nil, nil, @vTime) <> 0;
   {$ELSE}
-  fpFD_ZERO(vSet);
-  fpFD_SET(vHandle, vSet);
-  Result := fpSelect(vHandle + 1, @vSet, nil, nil, @vTime) <> 0;
+  // poll, not select: a descriptor past FD_SETSIZE (1024) breaks select
+  vPoll.fd := vHandle;
+  vPoll.events := POLLIN;
+  vPoll.revents := 0;
+  Result := fpPoll(@vPoll, 1, ATimeout) <> 0;
   {$ENDIF}
 end;
 
