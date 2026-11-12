@@ -42,6 +42,7 @@ type
     FStatusCode: IntegerRAL;
     FStreamCompress: TRALCompressType;
     FStreamRequest: TObject;
+    FTrailers: TStringList;
     FTransportError: TRALTransportError;
     FUpgrade: TRALUpgradeHandler;
     /// The wire handlers, run once by RunWireHandlers.
@@ -77,6 +78,9 @@ type
     function AddFile(AStream: TStream; const AFileName: StringRAL = ''): TRALResponse; reintroduce; overload;
     /// Adds a header; returns the response.
     function AddHeader(const AName: StringRAL; const AValue: StringRAL): TRALResponse; reintroduce;
+    { Adds a trailer field, sent after the body by an engine that sends
+      trailers (HTTP/2: gRPC's grpc-status); others drop it. Returns the response. }
+    function AddTrailer(const AName: StringRAL; const AValue: StringRAL): TRALResponse;
     { AHandler runs once, before the engine takes the body; in order of addition.
       A plugin adds one in its ppProcess phase to see the answer the module gave. }
     procedure AddWireHandler(AHandler: TRALOnResponseWire);
@@ -184,6 +188,8 @@ type
     property StreamCompress: TRALCompressType read FStreamCompress write FStreamCompress;
     /// The request this response answers, set by TRALServer.ProcessCommands.
     property StreamRequest: TObject read FStreamRequest write FStreamRequest;
+    /// The trailer fields (name=value), nil when none was added.
+    property Trailers: TStringList read FTrailers;
     { What takes the connection when the answer is 101 Switching Protocols (the
       WebSocket package sets it). The response takes the reference it is given
       (a handler is created with one) and releases it unless an engine took it
@@ -451,6 +457,15 @@ begin
   end;
 end;
 
+function TRALResponse.AddTrailer(const AName: StringRAL;
+  const AValue: StringRAL): TRALResponse;
+begin
+  if FTrailers = nil then
+    FTrailers := TStringList.Create;
+  FTrailers.Add(string(AName) + '=' + string(RALSafeHeaderText(AValue)));
+  Result := Self;
+end;
+
 procedure TRALResponse.Clear;
 begin
   inherited Clear;
@@ -466,6 +481,7 @@ begin
   FErrorCode := 0;
   FTransportError := rteNone;
   FContentEncoded := False;
+  FreeAndNil(FTrailers);
   SetUpgrade(nil);
 end;
 
@@ -601,6 +617,7 @@ begin
   FChannel := nil;
   FChannelRef := nil;
   SetUpgrade(nil);
+  FreeAndNil(FTrailers);
   inherited;
 end;
 

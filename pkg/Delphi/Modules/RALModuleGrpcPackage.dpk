@@ -1,0 +1,42 @@
+package RALModuleGrpcPackage;
+
+{$R *.res}
+{$R 'RALModuleGrpcPackage.dcr'}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | gRPC and gRPC-Web module and client'}
+{$IMPLICITBUILD ON}
+
+requires
+  PascalRAL,
+  RALModuleProtobufPackage;
+
+contains
+  RALGrpc in '..\..\..\src\modules\grpc\RALGrpc.pas',
+  RALGrpcModule in '..\..\..\src\modules\grpc\RALGrpcModule.pas',
+  RALGrpcClient in '..\..\..\src\modules\grpc\RALGrpcClient.pas',
+  RALModuleGrpcReg in '..\..\..\src\modules\grpc\RALModuleGrpcReg.pas';
+
+end.

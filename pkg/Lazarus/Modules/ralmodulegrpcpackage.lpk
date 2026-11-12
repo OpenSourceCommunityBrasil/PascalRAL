@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALModuleGrpcPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\modules\grpc"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralmodulegrpcpackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | gRPC and gRPC-Web module and client"/>
+    <Version Major="2"/>
+    <Files Count="5">
+      <Item1>
+        <Filename Value="..\..\..\src\modules\grpc\RALGrpc.pas"/>
+        <UnitName Value="RALGrpc"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\modules\grpc\RALGrpcModule.pas"/>
+        <UnitName Value="RALGrpcModule"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\modules\grpc\RALGrpcClient.pas"/>
+        <UnitName Value="RALGrpcClient"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\modules\grpc\RALModuleGrpcReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALModuleGrpcReg"/>
+      </Item4>
+      <Item5>
+        <Filename Value="ralmodulegrpcpackage.lrs"/>
+        <Type Value="LRS"/>
+      </Item5>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="3">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="RALModuleProtobufPackage"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="FCL"/>
+      </Item3>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>
