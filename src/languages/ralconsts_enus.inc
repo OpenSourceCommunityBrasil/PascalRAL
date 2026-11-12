@@ -706,3 +706,8 @@
   emScanFailed = 'The upload scanner could not check "%s": %s';
   emClamAVAnswer = 'clamd gave an answer RAL does not understand: %s';
   emViewNoEngine = 'The view module has no template Engine linked.';
+  emJobNoHandler = 'No handler for job "%s".';
+  emJobAttemptsExhausted = 'The job ran out of attempts (%d): the workers that took it stopped before it ended.';
+  emJobQueueActive = 'Stop the job queue before changing %s.';
+  emJobStoreWrite = 'The job store could not write %s.';
+  emJobStoreNoDB = 'TRALJobDBStore has no DBModule linked.';

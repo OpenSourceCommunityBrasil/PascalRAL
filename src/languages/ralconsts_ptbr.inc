@@ -706,3 +706,8 @@
   emScanFailed = 'O verificador de uploads não conseguiu verificar "%s": %s';
   emClamAVAnswer = 'O clamd deu uma resposta que o RAL não entende: %s';
   emViewNoEngine = 'O módulo de views não tem um Engine de templates ligado.';
+  emJobNoHandler = 'Não há handler para o job "%s".';
+  emJobAttemptsExhausted = 'O job esgotou as tentativas (%d): os trabalhadores que o pegaram pararam antes de terminar.';
+  emJobQueueActive = 'Pare a fila de jobs antes de mudar %s.';
+  emJobStoreWrite = 'O armazenamento de jobs não conseguiu gravar %s.';
+  emJobStoreNoDB = 'O TRALJobDBStore não tem um DBModule ligado.';

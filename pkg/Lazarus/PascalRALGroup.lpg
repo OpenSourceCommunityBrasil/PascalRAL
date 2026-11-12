@@ -19,6 +19,8 @@
       <Target FileName="Crypto\ralcryptocurvespackage.lpk"/>
       <Target FileName="Plugins\ralpluginobservabilitypackage.lpk"/>
       <Target FileName="Hosting\ralhostingpackage.lpk"/>
+      <Target FileName="Hosting\ralhostingjobqueuepackage.lpk"/>
+      <Target FileName="Hosting\ralhostingjobqueuedbpackage.lpk"/>
       <Target FileName="Plugins\ralplugintrafficpackage.lpk"/>
       <Target FileName="Plugins\ralplugincachepackage.lpk"/>
       <Target FileName="Storage\ralstoragepackage.lpk"/>

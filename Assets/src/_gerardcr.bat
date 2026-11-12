@@ -81,3 +81,7 @@ echo WebBroker
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\WebBrokerRAL.dcr" "WebBroker.rc"
 echo RALHosting
 %path_brcc32% -fo "..\..\pkg\Delphi\Hosting\RALHostingPackage.dcr" "RALHosting.rc"
+echo RALHostingJobQueue
+%path_brcc32% -fo "..\..\pkg\Delphi\Hosting\RALHostingJobQueuePackage.dcr" "RALHostingJobQueue.rc"
+echo RALHostingJobQueueDB
+%path_brcc32% -fo "..\..\pkg\Delphi\Hosting\RALHostingJobQueueDBPackage.dcr" "RALHostingJobQueueDB.rc"

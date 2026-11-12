@@ -706,3 +706,8 @@
   emScanFailed = 'El verificador de subidas no pudo verificar "%s": %s';
   emClamAVAnswer = 'clamd dio una respuesta que RAL no entiende: %s';
   emViewNoEngine = 'El módulo de vistas no tiene un Engine de plantillas enlazado.';
+  emJobNoHandler = 'No hay handler para el job "%s".';
+  emJobAttemptsExhausted = 'El job agotó los intentos (%d): los trabajadores que lo tomaron se detuvieron antes de terminar.';
+  emJobQueueActive = 'Detenga la cola de jobs antes de cambiar %s.';
+  emJobStoreWrite = 'El almacenamiento de jobs no pudo escribir %s.';
+  emJobStoreNoDB = 'TRALJobDBStore no tiene un DBModule enlazado.';

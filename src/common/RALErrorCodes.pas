@@ -605,6 +605,16 @@ const
   ecClamAVAnswer = 6436;
   /// Error identifier for emViewNoEngine.
   ecViewNoEngine = 6437;
+  /// Error identifier for emJobNoHandler.
+  ecJobNoHandler = 6440;
+  /// Error identifier for emJobAttemptsExhausted.
+  ecJobAttemptsExhausted = 6441;
+  /// Error identifier for emJobQueueActive.
+  ecJobQueueActive = 6442;
+  /// Error identifier for emJobStoreWrite.
+  ecJobStoreWrite = 6443;
+  /// Error identifier for emJobStoreNoDB.
+  ecJobStoreNoDB = 6444;
 
 /// Returns the localized template; an unknown code includes its number.
 function RALGetErrorMessage(AErrorCode: Integer): string;
@@ -912,6 +922,11 @@ begin
     ecScanFailed: Result := emScanFailed;
     ecClamAVAnswer: Result := emClamAVAnswer;
     ecViewNoEngine: Result := emViewNoEngine;
+    ecJobNoHandler: Result := emJobNoHandler;
+    ecJobAttemptsExhausted: Result := emJobAttemptsExhausted;
+    ecJobQueueActive: Result := emJobQueueActive;
+    ecJobStoreWrite: Result := emJobStoreWrite;
+    ecJobStoreNoDB: Result := emJobStoreNoDB;
   else
     Result := Format(emUnknownError, [AErrorCode]);
   end;

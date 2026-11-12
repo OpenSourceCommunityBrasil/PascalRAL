@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=63
+Count=65
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -131,8 +131,10 @@ Item_59=src\crypto\curves
 Item_60=src\modules\mcp\db
 Item_61=src\modules\websocket
 Item_62=src\modules\websocket\mqtt
+Item_63=src\hosting\jobqueue
+Item_64=src\hosting\jobqueue\db
 [Files]
-Count=251
+Count=256
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -384,6 +386,11 @@ Item_247=src\modules\web\RALCSRF.pas
 Item_248=src\modules\web\RALUserAgent.pas
 Item_249=src\modules\web\RALUploadScan.pas
 Item_250=src\modules\web\RALClamAV.pas
+Item_251=src\hosting\jobqueue\RALJobStore.pas
+Item_252=src\hosting\jobqueue\RALJobQueue.pas
+Item_253=src\hosting\jobqueue\RALJobQueueReg.pas
+Item_254=src\hosting\jobqueue\db\RALJobDBStore.pas
+Item_255=src\hosting\jobqueue\db\RALJobQueueDBReg.pas
 [AdditionalFiles]
 Count=0
 
