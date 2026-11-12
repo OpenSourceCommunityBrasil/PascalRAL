@@ -8,7 +8,8 @@ unit RALModuleWebPackage;
 interface
 
 uses
-  RALWebModule, RALModuleWebReg, RALHtml, RALTemplate, RALTemplateDB, LazarusPackageIntf;
+  RALWebModule, RALModuleWebReg, RALHtml, RALTemplate, RALTemplateDB, RALHtmx, RALViewModule, RALCSRF, RALUserAgent, 
+  RALUploadScan, RALClamAV, LazarusPackageIntf;
 
 implementation
 

@@ -698,3 +698,11 @@
   emHubUnknownMethod = 'El hub no tiene el método "%s".';
   emHubTimeout = 'El hub no respondió "%s" en %d ms.';
   emHubError = 'El hub respondió "%s" con un error: %s';
+  emSessionObjectNotStored = 'Los objetos solo se guardan en una sesión en memoria; "%s" no puede ir a una sesión guardada en un store o en una cookie.';
+  emSessionReadOnly = 'Una sesión guardada en una cookie solo cambia cuando se abre con OpenSession, que tiene la respuesta.';
+  emSessionCookieTooLarge = 'La cookie de la sesión tendría %d bytes, más que SessionCookieMaxSize (%d).';
+  emSessionNoSecret = 'SessionSecret está vacío: una sesión guardada en una cookie necesita un secreto.';
+  emSessionNoStore = 'SessionStorage es wssStore, pero ningún SessionStore está enlazado.';
+  emScanFailed = 'El verificador de subidas no pudo verificar "%s": %s';
+  emClamAVAnswer = 'clamd dio una respuesta que RAL no entiende: %s';
+  emViewNoEngine = 'El módulo de vistas no tiene un Engine de plantillas enlazado.';

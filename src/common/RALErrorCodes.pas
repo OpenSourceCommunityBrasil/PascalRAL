@@ -589,6 +589,22 @@ const
   ecHubTimeout = 6425;
   /// Error identifier for emHubError.
   ecHubError = 6426;
+  /// Error identifier for emSessionObjectNotStored.
+  ecSessionObjectNotStored = 6430;
+  /// Error identifier for emSessionReadOnly.
+  ecSessionReadOnly = 6431;
+  /// Error identifier for emSessionCookieTooLarge.
+  ecSessionCookieTooLarge = 6432;
+  /// Error identifier for emSessionNoSecret.
+  ecSessionNoSecret = 6433;
+  /// Error identifier for emSessionNoStore.
+  ecSessionNoStore = 6434;
+  /// Error identifier for emScanFailed.
+  ecScanFailed = 6435;
+  /// Error identifier for emClamAVAnswer.
+  ecClamAVAnswer = 6436;
+  /// Error identifier for emViewNoEngine.
+  ecViewNoEngine = 6437;
 
 /// Returns the localized template; an unknown code includes its number.
 function RALGetErrorMessage(AErrorCode: Integer): string;
@@ -888,6 +904,14 @@ begin
     ecHubUnknownMethod: Result := emHubUnknownMethod;
     ecHubTimeout: Result := emHubTimeout;
     ecHubError: Result := emHubError;
+    ecSessionObjectNotStored: Result := emSessionObjectNotStored;
+    ecSessionReadOnly: Result := emSessionReadOnly;
+    ecSessionCookieTooLarge: Result := emSessionCookieTooLarge;
+    ecSessionNoSecret: Result := emSessionNoSecret;
+    ecSessionNoStore: Result := emSessionNoStore;
+    ecScanFailed: Result := emScanFailed;
+    ecClamAVAnswer: Result := emClamAVAnswer;
+    ecViewNoEngine: Result := emViewNoEngine;
   else
     Result := Format(emUnknownError, [AErrorCode]);
   end;

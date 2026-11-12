@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Web module"/>
     <Version Major="2"/>
-    <Files Count="6">
+    <Files Count="12">
       <Item1>
         <Filename Value="..\..\..\src\modules\web\RALWebModule.pas"/>
         <UnitName Value="RALWebModule"/>
@@ -52,9 +52,33 @@
         <Filename Value="..\..\..\src\modules\web\RALTemplateDB.pas"/>
         <UnitName Value="RALTemplateDB"/>
       </Item6>
+      <Item7>
+        <Filename Value="..\..\..\src\modules\web\RALHtmx.pas"/>
+        <UnitName Value="RALHtmx"/>
+      </Item7>
+      <Item8>
+        <Filename Value="..\..\..\src\modules\web\RALViewModule.pas"/>
+        <UnitName Value="RALViewModule"/>
+      </Item8>
+      <Item9>
+        <Filename Value="..\..\..\src\modules\web\RALCSRF.pas"/>
+        <UnitName Value="RALCSRF"/>
+      </Item9>
+      <Item10>
+        <Filename Value="..\..\..\src\modules\web\RALUserAgent.pas"/>
+        <UnitName Value="RALUserAgent"/>
+      </Item10>
+      <Item11>
+        <Filename Value="..\..\..\src\modules\web\RALUploadScan.pas"/>
+        <UnitName Value="RALUploadScan"/>
+      </Item11>
+      <Item12>
+        <Filename Value="..\..\..\src\modules\web\RALClamAV.pas"/>
+        <UnitName Value="RALClamAV"/>
+      </Item12>
     </Files>
     <CompatibilityMode Value="True"/>
-    <RequiredPkgs Count="2">
+    <RequiredPkgs Count="3">
       <Item1>
         <PackageName Value="PascalRAL"/>
         <MinVersion Major="2" Valid="True"/>
@@ -62,6 +86,9 @@
       <Item2>
         <PackageName Value="FCL"/>
       </Item2>
+      <Item3>
+        <PackageName Value="ralnetpackage"/>
+      </Item3>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>

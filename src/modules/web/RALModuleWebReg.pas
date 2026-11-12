@@ -1,4 +1,4 @@
-/// Registers the web module in the IDE.
+/// Registers the components of the web package in the IDE.
 unit RALModuleWebReg;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -10,7 +10,7 @@ uses
   LResources,
   {$ENDIF}
   Classes,
-  RALWebModule, RALTemplate;
+  RALWebModule, RALTemplate, RALViewModule, RALCSRF, RALUploadScan, RALClamAV;
 
 /// Registers the components of the package.
 procedure Register;
@@ -19,7 +19,9 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Modules', [TRALWebModule, TRALMustacheEngine]);
+  RegisterComponents('RAL - Modules', [TRALWebModule, TRALMustacheEngine, TRALViewModule]);
+  RegisterComponents('RAL - Plugins', [TRALCSRFPlugin, TRALUploadScanPlugin,
+    TRALClamAVScanner]);
 end;
 
 {$IFDEF FPC}

@@ -11,43 +11,103 @@ uses
   {$ENDIF}
   Classes, SysUtils, DateUtils, SyncObjs,
   RALServer, RALTypes, RALConsts, RALTools, RALRoutes, RALRequest, RALResponse, RALParams,
-  RALThreadSafe;
+  RALThreadSafe, RALKeyValueStore;
 
 const
   /// How many lists the sessions are spread over, each behind its own lock.
   cRALSessionShards = 16;
+  /// TRALWebModule.SessionCookieMaxSize when nobody says otherwise.
+  cRALSessionCookieMaxSize = 4000;
   /// TRALWebModule.IndexFile when nobody says otherwise.
   cRALIndexFile = 'index.html';
 
 type
+  { Where TRALWebModule keeps its sessions: wssMemory in the module itself (the
+    default; lost on restart, one process), wssStore in TRALWebModule.SessionStore
+    (a TRALKeyValueStore: several processes share it), wssCookie in the browser,
+    signed and ciphered with TRALWebModule.SessionSecret (no state in the server). }
+  TRALWebSessionStorage = (wssMemory, wssStore, wssCookie);
+
+  TRALWebModule = class;
 
   { What the WebModule keeps for one browser between its requests. A browser
     opens several connections at once, so its requests run in parallel: every
-    access to the list of objects is locked. The lock covers the list, not
-    the objects in it - an object taken out is the caller's to synchronise. }
+    access to the values and objects is locked. The lock covers the lists, not
+    the objects in them - an object taken out is the caller's to synchronise.
+    With TRALWebModule.SessionStorage other than wssMemory the object lives for
+    one request: it is read from the store or the cookie when asked for, every
+    change of Values goes back there, and it is freed when the request ends. }
   TRALWebSession = class(TRALThreadSafe)
   private
+    /// When the cookie of a wssCookie session was issued, in Unix seconds (UTC).
+    FCookieTime: Int64RAL;
+    /// The cookie of a wssCookie session must go out with the response.
+    FDirty: boolean;
+    { EndSession ended a wssMemory session: nobody finds it again, and the
+      sweep frees it a while later (a request may still hold it) }
+    FEnded: boolean;
     FLastDate: TDateTime;
+    /// The module the session belongs to.
+    FModule: TRALWebModule;
+    FName: StringRAL;
     /// Objects by name, owned by the session.
     FObjects: TStringList;
+    /// Response the cookie of a wssCookie session goes out with; nil = read only.
+    FResponse: TRALResponse;
+    /// Where the session is kept.
+    FStorage: TRALWebSessionStorage;
+    /// Values by name; objects are owned TRALWebSessionValue.
+    FValues: TStringList;
   protected
+    { a value or the name changed: a wssStore session is written to the store,
+      a wssCookie one marks its cookie to go out (raises with no response) }
+    procedure Changed;
     /// Frees every object of the session.
     procedure ClearObjects;
+    /// Frees every value of the session.
+    procedure ClearValues;
+    /// Raises when the cookie of a wssCookie session would pass SessionCookieMaxSize.
+    procedure EncodeCheck;
     function GetObjects(AName: StringRAL): TObject;
+    function GetValues(AName: StringRAL): StringRAL;
+    /// Replaces the values with those of the JSON text AData; False when it is not valid.
+    function LoadValues(const AData: StringRAL): boolean;
+    { the end of the request that read a wssStore or wssCookie session: the
+      module forgets it and the session frees itself }
+    procedure RequestFinished(ARequest: TRALRequest);
+    /// The values as JSON text, what a store or a cookie keeps.
+    function SaveValues: StringRAL;
     procedure SetObjects(AName: StringRAL; AValue: TObject);
+    procedure SetValues(AName: StringRAL; const AValue: StringRAL);
+    /// Wire handler of a wssCookie session: adds its cookie when it changed.
+    procedure WriteCookie(AResponse: TRALResponse);
   public
     constructor Create; override;
     destructor Destroy; override;
 
+    /// Empties the session: every value goes, and every object is freed.
+    procedure Clear;
     { Takes AName out of the session, freeing its object only when AFree is
       True; False when the session had no such name. }
     function DeleteObject(AName: StringRAL; AFree: boolean = True): boolean;
+    /// Takes the value AName out of the session; False when there was none.
+    function DeleteValue(const AName: StringRAL): boolean;
+    /// Whether the session has a value named AName.
+    function HasValue(const AName: StringRAL): boolean;
+    /// Fills AList with the names of the values, sorted.
+    procedure ValueNames(AList: TStrings);
 
+    /// The session's id; the browser's cookie names it (wssCookie: carries it).
+    property Name: StringRAL read FName;
     { Objects kept by name, OWNED by the session: assigning a name again
       frees the object it held, and whatever is left is freed when the
       session expires or the module goes away. Hand over objects nobody else
-      frees. }
+      frees. Only a wssMemory session keeps objects: the others raise. }
     property Objects[AName: StringRAL]: TObject read GetObjects write SetObjects;
+    { Texts kept by name, in every SessionStorage: '' when there is none.
+      Assigning one writes the session back to its store at once, or sends its
+      cookie with the response - assign before the first Send of a stream. }
+    property Values[AName: StringRAL]: StringRAL read GetValues write SetValues;
   published
     { When the browser last used the session - what
       TRALWebModule.SessionTimeout counts from. }
@@ -97,11 +157,18 @@ type
     FMaxFileSize: Int64RAL;
     /// A TRALWebPathCache - see the implementation.
     FPathCache: TObject;
+    { the wssStore and wssCookie sessions read by the requests running, by the
+      request's address; each frees itself when its request ends }
+    FRequestSessions: TRALStringListSafe;
     FServePrecompressed: boolean;
+    FSessionCookieMaxSize: IntegerRAL;
     { the sessions, spread over lists by the first character of their name -
       random hex, so evenly - each list behind its own lock: one list behind
       one lock was where every request using a session queued }
     FSessions: array[0..cRALSessionShards - 1] of TRALStringListSafe;
+    FSessionSecret: StringRAL;
+    FSessionStorage: TRALWebSessionStorage;
+    FSessionStore: TRALKeyValueStore;
     FSessionTimeout: IntegerRAL;
     { what the requests read of the settings, a TRALWebSettings: the root,
       the blocked extensions, the Cache-Control rules, the Domain, worked out
@@ -113,18 +180,35 @@ type
     FSweepLock: TCriticalSection;
     FUseAppPathAsRoot: boolean;
 
+    /// Keeps ASession as the one ARequest reads, freed when the request ends.
+    procedure AttachSession(ARequest: TRALRequest; ASession: TRALWebSession);
     /// Publishes the settings again.
     procedure BlockedExtensionsChanged(Sender: TObject);
     /// Publishes the settings again.
     procedure CacheControlChanged(Sender: TObject);
     /// The Cache-Control a file goes out with, '' for none.
     function CacheControlFor(const AFileName: string): StringRAL;
+    /// Raises when SessionStorage needs a store or a secret that is missing.
+    procedure CheckSessionStorage;
+    { reads a wssCookie session cookie: its id, when it was issued and its values;
+      False when it was not made with SessionSecret or was changed }
+    function DecodeSessionCookie(const ACookie: StringRAL; out AName: StringRAL;
+      out ATime: Int64RAL; out AData: StringRAL): boolean;
+    /// Forgets the wssStore or wssCookie session ARequest read.
+    procedure DetachSession(ARequest: TRALRequest);
+    /// The cookie of a wssCookie session: its id, time and values, signed and ciphered.
+    function EncodeSessionCookie(ASession: TRALWebSession): StringRAL;
     { the session named AName in the list, or nil; touches it. Must run with
       that list locked }
     function FindSession(AList: TStringList; const AName: StringRAL): TRALWebSession;
     function GetBlockedExtensions: TStrings;
     function GetCacheControl: TStrings;
     function IsIndexFileStored: boolean;
+    { the wssStore or wssCookie session of ARequest's cookie, read now; nil when
+      the browser has none or it expired }
+    function LoadSession(ARequest: TRALRequest): TRALWebSession;
+    /// A wssStore or wssCookie session named AName, kept as the one ARequest reads.
+    function NewRequestSession(ARequest: TRALRequest; const AName: StringRAL): TRALWebSession;
     { the coding of a copy of AFileName kept compressed beside it that this
       request takes - 'br' or 'gzip' - with that copy's name, size and date;
       '' when there is none }
@@ -133,15 +217,24 @@ type
     { builds the settings the requests read from the properties as they are
       now, and publishes them - on every change of one of them }
     procedure PublishSettings;
+    /// The key of FRequestSessions for ARequest.
+    function RequestKey(ARequest: TRALRequest): StringRAL;
     /// The file a request asks for when the module may serve it, or nil.
     function ResolveFile(ARequest: TRALRequest): TRALWebFile;
+    { adds the session cookie with AValue to AResponse; ADelete adds one that
+      makes the browser drop it }
+    procedure SendSessionCookie(AResponse: TRALResponse; const AValue: StringRAL;
+      ADelete: boolean = False);
     /// Answers AFile: headers, ETag/304, Range, precompressed copy and body.
     procedure ServeFile(ARequest: TRALRequest; AResponse: TRALResponse; AFile: TRALWebFile);
     procedure SetBlockedExtensions(AValue: TStrings);
     procedure SetCacheControl(AValue: TStrings);
     procedure SetFollowLinks(AValue: boolean);
     procedure SetIndexFile(const AValue: StringRAL);
+    procedure SetSessionStore(AValue: TRALKeyValueStore);
     procedure SetUseAppPathAsRoot(AValue: boolean);
+    /// The key of the session AName in SessionStore.
+    function StoreKey(const AName: StringRAL): StringRAL;
     { the expired sessions of every list go, at most once a second, and are
       freed with no lock held: what a session keeps may take a while to free }
     procedure SweepSessions;
@@ -153,6 +246,7 @@ type
     function GetWebSession(ARequest: TRALRequest): TRALWebSession;
     /// A new session name (see the implementation).
     function NewSessionName: StringRAL;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetDocumentRoot(AValue: StringRAL);
     procedure SetDomain(const AValue: StringRAL); override;
     /// Handler of the default route: serves the file of the request.
@@ -164,6 +258,11 @@ type
     procedure AnswerUnhandled(ARequest: TRALRequest; AResponse: TRALResponse); override;
     function CanAnswerRoute(ARequest: TRALRequest; AResponse: TRALResponse): TRALRoute;
       override;
+    { Ends the browser's session: its values and objects go, and AResponse
+      carries a cookie that makes the browser drop it (logout). A wssCookie
+      session cannot be revoked in the server: a copy of the old cookie stays
+      valid until SessionTimeout. }
+    procedure EndSession(ARequest: TRALRequest; AResponse: TRALResponse);
     { The module's routes and, while DocumentRoot serves something, the one
       that serves the files - which the Swagger and Postman exporters left
       out. The caller frees the list, not the routes. }
@@ -174,6 +273,10 @@ type
       Asking renews the session, so it cannot expire under a request that
       takes less than SessionTimeout. }
     function OpenSession(ARequest: TRALRequest; AResponse: TRALResponse): TRALWebSession;
+    { Gives the browser's session a new id, keeping what it holds, and sends
+      the new cookie; the old id stops working. Call it at login, against
+      session fixation. A browser without a session gets a new one. }
+    function RegenerateSession(ARequest: TRALRequest; AResponse: TRALResponse): TRALWebSession;
 
     /// The browser's session, or nil when it has none - see OpenSession
     property Session[ARequest: TRALRequest]: TRALWebSession read GetWebSession;
@@ -224,6 +327,20 @@ type
       default. }
     property ServePrecompressed: boolean read FServePrecompressed
       write FServePrecompressed default False;
+    { The largest wssCookie session cookie, in bytes: a value that would make it
+      bigger raises when assigned. Browsers keep 4096 bytes per cookie. }
+    property SessionCookieMaxSize: IntegerRAL read FSessionCookieMaxSize
+      write FSessionCookieMaxSize default cRALSessionCookieMaxSize;
+    { The secret that signs and ciphers wssCookie sessions (AES-256 with an
+      HMAC). Every server that reads the same cookies needs the same one; a new
+      secret ends every session. }
+    property SessionSecret: StringRAL read FSessionSecret write FSessionSecret;
+    /// Where the sessions are kept (see TRALWebSessionStorage); wssMemory by default.
+    property SessionStorage: TRALWebSessionStorage read FSessionStorage
+      write FSessionStorage default wssMemory;
+    { The store of wssStore sessions: a TRALFileStore (or another shared
+      store) lets several servers read the same sessions. }
+    property SessionStore: TRALKeyValueStore read FSessionStore write SetSessionStore;
     { Milliseconds a session may sit unused before it is dropped, with
       everything it holds; every request of its browser starts the count
       again. Zero keeps sessions for as long as the module lives. }
@@ -238,7 +355,8 @@ type
 implementation
 
 uses
-  RALMIMETypes, RALStream, RALCompress, RALPlugin, RALContent;
+  RALMIMETypes, RALStream, RALCompress, RALPlugin, RALContent, RALJson, RALHashes,
+  RALExceptions, RALErrorCodes;
 
 { The coding set for the answers (TRALCompressPlugin.CompressType), ctNone when it
   follows the client or there is no such plugin. }
@@ -260,6 +378,9 @@ const
   { the resolution cache: how many paths it remembers - a power of two - and
     how many locks guard them }
   cRALPathSlots = 1024;
+  { milliseconds an ended session stays in its list before the sweep frees it:
+    a request that took it just before EndSession may still be using it }
+  cRALEndedSessionGrace = 60000;
   /// Locks of the path cache.
   cRALPathLocks = 16;
 
@@ -466,7 +587,44 @@ begin
   end;
 end;
 
+{ TRALWebSessionValue }
+
+type
+  /// One value of a session.
+  TRALWebSessionValue = class
+  public
+    /// The text kept.
+    Value: StringRAL;
+  end;
+
 { TRALWebSession }
+
+procedure TRALWebSession.Changed;
+begin
+  case FStorage of
+    wssStore:
+      FModule.SessionStore.Put(FModule.StoreKey(FName), SaveValues,
+        FModule.SessionTimeout);
+    wssCookie:
+      begin
+        if FResponse = nil then
+          raise ERALException.Create(ecSessionReadOnly);
+        // the size is judged now, where the handler can still answer
+        EncodeCheck;
+        FDirty := True;
+      end;
+  end;
+end;
+
+procedure TRALWebSession.EncodeCheck;
+var
+  vSize: IntegerRAL;
+begin
+  vSize := Length(FModule.EncodeSessionCookie(Self));
+  if (FModule.SessionCookieMaxSize > 0) and (vSize > FModule.SessionCookieMaxSize) then
+    raise ERALException.CreateFmt(ecSessionCookieTooLarge,
+      [vSize, FModule.SessionCookieMaxSize]);
+end;
 
 function TRALWebSession.GetObjects(AName: StringRAL): TObject;
 var
@@ -483,10 +641,91 @@ begin
   end;
 end;
 
+function TRALWebSession.GetValues(AName: StringRAL): StringRAL;
+var
+  vInt: IntegerRAL;
+begin
+  Result := '';
+  Lock;
+  try
+    vInt := FValues.IndexOf(AName);
+    if vInt >= 0 then
+      Result := TRALWebSessionValue(FValues.Objects[vInt]).Value;
+  finally
+    Unlock;
+  end;
+end;
+
+function TRALWebSession.LoadValues(const AData: StringRAL): boolean;
+var
+  vJSON: TRALJSON;
+  vObject: TRALJSONObject;
+  vInt: IntegerRAL;
+  vValue: TRALWebSessionValue;
+begin
+  Result := False;
+  try
+    vJSON := TRALJSON.ParseJSON(AData);
+  except
+    Exit;
+  end;
+  try
+    if (vJSON = nil) or (vJSON.Kind <> rjkObject) then
+      Exit;
+    vObject := vJSON.AsObject;
+    Lock;
+    try
+      ClearValues;
+      for vInt := 0 to Pred(vObject.Count) do
+      begin
+        vValue := TRALWebSessionValue.Create;
+        vValue.Value := vObject.Items[vInt].AsString;
+        FValues.AddObject(vObject.Names[vInt], vValue);
+      end;
+    finally
+      Unlock;
+    end;
+    Result := True;
+  finally
+    FreeAndNil(vJSON);
+  end;
+end;
+
+procedure TRALWebSession.RequestFinished(ARequest: TRALRequest);
+begin
+  FModule.DetachSession(ARequest);
+  Free;
+end;
+
+function TRALWebSession.SaveValues: StringRAL;
+var
+  vObject: TRALJSONObject;
+  vInt: IntegerRAL;
+begin
+  vObject := TRALJSONObject.Create;
+  try
+    Lock;
+    try
+      for vInt := 0 to Pred(FValues.Count) do
+        vObject.Add(StringRAL(FValues[vInt]),
+          TRALWebSessionValue(FValues.Objects[vInt]).Value);
+    finally
+      Unlock;
+    end;
+    Result := vObject.ToJSON;
+  finally
+    FreeAndNil(vObject);
+  end;
+end;
+
 procedure TRALWebSession.SetObjects(AName: StringRAL; AValue: TObject);
 var
   vInt: IntegerRAL;
 begin
+  { a store or a cookie keeps text: a live object cannot go there, and silently
+    keeping it for one request would lose it on the next }
+  if FStorage <> wssMemory then
+    raise ERALException.CreateFmt(ecSessionObjectNotStored, [AName]);
   Lock;
   try
     vInt := FObjects.IndexOf(AName);
@@ -500,6 +739,37 @@ begin
       FObjects.AddObject(AName, AValue);
   finally
     Unlock;
+  end;
+end;
+
+procedure TRALWebSession.SetValues(AName: StringRAL; const AValue: StringRAL);
+var
+  vInt: IntegerRAL;
+  vValue: TRALWebSessionValue;
+begin
+  Lock;
+  try
+    vInt := FValues.IndexOf(AName);
+    if vInt >= 0 then
+      TRALWebSessionValue(FValues.Objects[vInt]).Value := AValue
+    else
+    begin
+      vValue := TRALWebSessionValue.Create;
+      vValue.Value := AValue;
+      FValues.AddObject(AName, vValue);
+    end;
+  finally
+    Unlock;
+  end;
+  Changed;
+end;
+
+procedure TRALWebSession.WriteCookie(AResponse: TRALResponse);
+begin
+  if FDirty and (AResponse = FResponse) then
+  begin
+    FDirty := False;
+    FModule.SendSessionCookie(AResponse, FModule.EncodeSessionCookie(Self));
   end;
 end;
 
@@ -517,19 +787,46 @@ begin
   end;
 end;
 
+procedure TRALWebSession.ClearValues;
+var
+  vInt: IntegerRAL;
+begin
+  Lock;
+  try
+    for vInt := 0 to Pred(FValues.Count) do
+      FValues.Objects[vInt].Free;
+    FValues.Clear;
+  finally
+    Unlock;
+  end;
+end;
+
 constructor TRALWebSession.Create;
 begin
   inherited;
   FLastDate := Now;
   FObjects := TStringList.Create;
   FObjects.Sorted := True;
+  FValues := TStringList.Create;
+  FValues.Sorted := True;
+  FValues.CaseSensitive := True;
 end;
 
 destructor TRALWebSession.Destroy;
 begin
   ClearObjects;
+  ClearValues;
+  FreeAndNil(FValues);
   FreeAndNil(FObjects);
   inherited Destroy;
+end;
+
+procedure TRALWebSession.Clear;
+begin
+  ClearObjects;
+  ClearValues;
+  if FStorage <> wssMemory then
+    Changed;
 end;
 
 function TRALWebSession.DeleteObject(AName: StringRAL; AFree: boolean): boolean;
@@ -547,6 +844,49 @@ begin
         FObjects.Objects[vInt].Free;
       FObjects.Delete(vInt);
     end;
+  finally
+    Unlock;
+  end;
+end;
+
+function TRALWebSession.DeleteValue(const AName: StringRAL): boolean;
+var
+  vInt: IntegerRAL;
+begin
+  Lock;
+  try
+    vInt := FValues.IndexOf(AName);
+    Result := vInt >= 0;
+    if Result then
+    begin
+      FValues.Objects[vInt].Free;
+      FValues.Delete(vInt);
+    end;
+  finally
+    Unlock;
+  end;
+  if Result then
+    Changed;
+end;
+
+function TRALWebSession.HasValue(const AName: StringRAL): boolean;
+begin
+  Lock;
+  try
+    Result := FValues.IndexOf(AName) >= 0;
+  finally
+    Unlock;
+  end;
+end;
+
+procedure TRALWebSession.ValueNames(AList: TStrings);
+var
+  vInt: IntegerRAL;
+begin
+  Lock;
+  try
+    for vInt := 0 to Pred(FValues.Count) do
+      AList.Add(FValues[vInt]);
   finally
     Unlock;
   end;
@@ -1005,6 +1345,10 @@ begin
     FSessions[vInt] := TRALStringListSafe.Create;
   FSweepLock := TCriticalSection.Create;
   FSessionTimeout := DEFAULTWEBSESSIONTIMEOUT;
+  FSessionCookieMaxSize := cRALSessionCookieMaxSize;
+  FRequestSessions := TRALStringListSafe.Create;
+  FRequestSessions.Lock.Sorted := True;
+  FRequestSessions.Unlock;
 
   PublishSettings;
 end;
@@ -1019,6 +1363,9 @@ begin
       FSessions[vInt].Clear(True);
       FreeAndNil(FSessions[vInt]);
     end;
+  { a module freed while requests run is not supported: their sessions
+    still free themselves when those requests end }
+  FreeAndNil(FRequestSessions);
   FreeAndNil(FSweepLock);
   FreeAndNil(FCacheControl);
   FreeAndNil(FBlockedExtensions);
@@ -1520,10 +1867,10 @@ var
   vTimeout, vShard, vInt: IntegerRAL;
   vList: TStringList;
   vGone: TList;
+  vSession: TRALWebSession;
+  vAge: Int64RAL;
 begin
   vTimeout := FSessionTimeout;
-  if vTimeout <= 0 then
-    Exit;
 
   { at most once a second, and by one thread: the others go on. Read once
     without the lock - a stale read only means one look too many or one
@@ -1547,11 +1894,16 @@ begin
       vList := FSessions[vShard].Lock;
       try
         for vInt := Pred(vList.Count) downto 0 do
-          if MilliSecondsBetween(vNow, TRALWebSession(vList.Objects[vInt]).LastDate) >= vTimeout then
+        begin
+          vSession := TRALWebSession(vList.Objects[vInt]);
+          vAge := MilliSecondsBetween(vNow, vSession.LastDate);
+          if (vSession.FEnded and (vAge >= cRALEndedSessionGrace)) or
+             ((not vSession.FEnded) and (vTimeout > 0) and (vAge >= vTimeout)) then
           begin
-            vGone.Add(vList.Objects[vInt]);
+            vGone.Add(vSession);
             vList.Delete(vInt);
           end;
+        end;
       finally
         FSessions[vShard].Unlock;
       end;
@@ -1576,7 +1928,10 @@ begin
 
   { reading the session keeps it alive, not only creating it }
   Result := TRALWebSession(AList.Objects[vInt]);
-  Result.LastDate := Now;
+  if Result.FEnded then
+    Result := nil
+  else
+    Result.LastDate := Now;
 end;
 
 function TRALWebModule.GetWebSession(ARequest: TRALRequest): TRALWebSession;
@@ -1584,7 +1939,26 @@ var
   vName: StringRAL;
   vShard: IntegerRAL;
   vList: TStringList;
+  vInt: IntegerRAL;
 begin
+  if FSessionStorage <> wssMemory then
+  begin
+    // read once per request: the same object for every ask
+    vList := FRequestSessions.Lock;
+    try
+      vInt := vList.IndexOf(RequestKey(ARequest));
+      if vInt >= 0 then
+        Result := TRALWebSession(vList.Objects[vInt])
+      else
+        Result := nil;
+    finally
+      FRequestSessions.Unlock;
+    end;
+    if Result = nil then
+      Result := LoadSession(ARequest);
+    Exit;
+  end;
+
   SweepSessions;
   vName := ARequest.Params.GetKind[RAL_SESSION, rpkCOOKIE].AsString;
   vShard := SessionShard(vName);
@@ -1601,9 +1975,41 @@ var
   vList: TStringList;
   vName: StringRAL;
   vShard: IntegerRAL;
-  vCookie: TRALCookie;
 begin
   Result := GetWebSession(ARequest);
+  if FSessionStorage <> wssMemory then
+  begin
+    if Result = nil then
+    begin
+      { a name the browser sent and the store does not know is never adopted,
+        as in memory }
+      repeat
+        vName := NewSessionName;
+      until (FSessionStorage = wssCookie) or
+            (FSessionStore.TimeToLive(StoreKey(vName)) = -2);
+      Result := NewRequestSession(ARequest, vName);
+      if FSessionStorage = wssStore then
+      begin
+        FSessionStore.Put(StoreKey(vName), Result.SaveValues, FSessionTimeout);
+        SendSessionCookie(AResponse, vName);
+      end
+      else
+        Result.FDirty := True;
+    end;
+    if (FSessionStorage = wssCookie) and (Result.FResponse = nil) then
+    begin
+      Result.FResponse := AResponse;
+      AResponse.AddWireHandler({$IFDEF FPC}@{$ENDIF}Result.WriteCookie);
+      { the cookie carries its own age: it is issued again once a quarter of
+        SessionTimeout went by, so a session in use does not expire }
+      if (FSessionTimeout > 0) and
+         ((DateTimeToUnix(RALDateTimeToGMT(Now)) - Result.FCookieTime) * 1000 >
+          FSessionTimeout div 4) then
+        Result.FDirty := True;
+    end;
+    Exit;
+  end;
+
   if Result <> nil then
     Exit;
 
@@ -1618,6 +2024,8 @@ begin
       if vList.IndexOf(vName) < 0 then
       begin
         Result := TRALWebSession.Create;
+        Result.FModule := Self;
+        Result.FName := vName;
         vList.AddObject(vName, Result);
       end;
     finally
@@ -1626,13 +2034,280 @@ begin
   until Result <> nil;
 
   // the cookie only goes out with a new session
+  SendSessionCookie(AResponse, vName);
+end;
+
+function TRALWebModule.RegenerateSession(ARequest: TRALRequest;
+  AResponse: TRALResponse): TRALWebSession;
+var
+  vOld, vName: StringRAL;
+  vShard: IntegerRAL;
+  vList: TStringList;
+  vInt: IntegerRAL;
+  vDone: boolean;
+begin
+  Result := GetWebSession(ARequest);
+  if Result = nil then
+  begin
+    Result := OpenSession(ARequest, AResponse);
+    Exit;
+  end;
+
+  vOld := Result.FName;
+  case FSessionStorage of
+    wssMemory:
+      begin
+        vShard := SessionShard(vOld);
+        vList := FSessions[vShard].Lock;
+        try
+          vInt := vList.IndexOf(vOld);
+          if vInt >= 0 then
+            vList.Delete(vInt);
+        finally
+          FSessions[vShard].Unlock;
+        end;
+        repeat
+          vName := NewSessionName;
+          vShard := SessionShard(vName);
+          vList := FSessions[vShard].Lock;
+          try
+            vDone := vList.IndexOf(vName) < 0;
+            if vDone then
+            begin
+              Result.FName := vName;
+              vList.AddObject(vName, Result);
+            end;
+          finally
+            FSessions[vShard].Unlock;
+          end;
+        until vDone;
+        SendSessionCookie(AResponse, vName);
+      end;
+    wssStore:
+      begin
+        repeat
+          vName := NewSessionName;
+        until FSessionStore.TimeToLive(StoreKey(vName)) = -2;
+        Result.FName := vName;
+        FSessionStore.Put(StoreKey(vName), Result.SaveValues, FSessionTimeout);
+        FSessionStore.Delete(StoreKey(vOld));
+        SendSessionCookie(AResponse, vName);
+      end;
+    wssCookie:
+      begin
+        Result.FName := NewSessionName;
+        if Result.FResponse = nil then
+        begin
+          Result.FResponse := AResponse;
+          AResponse.AddWireHandler({$IFDEF FPC}@{$ENDIF}Result.WriteCookie);
+        end;
+        Result.FDirty := True;
+      end;
+  end;
+end;
+
+procedure TRALWebModule.EndSession(ARequest: TRALRequest; AResponse: TRALResponse);
+var
+  vSession: TRALWebSession;
+  vShard: IntegerRAL;
+begin
+  vSession := GetWebSession(ARequest);
+  if vSession <> nil then
+    case FSessionStorage of
+      wssMemory:
+        begin
+          { not freed here: another request of the browser may hold it. It stays
+            in its list, found by nobody, until the sweep frees it }
+          vShard := SessionShard(vSession.FName);
+          FSessions[vShard].Lock;
+          try
+            vSession.FEnded := True;
+            vSession.LastDate := Now;
+          finally
+            FSessions[vShard].Unlock;
+          end;
+          vSession.ClearObjects;
+          vSession.ClearValues;
+        end;
+      wssStore:
+        begin
+          FSessionStore.Delete(StoreKey(vSession.FName));
+          vSession.ClearValues;
+        end;
+      wssCookie:
+        begin
+          // nothing is left to send: the cookie below drops it
+          vSession.FDirty := False;
+          vSession.ClearValues;
+        end;
+    end;
+  SendSessionCookie(AResponse, '', True);
+end;
+
+procedure TRALWebModule.CreateSession(ARequest: TRALRequest; AResponse: TRALResponse);
+begin
+  OpenSession(ARequest, AResponse);
+end;
+
+procedure TRALWebModule.AttachSession(ARequest: TRALRequest; ASession: TRALWebSession);
+var
+  vList: TStringList;
+begin
+  vList := FRequestSessions.Lock;
+  try
+    vList.AddObject(RequestKey(ARequest), ASession);
+  finally
+    FRequestSessions.Unlock;
+  end;
+  ARequest.AddFinishHandler({$IFDEF FPC}@{$ENDIF}ASession.RequestFinished);
+end;
+
+procedure TRALWebModule.CheckSessionStorage;
+begin
+  case FSessionStorage of
+    wssStore:
+      if FSessionStore = nil then
+        raise ERALException.Create(ecSessionNoStore);
+    wssCookie:
+      if FSessionSecret = '' then
+        raise ERALException.Create(ecSessionNoSecret);
+  end;
+end;
+
+{ The cookie is "<id>.<issued>.<values>" ciphered with AES-256 and an HMAC
+  (TRALHashes, the body cipher), in base64: changing a byte fails the HMAC }
+function TRALWebModule.DecodeSessionCookie(const ACookie: StringRAL;
+  out AName: StringRAL; out ATime: Int64RAL; out AData: StringRAL): boolean;
+var
+  vText: StringRAL;
+  vDot1, vDot2: IntegerRAL;
+begin
+  Result := False;
+  AName := '';
+  ATime := 0;
+  AData := '';
+  try
+    vText := TRALHashes.Decrypt(ACookie, FSessionSecret, crAES256);
+  except
+    Exit;
+  end;
+  vDot1 := Pos('.', vText);
+  if vDot1 <= 1 then
+    Exit;
+  AName := Copy(vText, 1, vDot1 - 1);
+  vText := Copy(vText, vDot1 + 1, MaxInt);
+  vDot2 := Pos('.', vText);
+  if vDot2 <= 1 then
+    Exit;
+  ATime := StrToInt64Def(string(Copy(vText, 1, vDot2 - 1)), -1);
+  AData := Copy(vText, vDot2 + 1, MaxInt);
+  Result := ATime >= 0;
+end;
+
+procedure TRALWebModule.DetachSession(ARequest: TRALRequest);
+var
+  vList: TStringList;
+  vInt: IntegerRAL;
+begin
+  vList := FRequestSessions.Lock;
+  try
+    vInt := vList.IndexOf(RequestKey(ARequest));
+    if vInt >= 0 then
+      vList.Delete(vInt);
+  finally
+    FRequestSessions.Unlock;
+  end;
+end;
+
+function TRALWebModule.EncodeSessionCookie(ASession: TRALWebSession): StringRAL;
+begin
+  ASession.FCookieTime := DateTimeToUnix(RALDateTimeToGMT(Now));
+  Result := TRALHashes.Encrypt(ASession.FName + '.' +
+    StringRAL(IntToStr(ASession.FCookieTime)) + '.' + ASession.SaveValues,
+    FSessionSecret, crAES256);
+end;
+
+function TRALWebModule.LoadSession(ARequest: TRALRequest): TRALWebSession;
+var
+  vCookie, vName, vData: StringRAL;
+  vRaw: RawByteString;
+  vTime: Int64RAL;
+begin
+  Result := nil;
+  CheckSessionStorage;
+  vCookie := ARequest.Params.GetKind[RAL_SESSION, rpkCOOKIE].AsString;
+  if vCookie = '' then
+    Exit;
+
+  vTime := 0;
+  if FSessionStorage = wssStore then
+  begin
+    vName := vCookie;
+    if not FSessionStore.Get(StoreKey(vName), vRaw) then
+      Exit;
+    vData := StringRAL(vRaw);
+    // every use starts the count again, as in memory
+    if FSessionTimeout > 0 then
+      FSessionStore.Expire(StoreKey(vName), FSessionTimeout);
+  end
+  else
+  begin
+    if not DecodeSessionCookie(vCookie, vName, vTime, vData) then
+      Exit;
+    if (FSessionTimeout > 0) and
+       ((DateTimeToUnix(RALDateTimeToGMT(Now)) - vTime) * 1000 >= FSessionTimeout) then
+      Exit;
+  end;
+
+  Result := TRALWebSession.Create;
+  Result.FModule := Self;
+  Result.FName := vName;
+  Result.FStorage := FSessionStorage;
+  Result.FCookieTime := vTime;
+  if not Result.LoadValues(vData) then
+  begin
+    FreeAndNil(Result);
+    Exit;
+  end;
+  AttachSession(ARequest, Result);
+end;
+
+function TRALWebModule.NewRequestSession(ARequest: TRALRequest;
+  const AName: StringRAL): TRALWebSession;
+begin
+  Result := TRALWebSession.Create;
+  Result.FModule := Self;
+  Result.FName := AName;
+  Result.FStorage := FSessionStorage;
+  AttachSession(ARequest, Result);
+end;
+
+procedure TRALWebModule.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  if (Operation = opRemove) and (AComponent = FSessionStore) then
+    FSessionStore := nil;
+  inherited Notification(AComponent, Operation);
+end;
+
+function TRALWebModule.RequestKey(ARequest: TRALRequest): StringRAL;
+begin
+  Result := StringRAL(IntToHex(Int64(NativeUInt(ARequest)), SizeOf(Pointer) * 2));
+end;
+
+procedure TRALWebModule.SendSessionCookie(AResponse: TRALResponse;
+  const AValue: StringRAL; ADelete: boolean);
+var
+  vCookie: TRALCookie;
+begin
   Finalize(vCookie);
   FillChar(vCookie, SizeOf(vCookie), 0);
   vCookie.Name := RAL_SESSION;
-  vCookie.Value := vName;
+  vCookie.Value := AValue;
   vCookie.Path := '/';
   vCookie.HttpOnly := True;
-  vCookie.SessionOnly := True;
+  vCookie.SessionOnly := not ADelete;
+  if ADelete then
+    vCookie.MaxAge := -1;
   vCookie.Secure := (Server <> nil) and Server.SSLEnabled;
   { another site's form, link or script does not carry it - the session then
     cannot be ridden from elsewhere (CSRF). Lax keeps it on a link followed
@@ -1641,9 +2316,20 @@ begin
   AResponse.AddCookie(vCookie);
 end;
 
-procedure TRALWebModule.CreateSession(ARequest: TRALRequest; AResponse: TRALResponse);
+procedure TRALWebModule.SetSessionStore(AValue: TRALKeyValueStore);
 begin
-  OpenSession(ARequest, AResponse);
+  if AValue = FSessionStore then
+    Exit;
+  if FSessionStore <> nil then
+    FSessionStore.RemoveFreeNotification(Self);
+  FSessionStore := AValue;
+  if FSessionStore <> nil then
+    FSessionStore.FreeNotification(Self);
+end;
+
+function TRALWebModule.StoreKey(const AName: StringRAL): StringRAL;
+begin
+  Result := 'ral.websession:' + AName;
 end;
 
 procedure TRALWebModule.WebModFile(ARequest: TRALRequest; AResponse: TRALResponse);

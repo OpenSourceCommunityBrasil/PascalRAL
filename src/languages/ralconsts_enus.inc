@@ -698,3 +698,11 @@
   emHubUnknownMethod = 'The hub has no method "%s".';
   emHubTimeout = 'The hub did not answer "%s" within %d ms.';
   emHubError = 'The hub answered "%s" with an error: %s';
+  emSessionObjectNotStored = 'Objects are kept only by a session in memory; "%s" cannot go into a session kept in a store or a cookie.';
+  emSessionReadOnly = 'A session kept in a cookie changes only when opened with OpenSession, which has the response.';
+  emSessionCookieTooLarge = 'The session cookie would take %d bytes, more than SessionCookieMaxSize (%d).';
+  emSessionNoSecret = 'SessionSecret is empty: a session kept in a cookie needs a secret.';
+  emSessionNoStore = 'SessionStorage is wssStore, but no SessionStore is linked.';
+  emScanFailed = 'The upload scanner could not check "%s": %s';
+  emClamAVAnswer = 'clamd gave an answer RAL does not understand: %s';
+  emViewNoEngine = 'The view module has no template Engine linked.';

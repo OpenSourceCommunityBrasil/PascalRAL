@@ -132,7 +132,7 @@ Item_60=src\modules\mcp\db
 Item_61=src\modules\websocket
 Item_62=src\modules\websocket\mqtt
 [Files]
-Count=245
+Count=251
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -378,6 +378,12 @@ Item_241=src\modules\websocket\RALWebSocketHubClient.pas
 Item_242=src\modules\websocket\RALModuleWebSocketReg.pas
 Item_243=src\modules\websocket\mqtt\RALWebSocketHubMQTT.pas
 Item_244=src\modules\websocket\mqtt\RALModuleWebSocketMQTTReg.pas
+Item_245=src\modules\web\RALHtmx.pas
+Item_246=src\modules\web\RALViewModule.pas
+Item_247=src\modules\web\RALCSRF.pas
+Item_248=src\modules\web\RALUserAgent.pas
+Item_249=src\modules\web\RALUploadScan.pas
+Item_250=src\modules\web\RALClamAV.pas
 [AdditionalFiles]
 Count=0
 

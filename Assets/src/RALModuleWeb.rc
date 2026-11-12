@@ -1,2 +1,6 @@
 TRALWebModule BITMAP "..\components\base\modules\TRALWebModule.bmp"
 TRALMustacheEngine BITMAP "..\components\base\modules\TRALMustacheEngine.bmp"
+TRALViewModule BITMAP "..\components\base\modules\TRALViewModule.bmp"
+TRALCSRFPlugin BITMAP "..\components\base\plugins\TRALCSRFPlugin.bmp"
+TRALUploadScanPlugin BITMAP "..\components\base\plugins\TRALUploadScanPlugin.bmp"
+TRALClamAVScanner BITMAP "..\components\base\plugins\TRALClamAVScanner.bmp"

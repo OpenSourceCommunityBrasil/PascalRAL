@@ -106,7 +106,7 @@
             <Dependencies>Modules\RALModuleProxyPackage.dproj</Dependencies>
         </Projects>
         <Projects Include="Modules\RALModuleWebPackage.dproj">
-            <Dependencies>PascalRAL.dproj</Dependencies>
+            <Dependencies>PascalRAL.dproj;Net\RALNetPackage.dproj</Dependencies>
         </Projects>
         <Projects Include="Modules\RALModuleJSONRPCPackage.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
@@ -473,13 +473,13 @@
     <Target Name="RALModuleProxyDsgn:Make" DependsOnTargets="RALModuleProxyPackage:Make">
         <MSBuild Projects="Modules\RALModuleProxyDsgn.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALModuleWebPackage" DependsOnTargets="PascalRAL">
+    <Target Name="RALModuleWebPackage" DependsOnTargets="PascalRAL;RALNetPackage">
         <MSBuild Projects="Modules\RALModuleWebPackage.dproj"/>
     </Target>
-    <Target Name="RALModuleWebPackage:Clean" DependsOnTargets="PascalRAL:Clean">
+    <Target Name="RALModuleWebPackage:Clean" DependsOnTargets="PascalRAL:Clean;RALNetPackage:Clean">
         <MSBuild Projects="Modules\RALModuleWebPackage.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALModuleWebPackage:Make" DependsOnTargets="PascalRAL:Make">
+    <Target Name="RALModuleWebPackage:Make" DependsOnTargets="PascalRAL:Make;RALNetPackage:Make">
         <MSBuild Projects="Modules\RALModuleWebPackage.dproj" Targets="Make"/>
     </Target>
     <Target Name="RALModuleJSONRPCPackage" DependsOnTargets="PascalRAL">

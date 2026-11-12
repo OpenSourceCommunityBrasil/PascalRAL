@@ -83,7 +83,8 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    /// Binds AName to AObject, which must outlive the render; returns the map.
+    { Binds AName to AObject (another map too), which must outlive the render;
+      returns the map. }
     function Add(const AName: StringRAL; AObject: TObject): TRALTemplateMap; overload;
     /// Binds AName to the text AValue; returns the map.
     function Add(const AName, AValue: StringRAL): TRALTemplateMap; overload;
@@ -285,6 +286,17 @@ type
     FileName: StringRAL;
 
     destructor Destroy; override;
+  end;
+
+  { A view bound inside a map (a TRALTemplateMap or TRALTemplateValue built in
+    code and added with Add): it answers as the view it shows. }
+  TRALTemplateDataProxy = class(TRALTemplateObjectData)
+  public
+    function IsFalsey: Boolean; override;
+    function Iterate: TRALTemplateIterator; override;
+    function Kind: TRALTemplateKind; override;
+    function Member(const AName: StringRAL): TRALTemplateData; override;
+    function Text: StringRAL; override;
   end;
 
   /// Iterator over a list read by position.
@@ -805,6 +817,33 @@ begin
     Result := TRALTemplateValue(vObject).Clone
   else
     Result := RALTemplateDataOf(vObject);
+end;
+
+{ TRALTemplateDataProxy }
+
+function TRALTemplateDataProxy.IsFalsey: Boolean;
+begin
+  Result := TRALTemplateData(FObject).IsFalsey;
+end;
+
+function TRALTemplateDataProxy.Iterate: TRALTemplateIterator;
+begin
+  Result := TRALTemplateData(FObject).Iterate;
+end;
+
+function TRALTemplateDataProxy.Kind: TRALTemplateKind;
+begin
+  Result := TRALTemplateData(FObject).Kind;
+end;
+
+function TRALTemplateDataProxy.Member(const AName: StringRAL): TRALTemplateData;
+begin
+  Result := TRALTemplateData(FObject).Member(AName);
+end;
+
+function TRALTemplateDataProxy.Text: StringRAL;
+begin
+  Result := TRALTemplateData(FObject).Text;
 end;
 
 { TRALTemplateObjectData }
@@ -2323,6 +2362,7 @@ initialization
   RALRegisterTemplateData(TRALJSON, TRALTemplateJSONData);
   RALRegisterTemplateData(TStrings, TRALTemplateStringsData);
   RALRegisterTemplateData(TCollection, TRALTemplateCollectionData);
+  RALRegisterTemplateData(TRALTemplateData, TRALTemplateDataProxy);
 
 finalization
   FreeAndNil(vRegistry);
