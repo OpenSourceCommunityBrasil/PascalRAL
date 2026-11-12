@@ -331,8 +331,9 @@ a claim is one `UPDATE ... WHERE` with the lease token, payload in base64). Time
 Unix milliseconds read straight from the system clock (no time zone conversion), and
 `EnqueueAt` turns a local time into a delay. The outcome of a job is written outside
 the queue's lock, retried 5 times (a locked SQLite table, a deadlock) before `OnError`.
-`TRALBase64.Encode(s, True)` loses bytes above 127 on FPC: binary goes through
-`Encode(TBytes)`.
+Binary goes through `TBytes` (`TRALBase64.Encode(TBytes)`), never through a `StringRAL`
+and the ANSI code page: `StringToBytes`/`BytesToString` copy the bytes as they are only
+where that page is UTF-8.
 
 ### `TRALSynopseServer.Mode`
 

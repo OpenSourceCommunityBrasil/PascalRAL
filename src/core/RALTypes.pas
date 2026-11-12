@@ -166,9 +166,11 @@ function StringToBytesUTF8(const AString: StringRAL): TBytes;
 /// Returns ABytes, UTF-8 text, as a StringRAL.
 function BytesToStringUTF8(const ABytes: TBytes): StringRAL;
 
-/// Returns AString converted to the ANSI code page.
+{ Returns AString converted to the ANSI code page; where that page is UTF-8, the
+  bytes as they are (a byte that is not UTF-8 is kept). }
 function StringToBytes(const AString: StringRAL): TBytes;
-/// Returns ABytes, read as ANSI text, as a StringRAL.
+{ Returns ABytes, read as ANSI text, as a StringRAL; where that page is UTF-8, the
+  bytes as they are. }
 function BytesToString(const ABytes: TBytes): StringRAL;
 
 /// Returns the version as written on the wire: '1.0', '1.1', '2.0', or '' if unknown.
@@ -198,7 +200,12 @@ function StringToBytes(const AString: StringRAL): TBytes;
 {$ENDIF}
 begin
   {$IFDEF HAS_Encoding}
-    Result := TEncoding.ANSI.GetBytes(AString);
+    // the ANSI page is UTF-8 (Linux, macOS, Android): decoding would turn bytes
+    // that are not UTF-8 into '?', and valid text comes out the same
+    if DefaultSystemCodePage = CP_UTF8 then
+      Result := StringToBytesUTF8(AString)
+    else
+      Result := TEncoding.ANSI.GetBytes(UnicodeString(AString));
   {$ELSE}
     vStr := AString;
     SetLength(Result, Length(vStr));
@@ -221,7 +228,10 @@ function BytesToString(const ABytes: TBytes): StringRAL;
 {$ENDIF}
 begin
   {$IFDEF HAS_Encoding}
-    Result := TEncoding.ANSI.GetString(ABytes);
+    if DefaultSystemCodePage = CP_UTF8 then
+      Result := BytesToStringUTF8(ABytes)
+    else
+      Result := StringRAL(TEncoding.ANSI.GetString(ABytes));
   {$ELSE}
     SetLength(vStr, Length(ABytes));
     Move(ABytes[0], vStr[POSINISTR], Length(ABytes));

@@ -588,6 +588,17 @@ type
 
 implementation
 
+/// AValue (raw bytes, a big-endian number) in base64url without padding.
+function RawBase64Url(const AValue: RawByteString): string;
+var
+  vBytes: TBytes;
+begin
+  SetLength(vBytes, Length(AValue));
+  if AValue <> '' then
+    Move(Pointer(AValue)^, vBytes[0], Length(AValue));
+  Result := string(TRALBase64.ToBase64Url(TRALBase64.Encode(vBytes)));
+end;
+
 function TRALOpenSSLLibrary.GetSupportsLockingCallbacks: Boolean;
 begin
   FStateLock.BeginRead;
@@ -1711,7 +1722,7 @@ var
   begin
     if FVersionNumber < $10100000 then
     begin
-      Result := TRALBase64.ToBase64Url(TRALBase64.Encode(StringRAL(LegacyRSAParameter(PKey, Name)), True));
+      Result := RawBase64Url(LegacyRSAParameter(PKey, Name));
       Exit;
     end;
     BN := nil;
@@ -1736,7 +1747,7 @@ var
     try
       SetLength(Bytes, (BN_num_bits(BN) + 7) div 8);
       Check(BN_bn2bin(BN, Pointer(Bytes)), 'BN encoding');
-      Result := TRALBase64.ToBase64Url(TRALBase64.Encode(StringRAL(Bytes), True));
+      Result := RawBase64Url(Bytes);
     finally
       { OpenSSL 1.1.x returns borrowed BIGNUMs owned by PKey. }
       if Owned then
