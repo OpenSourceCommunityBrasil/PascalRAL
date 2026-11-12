@@ -183,6 +183,12 @@ or the systemd `Type=notify` daemon), `TRALSystemLog` (syslog/journal, Event Log
 JSON/INI/.env, `RAL_SERVER__PORT`, `--Server.Port=8080`), `TRALScheduler` (`Jobs` by
 cron or interval, linked to the server).
 
+Work that must survive a restart and be tried again: `RALHostingJobQueuePackage`,
+`TRALJobQueue` (`Folder` for a spool, `Handlers.AddHandler('name', Proc)`,
+`Enqueue(name, payload, delay)`, `Workers`, `MaxAttempts`, `RetryDelay`; at least once,
+so a handler that must not repeat checks `AJob.Id`; `AJob.RetryAfter`/`GiveUp`). Shared
+by several machines: `TRALJobDBStore` (`RALHostingJobQueueDBPackage`) in `Store`.
+
 ## Server properties worth knowing
 
 `Port` (8000; 0 = a free port, read it in `BoundPort`), `IPConfig` (bind addresses,

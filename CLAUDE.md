@@ -318,6 +318,22 @@ defaults < file (JSON/INI/.env) < environment (`RAL_A__B` is `A.B`) < command li
 form with '.', whatever the locale). `TRALScheduler` is a plugin with no phase: it starts in
 `ServerActivating` and `ServerDeactivating` (so `Shutdown`) waits for running jobs.
 
+**Job queue** (`src/hosting/jobqueue`, `RALHostingJobQueuePackage`; database store in
+`db/`, `RALHostingJobQueueDBPackage`): `TRALJobQueue` is a plugin with no phase, like the
+scheduler. Delivery is at least once: a claim is a lease (`LeaseTime`) that a keeper thread
+renews while the job runs; a lease that ends makes the job claimable again, so a killed
+process loses nothing and a handler that must not repeat checks `AJob.Id`. Stores
+(`TRALJobStore`): memory; spool folder (`TRALJobFileStore`: data in `data/`, an empty
+marker in `ready/`/`leased/`/`dead/` whose name carries time, id, attempts and owner,
+and every change of state is one rename - the rename is the claim, so processes share
+the folder; `Exclusive` puts leftover leases back at start); database (`TRALJobDBStore`:
+a claim is one `UPDATE ... WHERE` with the lease token, payload in base64). Times are
+Unix milliseconds read straight from the system clock (no time zone conversion), and
+`EnqueueAt` turns a local time into a delay. The outcome of a job is written outside
+the queue's lock, retried 5 times (a locked SQLite table, a deadlock) before `OnError`.
+`TRALBase64.Encode(s, True)` loses bytes above 127 on FPC: binary goes through
+`Encode(TBytes)`.
+
 ### `TRALSynopseServer.Mode`
 
 `smThreads` (default, a thread per kept-alive connection), `smAsync` (mORMot2's event
