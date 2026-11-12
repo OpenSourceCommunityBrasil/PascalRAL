@@ -91,7 +91,7 @@ type
       AOnGetContext: TRALViewContextEvent = nil): TRALViewRoute;
     function DefaultContentType: StringRAL; override;
     { Renders the view ARoute: the module's OnGetContext, the route's, then the
-      template with Engine. }
+      template with Engine and the module's own data, built after the events. }
     procedure RenderView(ARoute: TRALViewRoute; ARequest: TRALRequest;
       AResponse: TRALResponse);
   published
@@ -294,25 +294,27 @@ var
   vRender: boolean;
 begin
   CheckEngine;
-  vBase := BaseContext(ARequest, AResponse, 0, '');
+  vContext := TRALViewContext.Create;
   try
-    vContext := TRALViewContext.Create;
+    vRender := True;
+    if Assigned(FOnGetContext) then
+      FOnGetContext(ARoute, ARequest, AResponse, vContext, vRender);
+    if vRender and Assigned(ARoute.OnGetContext) then
+      ARoute.OnGetContext(ARoute, ARequest, AResponse, vContext, vRender);
+    if not vRender then
+      Exit;
+    { after the events: a handler that opened, renewed or ended the session
+      gets the CSRF token of the session the page goes out with }
+    vBase := BaseContext(ARequest, AResponse, 0, '');
     try
-      vRender := True;
-      if Assigned(FOnGetContext) then
-        FOnGetContext(ARoute, ARequest, AResponse, vContext, vRender);
-      if vRender and Assigned(ARoute.OnGetContext) then
-        ARoute.OnGetContext(ARoute, ARequest, AResponse, vContext, vRender);
-      if not vRender then
-        Exit;
       AddVaryHtmx(AResponse);
       FEngine.Render(AResponse, ARoute.TemplateName, [vBase, vContext],
         ARoute.StatusCode, ARoute.UseLayout and (not TRALHtmx.WantsFragment(ARequest)));
     finally
-      FreeAndNil(vContext);
+      FreeAndNil(vBase);
     end;
   finally
-    FreeAndNil(vBase);
+    FreeAndNil(vContext);
   end;
 end;
 

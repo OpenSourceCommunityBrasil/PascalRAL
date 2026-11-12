@@ -180,7 +180,8 @@ type
     FSweepLock: TCriticalSection;
     FUseAppPathAsRoot: boolean;
 
-    /// Keeps ASession as the one ARequest reads, freed when the request ends.
+    { keeps ASession as the one ARequest reads until the request ends, when a
+      wssStore or wssCookie one is freed }
     procedure AttachSession(ARequest: TRALRequest; ASession: TRALWebSession);
     /// Publishes the settings again.
     procedure BlockedExtensionsChanged(Sender: TObject);
@@ -194,7 +195,7 @@ type
       False when it was not made with SessionSecret or was changed }
     function DecodeSessionCookie(const ACookie: StringRAL; out AName: StringRAL;
       out ATime: Int64RAL; out AData: StringRAL): boolean;
-    /// Forgets the wssStore or wssCookie session ARequest read.
+    /// Forgets the session ARequest reads (finish handler of wssMemory sessions).
     procedure DetachSession(ARequest: TRALRequest);
     /// The cookie of a wssCookie session: its id, time and values, signed and ciphered.
     function EncodeSessionCookie(ASession: TRALWebSession): StringRAL;
@@ -1941,21 +1942,24 @@ var
   vList: TStringList;
   vInt: IntegerRAL;
 begin
+  { the session this request already read, opened or renewed - the cookie it
+    came with may name none, or an old one: the same object for every ask }
+  vList := FRequestSessions.Lock;
+  try
+    vInt := vList.IndexOf(RequestKey(ARequest));
+    if vInt >= 0 then
+      Result := TRALWebSession(vList.Objects[vInt])
+    else
+      Result := nil;
+  finally
+    FRequestSessions.Unlock;
+  end;
+  if Result <> nil then
+    Exit;
+
   if FSessionStorage <> wssMemory then
   begin
-    // read once per request: the same object for every ask
-    vList := FRequestSessions.Lock;
-    try
-      vInt := vList.IndexOf(RequestKey(ARequest));
-      if vInt >= 0 then
-        Result := TRALWebSession(vList.Objects[vInt])
-      else
-        Result := nil;
-    finally
-      FRequestSessions.Unlock;
-    end;
-    if Result = nil then
-      Result := LoadSession(ARequest);
+    Result := LoadSession(ARequest);
     Exit;
   end;
 
@@ -2032,6 +2036,7 @@ begin
       FSessions[vShard].Unlock;
     end;
   until Result <> nil;
+  AttachSession(ARequest, Result);
 
   // the cookie only goes out with a new session
   SendSessionCookie(AResponse, vName);
@@ -2081,6 +2086,7 @@ begin
             FSessions[vShard].Unlock;
           end;
         until vDone;
+        AttachSession(ARequest, Result);
         SendSessionCookie(AResponse, vName);
       end;
     wssStore:
@@ -2112,6 +2118,8 @@ var
   vShard: IntegerRAL;
 begin
   vSession := GetWebSession(ARequest);
+  // the request has no session from now on (a store or cookie one still frees itself)
+  DetachSession(ARequest);
   if vSession <> nil then
     case FSessionStorage of
       wssMemory:
@@ -2152,14 +2160,22 @@ end;
 procedure TRALWebModule.AttachSession(ARequest: TRALRequest; ASession: TRALWebSession);
 var
   vList: TStringList;
+  vKey: StringRAL;
 begin
+  vKey := RequestKey(ARequest);
   vList := FRequestSessions.Lock;
   try
-    vList.AddObject(RequestKey(ARequest), ASession);
+    if vList.IndexOf(vKey) >= 0 then
+      Exit;
+    vList.AddObject(vKey, ASession);
   finally
     FRequestSessions.Unlock;
   end;
-  ARequest.AddFinishHandler({$IFDEF FPC}@{$ENDIF}ASession.RequestFinished);
+  // a wssMemory session outlives the request: only the link to it goes
+  if ASession.FStorage = wssMemory then
+    ARequest.AddFinishHandler({$IFDEF FPC}@{$ENDIF}DetachSession)
+  else
+    ARequest.AddFinishHandler({$IFDEF FPC}@{$ENDIF}ASession.RequestFinished);
 end;
 
 procedure TRALWebModule.CheckSessionStorage;
