@@ -63,7 +63,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/mcp/` | `RALModuleMCPPackage` | MCP server (revision 2026-07-28): tools, resources, prompts, tasks; HTTP and stdio transports; client |
 | `src/modules/jsonrpc/` | `RALModuleJSONRPCPackage` | JSON-RPC 2.0: dispatcher, HTTP module, client, objects by RTTI |
 | `src/modules/websocket/` | `RALModuleWebSocketPackage` (requires `RALNetPackage`); `mqtt/` `RALModuleWebSocketMQTTPackage` | WebSocket routes, connections and hubs of connections, the client, hubs (JSON protocol, `ralhub.js`), the hub backplane over MQTT |
-| `src/modules/web/` | `RALModuleWebPackage` | Web module (static files, sessions), Mustache templates, HTML escaping |
+| `src/modules/web/` | `RALModuleWebPackage` (requires `RALNetPackage`) | Web module (static files, sessions in memory, a store or a signed cookie), Mustache templates, views and HTMX, CSRF, HTML escaping and sanitizing, User-Agent, upload scanning (ClamAV) |
 | `src/modules/xml/` | `RALModuleXMLPackage` | XML reader, writer, DOM, and the XML storage |
 | `src/others/` | (the package that uses each) | submodules only: ZSTD, pascal_brotli (kxBSON is registered but unused) |
 | `src/plugins/` | `PascalRAL` | core plugins: security, CORS, content (limits, compression, cipher, JSON body), concurrency |
@@ -264,7 +264,11 @@ on its own sockets.
   `mqtt/RALModuleWebSocketMQTTReg` - RALModuleWebSocketMQTTPackage
 - `web/` (RALModuleWebPackage): `RALWebModule`, `RALTemplate` (`TRALTemplateEngine`,
   `TRALMustacheEngine`, data views, `TRALTemplateMap`), `RALTemplateDB` (datasets as
-  template data), `RALHtml` (HTML, attribute, JavaScript and URL escaping), `RALModuleWebReg`
+  template data), `RALHtml` (HTML, attribute, JavaScript and URL escaping, `TRALHtmlSanitizer`),
+  `RALViewModule` (`TRALViewModule`, `TRALViewRoute`, `TRALViewContext`), `RALHtmx`
+  (`TRALHtmx`), `RALCSRF` (`TRALCSRFPlugin`), `RALUserAgent`, `RALUploadScan`
+  (`TRALUploadScanPlugin`, `TRALUploadScanner`), `RALClamAV` (`TRALClamAVScanner`),
+  `RALModuleWebReg`
 - `xml/` (RALModuleXMLPackage): `RALXMLReader` (pull parser), `RALXMLWriter`,
   `RALXML` (DOM with a fluent API and paths), `RALXMLC14N` (canonical XML), `RALStorageXML`
   (`TRALStorageXMLLink`), `RALModuleXMLReg`

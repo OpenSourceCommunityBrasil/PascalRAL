@@ -152,8 +152,17 @@ matching client. `tools/ralopenapi` writes classes and a client from an OpenAPI 
 
 ## Modules
 
-- Static files and a site: `TRALWebModule` (package `RALModuleWebPackage`):
-  `DocumentRoot` (empty serves nothing), `BlockedExtensions`, `CacheControl`.
+- Static files and a site: `TRALWebModule` (package `RALModuleWebPackage`, which
+  requires `RALNetPackage`): `DocumentRoot` (empty serves nothing), `BlockedExtensions`,
+  `CacheControl`. Sessions: `OpenSession` (handlers that need one), `Session.Values`
+  (text), `SessionStorage` `wssMemory`/`wssStore` (`SessionStore`, e.g. a shared
+  `TRALFileStore`)/`wssCookie` (`SessionSecret`); `RegenerateSession` at login,
+  `EndSession` at logout; `Objects` only in memory.
+- Pages: `TRALMustacheEngine` + `TRALViewModule` (`CreateView('/x', 'template',
+  OnGetContext)`; HTMX requests get the fragment, `TRALHtmx` reads `HX-*` and sets the
+  response headers); `TRALCSRFPlugin` (token in `{{csrf_token}}`/`{{{csrf_field}}}`,
+  `WebModule` binds it to the session); `TRALUploadScanPlugin` + `TRALClamAVScanner`
+  for uploads; `RALSanitizeHtml` for HTML that users send.
 - Swagger UI and Postman export: `TRALSwaggerModule` (`RALModuleSwaggerPackage`, which
   requires `RALPluginAuthPackage`). Route descriptions and `InputParams` feed it.
 - Database over HTTP: `ral-dbware`. SOAP: `ral-xml-soap`. Your own: `ral-module`.

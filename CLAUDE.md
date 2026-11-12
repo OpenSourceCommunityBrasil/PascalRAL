@@ -758,6 +758,23 @@ does not fault, and a refusal is answered as a fault through the core hook
   rendering it). `TRALMustacheEngine` passes the whole official `mustache/spec` but lambdas;
   the parser works on line tokens (standalone lines, block reindentation). Data views
   (`TRALTemplateData`) borrow the data; `RALTemplateDB` walks a dataset with one record view.
+- `TRALViewModule` (`RALViewModule`): routes of `TRALViewRoute` render a template with
+  two data items (the module's own - `params`, `htmx`, `csrf_*` - and the route's
+  `TRALViewContext`); an HTMX request that is not boosted gets no layout; `Vary:
+  HX-Request`. A `TRALTemplateData` bound inside a map is shown through
+  `TRALTemplateDataProxy`, so maps nest.
+- Web sessions: `wssMemory` keeps the shared object in 16 locked lists (`EndSession` marks
+  it ended, the sweep frees it after a minute: another request may hold it); `wssStore`
+  and `wssCookie` build one `TRALWebSession` per request (kept by the request's address,
+  freed by a finish handler); a store session writes through on every change, a cookie
+  session goes out from a wire handler (`AES-256` + HMAC through `TRALHashes`,
+  `id.issued.values`), so only `OpenSession` (which has the response) may change it.
+- `TRALCSRFPlugin` (`ppProcess`, 650, after the body is decoded so `_csrf` is readable):
+  token = 32 hex nonce + `.` + HMAC-SHA256(nonce|session id) in base64url; the cookie
+  and the header or field must be equal and valid for the current session.
+  `TRALUploadScanPlugin` (`ppProcess`, 450, after authentication) scans params with a
+  `FileName` (multipart) and, with `ScanBody`, a raw body; `TRALClamAVScanner` speaks
+  clamd `zINSTREAM` over `RALSocket` (hence the web package requires `RALNetPackage`).
 - `RALJSONRPC` (`RALModuleJSONRPCPackage`): `TRALJSONRPCDispatcher` answers text with text,
   any transport; `TRALJSONRPCModule` is one POST route (204 for notifications).
 - MCP (`RALModuleMCPPackage`, skill `ral-mcp`): only revision 2026-07-28 (stateless). The
