@@ -25,6 +25,8 @@ echo RALModuleMCP
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleMCPPackage.dcr" "RALModuleMCP.rc"
 echo RALModuleJSONRPC
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleJSONRPCPackage.dcr" "RALModuleJSONRPC.rc"
+echo RALModuleGrpc
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleGrpcPackage.dcr" "RALModuleGrpc.rc"
 echo RALModuleWebSocket
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleWebSocketPackage.dcr" "RALModuleWebSocket.rc"
 echo RALModuleWebSocketMQTT
@@ -75,6 +77,8 @@ echo RALModuleControllers
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleControllersPackage.dcr" "RALModuleControllers.rc"
 echo FastCGI
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\FastCGIRAL.dcr" "FastCGI.rc"
+echo NgHttp2
+%path_brcc32% -fo "..\..\pkg\Delphi\Engine\NgHttp2RAL.dcr" "NgHttp2.rc"
 echo InProc
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\InProcRAL.dcr" "InProc.rc"
 echo WebBroker

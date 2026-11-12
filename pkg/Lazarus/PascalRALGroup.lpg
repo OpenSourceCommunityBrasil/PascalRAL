@@ -8,6 +8,7 @@
       <Target FileName="Engine\synopseral.lpk"/>
       <Target FileName="Engine\saguiral.lpk"/>
       <Target FileName="Engine\fastcgiral.lpk"/>
+      <Target FileName="Engine\nghttp2ral.lpk"/>
       <Target FileName="Engine\inprocral.lpk"/>
       <Target FileName="Engine\webbrokerral.lpk"/>
       <Target FileName="Engine\msquicral.lpk"/>
@@ -37,6 +38,8 @@
       <Target FileName="Modules\ralmoduleproxydsgn.lpk"/>
       <Target FileName="Modules\ralmodulewebpackage.lpk"/>
       <Target FileName="Modules\ralmodulejsonrpcpackage.lpk"/>
+      <Target FileName="Modules\ralmoduleprotobufpackage.lpk"/>
+      <Target FileName="Modules\ralmodulegrpcpackage.lpk"/>
       <Target FileName="Modules\ralmodulewebsocketpackage.lpk"/>
       <Target FileName="Modules\ralmodulewebsocketmqttpackage.lpk"/>
       <Target FileName="Modules\ralmodulemcppackage.lpk"/>
