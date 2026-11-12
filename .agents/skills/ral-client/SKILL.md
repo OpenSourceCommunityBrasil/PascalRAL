@@ -24,6 +24,7 @@ description: >
 | `'fpHTTP'` | `RALfpHTTPClient` | Lazarus |
 | `'OkHttp'` | `RALOkHttpClient` | Delphi, Android (HTTP/2, pins) |
 | `'MsQuic'`, `'Kwik'` | `RALMsQuicClient`, `RALKwikClient` | only against a RAL MsQuic server |
+| `'NgHttp2'` | `RALNgHttp2Client` | Delphi, Lazarus; always HTTP/2 (h2, h2c); needs `libnghttp2` |
 
 `Engine X not found` = the unit is missing from `uses`.
 

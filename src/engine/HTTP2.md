@@ -28,6 +28,7 @@ OkHttp engine has its own page for wiring the jars into a project -
 - [The Object Inspector hides what does not apply](#the-object-inspector-hides-what-does-not-apply)
 - [Troubleshooting](#troubleshooting)
 - [Upgrading from an older RAL](#upgrading-from-an-older-ral)
+- [The NgHttp2 engine](#the-nghttp2-engine)
 - [The commits](#the-commits)
 
 ---
@@ -188,6 +189,7 @@ there is no engine instance at all.
 | `'Indy'` | no | no | no | yes, everywhere |
 | `'mORMot2'` | no | no | no | yes (with OpenSSL; SChannel is caught right after the handshake) |
 | `'fpHTTP'` | no | no | no | yes |
+| `'NgHttp2'` | **always** (h2 / h2c) | **yes** | no | yes |
 
 Three notes on the asymmetries:
 
@@ -611,6 +613,27 @@ defaults to `rhvDefault`, `ShareConnection` to False, `KeepAliveInterval` to 0, 
    version it was observed on.
 
 ---
+
+## The NgHttp2 engine
+
+`NgHttp2RAL` (`src/engine/nghttp2`) frames HTTP/2 with nghttp2 (1.59 or newer, 1.68.1+
+recommended), loaded at run time from `libnghttp2.so.14`, `libnghttp2-14.dll` or
+`LibraryName`, over RAL's own sockets and TLS (OpenSSL 3, ALPN `h2`).
+
+- **Server** `TRALNgHttp2Server`: HTTP/2 only - h2 when `SSL.Enabled`, h2c (prior
+  knowledge) otherwise; no HTTP/1.1 and no `Upgrade: h2c`. `MaxConcurrentStreams` (100),
+  `InitialWindowSize` (1 MB, stream and connection), `IdleTimeout`, `PollThreads`,
+  `PoolCount`, `ExecuteInPollThread`. Live streams go out as DATA frames as they are
+  written; `TRALResponse.AddTrailer` sends HTTP/2 trailers (gRPC's `grpc-status`).
+  nghttp2's limits against rapid reset and CONTINUATION floods are on when the library
+  has them.
+- **Client** `EngineType := 'NgHttp2'`: always HTTP/2, h2 for `https://`, h2c for
+  `http://`; with `ShareConnection` every `TRALClient` of the process calling the same
+  scheme/host/port with the same certificate policy shares one connection (calls from
+  many threads are streams of it). `OnReceiveData` is live; trailers arrive in
+  `TRALResponse.Trailers`.
+- Measured on FPC/Linux, 12 cores, c=64 (8 connections x 8 streams, the generator on the
+  same machine): 139k req/s with `ExecuteInPollThread`, 79k with the worker pool.
 
 ## The commits
 

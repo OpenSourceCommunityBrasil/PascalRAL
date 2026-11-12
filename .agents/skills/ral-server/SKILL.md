@@ -21,6 +21,7 @@ The engine is the `TRALServer` descendant; the routes and handlers are the same 
 | `TRALfpHttpServer` (`RALfpHTTPServer`) | no | yes | nothing to install |
 | `TRALSaguiServer` (`RALSaguiServer`) | 2009+ | yes | needs `libsagui` |
 | `TRALMsQuicServer` (`RALMsQuicServer`) | yes | yes | QUIC, RAL clients only |
+| `TRALNgHttp2Server` (`RALNgHttp2Server`) | yes | yes | HTTP/2 only (h2 by ALPN, h2c), trailers (native gRPC); needs `libnghttp2` and `RALNetPackage` |
 | `TRALCGIServer` (`RALCGIServer`) | yes | yes | behind IIS/Apache/nginx |
 | `TRALFastCGIServer` (`RALFastCGIServer`) | yes | yes | behind nginx/Apache over FastCGI (TCP); needs `RALNetPackage` |
 | `TRALWebBrokerServer` (`RALWebBrokerServer`) | yes | yes | a library: ISAPI (IIS) or Apache 2.4 module on Delphi, Apache 2.4 on Lazarus |
@@ -166,6 +167,10 @@ matching client. `tools/ralopenapi` writes classes and a client from an OpenAPI 
 - Swagger UI and Postman export: `TRALSwaggerModule` (`RALModuleSwaggerPackage`, which
   requires `RALPluginAuthPackage`). Route descriptions and `InputParams` feed it.
 - Database over HTTP: `ral-dbware`. SOAP: `ral-xml-soap`. Your own: `ral-module`.
+- gRPC (`RALModuleGrpcPackage` on `RALModuleProtobufPackage`): `tools/ralprotoc` writes the
+  messages and, per service, `T<Service>ServiceBase` (override, then
+  `TRALGrpcModule.AddService`) and `T<Service>Client`; or answer `Methods` by events.
+  gRPC-Web runs on every engine; native gRPC needs `TRALNgHttp2Server`.
 - WebSocket (`RALModuleWebSocketPackage`; Indy, fpHTTP, mORMot2 `smThreads`/`smAsync`):
   `TRALWebSocketModule.CreateWebSocketRoute('/chat', OnMessage)`, then `OnOpen`,
   `OnClose`, `Deflate`, `Protocols`, `AllowedOrigins`; the plugins and authenticators

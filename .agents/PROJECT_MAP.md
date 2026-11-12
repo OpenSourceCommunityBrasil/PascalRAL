@@ -30,7 +30,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | folder | package(s) | contents |
 |---|---|---|
 | `src/core/` | `PascalRAL` | server, client, request/response, routes, params, plugin base, authentication base |
-| `src/bindings/` | `MsQuicRAL`, `SaguiRAL` | C library bindings (`MsQuic.pas`, `libsagui.pas`), no RAL unit |
+| `src/bindings/` | `MsQuicRAL`, `SaguiRAL`, `NgHttp2RAL` | C library bindings (`MsQuic.pas`, `libsagui.pas`, `nghttp2.pas`), no RAL unit |
 | `src/common/` | `PascalRAL` | core utilities: JSON, streams, MIME, URL, multipart, network, base64, QUIC frame |
 | `src/compress/` | `PascalRAL` | zlib/gzip/deflate and the compressor registry |
 | `src/compress/brotli/` | `RALCompressBrotliPackage` | Brotli (submodule in `src/others/pascal_brotli`) |
@@ -64,6 +64,8 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/controllers/` | `RALModuleControllersPackage` | controllers by attributes and the interface client (Delphi 2010+) |
 | `src/modules/mcp/` | `RALModuleMCPPackage` | MCP server (revision 2026-07-28): tools, resources, prompts, tasks; HTTP and stdio transports; client |
 | `src/modules/jsonrpc/` | `RALModuleJSONRPCPackage` | JSON-RPC 2.0: dispatcher, HTTP module, client, objects by RTTI |
+| `src/modules/protobuf/` | `RALModuleProtobufPackage` | Protocol Buffers: runtime, well-known types, `.proto` parser and the Pascal generator of `tools/ralprotoc` |
+| `src/modules/grpc/` | `RALModuleGrpcPackage` (requires `RALModuleProtobufPackage`) | gRPC: framing, the module (gRPC-Web, gRPC-Web text, native over HTTP/2), the client |
 | `src/modules/websocket/` | `RALModuleWebSocketPackage` (requires `RALNetPackage`); `mqtt/` `RALModuleWebSocketMQTTPackage` | WebSocket routes, connections and hubs of connections, the client, hubs (JSON protocol, `ralhub.js`), the hub backplane over MQTT |
 | `src/modules/web/` | `RALModuleWebPackage` (requires `RALNetPackage`) | Web module (static files, sessions in memory, a store or a signed cookie), Mustache templates, views and HTMX, CSRF, HTML escaping and sanitizing, User-Agent, upload scanning (ClamAV) |
 | `src/modules/xml/` | `RALModuleXMLPackage` | XML reader, writer, DOM, and the XML storage |
@@ -106,7 +108,8 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 
 ### `src/bindings/`
 
-- `MsQuic.pas` (MsQuicRAL), `libsagui.pas` (SaguiRAL)
+- `MsQuic.pas` (MsQuicRAL), `libsagui.pas` (SaguiRAL), `nghttp2.pas` (NgHttp2RAL; nghttp2 1.59+,
+  loaded at run time, HPACK coder included)
 
 ### `src/common/` (PascalRAL)
 
@@ -167,6 +170,10 @@ bcrypt core), `RALSalsa20` (the Salsa20 core), `RALOTP` (HOTP/TOTP, base32, otpa
   `RALNetPackage`): FastCGI 1.0 responder of its own on `RALSocket`, both compilers,
   kept connections and live streams, behind nginx or Apache (IIS's FastCGI only
   talks to processes it starts, over a pipe)
+- `nghttp2/` - `RALNgHttp2Server`, `RALNgHttp2Client`, `RALNgHttp2Reg` (`NgHttp2RAL`,
+  requires `RALNetPackage`, binding `src/bindings/nghttp2.pas`): HTTP/2 framed by
+  nghttp2 on `RALSocket`/`TRALSocketLoop`, h2 (ALPN) and h2c, server and client engine
+  `NgHttp2`, trailers, live streams
 - `inproc/` - `RALInProc`, `RALInProcReg` (`InProcRAL`): `TRALInProcServer` and the
   `InProc` client engine (`inproc://name`), for integration tests without a port
 - `webbroker/` - `RALWebBrokerServer` (+ `_Delphi.inc`, `_FPC.inc`), `RALWebBrokerReg`
@@ -253,6 +260,13 @@ on its own sockets.
   RFC 9728 metadata), `RALMCPStdio` (`TRALMCPStdio`), `RALMCPClient` (`TRALMCPClient`),
   `RALModuleMCPReg`; `db/RALMCPDBTools` (`TRALMCPDBTools`: tools that run fixed SQL over a
   `TRALDBModule`), `db/RALModuleMCPDBReg` - RALModuleMCPDBPackage
+- `protobuf/` (RALModuleProtobufPackage): `RALProtobuf` (writer, reader, `TRALProtoMessage`,
+  lists, JSON mapping helpers, the message registry), `RALProtobufWKT` (the google/protobuf
+  types with their JSON forms), `RALProtoSchema` (`.proto` parser: proto2, proto3, edition
+  2023), `RALProtoCodeGen` (the unit `tools/ralprotoc` writes)
+- `grpc/` (RALModuleGrpcPackage): `RALGrpc` (frames, status, timeout, trailers), `RALGrpcModule`
+  (`TRALGrpcModule`, `TRALGrpcService`, `TRALGrpcServerCall`, `TRALGrpcMethods`),
+  `RALGrpcClient` (`TRALGrpcClient`), `RALModuleGrpcReg`
 - `jsonrpc/` (RALModuleJSONRPCPackage): `RALJSONRPC` (methods, requests, results, the
   dispatcher of text or JSON), `RALJSONRPCModule` (`TRALJSONRPCModule`, one POST route),
   `RALJSONRPCClient` (`TRALJSONRPCClient`, `TRALJSONRPCBatch`), `RALJSONRPCObjects`

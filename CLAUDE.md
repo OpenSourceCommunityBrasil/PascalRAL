@@ -351,9 +351,26 @@ RAL frames no HTTP/2: the library under an engine does. `TRALClient.HTTPVersion`
 what the client asks (`rhvDefault`, `rhv11`, `rhv2`); `ProtocolVersion`/`Protocol` (one
 field, two views) is what ALPN settled, filled by every engine. Asking `rhv2` of an
 engine without `SupportsHTTP2` raises. Clients: netHTTP on Windows (version read from
-`WINHTTP_OPTION_HTTP_PROTOCOL_USED`, not the status line) and OkHttp on Android; netHTTP
-answers `SupportsHTTP2` False on Android, where it would be ignored. Server: Synopse
-`smHttpSys` (version from `HTTP_REQUEST_FLAG_HTTP2`). `ClientInfo.ConnectionID` tells
+`WINHTTP_OPTION_HTTP_PROTOCOL_USED`, not the status line), OkHttp on Android and
+`NgHttp2` everywhere the library is; netHTTP answers `SupportsHTTP2` False on Android,
+where it would be ignored. Servers: Synopse `smHttpSys` (version from
+`HTTP_REQUEST_FLAG_HTTP2`) and `TRALNgHttp2Server`.
+
+**NgHttp2** (`src/engine/nghttp2`, `NgHttp2RAL`, binding `src/bindings/nghttp2.pas`,
+nghttp2 >= 1.59 loaded at run time): HTTP/2 only (h2 by ALPN, h2c by prior knowledge; no
+HTTP/1.1, no upgrade). One poll thread of a `TRALSocketLoop` owns a connection and its
+nghttp2 session - nothing else may touch the session; requests run on a worker pool (or
+on the poll thread with `ExecuteInPollThread`, ~1.8x faster, a slow handler stalls its
+thread) and hand the answer back through a refcounted link (lock + ready list + `Wake`;
+a worker finding the connection gone drops its answer). A body is read in place by the
+data provider (deferred while a live writer has nothing, resumed on notify);
+`TRALResponse.AddTrailer`/`Trailers` (core) go out as HTTP/2 trailers, which gRPC needs;
+an empty body keeps the content type its handler set (a trailers-only gRPC answer). The
+client engine shares one connection per scheme/host/port/certificate policy
+(`ShareConnection`), a call waits on its own thread and is fed the pieces there. Floods:
+nghttp2's reset-rate and CONTINUATION limits are set when the library exports them;
+`TRALLimitsPlugin.MaxRequestSize` resets the stream. In a C callback named after a C
+parameter (`length`), `Length` is the parameter: write `System.Length`. `ClientInfo.ConnectionID` tells
 which connection carried a request (http.sys keys it on peer address and port).
 `ShareConnection` (default on) shares a transport only between clients that judge
 certificates alike (`CertPolicyKey`); netHTTP never shares for a client that judges at
@@ -766,6 +783,24 @@ WS-Security (`RALWSSecurity`, `RALWSSecurityAuth`): the envelope is parsed once
 header block an authenticator processed is marked (`MarkUnderstood`) so mustUnderstand
 does not fault, and a refusal is answered as a fault through the core hook
 `TRALAuthServer.AnswerRefusal` (every authenticator is asked; none answers: 401/403).
+
+### Protocol Buffers and gRPC (`src/modules/protobuf`, `src/modules/grpc`)
+
+- `RALModuleProtobufPackage`: `tools/ralprotoc` (on `RALProtoSchema` + `RALProtoCodeGen`)
+  writes a unit per `.proto` - a class per message on `TRALProtoMessage`, no RTTI; enums are
+  `type Integer` plus constants (open enums keep unknown numbers; a constant that would hide
+  an RTL name, `HIGH`, gets its enum's name in front); unknown fields are kept and written
+  back; JSON is the proto3 mapping, with the well-known types' own forms in `RALProtobufWKT`
+  (generated once, then given its JSON by hand). Generated units register their classes
+  (`RALProtoFindMessage`, for `Any`). On Delphi `UTF8String + AnsiChar` goes through the
+  ANSI page: bytes are appended with `RALProtoAppendByte`. NaN/Infinity come from `Math`,
+  never from a division (FPU exception).
+- `RALModuleGrpcPackage`: `TRALGrpcModule` claims `POST /pkg.Service/Method` of a gRPC
+  content type in `CanAnswerRoute` (internal route); gRPC-Web and gRPC-Web text put the
+  status in a trailer frame and run on every engine; native gRPC needs trailers
+  (`TRALNgHttp2Server`), and an answer with no message puts `grpc-status` in the headers.
+  Client and bidi streams are half duplex. `TRALGrpcClient` reads replies through
+  `OnReceiveData` (live) and raises `ERALGrpcError` for a status other than OK.
 
 ### Templates, JSON-RPC and MCP (`src/modules/web`, `jsonrpc`, `mcp`)
 

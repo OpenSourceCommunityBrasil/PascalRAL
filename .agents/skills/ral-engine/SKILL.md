@@ -19,7 +19,7 @@ client, both compilers) is the most complete reference.
 
 - `src/engine/<name>/RAL<Name>Server.pas`, `RAL<Name>Client.pas`, `RAL<Name>Reg.pas`.
 - A binding to a C library goes in `src/bindings/<Lib>.pas` and uses **no** RAL unit
-  (`MsQuic.pas`, `libsagui.pas` are shared with other projects).
+  (`MsQuic.pas`, `libsagui.pas`, `nghttp2.pas` are shared with other projects).
 - Package `<Name>RAL` in `pkg/Delphi/Engine` and `pkg/Lazarus/Engine`, requiring
   `PascalRAL` (`ral-packages`), with its icon (`.rc` line + `Assets/src/_gerardcr.bat`,
   `.lrs`).

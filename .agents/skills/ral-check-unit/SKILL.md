@@ -31,7 +31,7 @@ optional package involved:
 | `RALSelfSigned` | `src\plugins\tls` |
 | storages | `src\storage` |
 | DBWare | `src\database` (+ `FireDAC`, `Zeos` or `sqldb`) |
-| an engine | `src\engine\<engine>` (MsQuic and Sagui also `src\bindings`) |
+| an engine | `src\engine\<engine>` (MsQuic, Sagui and NgHttp2 also `src\bindings`) |
 | Web, Swagger, XML, SOAP | `src\modules\<module>` |
 
 Include path: `src\core;src\languages`.

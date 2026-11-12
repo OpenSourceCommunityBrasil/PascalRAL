@@ -44,6 +44,7 @@ still needs what it always needs for TLS.
 | mORMot2 sockets | Windows: a `.pfx` in `SSL.CertificateFile` + `SSL.PrivateKeyPassword`; Linux: the two `.pem` |
 | mORMot2 `smHttpSys` | the Windows certificate store, bound with `netsh http add sslcert`; HTTP/2 |
 | MsQuic | always TLS 1.3; `msquic.dll` from the **OpenSSL** build |
+| NgHttp2 | `SSL.CertFile`/`KeyFile` (PEM) or `CertPEM`/`KeyPEM`, OpenSSL 3, ALPN `h2` only |
 | CGI, UniGUI | the front server's TLS |
 
 ## The client: which certificate to accept
