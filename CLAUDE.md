@@ -247,7 +247,10 @@ is Delphi-only, client-only, without `.dcr`; `ralokhttp.jar` is rebuilt whenever
 **Sagui**: `ThreadPerConnection` (default True) - in pool mode a libmicrohttpd thread
 owns its connections and one blocking route stalls the others; the pool size is 0 in
 that mode. Request body and upload limits are opened before listening; the limit is
-`TRALLimitsPlugin.MaxRequestSize`.
+`TRALLimitsPlugin.MaxRequestSize`. A wire stream that is a `TRALFileStream` (what `TRALWebModule`
+answers) goes out by `sg_httpres_sendfile2` (offset and size of the window): the file
+reaches the socket by the system's `sendfile` (not over TLS) - ~40x less CPU than
+reading it in pieces.
 
 **fpHTTP server** serves one request per connection (`Connection: close` always) through
 a worker pool (`TRALfpHttpWorker`); on fcl-web 3.3 the pool sits behind a connection

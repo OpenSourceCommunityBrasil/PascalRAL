@@ -549,6 +549,8 @@ var
   vContext: TRALSaguiStreamContext;
   vRoute: TRALRoute;
   vCopy: TMemoryStream;
+  vFileName: UTF8String;
+  vOffset, vSize: Int64;
 begin
   vContext := nil;
   vServer := TRALSaguiServer(Acls);
@@ -735,7 +737,19 @@ begin
       vRequest.Finish;
       FillHeaders(vServer, vResponse, Ares);
 
-      if vRespStream <> nil then
+      if (vRespStream is TRALFileStream) and (vRespStream.Size > 0) then
+      begin
+        { a file goes out from the file itself: libmicrohttpd sends it with
+          sendfile(2) where the system has it (not over TLS), without a copy }
+        vFileName := UTF8String(TRALFileStream(vRespStream).FileName);
+        vOffset := TRALFileStream(vRespStream).Offset;
+        vSize := vRespStream.Size;
+        FreeAndNil(vRespStream);
+        if sg_httpres_sendfile2(Ares, vSize, 0, vOffset, PAnsiChar(vFileName),
+             'inline', vResponse.StatusCode) <> 0 then
+          raise ERALException.Create('the file to send cannot be opened');
+      end
+      else if vRespStream <> nil then
         sg_httpres_sendstream(Ares, vRespStream.Size, DoStreamRead, vRespStream,
                               DoStreamFree, vResponse.StatusCode)
       else

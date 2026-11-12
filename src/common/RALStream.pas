@@ -384,6 +384,9 @@ type
 
     /// The file.
     property FileName: string read FFileName;
+    { Where the window starts in the file; with Size, what an engine that sends
+      a file by itself (sendfile) needs. }
+    property Offset: Int64 read FOffset;
   end;
 
   { Read-only bytes kept alive by reference: a string, or a memory stream
