@@ -524,6 +524,7 @@ var
   vWait: Int64RAL;
   vFinal: Boolean;
   vFree: Boolean;
+  vIdx: Integer;
 begin
   vResult.Ok := False;
   vResult.MessageId := '';
@@ -569,7 +570,9 @@ begin
     end;
     if vFinal then
     begin
-      FItems.Remove(AItem);
+      vIdx := FItems.IndexOf(AItem);
+      if vIdx >= 0 then
+        FItems.Delete(vIdx);
       AItem.Result := vResult;
     end;
   finally

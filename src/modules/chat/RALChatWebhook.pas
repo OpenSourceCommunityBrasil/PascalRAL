@@ -330,9 +330,11 @@ begin
       end;
     end;
     vFull := False;
-    for vIdx := 0 to vMessages.Count - 1 do
+    vIdx := 0;
+    while vIdx < vMessages.Count do
     begin
       vMessage := vMessages[vIdx];
+      Inc(vIdx);
       vMessage.ChannelName := AChannel.ChannelName;
       if IsDuplicate(AChannel, vMessage) then
         Continue;
@@ -350,7 +352,16 @@ begin
         vFull := True;
       end
       else
-        vMessages.Extract(vMessage);
+      begin
+        // the job owns it now; the list gives up its place, so the next one slides in
+        vMessages.OwnsObjects := False;
+        try
+          vMessages.Delete(vIdx - 1);
+        finally
+          vMessages.OwnsObjects := True;
+        end;
+        Dec(vIdx);
+      end;
     end;
   finally
     vMessages.Free;
