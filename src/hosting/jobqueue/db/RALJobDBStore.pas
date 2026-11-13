@@ -231,12 +231,12 @@ function TRALJobDBStore.CreateTableSQL: StringRAL;
 var
   vBig, vText: StringRAL;
 begin
+  // bigint on SQLite too: sqldb reads an integer column as 32 bits
   vBig := 'bigint';
   vText := 'text';
   if FDBModule <> nil then
     case FDBModule.DatabaseType of
       dtFirebird: vText := 'blob sub_type text';
-      dtSQLite: vBig := 'integer';
       dtMySQL: vText := 'longtext';
     end;
   Result := 'create table ' + FTableName + ' (' +
