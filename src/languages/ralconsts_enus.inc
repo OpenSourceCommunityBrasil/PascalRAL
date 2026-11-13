@@ -687,6 +687,15 @@
   emJSONNumberDoubleRange = 'JSON number is outside the Double range.';
   emJSONNumberNotInt64 = 'JSON number is not an Int64 integer.';
   emJSONErrorPosition = '%s Position: %d.';
+  // Service container (RALHostingContainerPackage)
+  emContainerUnknown = 'There is no service named %s.';
+  emContainerUnknownClass = 'The class %s of the service %s is not registered (RALRegisterService).';
+  emContainerBadClass = 'The class %s is neither a TRALService nor a TComponent.';
+  emContainerNoFactory = 'Nothing makes the service %s: give it a ServiceClass or an OnCreate.';
+  emContainerNeedsRequest = 'The service %s lives per request and was asked for outside one.';
+  emContainerNoInterface = 'The service %s has no interface: use ResolveObject.';
+  emContainerTooDeep = 'The services ask for each other in a circle (at %s).';
+  // end of Service container
   emJSONUnexpectedCharacter = 'Unexpected JSON character';
   emJSONInvalidUnicodeEscape = 'Invalid Unicode escape';
   emJSONUnterminatedString = 'Unterminated string or unescaped control character';

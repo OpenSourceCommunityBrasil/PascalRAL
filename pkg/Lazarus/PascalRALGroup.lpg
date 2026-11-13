@@ -23,6 +23,7 @@
       <Target FileName="Hosting\ralhostingpackage.lpk"/>
       <Target FileName="Hosting\ralhostingjobqueuepackage.lpk"/>
       <Target FileName="Hosting\ralhostingjobqueuedbpackage.lpk"/>
+      <Target FileName="Hosting\ralhostingcontainerpackage.lpk"/>
       <Target FileName="Plugins\ralplugintrafficpackage.lpk"/>
       <Target FileName="Plugins\ralplugincachepackage.lpk"/>
       <Target FileName="Storage\ralstoragepackage.lpk"/>

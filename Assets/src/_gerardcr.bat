@@ -97,3 +97,5 @@ echo RALHostingJobQueue
 %path_brcc32% -fo "..\..\pkg\Delphi\Hosting\RALHostingJobQueuePackage.dcr" "RALHostingJobQueue.rc"
 echo RALHostingJobQueueDB
 %path_brcc32% -fo "..\..\pkg\Delphi\Hosting\RALHostingJobQueueDBPackage.dcr" "RALHostingJobQueueDB.rc"
+echo RALHostingContainer
+%path_brcc32% -fo "..\..\pkg\Delphi\Hosting\RALHostingContainerPackage.dcr" "RALHostingContainer.rc"
