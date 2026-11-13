@@ -193,6 +193,10 @@ begin
   {$IFEND}
 end;
 
+const
+  { UTF-8's code page: CP_UTF8 is declared only in Windows on Delphi XE2 to 10 Seattle }
+  cUTF8CodePage = 65001;
+
 function StringToBytes(const AString: StringRAL): TBytes;
 {$IFNDEF HAS_Encoding}
   var
@@ -202,7 +206,7 @@ begin
   {$IFDEF HAS_Encoding}
     // the ANSI page is UTF-8 (Linux, macOS, Android): decoding would turn bytes
     // that are not UTF-8 into '?', and valid text comes out the same
-    if DefaultSystemCodePage = CP_UTF8 then
+    if DefaultSystemCodePage = cUTF8CodePage then
       Result := StringToBytesUTF8(AString)
     else
       Result := TEncoding.ANSI.GetBytes(UnicodeString(AString));
@@ -228,7 +232,7 @@ function BytesToString(const ABytes: TBytes): StringRAL;
 {$ENDIF}
 begin
   {$IFDEF HAS_Encoding}
-    if DefaultSystemCodePage = CP_UTF8 then
+    if DefaultSystemCodePage = cUTF8CodePage then
       Result := BytesToStringUTF8(ABytes)
     else
       Result := StringRAL(TEncoding.ANSI.GetString(ABytes));
