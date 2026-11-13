@@ -893,6 +893,28 @@ broker itself; the wake callback runs under the broker's lock). Wire text is
 `src/modules/mqtt/README.md`; every statement of the standards:
 `.agents/MQTT_CONFORMANCE.md`; tests: orchestrator suite `mqtt`/`mqttfpc`.
 
+### Mail (`src/modules/mail`)
+
+`RALModuleMailPackage` (requires `PascalRAL`, `RALNetPackage`, `RALCryptoCurvesPackage`,
+`RALHostingJobQueuePackage`; design in `RALModuleMailDsgn`): `RALMailMIME` (RFC 5322/MIME
+written and read as streams; a received part above `SpoolAbove` goes to a temporary
+file; Bcc never written), `TRALSMTPClient` (PIPELINING: MAIL, every RCPT and DATA in one
+write; BDAT LAST when CHUNKING; kept connection checked for a pending close before reuse;
+`DKIM` signs inside `SendRaw` on a copy), `TRALDKIMSigner`/`TRALDKIMVerifier` (RFC 6376,
+RSA-SHA256 and Ed25519-SHA256 of RFC 8463 - Ed25519 signs the SHA-256 of the data; checked
+against the RFC 8463 appendix), `TRALMailQueue` (jobs `ral.mail.send` on a
+`TRALJobQueue`: payload = envelope lines + the wire message; each recipient counts on its
+own, so a partial failure enqueues a new job for the rest carrying the attempts made;
+at-least-once: a kill between the final 250 and the store's update sends again),
+`TRALSMTPServer` (a `TRALServer` on `TRALSocketLoop` like the MQTT broker: AUTH and each
+new connection go through the internal route `smtp/auth`, so the auth, address-list,
+brute-force and flood plugins apply; the input is served a 16 KB block at a time, so a
+message never sits whole in the buffer; data only ends at CRLF.CRLF (SMTP smuggling);
+plain text after STARTTLS is dropped (CVE-2011-0411); `TRALSocketChannel` owns its
+socket - free the channel stack only). Delphi has no `Trim`/`UniqueString` for
+`RawByteString`: the units carry their own. Tests: `.agents/local/testes/mail`
+(local); guide: wiki `email*.md`.
+
 ### Performance rules
 
 - The allocator serialises threads (FastMM4 medium blocks, FPC's heap): allocations per
