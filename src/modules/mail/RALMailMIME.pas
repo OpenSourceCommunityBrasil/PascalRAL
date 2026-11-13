@@ -1782,25 +1782,40 @@ end;
 procedure WriteTextPart(AOut: TRALMailOut; const AType, AText: StringRAL;
   AOptions: TRALMailWriteOptions);
 var
-  vLines: TStringList;
-  vInt: IntegerRAL;
-  v8Bit, vLong: Boolean;
-  vText: StringRAL;
+  vInt, vLine, vOut: IntegerRAL;
+  vPlain, vLong, vCRLF, v8Bit: Boolean;
+  vText: RawByteString;
+  vChar: AnsiChar;
 begin
+  { one pass over the bytes: printable ASCII or not, a line over 998 bytes, line
+    ends already CRLF everywhere }
+  vPlain := True;
   vLong := False;
-  vLines := TStringList.Create;
-  try
-    vLines.Text := string(AText);
-    for vInt := 0 to vLines.Count - 1 do
-      if Length(StringRAL(vLines[vInt])) > 998 then
+  vCRLF := True;
+  vLine := 0;
+  for vInt := 1 to Length(AText) do
+  begin
+    vChar := AText[vInt];
+    if (vChar = #13) or (vChar = #10) then
+    begin
+      if (vChar = #13) and ((vInt = Length(AText)) or (AText[vInt + 1] <> #10)) then
+        vCRLF := False
+      else if (vChar = #10) and ((vInt = 1) or (AText[vInt - 1] <> #13)) then
+        vCRLF := False;
+      vLine := 0;
+    end
+    else
+    begin
+      Inc(vLine);
+      if vLine > 998 then
         vLong := True;
-  finally
-    vLines.Free;
+      if (Ord(vChar) < 32) or (Ord(vChar) > 126) then
+        vPlain := False;
+    end;
   end;
   v8Bit := (mwo8Bit in AOptions) and not vLong;
   AOut.WriteLine('Content-Type: ' + AType + '; charset=UTF-8');
-  if IsPlainASCII(StringRAL(StringReplace(StringReplace(string(AText), #13, '', [rfReplaceAll]),
-     #10, '', [rfReplaceAll]))) and not vLong then
+  if vPlain and not vLong then
   begin
     AOut.WriteLine('Content-Transfer-Encoding: 7bit');
     v8Bit := True;
@@ -1810,15 +1825,37 @@ begin
   else
     AOut.WriteLine('Content-Transfer-Encoding: quoted-printable');
   AOut.WriteLine('');
-  if v8Bit then
-  begin
-    // CRLF everywhere
-    vText := StringRAL(StringReplace(StringReplace(string(AText), #13#10, #10, [rfReplaceAll]),
-      #10, #13#10, [rfReplaceAll]));
-    AOut.WriteText(vText);
-  end
+  if not v8Bit then
+    AOut.WriteText(RALMailEncodeQP(AText))
+  else if vCRLF then
+    AOut.WriteText(AText)
   else
-    AOut.WriteText(RALMailEncodeQP(AText));
+  begin
+    // CRLF everywhere: a bare CR or LF becomes CRLF
+    SetLength(vText, Length(AText) * 2);
+    vOut := 0;
+    vInt := 1;
+    while vInt <= Length(AText) do
+    begin
+      vChar := AText[vInt];
+      if (vChar = #13) or (vChar = #10) then
+      begin
+        if (vChar = #13) and (vInt < Length(AText)) and (AText[vInt + 1] = #10) then
+          Inc(vInt);
+        vText[vOut + 1] := #13;
+        vText[vOut + 2] := #10;
+        Inc(vOut, 2);
+      end
+      else
+      begin
+        Inc(vOut);
+        vText[vOut] := vChar;
+      end;
+      Inc(vInt);
+    end;
+    SetLength(vText, vOut);
+    AOut.WriteText(StringRAL(vText));
+  end;
   AOut.WriteLine('');
 end;
 
