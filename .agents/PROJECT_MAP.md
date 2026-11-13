@@ -57,7 +57,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/mqtt/` | `RALModuleMQTTPackage` | MQTT 3.1.1/5.0 and MQTT-SN client, broker, SN gateway, REST bridge |
 | `src/modules/mqtt/design/` | `RALModuleMQTTDsgn` | MQTT IDE registration and verbs |
 | `src/modules/mqtt/db/` | `RALModuleMQTTDBPackage` | `TRALMQTTDataSetLink` (messages into a dataset) |
-| `src/modules/mail/` | `RALModuleMailPackage` (requires `RALNetPackage`, `RALCryptoCurvesPackage`, `RALHostingJobQueuePackage`) | e-mail: MIME (`RALMailMIME`), SMTP client and server, persistent send queue, DKIM signer and verifier |
+| `src/modules/mail/` | `RALModuleMailPackage` (requires `RALNetPackage`, `RALCryptoCurvesPackage`, `RALHostingJobQueuePackage`) | e-mail: MIME (`RALMailMIME`), SMTP client and server, persistent send queue, DKIM signer and verifier, IMAP and POP3 clients, DNS resolver, SPF/DKIM/DMARC verifier |
 | `src/modules/mail/design/` | `RALModuleMailDsgn` | mail IDE registration and verbs ("Test connection", "Test ports") |
 | `src/modules/soap/` | `RALModuleSOAPPackage` | SOAP module, client, WSDL |
 | `src/modules/soap/design/` | `RALModuleSOAPDsgn` | SOAP IDE verbs |

@@ -23,6 +23,11 @@ queue its store, workers and retries.
 | `RALSMTPClient` | `TRALSMTPClient`: security modes, SASL, PIPELINING, CHUNKING, SIZE, 8BITMIME, SMTPUTF8 | RFC 5321, 3207, 4954, 2920, 3030, 1870, 6152, 6531, 7677, 7628 |
 | `RALDKIM` | `TRALDKIMSigner`, `TRALDKIMVerifier`, canonicalization | RFC 6376, 8463 |
 | `RALMailQueue` | `TRALMailQueue` on a `TRALJobQueue` | RFC 5321 4.5.4 (retry) |
+| `RALMailTransport` | `TRALMailLink`: the connection, TLS, lines and counted bytes the mailbox clients share; SASL initial responses | RFC 4616, 7628 |
+| `RALIMAPClient` | `TRALIMAPClient`, modified UTF-7 names | RFC 9051, 3501, 2177, 4315, 6851, 7888, 4959 |
+| `RALPOP3Client` | `TRALPOP3Client` | RFC 1939, 2449, 2595, 5034 |
+| `RALDNS` | `TRALDNSResolver`: UDP with TCP fallback, cache by TTL, the system's servers | RFC 1035 |
+| `RALMailVerifier` | `TRALSPFChecker`, DMARC, `TRALMailVerifier` and `Authentication-Results` | RFC 7208, 7489, 8601 |
 | `RALSMTPServer` | `TRALSMTPServer` on `TRALSocketLoop`, the connection state machine | RFC 5321, 3207, 4954, 2920, 3030, 1870, 2034, 3848 |
 
 ## Things that are easy to break
@@ -51,6 +56,11 @@ queue its store, workers and retries.
   handshake (CVE-2011-0411), and the session starts over (no EHLO, no AUTH).
 - **Ownership.** `TRALSocketChannel` frees its socket and `TRALTLSChannel` its inner
   channel: a connection frees only the top of the stack.
+- **IMAP literals.** An answer line ending in `{n}` is followed by n bytes, then the rest of
+  the line: the client stores the literal and leaves a mark in the line for its scanner;
+  the body of a FETCH goes straight to the caller's stream instead.
+- **Positions in UTF-8 text** are bytes: use `RALMailPos`, never `Pos` on a `string`
+  conversion (Delphi counts UTF-16 characters there).
 - **Events run on the server's poll threads.** A slow `OnMessage` holds every
   connection of its thread.
 

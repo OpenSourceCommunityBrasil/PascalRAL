@@ -902,7 +902,11 @@ file; Bcc never written), `TRALSMTPClient` (PIPELINING: MAIL, every RCPT and DAT
 write; BDAT LAST when CHUNKING; kept connection checked for a pending close before reuse;
 `DKIM` signs inside `SendRaw` on a copy), `TRALDKIMSigner`/`TRALDKIMVerifier` (RFC 6376,
 RSA-SHA256 and Ed25519-SHA256 of RFC 8463 - Ed25519 signs the SHA-256 of the data; checked
-against the RFC 8463 appendix), `TRALMailQueue` (jobs `ral.mail.send` on a
+against the RFC 8463 appendix), `TRALIMAPClient`/`TRALPOP3Client` (over `TRALMailLink` of
+`RALMailTransport`; IMAP literals are read into a list and marked in the line, a FETCH body
+goes to the caller's stream; `WaitForChanges` is IDLE), `TRALDNSResolver` (`Query` is
+virtual: tests serve a fake zone) and `TRALMailVerifier` (SPF RFC 7208, DMARC, DKIM,
+`Authentication-Results`), `TRALMailQueue` (jobs `ral.mail.send` on a
 `TRALJobQueue`: payload = envelope lines + the wire message; each recipient counts on its
 own, so a partial failure enqueues a new job for the rest carrying the attempts made;
 at-least-once: a kill between the final 250 and the store's update sends again),
@@ -912,7 +916,8 @@ brute-force and flood plugins apply; the input is served a 16 KB block at a time
 message never sits whole in the buffer; data only ends at CRLF.CRLF (SMTP smuggling);
 plain text after STARTTLS is dropped (CVE-2011-0411); `TRALSocketChannel` owns its
 socket - free the channel stack only). Delphi has no `Trim`/`UniqueString` for
-`RawByteString`: the units carry their own. Tests: `.agents/local/testes/mail`
+`RawByteString`: the units carry their own; positions in UTF-8 text go by bytes
+(`RALMailPos`), never `Pos` on a `string` conversion. Tests: `.agents/local/testes/mail`
 (local); guide: wiki `email*.md`.
 
 ### Performance rules
