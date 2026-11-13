@@ -532,6 +532,27 @@
   // end of MQTT
 
   // Mail (RALModuleMailPackage)
+  // S/MIME
+  emSMIMEBadCMS = 'S/MIME: invalid CMS structure: %s.';
+  emSMIMEBadDigest = 'S/MIME: the message digest does not match the content.';
+  emSMIMEBadKeySize = 'S/MIME: the AES key must have 16, 24 or 32 bytes and the IV 16.';
+  emSMIMEBadPassword = 'S/MIME: wrong PKCS#12 password or corrupt file.';
+  emSMIMEBadPFX = 'S/MIME: cannot read the PKCS#12 file: %s.';
+  emSMIMEBadSignature = 'S/MIME: the signature does not match.';
+  emSMIMECertExpired = 'S/MIME: the signing certificate is outside its validity period.';
+  emSMIMEDecryptFailed = 'S/MIME: decryption failed (wrong key or corrupt data).';
+  emSMIMEKeyMismatch = 'S/MIME: the private key does not belong to the certificate.';
+  emSMIMEMessageTooLong = 'S/MIME: the data is too long for the RSA key.';
+  emSMIMENoCertificate = 'S/MIME: no certificate.';
+  emSMIMENoContent = 'S/MIME: the signature has no content to check.';
+  emSMIMENoKey = 'S/MIME: no private key.';
+  emSMIMENoRecipient = 'S/MIME: no recipient certificate.';
+  emSMIMENoSigner = 'S/MIME: the signature has no signer.';
+  emSMIMENotForCertificate = 'S/MIME: the message was not encrypted for this certificate.';
+  emSMIMEOnlyRSA = 'S/MIME: only RSA keys are supported.';
+  emSMIMESignerNotFound = 'S/MIME: the signer certificate is not in the message.';
+  emSMIMEUnsupported = 'S/MIME: not supported: %s.';
+  emSMIMEUntrusted = 'S/MIME: the signing certificate does not lead to a trusted certificate.';
   emMailNoAuth = 'The SMTP server offers no AUTH.';
   emMailNoCommonAuth = 'No AUTH mechanism in common with the SMTP server: %s';
   emMailServerProof = 'The SMTP server did not prove it knows the password.';

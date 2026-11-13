@@ -141,7 +141,7 @@ Item_69=src\engine\advancedhttp
 Item_70=src\modules\mail
 
 [Files]
-Count=283
+Count=288
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -425,6 +425,11 @@ Item_279=src\modules\mail\RALMailVerifier.pas
 Item_280=src\modules\mail\RALMailTransport.pas
 Item_281=src\modules\mail\RALIMAPClient.pas
 Item_282=src\modules\mail\RALPOP3Client.pas
+Item_283=src\modules\mail\RALSMIME.pas
+Item_284=src\modules\mail\RALMailStore.pas
+Item_285=src\modules\mail\RALMailServerBase.pas
+Item_286=src\modules\mail\RALPOP3Server.pas
+Item_287=src\modules\mail\RALIMAPServer.pas
 [AdditionalFiles]
 Count=0
 

@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Mail module (MIME, SMTP client and server, queue, DKIM)"/>
     <Version Major="2"/>
-    <Files Count="10">
+    <Files Count="15">
       <Item1>
         <Filename Value="..\..\..\src\modules\mail\RALMailMIME.pas"/>
         <UnitName Value="RALMailMIME"/>
@@ -67,6 +67,26 @@
         <Filename Value="..\..\..\src\modules\mail\RALPOP3Client.pas"/>
         <UnitName Value="RALPOP3Client"/>
       </Item10>
+      <Item11>
+        <Filename Value="..\..\..\src\modules\mail\RALSMIME.pas"/>
+        <UnitName Value="RALSMIME"/>
+      </Item11>
+      <Item12>
+        <Filename Value="..\..\..\src\modules\mail\RALMailStore.pas"/>
+        <UnitName Value="RALMailStore"/>
+      </Item12>
+      <Item13>
+        <Filename Value="..\..\..\src\modules\mail\RALMailServerBase.pas"/>
+        <UnitName Value="RALMailServerBase"/>
+      </Item13>
+      <Item14>
+        <Filename Value="..\..\..\src\modules\mail\RALPOP3Server.pas"/>
+        <UnitName Value="RALPOP3Server"/>
+      </Item14>
+      <Item15>
+        <Filename Value="..\..\..\src\modules\mail\RALIMAPServer.pas"/>
+        <UnitName Value="RALIMAPServer"/>
+      </Item15>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="5">

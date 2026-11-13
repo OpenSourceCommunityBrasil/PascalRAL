@@ -765,21 +765,19 @@ begin
   { a block at a time, served before the next is read: the input buffer stays
     small whatever the client sends (a 100 MB message passes through 16 KB) }
   vDone := False;
-  vRes := 0;
-  repeat
-    if FStartTLS or (FPhase = sspClosed) or CloseAfterFlush then
-      Break;
+  while not (FStartTLS or (FPhase = sspClosed) or CloseAfterFlush) do
+  begin
     vRes := FChannel.Read(vBuffer, SizeOf(vBuffer));
-    if vRes > 0 then
+    if vRes <= 0 then
     begin
-      SetLength(FIn, Length(FIn) + vRes);
-      Move(vBuffer, FIn[Length(FIn) - vRes + 1], vRes);
-      FLastActive := ANow;
-      ProcessInput;
-    end
-    else if vRes = 0 then
-      vDone := True;
-  until vRes <= 0;
+      vDone := vRes = 0;
+      Break;
+    end;
+    SetLength(FIn, Length(FIn) + vRes);
+    Move(vBuffer, FIn[Length(FIn) - vRes + 1], vRes);
+    FLastActive := ANow;
+    ProcessInput;
+  end;
 
   if vDone then
     Close

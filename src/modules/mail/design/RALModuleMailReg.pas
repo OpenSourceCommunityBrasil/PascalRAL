@@ -15,11 +15,21 @@ uses
   {$ENDIF}
   Classes, SysUtils,
   RALTypes, RALConsts, RALDKIM, RALSMTPClient, RALMailQueue, RALSMTPServer, RALDNS,
-  RALMailVerifier, RALIMAPClient, RALPOP3Client;
+  RALMailVerifier, RALIMAPClient, RALPOP3Client, RALSMIME, RALMailStore, RALMailServerBase,
+  RALPOP3Server, RALIMAPServer;
 
 type
   /// Verb of TRALSMTPClient: tests a copy of its settings; lists what the server offers.
   TRALSMTPClientEditor = class(TComponentEditor)
+  public
+    procedure ExecuteVerb(AIndex: Integer); override;
+    function GetVerb(AIndex: Integer): string; override;
+    function GetVerbCount: Integer; override;
+  end;
+
+  { Verb of TRALPOP3Server and TRALIMAPServer: whether their ports are free and the
+    certificate loads. }
+  TRALMailServerEditor = class(TComponentEditor)
   public
     procedure ExecuteVerb(AIndex: Integer); override;
     function GetVerb(AIndex: Integer): string; override;
@@ -42,10 +52,13 @@ implementation
 procedure Register;
 begin
   RegisterComponents('RAL - Client', [TRALSMTPClient, TRALMailQueue, TRALDKIMSigner,
-    TRALIMAPClient, TRALPOP3Client, TRALDNSResolver]);
-  RegisterComponents('RAL - Server', [TRALSMTPServer, TRALDKIMVerifier, TRALMailVerifier]);
+    TRALIMAPClient, TRALPOP3Client, TRALDNSResolver, TRALSMIME]);
+  RegisterComponents('RAL - Server', [TRALSMTPServer, TRALDKIMVerifier, TRALMailVerifier,
+    TRALMailStore, TRALPOP3Server, TRALIMAPServer]);
   RegisterComponentEditor(TRALSMTPClient, TRALSMTPClientEditor);
   RegisterComponentEditor(TRALSMTPServer, TRALSMTPServerEditor);
+  RegisterComponentEditor(TRALPOP3Server, TRALMailServerEditor);
+  RegisterComponentEditor(TRALIMAPServer, TRALMailServerEditor);
 end;
 
 { TRALSMTPClientEditor }
@@ -66,6 +79,28 @@ begin
 end;
 
 function TRALSMTPClientEditor.GetVerbCount: Integer;
+begin
+  Result := 1;
+end;
+
+{ TRALMailServerEditor }
+
+procedure TRALMailServerEditor.ExecuteVerb(AIndex: Integer);
+var
+  vReport: StringRAL;
+begin
+  if AIndex <> 0 then
+    Exit;
+  TRALMailServer(Component).TestPorts(vReport);
+  ShowMessage(string(vReport));
+end;
+
+function TRALMailServerEditor.GetVerb(AIndex: Integer): string;
+begin
+  Result := cmMailTestPorts;
+end;
+
+function TRALMailServerEditor.GetVerbCount: Integer;
 begin
   Result := 1;
 end;

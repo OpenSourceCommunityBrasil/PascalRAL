@@ -185,6 +185,11 @@
         <DCCReference Include="..\..\..\src\modules\mail\RALMailTransport.pas"/>
         <DCCReference Include="..\..\..\src\modules\mail\RALIMAPClient.pas"/>
         <DCCReference Include="..\..\..\src\modules\mail\RALPOP3Client.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALSMIME.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALMailStore.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALMailServerBase.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALPOP3Server.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALIMAPServer.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -532,6 +532,27 @@
   // end of MQTT
 
   // Mail (RALModuleMailPackage)
+  // S/MIME
+  emSMIMEBadCMS = 'S/MIME: estructura CMS no válida: %s.';
+  emSMIMEBadDigest = 'S/MIME: el resumen del mensaje no coincide con el contenido.';
+  emSMIMEBadKeySize = 'S/MIME: la clave AES debe tener 16, 24 o 32 bytes y el IV 16.';
+  emSMIMEBadPassword = 'S/MIME: contraseña PKCS#12 incorrecta o archivo dañado.';
+  emSMIMEBadPFX = 'S/MIME: no se puede leer el archivo PKCS#12: %s.';
+  emSMIMEBadSignature = 'S/MIME: la firma no coincide.';
+  emSMIMECertExpired = 'S/MIME: el certificado del firmante está fuera de su validez.';
+  emSMIMEDecryptFailed = 'S/MIME: error al descifrar (clave incorrecta o datos dañados).';
+  emSMIMEKeyMismatch = 'S/MIME: la clave privada no pertenece al certificado.';
+  emSMIMEMessageTooLong = 'S/MIME: los datos son demasiado largos para la clave RSA.';
+  emSMIMENoCertificate = 'S/MIME: sin certificado.';
+  emSMIMENoContent = 'S/MIME: la firma no tiene contenido que comprobar.';
+  emSMIMENoKey = 'S/MIME: sin clave privada.';
+  emSMIMENoRecipient = 'S/MIME: sin certificado de destinatario.';
+  emSMIMENoSigner = 'S/MIME: la firma no tiene firmante.';
+  emSMIMENotForCertificate = 'S/MIME: el mensaje no se cifró para este certificado.';
+  emSMIMEOnlyRSA = 'S/MIME: solo se admiten claves RSA.';
+  emSMIMESignerNotFound = 'S/MIME: el certificado del firmante no está en el mensaje.';
+  emSMIMEUnsupported = 'S/MIME: no admitido: %s.';
+  emSMIMEUntrusted = 'S/MIME: el certificado del firmante no lleva a un certificado de confianza.';
   emMailNoAuth = 'El servidor SMTP no ofrece AUTH.';
   emMailNoCommonAuth = 'Ningún mecanismo de AUTH en común con el servidor SMTP: %s';
   emMailServerProof = 'El servidor SMTP no demostró que conoce la contraseña.';

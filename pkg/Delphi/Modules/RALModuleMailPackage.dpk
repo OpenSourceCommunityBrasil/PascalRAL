@@ -44,6 +44,11 @@ contains
   RALMailVerifier in '..\..\..\src\modules\mail\RALMailVerifier.pas',
   RALMailTransport in '..\..\..\src\modules\mail\RALMailTransport.pas',
   RALIMAPClient in '..\..\..\src\modules\mail\RALIMAPClient.pas',
-  RALPOP3Client in '..\..\..\src\modules\mail\RALPOP3Client.pas';
+  RALPOP3Client in '..\..\..\src\modules\mail\RALPOP3Client.pas',
+  RALSMIME in '..\..\..\src\modules\mail\RALSMIME.pas',
+  RALMailStore in '..\..\..\src\modules\mail\RALMailStore.pas',
+  RALMailServerBase in '..\..\..\src\modules\mail\RALMailServerBase.pas',
+  RALPOP3Server in '..\..\..\src\modules\mail\RALPOP3Server.pas',
+  RALIMAPServer in '..\..\..\src\modules\mail\RALIMAPServer.pas';
 
 end.
