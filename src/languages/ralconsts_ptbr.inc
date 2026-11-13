@@ -532,6 +532,28 @@
   // end of MQTT
 
   // Mail (RALModuleMailPackage)
+  // OpenPGP
+  emPGPBadArmor = 'OpenPGP: armadura ASCII inválida: %s.';
+  emPGPBadKey = 'OpenPGP: chave inválida: %s.';
+  emPGPBadMDC = 'OpenPGP: a verificação de integridade (MDC) dos dados cifrados falhou.';
+  emPGPBadPacket = 'OpenPGP: pacote inválido: %s.';
+  emPGPBadPassphrase = 'OpenPGP: senha incorreta ou chave secreta corrompida.';
+  emPGPBadSignature = 'OpenPGP: a assinatura não confere.';
+  emPGPDecryptFailed = 'OpenPGP: falha ao decifrar (chave errada ou dados corrompidos).';
+  emPGPInflateFailed = 'OpenPGP: não foi possível descomprimir os dados: %s.';
+  emPGPKeyExpired = 'OpenPGP: a chave de assinatura já havia expirado.';
+  emPGPKeyLocked = 'OpenPGP: a chave secreta é protegida: é preciso informar a senha.';
+  emPGPKeyRevoked = 'OpenPGP: a chave de assinatura foi revogada.';
+  emPGPNoContent = 'OpenPGP: a mensagem não contém dados.';
+  emPGPNoEncryptionKey = 'OpenPGP: o certificado %s não tem chave de cifragem utilizável.';
+  emPGPNoKeyFor = 'OpenPGP: sem chave pública para %s.';
+  emPGPNoRecipient = 'OpenPGP: sem destinatário.';
+  emPGPNoSecretKey = 'OpenPGP: sem chave secreta.';
+  emPGPNoSignature = 'OpenPGP: nenhuma assinatura encontrada.';
+  emPGPNoSigningKey = 'OpenPGP: sem chave para assinar.';
+  emPGPNotForKey = 'OpenPGP: a mensagem não foi cifrada para nenhuma chave secreta do chaveiro.';
+  emPGPSignerNotFound = 'OpenPGP: a chave do signatário não está no chaveiro.';
+  emPGPUnsupported = 'OpenPGP: sem suporte: %s.';
   // S/MIME
   emSMIMEBadCMS = 'S/MIME: estrutura CMS inválida: %s.';
   emSMIMEBadDigest = 'S/MIME: o resumo da mensagem não confere com o conteúdo.';

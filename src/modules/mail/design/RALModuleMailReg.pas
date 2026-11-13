@@ -16,7 +16,7 @@ uses
   Classes, SysUtils,
   RALTypes, RALConsts, RALDKIM, RALSMTPClient, RALMailQueue, RALSMTPServer, RALDNS,
   RALMailVerifier, RALIMAPClient, RALPOP3Client, RALSMIME, RALMailStore, RALMailServerBase,
-  RALPOP3Server, RALIMAPServer;
+  RALPOP3Server, RALIMAPServer, RALOpenPGP;
 
 type
   /// Verb of TRALSMTPClient: tests a copy of its settings; lists what the server offers.
@@ -52,7 +52,7 @@ implementation
 procedure Register;
 begin
   RegisterComponents('RAL - Client', [TRALSMTPClient, TRALMailQueue, TRALDKIMSigner,
-    TRALIMAPClient, TRALPOP3Client, TRALDNSResolver, TRALSMIME]);
+    TRALIMAPClient, TRALPOP3Client, TRALDNSResolver, TRALSMIME, TRALOpenPGP]);
   RegisterComponents('RAL - Server', [TRALSMTPServer, TRALDKIMVerifier, TRALMailVerifier,
     TRALMailStore, TRALPOP3Server, TRALIMAPServer]);
   RegisterComponentEditor(TRALSMTPClient, TRALSMTPClientEditor);

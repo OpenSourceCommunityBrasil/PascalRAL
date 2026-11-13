@@ -142,7 +142,7 @@ Item_70=src\modules\mail
 Item_71=src\modules\chat
 
 [Files]
-Count=295
+Count=296
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -438,6 +438,7 @@ Item_291=src\modules\chat\RALChatOutbox.pas
 Item_292=src\modules\chat\RALChatStore.pas
 Item_293=src\modules\chat\RALChatBot.pas
 Item_294=src\modules\chat\RALChatWebhook.pas
+Item_295=src\modules\mail\RALOpenPGP.pas
 [AdditionalFiles]
 Count=0
 

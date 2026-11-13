@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Mail module (MIME, SMTP client and server, queue, DKIM)"/>
     <Version Major="2"/>
-    <Files Count="15">
+    <Files Count="16">
       <Item1>
         <Filename Value="..\..\..\src\modules\mail\RALMailMIME.pas"/>
         <UnitName Value="RALMailMIME"/>
@@ -87,6 +87,10 @@
         <Filename Value="..\..\..\src\modules\mail\RALIMAPServer.pas"/>
         <UnitName Value="RALIMAPServer"/>
       </Item15>
+      <Item16>
+        <Filename Value="..\..\..\src\modules\mail\RALOpenPGP.pas"/>
+        <UnitName Value="RALOpenPGP"/>
+      </Item16>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="5">

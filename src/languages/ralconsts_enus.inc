@@ -532,6 +532,28 @@
   // end of MQTT
 
   // Mail (RALModuleMailPackage)
+  // OpenPGP
+  emPGPBadArmor = 'OpenPGP: invalid ASCII armor: %s.';
+  emPGPBadKey = 'OpenPGP: invalid key: %s.';
+  emPGPBadMDC = 'OpenPGP: the integrity check (MDC) of the encrypted data failed.';
+  emPGPBadPacket = 'OpenPGP: invalid packet: %s.';
+  emPGPBadPassphrase = 'OpenPGP: wrong passphrase or corrupt secret key.';
+  emPGPBadSignature = 'OpenPGP: the signature does not match.';
+  emPGPDecryptFailed = 'OpenPGP: decryption failed (wrong key or corrupt data).';
+  emPGPInflateFailed = 'OpenPGP: cannot decompress the data: %s.';
+  emPGPKeyExpired = 'OpenPGP: the signing key had expired.';
+  emPGPKeyLocked = 'OpenPGP: the secret key is protected: a passphrase is needed.';
+  emPGPKeyRevoked = 'OpenPGP: the signing key was revoked.';
+  emPGPNoContent = 'OpenPGP: the message holds no data.';
+  emPGPNoEncryptionKey = 'OpenPGP: the certificate %s has no usable encryption key.';
+  emPGPNoKeyFor = 'OpenPGP: no public key for %s.';
+  emPGPNoRecipient = 'OpenPGP: no recipient.';
+  emPGPNoSecretKey = 'OpenPGP: no secret key.';
+  emPGPNoSignature = 'OpenPGP: no signature found.';
+  emPGPNoSigningKey = 'OpenPGP: no key to sign with.';
+  emPGPNotForKey = 'OpenPGP: the message was not encrypted for any secret key of the keyring.';
+  emPGPSignerNotFound = 'OpenPGP: the signer''s key is not in the keyring.';
+  emPGPUnsupported = 'OpenPGP: not supported: %s.';
   // S/MIME
   emSMIMEBadCMS = 'S/MIME: invalid CMS structure: %s.';
   emSMIMEBadDigest = 'S/MIME: the message digest does not match the content.';

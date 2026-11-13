@@ -49,6 +49,7 @@ contains
   RALMailStore in '..\..\..\src\modules\mail\RALMailStore.pas',
   RALMailServerBase in '..\..\..\src\modules\mail\RALMailServerBase.pas',
   RALPOP3Server in '..\..\..\src\modules\mail\RALPOP3Server.pas',
-  RALIMAPServer in '..\..\..\src\modules\mail\RALIMAPServer.pas';
+  RALIMAPServer in '..\..\..\src\modules\mail\RALIMAPServer.pas',
+  RALOpenPGP in '..\..\..\src\modules\mail\RALOpenPGP.pas';
 
 end.
