@@ -643,6 +643,24 @@
   emChatNoSession = 'The message has no channel or conversation.';
   cmChatReplyWithNumber = 'Reply with the number of your choice.';
   // end of Chat
+  // Chat Telegram
+  emChatTgNoClient = 'The Telegram channel %s has no client and no client engine is linked into the program.';
+  emChatTgApi = 'Telegram refused %s: %s';
+  emChatTgBadPath = 'Telegram sent a file path that is not valid.';
+  emChatTgTooBig = 'The file is larger than the limit of %d bytes.';
+  emChatTgBadSecret = 'The SecretToken must have 1 to 256 characters: letters, digits, underscore or hyphen.';
+  emChatTgNoSecret = 'The Telegram channel %s has no SecretToken: its webhook is refused.';
+  emChatTgButtonId = 'A button needs an id of 1 to 64 bytes, or a link.';
+  emChatTgPoll = 'A poll needs a question and 2 to 10 options.';
+  emChatTgBadReply = 'Telegram sent an answer that cannot be read.';
+  cmChatTgTestToken = 'Test token';
+  cmChatTgRegisterWebhook = 'Register webhook';
+  cmChatTgRemoveWebhook = 'Remove webhook';
+  cmChatTgTokenOk = 'The token is valid: the bot is @%s.';
+  cmChatTgWebhookSet = 'Webhook registered at %s.';
+  cmChatTgWebhookRemoved = 'Webhook removed.';
+  cmChatTgAskUrl = 'Webhook URL (HTTPS, the route of this channel in the webhook module)';
+  // end of Chat Telegram
 
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Missing JSON number digits.';

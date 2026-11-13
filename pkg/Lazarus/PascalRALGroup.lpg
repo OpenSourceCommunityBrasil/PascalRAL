@@ -58,6 +58,8 @@
       <Target FileName="Modules\ralmodulemaildsgn.lpk"/>
       <Target FileName="Modules\ralmodulechatpackage.lpk"/>
       <Target FileName="Modules\ralmodulechatdsgn.lpk"/>
+      <Target FileName="Modules\ralmodulechattelegrampackage.lpk"/>
+      <Target FileName="Modules\ralmodulechattelegramdsgn.lpk"/>
       <Target FileName="Compression\ralcompresszstdpackage.lpk"/>
       <Target FileName="Compression\ralcompressbrotlipackage.lpk"/>
       <Target FileName="Wizard\ralwizarddsgn.lpk"/>

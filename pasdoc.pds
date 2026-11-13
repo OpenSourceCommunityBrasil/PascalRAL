@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=72
+Count=73
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -140,9 +140,10 @@ Item_68=src\engine\xsocket
 Item_69=src\engine\advancedhttp
 Item_70=src\modules\mail
 Item_71=src\modules\chat
+Item_72=src\modules\chat\telegram
 
 [Files]
-Count=296
+Count=297
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -438,7 +439,8 @@ Item_291=src\modules\chat\RALChatOutbox.pas
 Item_292=src\modules\chat\RALChatStore.pas
 Item_293=src\modules\chat\RALChatBot.pas
 Item_294=src\modules\chat\RALChatWebhook.pas
-Item_295=src\modules\mail\RALOpenPGP.pas
+Item_295=src\modules\chat\telegram\RALChatTelegram.pas
+Item_296=src\modules\mail\RALOpenPGP.pas
 [AdditionalFiles]
 Count=0
 
