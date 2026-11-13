@@ -77,6 +77,8 @@ echo RALModuleControllers
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleControllersPackage.dcr" "RALModuleControllers.rc"
 echo FastCGI
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\FastCGIRAL.dcr" "FastCGI.rc"
+echo XSocket
+%path_brcc32% -fo "..\..\pkg\Delphi\Engine\XSocketRAL.dcr" "XSocket.rc"
 echo NgHttp2
 %path_brcc32% -fo "..\..\pkg\Delphi\Engine\NgHttp2RAL.dcr" "NgHttp2.rc"
 echo InProc

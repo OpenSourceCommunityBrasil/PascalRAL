@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=68
+Count=70
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -136,8 +136,11 @@ Item_64=src\hosting\jobqueue\db
 Item_65=src\modules\protobuf
 Item_66=src\modules\grpc
 Item_67=src\engine\nghttp2
+Item_68=src\engine\xsocket
+Item_69=src\engine\advancedhttp
+
 [Files]
-Count=268
+Count=273
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -406,6 +409,11 @@ Item_264=src\bindings\nghttp2.pas
 Item_265=src\engine\nghttp2\RALNgHttp2Server.pas
 Item_266=src\engine\nghttp2\RALNgHttp2Client.pas
 Item_267=src\engine\nghttp2\RALNgHttp2Reg.pas
+Item_268=src\engine\xsocket\RALXSocketServer.pas
+Item_269=src\engine\xsocket\RALXSocketClient.pas
+Item_270=src\engine\xsocket\RALXSocketReg.pas
+Item_271=src\engine\advancedhttp\RALAdvancedHTTPServer.pas
+Item_272=src\engine\advancedhttp\RALAdvancedHTTPReg.pas
 [AdditionalFiles]
 Count=0
 

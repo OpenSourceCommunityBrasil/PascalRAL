@@ -8,6 +8,7 @@
       <Target FileName="Engine\synopseral.lpk"/>
       <Target FileName="Engine\saguiral.lpk"/>
       <Target FileName="Engine\fastcgiral.lpk"/>
+      <Target FileName="Engine\advancedhttpral.lpk"/>
       <Target FileName="Engine\nghttp2ral.lpk"/>
       <Target FileName="Engine\inprocral.lpk"/>
       <Target FileName="Engine\webbrokerral.lpk"/>

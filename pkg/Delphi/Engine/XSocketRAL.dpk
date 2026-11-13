@@ -1,0 +1,40 @@
+package XSocketRAL;
+
+{$R *.res}
+{$R 'XSocketRAL.dcr'}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | XSocket engine (Delphi-Cross-Socket)'}
+{$IMPLICITBUILD ON}
+
+requires
+  PascalRAL;
+
+contains
+  RALXSocketServer in '..\..\..\src\engine\xsocket\RALXSocketServer.pas',
+  RALXSocketClient in '..\..\..\src\engine\xsocket\RALXSocketClient.pas',
+  RALXSocketReg in '..\..\..\src\engine\xsocket\RALXSocketReg.pas';
+
+end.
