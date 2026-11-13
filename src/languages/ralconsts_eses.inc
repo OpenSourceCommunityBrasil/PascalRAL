@@ -531,6 +531,37 @@
   cmMQTTCertificateFailed = 'El certificado no se carga: %s';
   // end of MQTT
 
+  // Mail (RALModuleMailPackage)
+  emMailNoAuth = 'El servidor SMTP no ofrece AUTH.';
+  emMailNoCommonAuth = 'Ningún mecanismo de AUTH en común con el servidor SMTP: %s';
+  emMailServerProof = 'El servidor SMTP no demostró que conoce la contraseña.';
+  emMailNoStartTLS = 'El servidor SMTP no ofrece STARTTLS.';
+  emMailClosed = 'El servidor SMTP cerró la conexión.';
+  emMailTimeout = 'El servidor SMTP no respondió dentro de ReadTimeout.';
+  emMailMalformedReply = 'Respuesta SMTP mal formada: %s';
+  emMailNoRecipient = 'El mensaje no tiene destinatario.';
+  emMailNoneAccepted = 'Ningún destinatario fue aceptado: %s';
+  emMailTooBig = 'El mensaje (%d bytes) es mayor que el SIZE del servidor SMTP (%d).';
+  emMailCertRefused = 'El certificado del servidor SMTP fue rechazado: %s';
+  emMailNotConnected = 'El cliente SMTP no está conectado.';
+  emDKIMNoKey = 'DKIM: sin clave privada.';
+  emDKIMNotEd25519 = 'DKIM: no es una clave privada Ed25519.';
+  emDKIMSeedSize = 'DKIM: una semilla Ed25519 tiene 32 bytes.';
+  emDKIMNoDomain = 'DKIM: Domain y Selector son necesarios.';
+  emDKIMNoFrom = 'DKIM: el mensaje no tiene From.';
+  emMailQueueActive = 'Detenga la cola de correo antes de cambiar %s.';
+  emMailQueueNoClient = 'La cola de correo no tiene Client.';
+  cmMailTestConnection = 'Probar conexión';
+  cmMailTestConnected = 'Conectado a %s:%d (%s). Extensiones: %s.';
+  cmMailTestFailed = 'La conexión falló: %s';
+  cmMailTestPorts = 'Probar puertos';
+  cmMailPortFree = 'Puerto %d (%s): libre.';
+  cmMailPortBusy = 'Puerto %d (%s): no se puede abrir: %s';
+  cmMailServerRunning = 'El servidor está en ejecución: sus puertos están abiertos.';
+  cmMailCertificateOk = 'El certificado se carga.';
+  cmMailCertificateFailed = 'El certificado no se carga: %s';
+  // end of Mail
+
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Faltan dígitos en el número JSON.';
   emJSONInvalidNumber = 'Número JSON no válido.';

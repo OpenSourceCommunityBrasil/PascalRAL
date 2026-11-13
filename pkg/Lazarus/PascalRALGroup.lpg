@@ -54,6 +54,8 @@
       <Target FileName="Modules\ralmodulemqttpackage.lpk"/>
       <Target FileName="Modules\ralmodulemqttdsgn.lpk"/>
       <Target FileName="Modules\ralmodulemqttdbpackage.lpk"/>
+      <Target FileName="Modules\ralmodulemailpackage.lpk"/>
+      <Target FileName="Modules\ralmodulemaildsgn.lpk"/>
       <Target FileName="Compression\ralcompresszstdpackage.lpk"/>
       <Target FileName="Compression\ralcompressbrotlipackage.lpk"/>
       <Target FileName="Wizard\ralwizarddsgn.lpk"/>

@@ -531,6 +531,37 @@
   cmMQTTCertificateFailed = 'The certificate does not load: %s';
   // end of MQTT
 
+  // Mail (RALModuleMailPackage)
+  emMailNoAuth = 'The SMTP server offers no AUTH.';
+  emMailNoCommonAuth = 'No AUTH mechanism in common with the SMTP server: %s';
+  emMailServerProof = 'The SMTP server did not prove it knows the password.';
+  emMailNoStartTLS = 'The SMTP server does not offer STARTTLS.';
+  emMailClosed = 'The SMTP server closed the connection.';
+  emMailTimeout = 'No reply from the SMTP server within ReadTimeout.';
+  emMailMalformedReply = 'Malformed SMTP reply: %s';
+  emMailNoRecipient = 'The message has no recipient.';
+  emMailNoneAccepted = 'No recipient was accepted: %s';
+  emMailTooBig = 'The message (%d bytes) is larger than the SMTP server''s SIZE (%d).';
+  emMailCertRefused = 'The SMTP server''s certificate was refused: %s';
+  emMailNotConnected = 'The SMTP client is not connected.';
+  emDKIMNoKey = 'DKIM: no private key.';
+  emDKIMNotEd25519 = 'DKIM: not an Ed25519 private key.';
+  emDKIMSeedSize = 'DKIM: an Ed25519 seed has 32 bytes.';
+  emDKIMNoDomain = 'DKIM: Domain and Selector are needed.';
+  emDKIMNoFrom = 'DKIM: the message has no From.';
+  emMailQueueActive = 'Stop the mail queue before changing %s.';
+  emMailQueueNoClient = 'The mail queue has no Client.';
+  cmMailTestConnection = 'Test connection';
+  cmMailTestConnected = 'Connected to %s:%d (%s). Extensions: %s.';
+  cmMailTestFailed = 'The connection failed: %s';
+  cmMailTestPorts = 'Test ports';
+  cmMailPortFree = 'Port %d (%s): free.';
+  cmMailPortBusy = 'Port %d (%s): cannot be opened: %s';
+  cmMailServerRunning = 'The server is running: its ports are open.';
+  cmMailCertificateOk = 'The certificate loads.';
+  cmMailCertificateFailed = 'The certificate does not load: %s';
+  // end of Mail
+
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Missing JSON number digits.';
   emJSONInvalidNumber = 'Invalid JSON number.';
