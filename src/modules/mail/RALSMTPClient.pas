@@ -257,7 +257,7 @@ begin
   // "5.1.1 text": an enhanced code first (RFC 2034)
   vText := RALTrim(AReply);
   if (Length(vText) >= 5) and (vText[1] in ['2', '4', '5']) and (vText[2] = '.') then
-    FEnhanced := Copy(vText, 1, Pos(' ', string(vText + ' ')) - 1);
+    FEnhanced := Copy(vText, 1, RALMailPos(' ', vText + ' ') - 1);
   inherited Create(Format('SMTP %d %s', [ACode, string(AReply)]));
 end;
 
@@ -326,17 +326,17 @@ begin
   vMechs := ' ' + StringRAL(UpperCase(string(vMechs))) + ' ';
   if vMethod = maAuto then
   begin
-    if (vToken <> '') and (Pos(' XOAUTH2 ', string(vMechs)) > 0) then
+    if (vToken <> '') and (RALMailPos(' XOAUTH2 ', vMechs) > 0) then
       vMethod := maXOAuth2
-    else if (vToken <> '') and (Pos(' OAUTHBEARER ', string(vMechs)) > 0) then
+    else if (vToken <> '') and (RALMailPos(' OAUTHBEARER ', vMechs) > 0) then
       vMethod := maOAuthBearer
-    else if Pos(' SCRAM-SHA-256 ', string(vMechs)) > 0 then
+    else if RALMailPos(' SCRAM-SHA-256 ', vMechs) > 0 then
       vMethod := maScramSHA256
-    else if Pos(' SCRAM-SHA-1 ', string(vMechs)) > 0 then
+    else if RALMailPos(' SCRAM-SHA-1 ', vMechs) > 0 then
       vMethod := maScramSHA1
-    else if Pos(' PLAIN ', string(vMechs)) > 0 then
+    else if RALMailPos(' PLAIN ', vMechs) > 0 then
       vMethod := maPlain
-    else if Pos(' LOGIN ', string(vMechs)) > 0 then
+    else if RALMailPos(' LOGIN ', vMechs) > 0 then
       vMethod := maLogin
     else
       raise ERALSMTPError.CreateReply(0, StringRAL(Format(emMailNoCommonAuth, [string(RALTrim(vMechs))])));
@@ -733,7 +733,7 @@ begin
   if Assigned(FOnLog) then
   begin
     if ASecret then
-      FOnLog(Self, Copy(ALine, 1, Pos(' ', string(ALine + ' '))) + '****', True)
+      FOnLog(Self, Copy(ALine, 1, RALMailPos(' ', ALine + ' ')) + '****', True)
     else
       FOnLog(Self, ALine, True);
   end;

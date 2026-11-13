@@ -219,6 +219,11 @@ type
     property Text: StringRAL read FText write FText;
   end;
 
+{ The byte position of ASub in AText, from 1 (0 when absent): Pos on a UTF8String
+  converted to string counts UTF-16 characters on Delphi, which does not match the
+  byte positions Copy uses on the UTF8String. }
+function RALMailPos(const ASub, AText: RawByteString): IntegerRAL;
+
 /// Text as an RFC 2047 encoded word when it is not plain printable ASCII.
 function RALMailEncodeWord(const AText: StringRAL): StringRAL;
 /// Decodes the RFC 2047 encoded words of a header value into UTF-8.
@@ -416,6 +421,21 @@ begin
   Result := Result + '"';
 end;
 
+function RALMailPos(const ASub, AText: RawByteString): IntegerRAL;
+var
+  vInt, vLen: IntegerRAL;
+begin
+  vLen := Length(ASub);
+  if vLen > 0 then
+    for vInt := 1 to Length(AText) - vLen + 1 do
+      if (AText[vInt] = ASub[1]) and ((vLen = 1) or CompareMem(@AText[vInt], @ASub[1], vLen)) then
+      begin
+        Result := vInt;
+        Exit;
+      end;
+  Result := 0;
+end;
+
 function RALMailEncodeWord(const AText: StringRAL): StringRAL;
 var
   vStart, vLen: IntegerRAL;
@@ -457,14 +477,14 @@ begin
   if (Length(AWord) < 8) or (Copy(AWord, 1, 2) <> '=?') or
      (Copy(AWord, Length(AWord) - 1, 2) <> '?=') then
     Exit;
-  vP1 := Pos('?', string(Copy(AWord, 3, MaxInt))) + 2;
+  vP1 := RALMailPos('?', Copy(AWord, 3, MaxInt)) + 2;
   if vP1 <= 2 then
     Exit;
   vCharset := Copy(AWord, 3, vP1 - 3);
   // a language after * (RFC 2231) is dropped
-  if Pos('*', string(vCharset)) > 0 then
-    vCharset := Copy(vCharset, 1, Pos('*', string(vCharset)) - 1);
-  vP2 := Pos('?', string(Copy(AWord, vP1 + 1, MaxInt))) + vP1;
+  if RALMailPos('*', vCharset) > 0 then
+    vCharset := Copy(vCharset, 1, RALMailPos('*', vCharset) - 1);
+  vP2 := RALMailPos('?', Copy(AWord, vP1 + 1, MaxInt)) + vP1;
   if (vP2 <= vP1) or (vP2 <> vP1 + 2) then
     Exit;
   vEnc := LowerASCII(Copy(AWord, vP1 + 1, 1));
@@ -762,7 +782,7 @@ function RALMailHeaderMain(const AValue: StringRAL): StringRAL;
 var
   vPos: IntegerRAL;
 begin
-  vPos := Pos(';', string(AValue));
+  vPos := RALMailPos(';', AValue);
   if vPos > 0 then
     Result := LowerASCII(RALTrim(Copy(AValue, 1, vPos - 1)))
   else
@@ -786,7 +806,7 @@ begin
     vCharset := '';
     // split on ';' outside quotes
     vRest := AValue;
-    vPos := Pos(';', string(vRest));
+    vPos := RALMailPos(';', vRest);
     if vPos = 0 then
       Exit;
     vRest := Copy(vRest, vPos + 1, MaxInt);
@@ -810,7 +830,7 @@ begin
         Inc(vInt);
       end;
       vRest := Copy(vRest, vInt + 1, MaxInt);
-      vPos := Pos('=', string(vPart));
+      vPos := RALMailPos('=', vPart);
       if vPos = 0 then
         Continue;
       vKey := LowerASCII(RALTrim(Copy(vPart, 1, vPos - 1)));
@@ -833,11 +853,11 @@ begin
         begin
           vExtended := True;
           // the first piece carries charset'language'
-          if (vCharset = '') and (Pos('''', string(vVal)) > 0) then
+          if (vCharset = '') and (RALMailPos('''', vVal) > 0) then
           begin
-            vCharset := Copy(vVal, 1, Pos('''', string(vVal)) - 1);
-            vVal := Copy(vVal, Pos('''', string(vVal)) + 1, MaxInt);
-            vVal := Copy(vVal, Pos('''', string(vVal)) + 1, MaxInt);
+            vCharset := Copy(vVal, 1, RALMailPos('''', vVal) - 1);
+            vVal := Copy(vVal, RALMailPos('''', vVal) + 1, MaxInt);
+            vVal := Copy(vVal, RALMailPos('''', vVal) + 1, MaxInt);
           end;
           vVal := StringRAL(StringReplace(string(vVal), '%', '=', [rfReplaceAll]));
           vVal := RALMailDecodeQP(vVal);
@@ -1047,8 +1067,8 @@ var
     vItem := RALTrim(AItem);
     if vItem = '' then
       Exit;
-    vLt := Pos('<', string(vItem));
-    vGt := Pos('>', string(vItem));
+    vLt := RALMailPos('<', vItem);
+    vGt := RALMailPos('>', vItem);
     if (vLt > 0) and (vGt > vLt) then
     begin
       vAddr := RALTrim(Copy(vItem, vLt + 1, vGt - vLt - 1));
@@ -1425,7 +1445,7 @@ begin
   for vInt := 0 to AList.Count - 1 do
   begin
     vLine := StringRAL(AList[vInt]);
-    vPos := Pos(':', string(vLine));
+    vPos := RALMailPos(':', vLine);
     if (vPos > 0) and (LowerASCII(RALTrim(Copy(vLine, 1, vPos - 1))) = AName) then
     begin
       Result := RALTrim(Copy(vLine, vPos + 1, MaxInt));
@@ -1746,7 +1766,7 @@ begin
     if vCut <= 1 then
     begin
       // no space early enough: the first one after (or none: the line stays long)
-      vCut := Pos(' ', string(Copy(vRest, 2, MaxInt)));
+      vCut := RALMailPos(' ', Copy(vRest, 2, MaxInt));
       if vCut = 0 then
         Break;
       Inc(vCut);
@@ -1920,8 +1940,8 @@ begin
   if FMessageID = '' then
   begin
     vDomain := 'localhost';
-    if (FFrom.Count > 0) and (Pos('@', string(FFrom[0].Address)) > 0) then
-      vDomain := Copy(FFrom[0].Address, Pos('@', string(FFrom[0].Address)) + 1, MaxInt);
+    if (FFrom.Count > 0) and (RALMailPos('@', FFrom[0].Address) > 0) then
+      vDomain := Copy(FFrom[0].Address, RALMailPos('@', FFrom[0].Address) + 1, MaxInt);
     FMessageID := RandomHex(16) + '@' + vDomain;
   end;
   vAttachments := 0;

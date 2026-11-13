@@ -1380,9 +1380,9 @@ begin
     ssaPlain:
     begin
       // authzid NUL authcid NUL password
-      vInt := Pos(#0, string(vText));
+      vInt := RALMailPos(#0, vText);
       vText := Copy(vText, vInt + 1, MaxInt);
-      vInt := Pos(#0, string(vText));
+      vInt := RALMailPos(#0, vText);
       if vInt = 0 then
       begin
         AuthFinish(False, '');
@@ -1453,8 +1453,8 @@ begin
           vPart := StringRAL(vParts[vInt]);
           if Copy(vPart, 1, 5) = 'user=' then
             vUser := Copy(vPart, 6, MaxInt)
-          else if (Copy(vPart, 1, 2) = 'n,') and (Pos('a=', string(vPart)) > 0) then
-            vUser := Copy(vPart, Pos('a=', string(vPart)) + 2, MaxInt)
+          else if (Copy(vPart, 1, 2) = 'n,') and (RALMailPos('a=', vPart) > 0) then
+            vUser := Copy(vPart, RALMailPos('a=', vPart) + 2, MaxInt)
           else if SameText(Copy(vPart, 1, 12), 'auth=Bearer ') then
             vToken := Copy(vPart, 13, MaxInt);
         end;
