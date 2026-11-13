@@ -551,6 +551,14 @@
   emDKIMNoFrom = 'DKIM: el mensaje no tiene From.';
   emMailQueueActive = 'Detenga la cola de correo antes de cambiar %s.';
   emMailQueueNoClient = 'La cola de correo no tiene Client.';
+  emDNSBadAddress = 'DNS: no es una dirección IP: %s';
+  emDNSBadName = 'DNS: nombre no válido: %s';
+  emDNSNoAnswer = 'DNS: sin respuesta de %s en %d ms.';
+  emDNSBadResponse = 'DNS: respuesta mal formada.';
+  emDMARCNoFrom = 'El mensaje no tiene la cabecera From.';
+  emDMARCManyFrom = 'La cabecera From tiene más de un dominio.';
+  emDMARCNoRecord = 'No hay registro DMARC para %s.';
+  emMailVerifyBadIP = 'La dirección del cliente %s no es una dirección IP.';
   cmMailTestConnection = 'Probar conexión';
   cmMailTestConnected = 'Conectado a %s:%d (%s). Extensiones: %s.';
   cmMailTestFailed = 'La conexión falló: %s';
@@ -560,6 +568,17 @@
   cmMailServerRunning = 'El servidor está en ejecución: sus puertos están abiertos.';
   cmMailCertificateOk = 'El certificado se carga.';
   cmMailCertificateFailed = 'El certificado no se carga: %s';
+  emIMAPAnswer = 'IMAP %s %s';
+  emPOP3Answer = 'POP3 %s';
+  // Mail servers
+  emMailStoreNoFolder = 'El almacén de correo no tiene Folder.';
+  emMailStoreBadName = 'Nombre de usuario o de buzón no válido: %s';
+  emMailStoreNoMailbox = 'El buzón no existe: %s';
+  emMailStoreMailboxExists = 'El buzón ya existe: %s';
+  emMailStoreNoMessage = 'El mensaje no existe: UID %d';
+  emMailStoreWrite = 'El almacén de correo no puede escribir %s';
+  emMailStoreProtected = 'El buzón no puede cambiarse así: %s';
+  emMailServerNoStore = 'El servidor de correo no tiene Store.';
   // end of Mail
 
   // JSON, BSON and OpenSSL errors.

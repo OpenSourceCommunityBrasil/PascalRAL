@@ -39,6 +39,11 @@ contains
   RALDKIM in '..\..\..\src\modules\mail\RALDKIM.pas',
   RALSMTPClient in '..\..\..\src\modules\mail\RALSMTPClient.pas',
   RALMailQueue in '..\..\..\src\modules\mail\RALMailQueue.pas',
-  RALSMTPServer in '..\..\..\src\modules\mail\RALSMTPServer.pas';
+  RALSMTPServer in '..\..\..\src\modules\mail\RALSMTPServer.pas',
+  RALDNS in '..\..\..\src\modules\mail\RALDNS.pas',
+  RALMailVerifier in '..\..\..\src\modules\mail\RALMailVerifier.pas',
+  RALMailTransport in '..\..\..\src\modules\mail\RALMailTransport.pas',
+  RALIMAPClient in '..\..\..\src\modules\mail\RALIMAPClient.pas',
+  RALPOP3Client in '..\..\..\src\modules\mail\RALPOP3Client.pas';
 
 end.

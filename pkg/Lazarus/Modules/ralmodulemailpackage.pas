@@ -8,7 +8,9 @@ unit RALModuleMailPackage;
 interface
 
 uses
-  RALMailMIME, RALDKIM, RALSMTPClient, RALMailQueue, RALSMTPServer, LazarusPackageIntf;
+  RALMailMIME, RALDKIM, RALSMTPClient, RALMailQueue, RALSMTPServer, RALDNS, RALMailVerifier,
+  RALMailTransport, RALIMAPClient, RALPOP3Client,
+  LazarusPackageIntf;
 
 implementation
 

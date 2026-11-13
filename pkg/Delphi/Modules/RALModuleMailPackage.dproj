@@ -180,6 +180,11 @@
         <DCCReference Include="..\..\..\src\modules\mail\RALSMTPClient.pas"/>
         <DCCReference Include="..\..\..\src\modules\mail\RALMailQueue.pas"/>
         <DCCReference Include="..\..\..\src\modules\mail\RALSMTPServer.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALDNS.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALMailVerifier.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALMailTransport.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALIMAPClient.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALPOP3Client.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

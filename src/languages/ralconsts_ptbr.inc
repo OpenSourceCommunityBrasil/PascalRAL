@@ -551,6 +551,14 @@
   emDKIMNoFrom = 'DKIM: a mensagem não tem From.';
   emMailQueueActive = 'Pare a fila de e-mail antes de mudar %s.';
   emMailQueueNoClient = 'A fila de e-mail não tem Client.';
+  emDNSBadAddress = 'DNS: não é um endereço IP: %s';
+  emDNSBadName = 'DNS: nome inválido: %s';
+  emDNSNoAnswer = 'DNS: sem resposta de %s em %d ms.';
+  emDNSBadResponse = 'DNS: resposta malformada.';
+  emDMARCNoFrom = 'A mensagem não tem o cabeçalho From.';
+  emDMARCManyFrom = 'O cabeçalho From tem mais de um domínio.';
+  emDMARCNoRecord = 'Nenhum registro DMARC para %s.';
+  emMailVerifyBadIP = 'O endereço do cliente %s não é um endereço IP.';
   cmMailTestConnection = 'Testar conexão';
   cmMailTestConnected = 'Conectado a %s:%d (%s). Extensões: %s.';
   cmMailTestFailed = 'A conexão falhou: %s';
@@ -560,6 +568,17 @@
   cmMailServerRunning = 'O servidor está rodando: as portas dele estão abertas.';
   cmMailCertificateOk = 'O certificado carrega.';
   cmMailCertificateFailed = 'O certificado não carrega: %s';
+  emIMAPAnswer = 'IMAP %s %s';
+  emPOP3Answer = 'POP3 %s';
+  // Mail servers
+  emMailStoreNoFolder = 'O armazém de e-mail não tem Folder.';
+  emMailStoreBadName = 'Nome de usuário ou de caixa inválido: %s';
+  emMailStoreNoMailbox = 'A caixa não existe: %s';
+  emMailStoreMailboxExists = 'A caixa já existe: %s';
+  emMailStoreNoMessage = 'A mensagem não existe: UID %d';
+  emMailStoreWrite = 'O armazém de e-mail não consegue gravar %s';
+  emMailStoreProtected = 'A caixa não pode ser alterada assim: %s';
+  emMailServerNoStore = 'O servidor de e-mail não tem Store.';
   // end of Mail
 
   // JSON, BSON and OpenSSL errors.

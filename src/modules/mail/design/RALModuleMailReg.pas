@@ -14,7 +14,8 @@ uses
   {$IFDEF DELPHIXE2UP}Vcl.Dialogs,{$ELSE}Dialogs,{$ENDIF}
   {$ENDIF}
   Classes, SysUtils,
-  RALTypes, RALConsts, RALDKIM, RALSMTPClient, RALMailQueue, RALSMTPServer;
+  RALTypes, RALConsts, RALDKIM, RALSMTPClient, RALMailQueue, RALSMTPServer, RALDNS,
+  RALMailVerifier, RALIMAPClient, RALPOP3Client;
 
 type
   /// Verb of TRALSMTPClient: tests a copy of its settings; lists what the server offers.
@@ -40,8 +41,9 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('RAL - Client', [TRALSMTPClient, TRALMailQueue, TRALDKIMSigner]);
-  RegisterComponents('RAL - Server', [TRALSMTPServer, TRALDKIMVerifier]);
+  RegisterComponents('RAL - Client', [TRALSMTPClient, TRALMailQueue, TRALDKIMSigner,
+    TRALIMAPClient, TRALPOP3Client, TRALDNSResolver]);
+  RegisterComponents('RAL - Server', [TRALSMTPServer, TRALDKIMVerifier, TRALMailVerifier]);
   RegisterComponentEditor(TRALSMTPClient, TRALSMTPClientEditor);
   RegisterComponentEditor(TRALSMTPServer, TRALSMTPServerEditor);
 end;

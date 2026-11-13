@@ -551,6 +551,14 @@
   emDKIMNoFrom = 'DKIM: the message has no From.';
   emMailQueueActive = 'Stop the mail queue before changing %s.';
   emMailQueueNoClient = 'The mail queue has no Client.';
+  emDNSBadAddress = 'DNS: not an IP address: %s';
+  emDNSBadName = 'DNS: invalid name: %s';
+  emDNSNoAnswer = 'DNS: no answer from %s within %d ms.';
+  emDNSBadResponse = 'DNS: malformed response.';
+  emDMARCNoFrom = 'The message has no From header.';
+  emDMARCManyFrom = 'The From header has more than one domain.';
+  emDMARCNoRecord = 'No DMARC record for %s.';
+  emMailVerifyBadIP = 'The client address %s is not an IP address.';
   cmMailTestConnection = 'Test connection';
   cmMailTestConnected = 'Connected to %s:%d (%s). Extensions: %s.';
   cmMailTestFailed = 'The connection failed: %s';
@@ -560,6 +568,17 @@
   cmMailServerRunning = 'The server is running: its ports are open.';
   cmMailCertificateOk = 'The certificate loads.';
   cmMailCertificateFailed = 'The certificate does not load: %s';
+  emIMAPAnswer = 'IMAP %s %s';
+  emPOP3Answer = 'POP3 %s';
+  // Mail servers
+  emMailStoreNoFolder = 'The mail store has no Folder.';
+  emMailStoreBadName = 'Invalid user or mailbox name: %s';
+  emMailStoreNoMailbox = 'The mailbox does not exist: %s';
+  emMailStoreMailboxExists = 'The mailbox already exists: %s';
+  emMailStoreNoMessage = 'The message does not exist: UID %d';
+  emMailStoreWrite = 'The mail store cannot write %s';
+  emMailStoreProtected = 'The mailbox cannot be changed this way: %s';
+  emMailServerNoStore = 'The mail server has no Store.';
   // end of Mail
 
   // JSON, BSON and OpenSSL errors.
