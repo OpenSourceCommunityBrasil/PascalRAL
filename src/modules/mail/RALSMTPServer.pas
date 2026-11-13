@@ -765,6 +765,7 @@ begin
   { a block at a time, served before the next is read: the input buffer stays
     small whatever the client sends (a 100 MB message passes through 16 KB) }
   vDone := False;
+  vRes := 0;
   repeat
     if FStartTLS or (FPhase = sspClosed) or CloseAfterFlush then
       Break;

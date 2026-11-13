@@ -933,7 +933,7 @@ begin
     begin
       vLine := Trim(vFile[vInt]);
       if (Copy(vLine, 1, 10) = 'nameserver') and (Length(vLine) > 10) and
-         (vLine[11] in [' ', #9]) then
+         ((vLine[11] = ' ') or (vLine[11] = #9)) then
       begin
         vAddr := Trim(Copy(vLine, 11, Length(vLine)));
         vPos := Pos('%', vAddr);

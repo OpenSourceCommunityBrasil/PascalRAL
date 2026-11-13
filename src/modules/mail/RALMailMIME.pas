@@ -365,7 +365,7 @@ begin
   Result := AText;
   for vInt := 1 to Length(Result) do
     if Result[vInt] in ['A'..'Z'] then
-      Result[vInt] := CharRAL(Ord(Result[vInt]) + 32);
+      Result[vInt] := AnsiChar(Ord(Result[vInt]) + 32);
 end;
 
 /// A random hex text of ALength*2 characters (boundaries, Message-IDs).
