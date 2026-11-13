@@ -22,6 +22,8 @@ The engine is the `TRALServer` descendant; the routes and handlers are the same 
 | `TRALSaguiServer` (`RALSaguiServer`) | 2009+ | yes | needs `libsagui` |
 | `TRALMsQuicServer` (`RALMsQuicServer`) | yes | yes | QUIC, RAL clients only |
 | `TRALNgHttp2Server` (`RALNgHttp2Server`) | yes | yes | HTTP/2 only (h2 by ALPN, h2c), trailers (native gRPC); needs `libnghttp2` and `RALNetPackage` |
+| `TRALXSocketServer` (`RALXSocketServer`) | 11+ | no | Delphi-Cross-Socket (IOCP/epoll); handlers on a pool by default (`ExecuteInIOThread`) |
+| `TRALAdvancedHTTPServer` (`RALAdvancedHTTPServer`) | no | FPC 3.3+ | experimental: AdvancedHTTPServer, broken keep-alive and TLS on Windows |
 | `TRALCGIServer` (`RALCGIServer`) | yes | yes | behind IIS/Apache/nginx |
 | `TRALFastCGIServer` (`RALFastCGIServer`) | yes | yes | behind nginx/Apache over FastCGI (TCP); needs `RALNetPackage` |
 | `TRALWebBrokerServer` (`RALWebBrokerServer`) | yes | yes | a library: ISAPI (IIS) or Apache 2.4 module on Delphi, Apache 2.4 on Lazarus |

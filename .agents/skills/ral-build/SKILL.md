@@ -53,11 +53,12 @@ msbuild pkg\Delphi\Engine\IndyRAL.dproj /t:Build /p:Config=Release /p:Platform=W
   `/p:DCC_BplOutput=<dir> /p:DCC_DcpOutput=<dir> /p:DCC_DcuOutput=<dir>\<package>` and
   put `<dir>` in `DelphiLibraryPath` too, so later packages find the `.dcp`.
 
-Two packages need the unit search path the IDE would give them:
+Some packages need the unit search path the IDE would give them:
 
 | package | add |
 |---|---|
 | `SynopseRAL` | `/p:mormot2=<mORMot2 src> /p:DCC_UnitSearchPath="<repo>\src\core%3B<repo>\src\common%3B<repo>\src\engine\synopse%3B<m>%3B<m>\core%3B<m>\lib%3B<m>\crypt%3B<m>\net%3B<m>\db%3B<m>\rest%3B<m>\orm%3B<m>\soa%3B<m>\app%3B<m>\script%3B<m>\ui%3B<m>\tools%3B<m>\misc"` (`<m>` = mORMot2 `src`) |
+| `XSocketRAL` | `/p:crosssocket=<Delphi-Cross-Socket root> /p:DCC_UnitSearchPath="<repo>\src\engine\xsocket%3B<c>\Net%3B<c>\Utils%3B<c>"` (`<c>` = the library root, which holds `zLib.inc`; its units are not in the package) |
 | `RALCompressBrotliPackage` | `/p:DCC_UnitSearchPath="<repo>\src\others\pascal_brotli%3B<repo>\src\others\pascal_brotli\static_libs\delphi\win32"` |
 
 The seven traps behind this recipe, and `dcc32` called directly, are in

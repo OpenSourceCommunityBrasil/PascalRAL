@@ -166,6 +166,12 @@ bcrypt core), `RALSalsa20` (the Salsa20 core), `RALOTP` (HOTP/TOTP, base32, otpa
 
 - `cgi/` - `RALCGIServer` (+ `_Delphi.inc`, `_FPC.inc`), `RALCGIReg`; Lazarus package
   only (Delphi CGI compiles from source)
+- `xsocket/` - `RALXSocketServer`, `RALXSocketClient`, `RALXSocketReg` (`XSocketRAL`, Delphi
+  only, requires `PascalRAL`): server and client on Delphi-Cross-Socket (IOCP / epoll, TLS
+  through its OpenSSL); the library's units come from the project's search path, not the package.
+- `advancedhttp/` - `RALAdvancedHTTPServer`, `RALAdvancedHTTPReg` (`advancedhttpral`, Lazarus
+  only, FPC 3.3+; experimental): server on AdvancedHTTPServer; the library's units come from
+  the package's `OtherUnitFiles`
 - `fastcgi/` - `RALFastCGIServer`, `RALFastCGIReg` (`FastCGIRAL`, requires
   `RALNetPackage`): FastCGI 1.0 responder of its own on `RALSocket`, both compilers,
   kept connections and live streams, behind nginx or Apache (IIS's FastCGI only

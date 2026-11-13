@@ -382,6 +382,28 @@ when an answer reports 1.x (`MatchConnectionCap`). `HTTPVersion` is shown only w
 `SupportsHTTP2` and pinned elsewhere. `KeepAliveInterval` (HTTP/2 PING) on netHTTP and
 OkHttp, floor applied on assignment (`MinKeepAliveInterval`).
 
+### XSocket and AdvancedHTTP
+
+**XSocket** (`src/engine/xsocket`, `XSocketRAL`, Delphi 11+ only: Delphi-Cross-Socket does
+not compile on 10.2-10.4): server and client engine `XSocket` on the library's IOCP/epoll
+loop; its units come from the project's search path (`$(crosssocket)`), never from the
+package. Requests run on `PoolCount` workers (0 = four per processor) or, with
+`ExecuteInIOThread`, on the IO threads (about 20% faster, a blocking handler stalls its
+thread). The library only pulls response chunks, so a live stream parks a pump on an IO
+thread: at most `IoThreads - 1` live at once, the rest answered whole. HEAD is written raw
+with the GET's length and closes the connection; the library closes after a status >= 400
+and pre-parses form/multipart/gzip bodies, which the engine rebuilds raw for RAL. The
+client verifies no certificate (`SupportsCertPin` False: `svAlways`, a pin or the event
+raise `rteCertificate` before sending), follows no redirect and has no response streaming.
+
+**AdvancedHTTP** (`src/engine/advancedhttp`, Lazarus package `advancedhttpral`, FPC 3.3+
+only: the unit is empty unless `RALHasAnonMethods`), **experimental**: on Windows the
+library stalls a request that arrives right after an answer on a kept connection, loses
+TLS bodies, and crashes on chunked request bodies; one instance per process (its stop flag
+is a global); it installs its own SIGINT/SIGTERM handlers and writes to the console.
+`TcpNoDelay` sets `TCP_NODELAY` on the accepted socket by reading the library's private
+fields, guarded by an `SO_TYPE` check.
+
 ### The client
 
 - **`TRALExecBehavior`** decides which thread runs the request: `ebSingleThread`
