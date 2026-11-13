@@ -29,6 +29,12 @@ queue its store, workers and retries.
 | `RALDNS` | `TRALDNSResolver`: UDP with TCP fallback, cache by TTL, the system's servers | RFC 1035 |
 | `RALMailVerifier` | `TRALSPFChecker`, DMARC, `TRALMailVerifier` and `Authentication-Results` | RFC 7208, 7489, 8601 |
 | `RALSMTPServer` | `TRALSMTPServer` on `TRALSocketLoop`, the connection state machine | RFC 5321, 3207, 4954, 2920, 3030, 1870, 2034, 3848 |
+| `RALMailStore` | `TRALMailStore`: mailboxes per user on disk (a file per message, an index with UIDs and flags written to a temporary name and renamed) | RFC 9051 2.3 (UIDs) |
+| `RALMailServerBase` | `TRALMailServer`/`TRALMailConnection`: what the POP3 and IMAP servers share (ports, TLS, login through the internal route, the connection loop) | |
+| `RALPOP3Server` | `TRALPOP3Server` | RFC 1939, 2449, 2595, 5034 |
+| `RALIMAPServer` | `TRALIMAPServer` | RFC 9051, 3501, 2177, 4315, 6851, 5161 |
+| `RALSMIME` | `TRALSMIME`, CMS SignedData/EnvelopedData/AuthEnvelopedData, the PFX reader, AES, RSA-OAEP and RSAES-PKCS1-v1_5 of its own | RFC 8551, 5652, 5083, 5084, 8017, 7292 |
+| `RALOpenPGP` | `TRALOpenPGP`, `TRALPGPKeyRing`, packets and armor, v4 keys (RSA, EdDSA, ECDH Curve25519), SEIPD v1 | RFC 4880, 6637, 3156 (GnuPG 2.4 compatible) |
 
 ## Things that are easy to break
 
@@ -61,6 +67,11 @@ queue its store, workers and retries.
   the body of a FETCH goes straight to the caller's stream instead.
 - **Positions in UTF-8 text** are bytes: use `RALMailPos`, never `Pos` on a `string`
   conversion (Delphi counts UTF-16 characters there).
+- **S/MIME and OpenPGP keep the base package untouched**: RSA encryption, AES-CBC and the
+  PFX reader live in `RALSMIME`, and `RALOpenPGP` builds CFB on `RALAESCBCEncrypt` one block
+  at a time (slow for big data; a block-cipher export would speed it up).
+- **One store folder, one process**: the POP3 maildrop lock and the index lock live in the
+  process.
 - **Events run on the server's poll threads.** A slow `OnMessage` holds every
   connection of its thread.
 

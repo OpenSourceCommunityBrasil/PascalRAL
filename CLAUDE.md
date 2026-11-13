@@ -906,7 +906,10 @@ against the RFC 8463 appendix), `TRALIMAPClient`/`TRALPOP3Client` (over `TRALMai
 `RALMailTransport`; IMAP literals are read into a list and marked in the line, a FETCH body
 goes to the caller's stream; `WaitForChanges` is IDLE), `TRALDNSResolver` (`Query` is
 virtual: tests serve a fake zone) and `TRALMailVerifier` (SPF RFC 7208, DMARC, DKIM,
-`Authentication-Results`), `TRALMailQueue` (jobs `ral.mail.send` on a
+`Authentication-Results`), `TRALMailStore` + `TRALPOP3Server`/`TRALIMAPServer` (over
+`TRALMailServer` of `RALMailServerBase`; IDLE notices on the next poll pass), `TRALSMIME`
+(CMS of its own, base package untouched) and `TRALOpenPGP` (v4 keys, GnuPG 2.4 interop;
+no AEAD/OCB packets), `TRALMailQueue` (jobs `ral.mail.send` on a
 `TRALJobQueue`: payload = envelope lines + the wire message; each recipient counts on its
 own, so a partial failure enqueues a new job for the rest carrying the attempts made;
 at-least-once: a kill between the final 250 and the store's update sends again),
