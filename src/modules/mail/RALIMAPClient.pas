@@ -107,6 +107,9 @@ type
     /// Runs the SASL exchange of AMechanism, starting with AInitial.
     procedure SaslExchange(const AMechanism, AInitial: RawByteString);
     procedure SetSSL(AValue: TRALSocketSSL);
+    { Reads past the untagged answers starting at ALine (a server may send its
+      new CAPABILITY before the tagged OK of a login); the first tagged line. }
+    function SkipUntagged(const ALine: RawByteString): RawByteString;
     /// The UID set argument for AUIDs.
     function UIDList(const AUIDs: array of Cardinal): RawByteString;
     /// Reads answers until the one tagged ATag; raises on failure when ARaise.
@@ -514,6 +517,17 @@ begin
   inherited Destroy;
 end;
 
+function TRALIMAPClient.SkipUntagged(const ALine: RawByteString): RawByteString;
+begin
+  Result := ALine;
+  while System.Copy(Result, 1, 2) = '* ' do
+  begin
+    FReplies.Add(string(Result));
+    ParseUntagged(Result);
+    Result := ReadResponse;
+  end;
+end;
+
 procedure TRALIMAPClient.SetSSL(AValue: TRALSocketSSL);
 begin
   FSSL.Assign(AValue);
@@ -619,12 +633,16 @@ begin
       while vScan.Next(vText) = itAtom do
         FCapabilities.Add(UpperCase(string(vText)));
     end
-    else if UpperCase(string(vSecond)) = 'EXISTS' then
-      FExists := StrToIntDef(string(vFirst), FExists)
-    else if UpperCase(string(vSecond)) = 'RECENT' then
-      FRecent := StrToIntDef(string(vFirst), FRecent)
-    else if UpperCase(string(vSecond)) = 'EXPUNGE' then
-      Dec(FExists);
+    // "* n EXISTS": only a number counts, not a status such as "OK Expunge completed"
+    else if StrToIntDef(string(vFirst), -1) >= 0 then
+    begin
+      if UpperCase(string(vSecond)) = 'EXISTS' then
+        FExists := StrToIntDef(string(vFirst), FExists)
+      else if UpperCase(string(vSecond)) = 'RECENT' then
+        FRecent := StrToIntDef(string(vFirst), FRecent)
+      else if UpperCase(string(vSecond)) = 'EXPUNGE' then
+        Dec(FExists);
+    end;
   finally
     vScan.Free;
   end;
@@ -794,6 +812,7 @@ begin
     FLink.Write(#13#10);
     vLine := ReadResponse;
   end;
+  vLine := SkipUntagged(vLine);
   if System.Copy(vLine, 1, Length(vTag) + 4) <> vTag + ' OK ' then
   begin
     if System.Copy(vLine, 1, Length(vTag) + 1) = vTag + ' ' then
@@ -874,6 +893,7 @@ begin
           FLink.Write(#13#10);
           vLine := ReadResponse;
         end;
+        vLine := SkipUntagged(vLine);
         if System.Copy(vLine, 1, Length(vTag) + 4) <> vTag + ' OK ' then
           raise ERALIMAPError.CreateStatus('NO', StringRAL(vLine));
         ParseUntagged('* ' + System.Copy(vLine, Length(vTag) + 2, MaxInt));
