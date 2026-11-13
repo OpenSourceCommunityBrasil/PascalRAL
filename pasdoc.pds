@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=71
+Count=72
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -139,9 +139,10 @@ Item_67=src\engine\nghttp2
 Item_68=src\engine\xsocket
 Item_69=src\engine\advancedhttp
 Item_70=src\modules\mail
+Item_71=src\modules\chat
 
 [Files]
-Count=288
+Count=295
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -430,6 +431,13 @@ Item_284=src\modules\mail\RALMailStore.pas
 Item_285=src\modules\mail\RALMailServerBase.pas
 Item_286=src\modules\mail\RALPOP3Server.pas
 Item_287=src\modules\mail\RALIMAPServer.pas
+Item_288=src\modules\chat\RALChatMessage.pas
+Item_289=src\modules\chat\RALChatVerify.pas
+Item_290=src\modules\chat\RALChatChannel.pas
+Item_291=src\modules\chat\RALChatOutbox.pas
+Item_292=src\modules\chat\RALChatStore.pas
+Item_293=src\modules\chat\RALChatBot.pas
+Item_294=src\modules\chat\RALChatWebhook.pas
 [AdditionalFiles]
 Count=0
 

@@ -602,6 +602,26 @@
   emMailServerNoStore = 'The mail server has no Store.';
   // end of Mail
 
+  // Chat (RALModuleChatPackage)
+  emChatNoCapability = 'The channel %s does not support %s.';
+  emChatNoChannel = 'There is no channel named %s.';
+  emChatDuplicateChannel = 'Another channel is already called %s.';
+  emChatNoToken = 'The channel %s has no token.';
+  emChatTokenFile = 'The token file of the channel %s cannot be read.';
+  emChatTokenEnvironment = 'The environment variable of the channel %s is empty.';
+  emChatNoBot = 'The webhook module has no Bot.';
+  emChatNoVerifier = 'The channel %s has no verifier: its webhook is refused.';
+  emChatSendFailed = 'Sending through the channel %s failed: %s';
+  emChatSendTimeout = 'Sending through the channel %s timed out.';
+  emChatOutboxStopped = 'The outbox of the channel %s is stopped.';
+  emChatNotSupported = 'The channel %s cannot do this.';
+  emChatNoMedia = 'The message has no media to open.';
+  emChatBadWebhook = 'The webhook body of the channel %s cannot be read.';
+  emChatJournalWrite = 'The journal %s cannot be written.';
+  emChatNoSession = 'The message has no channel or conversation.';
+  cmChatReplyWithNumber = 'Reply with the number of your choice.';
+  // end of Chat
+
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Missing JSON number digits.';
   emJSONInvalidNumber = 'Invalid JSON number.';

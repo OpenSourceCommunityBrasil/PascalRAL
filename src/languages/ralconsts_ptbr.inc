@@ -602,6 +602,26 @@
   emMailServerNoStore = 'O servidor de e-mail não tem Store.';
   // end of Mail
 
+  // Chat (RALModuleChatPackage)
+  emChatNoCapability = 'O canal %s não suporta %s.';
+  emChatNoChannel = 'Não há canal chamado %s.';
+  emChatDuplicateChannel = 'Outro canal já se chama %s.';
+  emChatNoToken = 'O canal %s não tem token.';
+  emChatTokenFile = 'O arquivo de token do canal %s não pode ser lido.';
+  emChatTokenEnvironment = 'A variável de ambiente do canal %s está vazia.';
+  emChatNoBot = 'O módulo de webhook não tem Bot.';
+  emChatNoVerifier = 'O canal %s não tem verificador: seu webhook é recusado.';
+  emChatSendFailed = 'O envio pelo canal %s falhou: %s';
+  emChatSendTimeout = 'O envio pelo canal %s excedeu o tempo.';
+  emChatOutboxStopped = 'A fila de saída do canal %s está parada.';
+  emChatNotSupported = 'O canal %s não faz isso.';
+  emChatNoMedia = 'A mensagem não tem mídia para abrir.';
+  emChatBadWebhook = 'O corpo do webhook do canal %s não pode ser lido.';
+  emChatJournalWrite = 'O diário %s não pode ser gravado.';
+  emChatNoSession = 'A mensagem não tem canal ou conversa.';
+  cmChatReplyWithNumber = 'Responda com o número da sua escolha.';
+  // end of Chat
+
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Faltam dígitos no número JSON.';
   emJSONInvalidNumber = 'Número JSON inválido.';
