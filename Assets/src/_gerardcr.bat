@@ -59,6 +59,14 @@ echo RALModuleChat
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleChatDsgn.dcr" "RALModuleChat.rc"
 echo RALModuleChatTelegram
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleChatTelegramDsgn.dcr" "RALModuleChatTelegram.rc"
+echo RALModuleChatDiscord
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleChatDiscordDsgn.dcr" "RALModuleChatDiscord.rc"
+echo RALModuleChatSlack
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleChatSlackDsgn.dcr" "RALModuleChatSlack.rc"
+echo RALModuleChatTeams
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleChatTeamsDsgn.dcr" "RALModuleChatTeams.rc"
+echo RALModuleChatDB
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleChatDBPackage.dcr" "RALModuleChatDB.rc"
 echo RALModuleMQTTDB
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleMQTTDBPackage.dcr" "RALModuleMQTTDB.rc"
 echo RALModuleSOAP

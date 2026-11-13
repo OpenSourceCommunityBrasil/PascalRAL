@@ -135,6 +135,37 @@ type
 
 implementation
 
+type
+  { Reads the headers of one request for a verifier, plus the pseudo header of the
+    peer address (cRALChatVerifyClientIP). }
+  TRALChatRequestReader = class
+  private
+    /// The request being verified.
+    FRequest: TRALRequest;
+  public
+    /// Reads the headers of ARequest.
+    constructor Create(ARequest: TRALRequest);
+
+    /// The header AName, or the address of the peer for the pseudo name.
+    function Read(const AName: StringRAL): StringRAL;
+  end;
+
+{ TRALChatRequestReader }
+
+constructor TRALChatRequestReader.Create(ARequest: TRALRequest);
+begin
+  inherited Create;
+  FRequest := ARequest;
+end;
+
+function TRALChatRequestReader.Read(const AName: StringRAL): StringRAL;
+begin
+  if AName = cRALChatVerifyClientIP then
+    Result := FRequest.ClientInfo.IP
+  else
+    Result := FRequest.GetHeader(AName);
+end;
+
 { TRALChatJob }
 
 destructor TRALChatJob.Destroy;
@@ -262,14 +293,17 @@ procedure TRALChatWebhookModule.HandleHook(AChannel: TRALChatChannel; ARequest: 
 var
   vBody, vOut: StringRAL;
   vVerifier: TRALChatVerifier;
+  vReader: TRALChatRequestReader;
   vTimestamp: Int64RAL;
   vOk: Boolean;
   vStatus, vIdx, vWorker: Integer;
   vMessages: TRALChatMessageList;
   vMessage: TRALChatMessage;
   vJob: TRALChatJob;
-  vFull: Boolean;
+  vFull, vAcked: Boolean;
   vName: string;
+  vAckStatus: Integer;
+  vAckType, vAckText: StringRAL;
 begin
   vName := string(AChannel.ChannelName);
   if FBot = nil then
@@ -300,7 +334,12 @@ begin
   end
   else
   begin
-    vOk := vVerifier.Verify(vBody, ARequest.GetHeader, vTimestamp);
+    vReader := TRALChatRequestReader.Create(ARequest);
+    try
+      vOk := vVerifier.Verify(vBody, vReader.Read, vTimestamp);
+    finally
+      vReader.Free;
+    end;
     if vOk and vVerifier.IsOpen then
       FBot.Log(vName + ': WARNING this channel signs nothing, the webhook is not verified');
   end;
@@ -321,6 +360,7 @@ begin
   try
     try
       AChannel.ParseWebhook(vBody, vMessages);
+      vAcked := AChannel.Acknowledge(vBody, vMessages, vAckStatus, vAckType, vAckText);
     except
       on E: Exception do
       begin
@@ -368,6 +408,8 @@ begin
   end;
   if vFull then
     AResponse.Answer(HTTP_ServiceUnavailable, '', rctTEXTPLAIN)
+  else if vAcked then
+    AResponse.Answer(vAckStatus, vAckText, vAckType)
   else
     AResponse.Answer(HTTP_OK, 'ok', rctTEXTPLAIN);
 end;

@@ -192,6 +192,27 @@
         <Projects Include="Modules\RALModuleChatTelegramDsgn.dproj">
             <Dependencies>Modules\RALModuleChatTelegramPackage.dproj</Dependencies>
         </Projects>
+        <Projects Include="Modules\RALModuleChatDiscordPackage.dproj">
+            <Dependencies>Modules\RALModuleChatPackage.dproj;Crypto\RALCryptoCurvesPackage.dproj;Net\RALNetPackage.dproj;Modules\RALModuleWebSocketPackage.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Modules\RALModuleChatDiscordDsgn.dproj">
+            <Dependencies>Modules\RALModuleChatDiscordPackage.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Modules\RALModuleChatSlackPackage.dproj">
+            <Dependencies>Modules\RALModuleChatPackage.dproj;Net\RALNetPackage.dproj;Modules\RALModuleWebSocketPackage.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Modules\RALModuleChatSlackDsgn.dproj">
+            <Dependencies>Modules\RALModuleChatSlackPackage.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Modules\RALModuleChatTeamsPackage.dproj">
+            <Dependencies>Modules\RALModuleChatPackage.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Modules\RALModuleChatTeamsDsgn.dproj">
+            <Dependencies>Modules\RALModuleChatTeamsPackage.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Modules\RALModuleChatDBPackage.dproj">
+            <Dependencies>PascalRAL.dproj;Database\RALDBPackage.dproj</Dependencies>
+        </Projects>
         <Projects Include="Compression\RALCompressZStdPackage.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
@@ -773,6 +794,69 @@
     <Target Name="RALModuleChatTelegramDsgn:Make" DependsOnTargets="RALModuleChatTelegramPackage:Make">
         <MSBuild Projects="Modules\RALModuleChatTelegramDsgn.dproj" Targets="Make"/>
     </Target>
+    <Target Name="RALModuleChatDiscordPackage" DependsOnTargets="RALModuleChatPackage;RALCryptoCurvesPackage;RALNetPackage;RALModuleWebSocketPackage">
+        <MSBuild Projects="Modules\RALModuleChatDiscordPackage.dproj"/>
+    </Target>
+    <Target Name="RALModuleChatDiscordPackage:Clean" DependsOnTargets="RALModuleChatPackage:Clean;RALCryptoCurvesPackage:Clean;RALNetPackage:Clean;RALModuleWebSocketPackage:Clean">
+        <MSBuild Projects="Modules\RALModuleChatDiscordPackage.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALModuleChatDiscordPackage:Make" DependsOnTargets="RALModuleChatPackage:Make;RALCryptoCurvesPackage:Make;RALNetPackage:Make;RALModuleWebSocketPackage:Make">
+        <MSBuild Projects="Modules\RALModuleChatDiscordPackage.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALModuleChatDiscordDsgn" DependsOnTargets="RALModuleChatDiscordPackage">
+        <MSBuild Projects="Modules\RALModuleChatDiscordDsgn.dproj"/>
+    </Target>
+    <Target Name="RALModuleChatDiscordDsgn:Clean" DependsOnTargets="RALModuleChatDiscordPackage:Clean">
+        <MSBuild Projects="Modules\RALModuleChatDiscordDsgn.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALModuleChatDiscordDsgn:Make" DependsOnTargets="RALModuleChatDiscordPackage:Make">
+        <MSBuild Projects="Modules\RALModuleChatDiscordDsgn.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALModuleChatSlackPackage" DependsOnTargets="RALModuleChatPackage;RALNetPackage;RALModuleWebSocketPackage">
+        <MSBuild Projects="Modules\RALModuleChatSlackPackage.dproj"/>
+    </Target>
+    <Target Name="RALModuleChatSlackPackage:Clean" DependsOnTargets="RALModuleChatPackage:Clean;RALNetPackage:Clean;RALModuleWebSocketPackage:Clean">
+        <MSBuild Projects="Modules\RALModuleChatSlackPackage.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALModuleChatSlackPackage:Make" DependsOnTargets="RALModuleChatPackage:Make;RALNetPackage:Make;RALModuleWebSocketPackage:Make">
+        <MSBuild Projects="Modules\RALModuleChatSlackPackage.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALModuleChatSlackDsgn" DependsOnTargets="RALModuleChatSlackPackage">
+        <MSBuild Projects="Modules\RALModuleChatSlackDsgn.dproj"/>
+    </Target>
+    <Target Name="RALModuleChatSlackDsgn:Clean" DependsOnTargets="RALModuleChatSlackPackage:Clean">
+        <MSBuild Projects="Modules\RALModuleChatSlackDsgn.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALModuleChatSlackDsgn:Make" DependsOnTargets="RALModuleChatSlackPackage:Make">
+        <MSBuild Projects="Modules\RALModuleChatSlackDsgn.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALModuleChatTeamsPackage" DependsOnTargets="RALModuleChatPackage">
+        <MSBuild Projects="Modules\RALModuleChatTeamsPackage.dproj"/>
+    </Target>
+    <Target Name="RALModuleChatTeamsPackage:Clean" DependsOnTargets="RALModuleChatPackage:Clean">
+        <MSBuild Projects="Modules\RALModuleChatTeamsPackage.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALModuleChatTeamsPackage:Make" DependsOnTargets="RALModuleChatPackage:Make">
+        <MSBuild Projects="Modules\RALModuleChatTeamsPackage.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALModuleChatTeamsDsgn" DependsOnTargets="RALModuleChatTeamsPackage">
+        <MSBuild Projects="Modules\RALModuleChatTeamsDsgn.dproj"/>
+    </Target>
+    <Target Name="RALModuleChatTeamsDsgn:Clean" DependsOnTargets="RALModuleChatTeamsPackage:Clean">
+        <MSBuild Projects="Modules\RALModuleChatTeamsDsgn.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALModuleChatTeamsDsgn:Make" DependsOnTargets="RALModuleChatTeamsPackage:Make">
+        <MSBuild Projects="Modules\RALModuleChatTeamsDsgn.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALModuleChatDBPackage" DependsOnTargets="PascalRAL;RALDBPackage">
+        <MSBuild Projects="Modules\RALModuleChatDBPackage.dproj"/>
+    </Target>
+    <Target Name="RALModuleChatDBPackage:Clean" DependsOnTargets="PascalRAL:Clean;RALDBPackage:Clean">
+        <MSBuild Projects="Modules\RALModuleChatDBPackage.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALModuleChatDBPackage:Make" DependsOnTargets="PascalRAL:Make;RALDBPackage:Make">
+        <MSBuild Projects="Modules\RALModuleChatDBPackage.dproj" Targets="Make"/>
+    </Target>
     <Target Name="RALCompressZStdPackage" DependsOnTargets="PascalRAL">
         <MSBuild Projects="Compression\RALCompressZStdPackage.dproj"/>
     </Target>
@@ -792,13 +876,13 @@
         <MSBuild Projects="Compression\RALCompressBrotliPackage.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="PascalRAL;PascalRALDsgn;RALWizardDsgn;IndyRAL;SynopseRAL;SaguiRAL;FastCGIRAL;XSocketRAL;NgHttp2RAL;InProcRAL;WebBrokerRAL;MsQuicRAL;NetHttpRAL;OkHttpRAL;KwikRAL;UniGUIRAL;RALStoragePackage;RALStorageBSONPackage;RALDBPackage;RALDBFireDACPackage;RALDBZeosPackage;RALDBDsgn;RALDBFireDACDsgn;RALDBFireDACDAOPackage;RALDBZeosDsgn;RALPluginAuthPackage;RALPluginTLSPackage;RALCryptoPasswordPackage;RALCryptoCurvesPackage;RALPluginObservabilityPackage;RALHostingPackage;RALHostingJobQueuePackage;RALHostingJobQueueDBPackage;RALHostingContainerPackage;RALPluginTrafficPackage;RALPluginCachePackage;RALPluginForwardedPackage;RALModuleProxyPackage;RALModuleProxyDsgn;RALModuleWebPackage;RALModuleJSONRPCPackage;RALModuleProtobufPackage;RALModuleGrpcPackage;RALModuleWebSocketPackage;RALModuleWebSocketMQTTPackage;RALModuleMCPPackage;RALModuleMCPDBPackage;RALModuleSwaggerPackage;RALModuleObjectsPackage;RALModuleControllersPackage;RALModuleXMLPackage;RALModuleSOAPPackage;RALModuleSOAPDsgn;RALModuleMQTTPackage;RALModuleMQTTDsgn;RALModuleMQTTDBPackage;RALModuleMailPackage;RALModuleMailDsgn;RALModuleChatPackage;RALModuleChatDsgn;RALModuleChatTelegramPackage;RALModuleChatTelegramDsgn;RALCompressZStdPackage;RALCompressBrotliPackage"/>
+        <CallTarget Targets="PascalRAL;PascalRALDsgn;RALWizardDsgn;IndyRAL;SynopseRAL;SaguiRAL;FastCGIRAL;XSocketRAL;NgHttp2RAL;InProcRAL;WebBrokerRAL;MsQuicRAL;NetHttpRAL;OkHttpRAL;KwikRAL;UniGUIRAL;RALStoragePackage;RALStorageBSONPackage;RALDBPackage;RALDBFireDACPackage;RALDBZeosPackage;RALDBDsgn;RALDBFireDACDsgn;RALDBFireDACDAOPackage;RALDBZeosDsgn;RALPluginAuthPackage;RALPluginTLSPackage;RALCryptoPasswordPackage;RALCryptoCurvesPackage;RALPluginObservabilityPackage;RALHostingPackage;RALHostingJobQueuePackage;RALHostingJobQueueDBPackage;RALHostingContainerPackage;RALPluginTrafficPackage;RALPluginCachePackage;RALPluginForwardedPackage;RALModuleProxyPackage;RALModuleProxyDsgn;RALModuleWebPackage;RALModuleJSONRPCPackage;RALModuleProtobufPackage;RALModuleGrpcPackage;RALModuleWebSocketPackage;RALModuleWebSocketMQTTPackage;RALModuleMCPPackage;RALModuleMCPDBPackage;RALModuleSwaggerPackage;RALModuleObjectsPackage;RALModuleControllersPackage;RALModuleXMLPackage;RALModuleSOAPPackage;RALModuleSOAPDsgn;RALModuleMQTTPackage;RALModuleMQTTDsgn;RALModuleMQTTDBPackage;RALModuleMailPackage;RALModuleMailDsgn;RALModuleChatPackage;RALModuleChatDsgn;RALModuleChatTelegramPackage;RALModuleChatTelegramDsgn;RALModuleChatDiscordPackage;RALModuleChatDiscordDsgn;RALModuleChatSlackPackage;RALModuleChatSlackDsgn;RALModuleChatTeamsPackage;RALModuleChatTeamsDsgn;RALModuleChatDBPackage;RALCompressZStdPackage;RALCompressBrotliPackage"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;RALWizardDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;SaguiRAL:Clean;FastCGIRAL:Clean;XSocketRAL:Clean;NgHttp2RAL:Clean;InProcRAL:Clean;WebBrokerRAL:Clean;MsQuicRAL:Clean;NetHttpRAL:Clean;OkHttpRAL:Clean;KwikRAL:Clean;UniGUIRAL:Clean;RALStoragePackage:Clean;RALStorageBSONPackage:Clean;RALDBPackage:Clean;RALDBFireDACPackage:Clean;RALDBZeosPackage:Clean;RALDBDsgn:Clean;RALDBFireDACDsgn:Clean;RALDBFireDACDAOPackage:Clean;RALDBZeosDsgn:Clean;RALPluginAuthPackage:Clean;RALPluginTLSPackage:Clean;RALCryptoPasswordPackage:Clean;RALCryptoCurvesPackage:Clean;RALPluginObservabilityPackage:Clean;RALHostingPackage:Clean;RALHostingJobQueuePackage:Clean;RALHostingJobQueueDBPackage:Clean;RALHostingContainerPackage:Clean;RALPluginTrafficPackage:Clean;RALPluginCachePackage:Clean;RALPluginForwardedPackage:Clean;RALModuleProxyPackage:Clean;RALModuleProxyDsgn:Clean;RALModuleWebPackage:Clean;RALModuleJSONRPCPackage:Clean;RALModuleProtobufPackage:Clean;RALModuleGrpcPackage:Clean;RALModuleWebSocketPackage:Clean;RALModuleWebSocketMQTTPackage:Clean;RALModuleMCPPackage:Clean;RALModuleMCPDBPackage:Clean;RALModuleSwaggerPackage:Clean;RALModuleObjectsPackage:Clean;RALModuleControllersPackage:Clean;RALModuleXMLPackage:Clean;RALModuleSOAPPackage:Clean;RALModuleSOAPDsgn:Clean;RALModuleMQTTPackage:Clean;RALModuleMQTTDsgn:Clean;RALModuleMQTTDBPackage:Clean;RALModuleMailPackage:Clean;RALModuleMailDsgn:Clean;RALModuleChatPackage:Clean;RALModuleChatDsgn:Clean;RALModuleChatTelegramPackage:Clean;RALModuleChatTelegramDsgn:Clean;RALCompressZStdPackage:Clean;RALCompressBrotliPackage:Clean"/>
+        <CallTarget Targets="PascalRAL:Clean;PascalRALDsgn:Clean;RALWizardDsgn:Clean;IndyRAL:Clean;SynopseRAL:Clean;SaguiRAL:Clean;FastCGIRAL:Clean;XSocketRAL:Clean;NgHttp2RAL:Clean;InProcRAL:Clean;WebBrokerRAL:Clean;MsQuicRAL:Clean;NetHttpRAL:Clean;OkHttpRAL:Clean;KwikRAL:Clean;UniGUIRAL:Clean;RALStoragePackage:Clean;RALStorageBSONPackage:Clean;RALDBPackage:Clean;RALDBFireDACPackage:Clean;RALDBZeosPackage:Clean;RALDBDsgn:Clean;RALDBFireDACDsgn:Clean;RALDBFireDACDAOPackage:Clean;RALDBZeosDsgn:Clean;RALPluginAuthPackage:Clean;RALPluginTLSPackage:Clean;RALCryptoPasswordPackage:Clean;RALCryptoCurvesPackage:Clean;RALPluginObservabilityPackage:Clean;RALHostingPackage:Clean;RALHostingJobQueuePackage:Clean;RALHostingJobQueueDBPackage:Clean;RALHostingContainerPackage:Clean;RALPluginTrafficPackage:Clean;RALPluginCachePackage:Clean;RALPluginForwardedPackage:Clean;RALModuleProxyPackage:Clean;RALModuleProxyDsgn:Clean;RALModuleWebPackage:Clean;RALModuleJSONRPCPackage:Clean;RALModuleProtobufPackage:Clean;RALModuleGrpcPackage:Clean;RALModuleWebSocketPackage:Clean;RALModuleWebSocketMQTTPackage:Clean;RALModuleMCPPackage:Clean;RALModuleMCPDBPackage:Clean;RALModuleSwaggerPackage:Clean;RALModuleObjectsPackage:Clean;RALModuleControllersPackage:Clean;RALModuleXMLPackage:Clean;RALModuleSOAPPackage:Clean;RALModuleSOAPDsgn:Clean;RALModuleMQTTPackage:Clean;RALModuleMQTTDsgn:Clean;RALModuleMQTTDBPackage:Clean;RALModuleMailPackage:Clean;RALModuleMailDsgn:Clean;RALModuleChatPackage:Clean;RALModuleChatDsgn:Clean;RALModuleChatTelegramPackage:Clean;RALModuleChatTelegramDsgn:Clean;RALModuleChatDiscordPackage:Clean;RALModuleChatDiscordDsgn:Clean;RALModuleChatSlackPackage:Clean;RALModuleChatSlackDsgn:Clean;RALModuleChatTeamsPackage:Clean;RALModuleChatTeamsDsgn:Clean;RALModuleChatDBPackage:Clean;RALCompressZStdPackage:Clean;RALCompressBrotliPackage:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;RALWizardDsgn:Make;IndyRAL:Make;SynopseRAL:Make;SaguiRAL:Make;FastCGIRAL:Make;XSocketRAL:Make;NgHttp2RAL:Make;InProcRAL:Make;WebBrokerRAL:Make;MsQuicRAL:Make;NetHttpRAL:Make;OkHttpRAL:Make;KwikRAL:Make;UniGUIRAL:Make;RALStoragePackage:Make;RALStorageBSONPackage:Make;RALDBPackage:Make;RALDBFireDACPackage:Make;RALDBZeosPackage:Make;RALDBDsgn:Make;RALDBFireDACDsgn:Make;RALDBFireDACDAOPackage:Make;RALDBZeosDsgn:Make;RALPluginAuthPackage:Make;RALPluginTLSPackage:Make;RALCryptoPasswordPackage:Make;RALCryptoCurvesPackage:Make;RALPluginObservabilityPackage:Make;RALHostingPackage:Make;RALHostingJobQueuePackage:Make;RALHostingJobQueueDBPackage:Make;RALHostingContainerPackage:Make;RALPluginTrafficPackage:Make;RALPluginCachePackage:Make;RALPluginForwardedPackage:Make;RALModuleProxyPackage:Make;RALModuleProxyDsgn:Make;RALModuleWebPackage:Make;RALModuleJSONRPCPackage:Make;RALModuleProtobufPackage:Make;RALModuleGrpcPackage:Make;RALModuleWebSocketPackage:Make;RALModuleWebSocketMQTTPackage:Make;RALModuleMCPPackage:Make;RALModuleMCPDBPackage:Make;RALModuleSwaggerPackage:Make;RALModuleObjectsPackage:Make;RALModuleControllersPackage:Make;RALModuleXMLPackage:Make;RALModuleSOAPPackage:Make;RALModuleSOAPDsgn:Make;RALModuleMQTTPackage:Make;RALModuleMQTTDsgn:Make;RALModuleMQTTDBPackage:Make;RALModuleMailPackage:Make;RALModuleMailDsgn:Make;RALModuleChatPackage:Make;RALModuleChatDsgn:Make;RALModuleChatTelegramPackage:Make;RALModuleChatTelegramDsgn:Make;RALCompressZStdPackage:Make;RALCompressBrotliPackage:Make"/>
+        <CallTarget Targets="PascalRAL:Make;PascalRALDsgn:Make;RALWizardDsgn:Make;IndyRAL:Make;SynopseRAL:Make;SaguiRAL:Make;FastCGIRAL:Make;XSocketRAL:Make;NgHttp2RAL:Make;InProcRAL:Make;WebBrokerRAL:Make;MsQuicRAL:Make;NetHttpRAL:Make;OkHttpRAL:Make;KwikRAL:Make;UniGUIRAL:Make;RALStoragePackage:Make;RALStorageBSONPackage:Make;RALDBPackage:Make;RALDBFireDACPackage:Make;RALDBZeosPackage:Make;RALDBDsgn:Make;RALDBFireDACDsgn:Make;RALDBFireDACDAOPackage:Make;RALDBZeosDsgn:Make;RALPluginAuthPackage:Make;RALPluginTLSPackage:Make;RALCryptoPasswordPackage:Make;RALCryptoCurvesPackage:Make;RALPluginObservabilityPackage:Make;RALHostingPackage:Make;RALHostingJobQueuePackage:Make;RALHostingJobQueueDBPackage:Make;RALHostingContainerPackage:Make;RALPluginTrafficPackage:Make;RALPluginCachePackage:Make;RALPluginForwardedPackage:Make;RALModuleProxyPackage:Make;RALModuleProxyDsgn:Make;RALModuleWebPackage:Make;RALModuleJSONRPCPackage:Make;RALModuleProtobufPackage:Make;RALModuleGrpcPackage:Make;RALModuleWebSocketPackage:Make;RALModuleWebSocketMQTTPackage:Make;RALModuleMCPPackage:Make;RALModuleMCPDBPackage:Make;RALModuleSwaggerPackage:Make;RALModuleObjectsPackage:Make;RALModuleControllersPackage:Make;RALModuleXMLPackage:Make;RALModuleSOAPPackage:Make;RALModuleSOAPDsgn:Make;RALModuleMQTTPackage:Make;RALModuleMQTTDsgn:Make;RALModuleMQTTDBPackage:Make;RALModuleMailPackage:Make;RALModuleMailDsgn:Make;RALModuleChatPackage:Make;RALModuleChatDsgn:Make;RALModuleChatTelegramPackage:Make;RALModuleChatTelegramDsgn:Make;RALModuleChatDiscordPackage:Make;RALModuleChatDiscordDsgn:Make;RALModuleChatSlackPackage:Make;RALModuleChatSlackDsgn:Make;RALModuleChatTeamsPackage:Make;RALModuleChatTeamsDsgn:Make;RALModuleChatDBPackage:Make;RALCompressZStdPackage:Make;RALCompressBrotliPackage:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

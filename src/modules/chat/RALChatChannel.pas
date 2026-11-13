@@ -57,6 +57,17 @@ type
     Info: StringRAL;
   end;
 
+  /// How a channel gets what the users write.
+  TRALChatReceiveMode = (
+    /// The platform calls the webhook module.
+    crmWebhook,
+    /// The channel asks (getUpdates, the Discord gateway, Slack Socket Mode) itself.
+    crmPolling,
+    { Webhook when the platform has one registered, polling when none is; decided when
+      the channel starts. }
+    crmAuto
+  );
+
   /// Where the token comes from.
   TRALChatTokenSource = (
     /// The Token property (it lands in the form file).
@@ -123,6 +134,12 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    { Gives the platform the answer its webhook wants in the response itself (Discord's
+      PONG and deferred types, Slack's challenge): True with AStatus, AContentType and
+      AText set; False answers 200 "ok". Called after ParseWebhook, on the webhook's
+      thread, so it must be quick. }
+    function Acknowledge(const ABody: StringRAL; AMessages: TRALChatMessageList;
+      out AStatus: Integer; out AContentType, AText: StringRAL): Boolean; virtual;
     { Delivers AMessage (for typing, edit and delete AMessage only names the
       conversation, and ATargetId is the message acted on) and says how it went; it
       should not raise for a platform answer (an exception is taken as a transient
@@ -227,6 +244,15 @@ begin
   FRates.Free;
   FCapabilities.Free;
   inherited Destroy;
+end;
+
+function TRALChatChannel.Acknowledge(const ABody: StringRAL; AMessages: TRALChatMessageList;
+  out AStatus: Integer; out AContentType, AText: StringRAL): Boolean;
+begin
+  AStatus := 0;
+  AContentType := '';
+  AText := '';
+  Result := False;
 end;
 
 function TRALChatChannel.Dialect: TRALChatDialect;

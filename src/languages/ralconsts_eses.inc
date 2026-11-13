@@ -642,6 +642,32 @@
   emChatJournalWrite = 'No se puede escribir el diario %s.';
   emChatNoSession = 'El mensaje no tiene canal o conversación.';
   cmChatReplyWithNumber = 'Responda con el número de su elección.';
+  emChatFlowNoBot = 'El flujo %s no tiene Bot.';
+  emChatFlowNoSteps = 'El flujo %s no tiene pasos.';
+  emChatFlowNoStep = 'El flujo %s no tiene un paso llamado %s.';
+  cmChatFlowBadAnswer = 'Esa respuesta no es válida. Inténtelo de nuevo.';
+  cmChatFlowBadNumber = 'Responda con un número.';
+  cmChatFlowBadEmail = 'Responda con una dirección de correo.';
+  cmChatFlowBadDate = 'Responda con una fecha (día/mes/año).';
+  cmChatFlowBadOption = 'Elija una de las opciones.';
+  cmChatFlowBadMedia = 'Envíe una imagen o un archivo.';
+  cmChatFlowBadLocation = 'Envíe una ubicación.';
+  cmChatFlowBadContact = 'Comparta un contacto.';
+  cmChatFlowCancelled = 'Cancelado.';
+  cmChatFlowTimeout = 'La conversación expiró. Empiécela de nuevo cuando quiera.';
+  cmChatFlowTooManyTries = 'Demasiadas respuestas no válidas: la conversación fue cancelada.';
+  emChatDBNoModule = 'El almacén %s no tiene DBModule.';
+  emChatGwBadWebhook = 'El webhook del gateway %s no es un objeto JSON.';
+  emChatGwBadTemplate = 'El cuerpo del gateway %s no resulta en JSON válido.';
+  emChatGwNoEndpoint = 'El gateway %s no tiene dirección para este tipo de mensaje.';
+  emChatGwNoClient = 'El canal de gateway %s no tiene cliente y ningún motor de cliente está enlazado al programa.';
+  emChatGwNoUrl = 'El gateway %s no tiene BaseUrl.';
+  emChatGwNoMedia = 'El mensaje no tiene archivo ni dirección para enviar.';
+  emChatGwTooBig = 'El archivo es mayor que los %d bytes que acepta el canal de gateway.';
+  emChatGwHost = 'El archivo viene de %s, que no es un host del gateway.';
+  emChatGwHttp = 'El gateway %s respondió HTTP %d: %s';
+  emChatGwHttpEmpty = 'El gateway %s respondió HTTP %d.';
+  emChatGwDownload = 'La descarga del archivo falló con HTTP %d.';
   // end of Chat
   // Chat Telegram
   emChatTgNoClient = 'El canal Telegram %s no tiene cliente y ningún motor de cliente está enlazado al programa.';
@@ -661,6 +687,47 @@
   cmChatTgWebhookRemoved = 'Webhook quitado.';
   cmChatTgAskUrl = 'URL del webhook (HTTPS, la ruta de este canal en el módulo de webhook)';
   // end of Chat Telegram
+  // Chat channels (Discord, Slack, Teams)
+  emChatHttpNoClient = 'El canal %s no tiene cliente y ningún motor de cliente está enlazado al programa.';
+  emChatHttpStatus = 'La descarga respondió HTTP %d.';
+  emChatHttpTooBig = 'El archivo es mayor que el límite de %d bytes.';
+  emChatDcApi = 'Discord rechazó %s: %s';
+  emChatDcButtonId = 'Un botón necesita un id de 1 a 100 caracteres, o un enlace.';
+  emChatDcNoApp = 'El canal Discord %s no tiene ApplicationId.';
+  emChatDcBadHost = 'Discord envió una dirección de adjunto que no es de un host de Discord.';
+  emChatDcTooBig = 'El archivo es mayor que el límite de %d bytes.';
+  emChatDcGateway = 'El gateway de Discord falló: %s';
+  cmChatDcTokenOk = 'El token es válido: el bot es %s.';
+  emChatSlApi = 'Slack rechazó %s: %s';
+  emChatSlButtonId = 'Un botón necesita un id de 1 a 255 caracteres, o un enlace.';
+  emChatSlBadHost = 'Slack envió una dirección de archivo que no es de un host de Slack.';
+  emChatSlTooBig = 'El archivo es mayor que el límite de %d bytes.';
+  emChatSlNoAppToken = 'El canal Slack %s no tiene token de aplicación para Socket Mode.';
+  emChatSlSocket = 'La conexión Socket Mode de Slack falló: %s';
+  cmChatSlTokenOk = 'El token es válido: %s en el workspace %s.';
+  emChatTmApi = 'Teams rechazó %s: %s';
+  emChatTmNoService = 'La conversación %s no tiene serviceUrl: no se recibió ninguna actividad de ella.';
+  emChatTmBadService = 'El serviceUrl de la conversación no es una dirección https.';
+  emChatTmToken = 'El endpoint de token rechazó las credenciales: %s';
+  emChatTmKeys = 'No se pudieron cargar las claves de firma: %s';
+  emChatTmButtonId = 'Un botón necesita un id de 1 a 100 caracteres, o un enlace.';
+  emChatTmBadHost = 'Teams envió una dirección de adjunto que no es de un host permitido.';
+  emChatTmTooBig = 'El archivo es mayor que el límite de %d bytes.';
+  emChatTmMedia = 'Teams acepta solo imágenes pequeñas incrustadas o direcciones de imagen.';
+  cmChatTmCredentialsOk = 'Las credenciales son válidas; %d claves de firma cargadas.';
+  cmChatDcTestToken = 'Probar token';
+  cmChatSlTestToken = 'Probar token';
+  cmChatTmTestCredentials = 'Probar credenciales';
+  // end of Chat channels
+  // Service container (RALHostingContainerPackage)
+  emContainerUnknown = 'No hay un servicio llamado %s.';
+  emContainerUnknownClass = 'La clase %s del servicio %s no está registrada (RALRegisterService).';
+  emContainerBadClass = 'La clase %s no es TRALService ni TComponent.';
+  emContainerNoFactory = 'Nada crea el servicio %s: indique ServiceClass u OnCreate.';
+  emContainerNeedsRequest = 'El servicio %s vive por petición y se pidió fuera de una.';
+  emContainerNoInterface = 'El servicio %s no tiene interfaz: use ResolveObject.';
+  emContainerTooDeep = 'Los servicios se piden unos a otros en círculo (en %s).';
+  // end of Service container
 
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Faltan dígitos en el número JSON.';
@@ -687,15 +754,6 @@
   emJSONNumberDoubleRange = 'El número JSON está fuera del intervalo de Double.';
   emJSONNumberNotInt64 = 'El número JSON no es un entero Int64.';
   emJSONErrorPosition = '%s Posición: %d.';
-  // Service container (RALHostingContainerPackage)
-  emContainerUnknown = 'No hay un servicio llamado %s.';
-  emContainerUnknownClass = 'La clase %s del servicio %s no está registrada (RALRegisterService).';
-  emContainerBadClass = 'La clase %s no es TRALService ni TComponent.';
-  emContainerNoFactory = 'Nada crea el servicio %s: indique ServiceClass u OnCreate.';
-  emContainerNeedsRequest = 'El servicio %s vive por petición y se pidió fuera de una.';
-  emContainerNoInterface = 'El servicio %s no tiene interfaz: use ResolveObject.';
-  emContainerTooDeep = 'Los servicios se piden unos a otros en círculo (en %s).';
-  // end of Service container
   emJSONUnexpectedCharacter = 'Carácter JSON inesperado';
   emJSONInvalidUnicodeEscape = 'Escape Unicode no válido';
   emJSONUnterminatedString = 'Cadena sin terminar o carácter de control sin escape';

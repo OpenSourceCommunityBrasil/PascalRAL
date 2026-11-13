@@ -174,11 +174,14 @@
         <DCCReference Include="PascalRAL.dcp"/>
         <DCCReference Include="..\..\..\src\modules\chat\RALChatMessage.pas"/>
         <DCCReference Include="..\..\..\src\modules\chat\RALChatVerify.pas"/>
+        <DCCReference Include="..\..\..\src\modules\chat\RALChatHttp.pas"/>
         <DCCReference Include="..\..\..\src\modules\chat\RALChatChannel.pas"/>
         <DCCReference Include="..\..\..\src\modules\chat\RALChatOutbox.pas"/>
         <DCCReference Include="..\..\..\src\modules\chat\RALChatStore.pas"/>
         <DCCReference Include="..\..\..\src\modules\chat\RALChatBot.pas"/>
         <DCCReference Include="..\..\..\src\modules\chat\RALChatWebhook.pas"/>
+        <DCCReference Include="..\..\..\src\modules\chat\RALChatGateway.pas"/>
+        <DCCReference Include="..\..\..\src\modules\chat\RALChatFlow.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

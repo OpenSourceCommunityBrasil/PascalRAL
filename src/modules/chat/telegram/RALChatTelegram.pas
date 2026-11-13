@@ -25,17 +25,6 @@ const
   cRALChatTelegramApi = 'https://api.telegram.org';
 
 type
-  /// How the channel gets the updates.
-  TRALChatReceiveMode = (
-    /// The platform calls the webhook module.
-    crmWebhook,
-    /// The channel asks with getUpdates (long polling) on a thread of its own.
-    crmPolling,
-    { Webhook when one is registered at Telegram, polling when none is; decided when
-      the channel starts. }
-    crmAuto
-  );
-
   /// The formatting dialect the channel sends.
   TRALChatTelegramTextMode = (
     /// MarkdownV2.

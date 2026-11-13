@@ -642,6 +642,32 @@
   emChatJournalWrite = 'The journal %s cannot be written.';
   emChatNoSession = 'The message has no channel or conversation.';
   cmChatReplyWithNumber = 'Reply with the number of your choice.';
+  emChatFlowNoBot = 'The flow %s has no Bot.';
+  emChatFlowNoSteps = 'The flow %s has no steps.';
+  emChatFlowNoStep = 'The flow %s has no step named %s.';
+  cmChatFlowBadAnswer = 'That answer is not valid. Please try again.';
+  cmChatFlowBadNumber = 'Please answer with a number.';
+  cmChatFlowBadEmail = 'Please answer with an e-mail address.';
+  cmChatFlowBadDate = 'Please answer with a date (day/month/year).';
+  cmChatFlowBadOption = 'Please choose one of the options.';
+  cmChatFlowBadMedia = 'Please send a picture or a file.';
+  cmChatFlowBadLocation = 'Please send a location.';
+  cmChatFlowBadContact = 'Please share a contact.';
+  cmChatFlowCancelled = 'Cancelled.';
+  cmChatFlowTimeout = 'The conversation expired. Start it again whenever you want.';
+  cmChatFlowTooManyTries = 'Too many invalid answers: the conversation was cancelled.';
+  emChatDBNoModule = 'The store %s has no DBModule.';
+  emChatGwBadWebhook = 'The webhook of the gateway %s is not a JSON object.';
+  emChatGwBadTemplate = 'The body of the gateway %s does not make valid JSON.';
+  emChatGwNoEndpoint = 'The gateway %s has no address for this kind of message.';
+  emChatGwNoClient = 'The gateway channel %s has no client and no client engine is linked into the program.';
+  emChatGwNoUrl = 'The gateway %s has no BaseUrl.';
+  emChatGwNoMedia = 'The message has no file or address to send.';
+  emChatGwTooBig = 'The file is larger than the %d bytes the gateway channel takes.';
+  emChatGwHost = 'The file comes from %s, which is not a host of the gateway.';
+  emChatGwHttp = 'The gateway %s answered HTTP %d: %s';
+  emChatGwHttpEmpty = 'The gateway %s answered HTTP %d.';
+  emChatGwDownload = 'The file download failed with HTTP %d.';
   // end of Chat
   // Chat Telegram
   emChatTgNoClient = 'The Telegram channel %s has no client and no client engine is linked into the program.';
@@ -661,6 +687,47 @@
   cmChatTgWebhookRemoved = 'Webhook removed.';
   cmChatTgAskUrl = 'Webhook URL (HTTPS, the route of this channel in the webhook module)';
   // end of Chat Telegram
+  // Chat channels (Discord, Slack, Teams)
+  emChatHttpNoClient = 'The channel %s has no client and no client engine is linked into the program.';
+  emChatHttpStatus = 'The download answered HTTP %d.';
+  emChatHttpTooBig = 'The file is larger than the limit of %d bytes.';
+  emChatDcApi = 'Discord refused %s: %s';
+  emChatDcButtonId = 'A button needs an id of 1 to 100 characters, or a link.';
+  emChatDcNoApp = 'The Discord channel %s has no ApplicationId.';
+  emChatDcBadHost = 'Discord sent an attachment address that is not a Discord host.';
+  emChatDcTooBig = 'The file is larger than the limit of %d bytes.';
+  emChatDcGateway = 'The Discord gateway failed: %s';
+  cmChatDcTokenOk = 'The token is valid: the bot is %s.';
+  emChatSlApi = 'Slack refused %s: %s';
+  emChatSlButtonId = 'A button needs an id of 1 to 255 characters, or a link.';
+  emChatSlBadHost = 'Slack sent a file address that is not a Slack host.';
+  emChatSlTooBig = 'The file is larger than the limit of %d bytes.';
+  emChatSlNoAppToken = 'The Slack channel %s has no app-level token for Socket Mode.';
+  emChatSlSocket = 'The Slack Socket Mode connection failed: %s';
+  cmChatSlTokenOk = 'The token is valid: %s in the workspace %s.';
+  emChatTmApi = 'Teams refused %s: %s';
+  emChatTmNoService = 'The conversation %s has no serviceUrl: no activity of it was received.';
+  emChatTmBadService = 'The serviceUrl of the conversation is not an https address.';
+  emChatTmToken = 'The token endpoint refused the credentials: %s';
+  emChatTmKeys = 'The signing keys could not be loaded: %s';
+  emChatTmButtonId = 'A button needs an id of 1 to 100 characters, or a link.';
+  emChatTmBadHost = 'Teams sent an attachment address that is not an allowed host.';
+  emChatTmTooBig = 'The file is larger than the limit of %d bytes.';
+  emChatTmMedia = 'Teams takes only small inline images or image addresses.';
+  cmChatTmCredentialsOk = 'The credentials are valid; %d signing keys loaded.';
+  cmChatDcTestToken = 'Test token';
+  cmChatSlTestToken = 'Test token';
+  cmChatTmTestCredentials = 'Test credentials';
+  // end of Chat channels
+  // Service container (RALHostingContainerPackage)
+  emContainerUnknown = 'There is no service named %s.';
+  emContainerUnknownClass = 'The class %s of the service %s is not registered (RALRegisterService).';
+  emContainerBadClass = 'The class %s is neither a TRALService nor a TComponent.';
+  emContainerNoFactory = 'Nothing makes the service %s: give it a ServiceClass or an OnCreate.';
+  emContainerNeedsRequest = 'The service %s lives per request and was asked for outside one.';
+  emContainerNoInterface = 'The service %s has no interface: use ResolveObject.';
+  emContainerTooDeep = 'The services ask for each other in a circle (at %s).';
+  // end of Service container
 
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Missing JSON number digits.';
@@ -687,15 +754,6 @@
   emJSONNumberDoubleRange = 'JSON number is outside the Double range.';
   emJSONNumberNotInt64 = 'JSON number is not an Int64 integer.';
   emJSONErrorPosition = '%s Position: %d.';
-  // Service container (RALHostingContainerPackage)
-  emContainerUnknown = 'There is no service named %s.';
-  emContainerUnknownClass = 'The class %s of the service %s is not registered (RALRegisterService).';
-  emContainerBadClass = 'The class %s is neither a TRALService nor a TComponent.';
-  emContainerNoFactory = 'Nothing makes the service %s: give it a ServiceClass or an OnCreate.';
-  emContainerNeedsRequest = 'The service %s lives per request and was asked for outside one.';
-  emContainerNoInterface = 'The service %s has no interface: use ResolveObject.';
-  emContainerTooDeep = 'The services ask for each other in a circle (at %s).';
-  // end of Service container
   emJSONUnexpectedCharacter = 'Unexpected JSON character';
   emJSONInvalidUnicodeEscape = 'Invalid Unicode escape';
   emJSONUnterminatedString = 'Unterminated string or unescaped control character';

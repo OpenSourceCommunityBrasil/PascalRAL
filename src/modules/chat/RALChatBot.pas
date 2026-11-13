@@ -169,6 +169,16 @@ type
     procedure Touch(const AChannel, AChat: StringRAL);
   end;
 
+  { A component that sees each message before the bot's commands and events, such
+    as a conversation flow: True from Intercept keeps the message from them. }
+  TRALChatInterceptor = class(TRALComponent)
+  protected
+    { Handles AMessage when it is its own; True when it did. Runs on the thread that
+      received the message. }
+    function Intercept(AChannel: TRALChatChannel; AMessage: TRALChatMessage): Boolean;
+      virtual; abstract;
+  end;
+
   { The chat bot component. Drop the channels of the platforms on the form, list
     them in Channels, write the commands in Commands (each with its own event), and
     link the bot to a TRALChatWebhookModule (or let a channel's polling call
@@ -180,6 +190,8 @@ type
     FClock: TRALStoreClock;
     FCommands: TRALChatCommands;
     FFallback: TRALChatFallback;
+    /// The interceptors (flows) linked to the bot, in linking order.
+    FInterceptors: TList;
     /// Guards the shared state.
     FLock: TCriticalSection;
     FOnCallback: TRALChatMessageEvent;
@@ -222,6 +234,8 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    /// Adds an interceptor (a flow calls it when its Bot is set).
+    procedure AddInterceptor(AInterceptor: TRALChatInterceptor);
     /// Deletes a sent message (queued).
     procedure Delete(const AChannelName, AChatId, AMessageId: StringRAL);
     /// Changes the text (and choices) of a sent message (queued).
@@ -231,9 +245,12 @@ type
     procedure Log(const AText: string);
     /// The outbox of a channel, created on first use.
     function OutboxOf(AChannel: TRALChatChannel): TRALChatOutbox;
-    { Handles a message a channel received: its choice answer, then the commands,
-      then OnCallback or OnMessage. An exception of a handler goes to OnError. }
+    { Handles a message a channel received: its choice answer, the interceptors
+      (flows), the commands, then OnCallback or OnMessage. An exception of a
+      handler goes to OnError. }
     procedure Receive(AChannel: TRALChatChannel; AMessage: TRALChatMessage);
+    /// Removes an interceptor.
+    procedure RemoveInterceptor(AInterceptor: TRALChatInterceptor);
     { Answers AReceived in its conversation, queued; AMessage is copied, the caller
       keeps it. }
     procedure Reply(AReceived: TRALChatMessage; AMessage: TRALChatMessage); overload;
@@ -607,6 +624,7 @@ begin
   FChannels := TRALChatChannels.Create(Self);
   FCommands := TRALChatCommands.Create(Self);
   FFallback := cfDegrade;
+  FInterceptors := TList.Create;
   FLock := TCriticalSection.Create;
   FOutboxes := TStringList.Create;
   FOwnStore := TRALChatStore.Create(Self);
@@ -620,9 +638,21 @@ begin
   FSessions.Free;
   FOutboxes.Free;
   FLock.Free;
+  FInterceptors.Free;
   FCommands.Free;
   FChannels.Free;
   inherited Destroy;
+end;
+
+procedure TRALChatBot.AddInterceptor(AInterceptor: TRALChatInterceptor);
+begin
+  FLock.Enter;
+  try
+    if FInterceptors.IndexOf(AInterceptor) < 0 then
+      FInterceptors.Add(AInterceptor);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 procedure TRALChatBot.Delete(const AChannelName, AChatId, AMessageId: StringRAL);
@@ -643,6 +673,7 @@ var
   vIdx: Integer;
   vHandled: Boolean;
   vCommand: TRALChatCommand;
+  vInterceptors: array of TRALChatInterceptor;
 begin
   try
     if (AMessage.Chat.Id <> '') and (AChannel <> nil) then
@@ -651,6 +682,18 @@ begin
       ResolveChoice(AChannel, AMessage);
     if AMessage.Kind = ckText then
       ParseCommand(AMessage);
+    // a copy, so that a flow linked or freed meanwhile does not move the list
+    FLock.Enter;
+    try
+      SetLength(vInterceptors, FInterceptors.Count);
+      for vIdx := 0 to FInterceptors.Count - 1 do
+        vInterceptors[vIdx] := TRALChatInterceptor(FInterceptors[vIdx]);
+    finally
+      FLock.Leave;
+    end;
+    for vIdx := 0 to Length(vInterceptors) - 1 do
+      if vInterceptors[vIdx].Intercept(AChannel, AMessage) then
+        Exit;
     for vIdx := 0 to FCommands.Count - 1 do
     begin
       vCommand := FCommands[vIdx];
@@ -875,6 +918,20 @@ begin
   end;
   // the outbox owns it from here, even when it refuses it
   vOutbox.Enqueue(okMessage, ACopy);
+end;
+
+procedure TRALChatBot.RemoveInterceptor(AInterceptor: TRALChatInterceptor);
+var
+  vIdx: Integer;
+begin
+  FLock.Enter;
+  try
+    vIdx := FInterceptors.IndexOf(AInterceptor);
+    if vIdx >= 0 then
+      FInterceptors.Delete(vIdx);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 procedure TRALChatBot.ReportError(AChannel: TRALChatChannel; const AText: string);

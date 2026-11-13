@@ -1,3 +1,5 @@
 TRALChatBot BITMAP "..\components\base\chat\TRALChatBot.bmp"
 TRALChatWebhookModule BITMAP "..\components\base\chat\TRALChatWebhookModule.bmp"
 TRALChatStore BITMAP "..\components\base\chat\TRALChatStore.bmp"
+TRALChatGateway BITMAP "..\components\base\chat\TRALChatGateway.bmp"
+TRALChatFlow BITMAP "..\components\base\chat\TRALChatFlow.bmp"

@@ -34,10 +34,13 @@ requires
 contains
   RALChatMessage in '..\..\..\src\modules\chat\RALChatMessage.pas',
   RALChatVerify in '..\..\..\src\modules\chat\RALChatVerify.pas',
+  RALChatHttp in '..\..\..\src\modules\chat\RALChatHttp.pas',
   RALChatChannel in '..\..\..\src\modules\chat\RALChatChannel.pas',
   RALChatOutbox in '..\..\..\src\modules\chat\RALChatOutbox.pas',
   RALChatStore in '..\..\..\src\modules\chat\RALChatStore.pas',
   RALChatBot in '..\..\..\src\modules\chat\RALChatBot.pas',
-  RALChatWebhook in '..\..\..\src\modules\chat\RALChatWebhook.pas';
+  RALChatWebhook in '..\..\..\src\modules\chat\RALChatWebhook.pas',
+  RALChatGateway in '..\..\..\src\modules\chat\RALChatGateway.pas',
+  RALChatFlow in '..\..\..\src\modules\chat\RALChatFlow.pas';
 
 end.

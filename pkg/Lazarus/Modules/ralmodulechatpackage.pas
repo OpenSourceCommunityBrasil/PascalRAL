@@ -8,7 +8,9 @@ unit RALModuleChatPackage;
 interface
 
 uses
-  RALChatMessage, RALChatVerify, RALChatChannel, RALChatOutbox, RALChatStore, RALChatBot, RALChatWebhook, LazarusPackageIntf;
+  RALChatMessage, RALChatVerify, RALChatChannel, RALChatOutbox, RALChatStore, 
+  RALChatBot, RALChatWebhook, RALChatGateway, RALChatHttp, RALChatFlow,
+  LazarusPackageIntf;
 
 implementation
 

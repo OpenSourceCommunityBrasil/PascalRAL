@@ -61,6 +61,13 @@
       <Target FileName="Modules\ralmodulechatdsgn.lpk"/>
       <Target FileName="Modules\ralmodulechattelegrampackage.lpk"/>
       <Target FileName="Modules\ralmodulechattelegramdsgn.lpk"/>
+      <Target FileName="Modules\ralmodulechatdiscordpackage.lpk"/>
+      <Target FileName="Modules\ralmodulechatdiscorddsgn.lpk"/>
+      <Target FileName="Modules\ralmodulechatslackpackage.lpk"/>
+      <Target FileName="Modules\ralmodulechatslackdsgn.lpk"/>
+      <Target FileName="Modules\ralmodulechatteamspackage.lpk"/>
+      <Target FileName="Modules\ralmodulechatteamsdsgn.lpk"/>
+      <Target FileName="Modules\ralmodulechatdbpackage.lpk"/>
       <Target FileName="Compression\ralcompresszstdpackage.lpk"/>
       <Target FileName="Compression\ralcompressbrotlipackage.lpk"/>
       <Target FileName="Wizard\ralwizarddsgn.lpk"/>

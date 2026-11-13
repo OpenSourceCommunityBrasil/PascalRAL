@@ -16,6 +16,11 @@ uses
   Classes, SysUtils,
   RALTypes, RALTools, RALHashBase, RALSHA2_32;
 
+const
+  { The name a verifier asks its reader for to get the address of the peer that made
+    the request (the webhook module answers it; a header has no such name). }
+  cRALChatVerifyClientIP = '@ip';
+
 type
   /// Reads a header (or query param) of the request by name; empty when absent.
   TRALChatHeaderReader = function(const AName: StringRAL): StringRAL of object;

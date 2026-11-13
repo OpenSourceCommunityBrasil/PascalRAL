@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Chat module (message model, bot, webhook, outbound queue)"/>
     <Version Major="2"/>
-    <Files Count="7">
+    <Files Count="10">
       <Item1>
         <Filename Value="..\..\..\src\modules\chat\RALChatMessage.pas"/>
         <UnitName Value="RALChatMessage"/>
@@ -55,6 +55,18 @@
         <Filename Value="..\..\..\src\modules\chat\RALChatWebhook.pas"/>
         <UnitName Value="RALChatWebhook"/>
       </Item7>
+      <Item8>
+        <Filename Value="..\..\..\src\modules\chat\RALChatGateway.pas"/>
+        <UnitName Value="RALChatGateway"/>
+      </Item8>
+      <Item9>
+        <Filename Value="..\..\..\src\modules\chat\RALChatHttp.pas"/>
+        <UnitName Value="RALChatHttp"/>
+      </Item9>
+      <Item10>
+        <Filename Value="..\..\..\src\modules\chat\RALChatFlow.pas"/>
+        <UnitName Value="RALChatFlow"/>
+      </Item10>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

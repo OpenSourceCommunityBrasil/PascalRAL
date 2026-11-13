@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=74
+Count=78
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -142,9 +142,13 @@ Item_70=src\modules\mail
 Item_71=src\modules\chat
 Item_72=src\modules\chat\telegram
 Item_73=src\hosting\container
+Item_74=src\modules\chat\discord
+Item_75=src\modules\chat\slack
+Item_76=src\modules\chat\teams
+Item_77=src\modules\chat\db
 
 [Files]
-Count=300
+Count=308
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -445,6 +449,14 @@ Item_296=src\modules\mail\RALOpenPGP.pas
 Item_297=src\hosting\container\RALServiceContainer.pas
 Item_298=src\hosting\container\RALServiceInject.pas
 Item_299=src\hosting\container\RALContainerReg.pas
+Item_300=src\modules\chat\RALChatHttp.pas
+Item_301=src\modules\chat\RALChatGateway.pas
+Item_302=src\modules\chat\RALChatFlow.pas
+Item_303=src\modules\chat\db\RALChatDBStore.pas
+Item_304=src\modules\chat\db\RALChatDBReg.pas
+Item_305=src\modules\chat\discord\RALChatDiscord.pas
+Item_306=src\modules\chat\slack\RALChatSlack.pas
+Item_307=src\modules\chat\teams\RALChatTeams.pas
 [AdditionalFiles]
 Count=0
 
