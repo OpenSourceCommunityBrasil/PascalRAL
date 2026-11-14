@@ -68,6 +68,8 @@
       <Target FileName="Modules\ralmodulechatteamspackage.lpk"/>
       <Target FileName="Modules\ralmodulechatteamsdsgn.lpk"/>
       <Target FileName="Modules\ralmodulechatdbpackage.lpk"/>
+      <Target FileName="Modules\ralmoduleeventbuspackage.lpk"/>
+      <Target FileName="Modules\ralmoduleeventbusmqttpackage.lpk"/>
       <Target FileName="Compression\ralcompresszstdpackage.lpk"/>
       <Target FileName="Compression\ralcompressbrotlipackage.lpk"/>
       <Target FileName="Wizard\ralwizarddsgn.lpk"/>

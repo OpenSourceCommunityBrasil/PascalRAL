@@ -728,6 +728,9 @@
   emContainerNoInterface = 'O serviço %s não tem interface: use ResolveObject.';
   emContainerTooDeep = 'Os serviços pedem uns aos outros em círculo (em %s).';
   // end of Service container
+  // Event bus (RALModuleEventBusPackage)
+  emEventBusBadSubscription = 'Uma assinatura precisa de um filtro e de um handler.';
+  // end of Event bus
 
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Faltam dígitos no número JSON.';

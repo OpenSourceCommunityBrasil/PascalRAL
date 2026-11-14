@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=78
+Count=80
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -146,9 +146,11 @@ Item_74=src\modules\chat\discord
 Item_75=src\modules\chat\slack
 Item_76=src\modules\chat\teams
 Item_77=src\modules\chat\db
+Item_78=src\modules\eventbus
+Item_79=src\modules\eventbus\mqtt
 
 [Files]
-Count=308
+Count=313
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -457,6 +459,11 @@ Item_304=src\modules\chat\db\RALChatDBReg.pas
 Item_305=src\modules\chat\discord\RALChatDiscord.pas
 Item_306=src\modules\chat\slack\RALChatSlack.pas
 Item_307=src\modules\chat\teams\RALChatTeams.pas
+Item_308=src\modules\eventbus\RALEventBus.pas
+Item_309=src\modules\eventbus\RALEventBusAnon.pas
+Item_310=src\modules\eventbus\RALEventBusReg.pas
+Item_311=src\modules\eventbus\mqtt\RALEventBusMQTT.pas
+Item_312=src\modules\eventbus\mqtt\RALEventBusMQTTReg.pas
 [AdditionalFiles]
 Count=0
 
