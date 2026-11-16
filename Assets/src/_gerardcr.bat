@@ -117,3 +117,5 @@ echo RALModuleEventBusMQTT
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleEventBusMQTTPackage.dcr" "RALModuleEventBusMQTT.rc"
 echo RALModuleStateful
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleStatefulPackage.dcr" "RALModuleStateful.rc"
+echo RALModuleHypermedia
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleHypermediaPackage.dcr" "RALModuleHypermedia.rc"

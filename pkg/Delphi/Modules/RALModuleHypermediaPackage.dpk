@@ -1,0 +1,40 @@
+package RALModuleHypermediaPackage;
+
+{$R *.res}
+{$R 'RALModuleHypermediaPackage.dcr'}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'PascalRAL | Module: hypermedia (HAL, JSON:API, HTML)'}
+{$IMPLICITBUILD ON}
+
+requires
+  PascalRAL,
+  RALModuleWebPackage;
+
+contains
+  RALHypermedia in '..\..\..\src\modules\hypermedia\RALHypermedia.pas',
+  RALHypermediaReg in '..\..\..\src\modules\hypermedia\RALHypermediaReg.pas';
+
+end.

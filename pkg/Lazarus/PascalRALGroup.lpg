@@ -73,6 +73,7 @@
       <Target FileName="Modules\ralmoduleeventbuspackage.lpk"/>
       <Target FileName="Modules\ralmoduleeventbusmqttpackage.lpk"/>
       <Target FileName="Modules\ralmodulestatefulpackage.lpk"/>
+      <Target FileName="Modules\ralmodulehypermediapackage.lpk"/>
       <Target FileName="Compression\ralcompresszstdpackage.lpk"/>
       <Target FileName="Compression\ralcompressbrotlipackage.lpk"/>
       <Target FileName="Wizard\ralwizarddsgn.lpk"/>
