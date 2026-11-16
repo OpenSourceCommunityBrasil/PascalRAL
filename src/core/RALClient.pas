@@ -3319,8 +3319,8 @@ begin
     if vSink.FMode <> 2 then
       Exit;
     FStreamDelivered := True;
-    SetLength(vBuf, DEFAULTBUFFERSTREAMSIZE);
     vBody.Position := 0;
+    SetLength(vBuf, RALWorkBufferSize(vBody));
     repeat
       vRead := vBody.Read(vBuf[0], Length(vBuf));
       if vRead > 0 then

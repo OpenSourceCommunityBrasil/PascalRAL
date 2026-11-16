@@ -290,7 +290,7 @@ type
 
   { The numbers of a TRALMetricsPlugin, counted by reference like TRALLogSink:
     requests by method, route and status, the duration histogram by method and
-    route, and the requests in flight. }
+    route, the phase histogram (PhaseTimes) and the requests in flight. }
   TRALMetricsRegistry = class
   private
     /// Upper bounds of the duration histogram, in seconds.
@@ -303,8 +303,13 @@ type
     FInFlight: IntegerRAL;
     /// Guards the counters.
     FLock: TCriticalSection;
+    /// Phase histograms by route, method and phase.
+    FPhases: TStringList;
     /// Holders of the registry; the last one frees it.
     FReferences: IntegerRAL;
+
+    /// Adds ASeconds to the histogram AKey of AList (under FLock).
+    procedure Observe(AList: TStringList; const AKey: string; ASeconds: Double);
   public
     constructor Create;
     destructor Destroy; override;
@@ -313,6 +318,11 @@ type
     procedure AddRef;
     /// Counts a finished request of AMethod on ARoute with AStatus, in ASeconds.
     procedure Done(const AMethod, ARoute: StringRAL; AStatus: IntegerRAL; ASeconds: Double);
+    { Counts the phases of a request whose handler ran: before it (plugins,
+      authentication, the module's and route's before events), the handler,
+      and after it until the answer was built and handed to the engine }
+    procedure DonePhases(const AMethod, ARoute: StringRAL; ABefore, AHandler,
+      AAfter: Double);
     /// Drops a user; the last one frees the registry.
     procedure Release;
     /// The metrics in the Prometheus text format 0.0.4.
@@ -328,12 +338,15 @@ type
 
   { Prometheus metrics at Path (GET, public): ral_http_requests_total by method,
     route and status, ral_http_request_duration_seconds by method and route
-    (histogram) and ral_http_requests_in_flight. The route label is the route's
-    path (/users/:id), never the URL, so the number of series stays small. }
+    (histogram), with PhaseTimes ral_http_request_phase_seconds by method,
+    route and phase, and ral_http_requests_in_flight. The route label is the
+    route's path (/users/:id), never the URL, so the number of series stays
+    small. }
   TRALMetricsPlugin = class(TRALPlugin)
   private
     FOnCollect: TRALOnMetricsCollect;
     FPath: StringRAL;
+    FPhaseTimes: boolean;
     /// The counters, shared with the requests in flight.
     FRegistry: TRALMetricsRegistry;
     /// The metrics route.
@@ -357,6 +370,11 @@ type
     property OnCollect: TRALOnMetricsCollect read FOnCollect write FOnCollect;
     /// Path of the metrics.
     property Path: StringRAL read FPath write SetPath;
+    { Times the phases of each request whose route handler ran, in the
+      histogram ral_http_request_phase_seconds (phase="before", "handler",
+      "after"): where a slow route spends its time. Two clock reads per
+      request; off, none }
+    property PhaseTimes: boolean read FPhaseTimes write FPhaseTimes default False;
   end;
 
   TRALHealthCheck = class;
@@ -1381,6 +1399,9 @@ begin
   FDurations := TStringList.Create;
   FDurations.Sorted := True;
   FDurations.OwnsObjects := False;
+  FPhases := TStringList.Create;
+  FPhases.Sorted := True;
+  FPhases.OwnsObjects := False;
   FReferences := 1;
   SetLength(FBuckets, Length(cBuckets));
   for vInt := 0 to High(cBuckets) do
@@ -1406,6 +1427,9 @@ begin
   for vInt := 0 to FDurations.Count - 1 do
     FDurations.Objects[vInt].Free;
   FreeAndNil(FDurations);
+  for vInt := 0 to FPhases.Count - 1 do
+    FPhases.Objects[vInt].Free;
+  FreeAndNil(FPhases);
   FreeAndNil(FCounts);
   FreeAndNil(FLock);
   inherited Destroy;
@@ -1425,13 +1449,23 @@ end;
 procedure TRALMetricsRegistry.RequestDone(ARequest: TRALRequest);
 var
   vSeconds: Double;
+  vNow: Int64RAL;
+  vMethod, vRoute: StringRAL;
 begin
   try
     vSeconds := 0;
+    vNow := RALTickMicro;
     if ARequest.StartTick > 0 then
-      vSeconds := (RALTickMicro - ARequest.StartTick) / 1000000;
-    Done(RALMethodToHTTPMethod(ARequest.Method), RouteLabel(ARequest),
-      ARequest.ResponseStatus, vSeconds);
+      vSeconds := (vNow - ARequest.StartTick) / 1000000;
+    vMethod := RALMethodToHTTPMethod(ARequest.Method);
+    vRoute := RouteLabel(ARequest);
+    Done(vMethod, vRoute, ARequest.ResponseStatus, vSeconds);
+    if (ARequest.StartTick > 0) and (ARequest.HandlerStartTick >= ARequest.StartTick) and
+       (ARequest.HandlerEndTick >= ARequest.HandlerStartTick) then
+      DonePhases(vMethod, vRoute,
+        (ARequest.HandlerStartTick - ARequest.StartTick) / 1000000,
+        (ARequest.HandlerEndTick - ARequest.HandlerStartTick) / 1000000,
+        (vNow - ARequest.HandlerEndTick) / 1000000);
   finally
     Release;
   end;
@@ -1453,8 +1487,7 @@ procedure TRALMetricsRegistry.Done(const AMethod, ARoute: StringRAL; AStatus: In
   ASeconds: Double);
 var
   vKey: string;
-  vIdx, vInt: Integer;
-  vHist: TRALHistogram;
+  vIdx: Integer;
 begin
   RALAtomicDec(FInFlight);
   FLock.Enter;
@@ -1465,30 +1498,74 @@ begin
       FCounts.Objects[vIdx] := TObject(PtrUInt(FCounts.Objects[vIdx]) + 1)
     else
       FCounts.AddObject(vKey, TObject(PtrUInt(1)));
-    vKey := 'method="' + string(LabelValue(AMethod)) + '",route="' + string(LabelValue(ARoute)) + '"';
-    if FDurations.Find(vKey, vIdx) then
-      vHist := TRALHistogram(FDurations.Objects[vIdx])
-    else
-    begin
-      vHist := TRALHistogram.Create;
-      SetLength(vHist.Buckets, Length(FBuckets));
-      FDurations.AddObject(vKey, vHist);
-    end;
-    Inc(vHist.Count);
-    vHist.Sum := vHist.Sum + ASeconds;
-    for vInt := 0 to High(FBuckets) do
-      if ASeconds <= FBuckets[vInt] then
-        Inc(vHist.Buckets[vInt]);
+    Observe(FDurations, 'method="' + string(LabelValue(AMethod)) + '",route="' +
+      string(LabelValue(ARoute)) + '"', ASeconds);
   finally
     FLock.Leave;
+  end;
+end;
+
+procedure TRALMetricsRegistry.DonePhases(const AMethod, ARoute: StringRAL; ABefore,
+  AHandler, AAfter: Double);
+var
+  vKey: string;
+begin
+  vKey := 'method="' + string(LabelValue(AMethod)) + '",route="' +
+    string(LabelValue(ARoute)) + '",phase="';
+  FLock.Enter;
+  try
+    Observe(FPhases, vKey + 'before"', ABefore);
+    Observe(FPhases, vKey + 'handler"', AHandler);
+    Observe(FPhases, vKey + 'after"', AAfter);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRALMetricsRegistry.Observe(AList: TStringList; const AKey: string;
+  ASeconds: Double);
+var
+  vIdx, vInt: Integer;
+  vHist: TRALHistogram;
+begin
+  if AList.Find(AKey, vIdx) then
+    vHist := TRALHistogram(AList.Objects[vIdx])
+  else
+  begin
+    vHist := TRALHistogram.Create;
+    SetLength(vHist.Buckets, Length(FBuckets));
+    AList.AddObject(AKey, vHist);
+  end;
+  Inc(vHist.Count);
+  vHist.Sum := vHist.Sum + ASeconds;
+  for vInt := 0 to High(FBuckets) do
+    if ASeconds <= FBuckets[vInt] then
+      Inc(vHist.Buckets[vInt]);
+end;
+
+/// Writes the histograms of AList as the Prometheus histogram AName.
+procedure RenderHistograms(AOut: TStrings; const AName: string; AList: TStringList;
+  const ABuckets: array of Double);
+var
+  vInt, vB: Integer;
+  vHist: TRALHistogram;
+begin
+  for vInt := 0 to AList.Count - 1 do
+  begin
+    vHist := TRALHistogram(AList.Objects[vInt]);
+    for vB := 0 to High(ABuckets) do
+      AOut.Add(AName + '_bucket{' + AList[vInt] + ',le="' +
+        FloatToStr(ABuckets[vB], RALInvariantFormat) + '"} ' + IntToStr(vHist.Buckets[vB]));
+    AOut.Add(AName + '_bucket{' + AList[vInt] + ',le="+Inf"} ' + IntToStr(vHist.Count));
+    AOut.Add(AName + '_sum{' + AList[vInt] + '} ' + FloatToStr(vHist.Sum, RALInvariantFormat));
+    AOut.Add(AName + '_count{' + AList[vInt] + '} ' + IntToStr(vHist.Count));
   end;
 end;
 
 function TRALMetricsRegistry.Render: StringRAL;
 var
   vOut: TStringList;
-  vInt, vB: Integer;
-  vHist: TRALHistogram;
+  vInt: Integer;
 begin
   vOut := TStringList.Create;
   try
@@ -1501,18 +1578,13 @@ begin
           IntToStr(PtrUInt(FCounts.Objects[vInt])));
       vOut.Add('# HELP ral_http_request_duration_seconds Time to answer, by method and route.');
       vOut.Add('# TYPE ral_http_request_duration_seconds histogram');
-      for vInt := 0 to FDurations.Count - 1 do
+      RenderHistograms(vOut, 'ral_http_request_duration_seconds', FDurations, FBuckets);
+      if FPhases.Count > 0 then
       begin
-        vHist := TRALHistogram(FDurations.Objects[vInt]);
-        for vB := 0 to High(FBuckets) do
-          vOut.Add('ral_http_request_duration_seconds_bucket{' + FDurations[vInt] + ',le="' +
-            FloatToStr(FBuckets[vB], RALInvariantFormat) + '"} ' + IntToStr(vHist.Buckets[vB]));
-        vOut.Add('ral_http_request_duration_seconds_bucket{' + FDurations[vInt] + ',le="+Inf"} ' +
-          IntToStr(vHist.Count));
-        vOut.Add('ral_http_request_duration_seconds_sum{' + FDurations[vInt] + '} ' +
-          FloatToStr(vHist.Sum, RALInvariantFormat));
-        vOut.Add('ral_http_request_duration_seconds_count{' + FDurations[vInt] + '} ' +
-          IntToStr(vHist.Count));
+        vOut.Add('# HELP ral_http_request_phase_seconds Time of each phase (before the ' +
+          'handler, the handler, after it), by method, route and phase.');
+        vOut.Add('# TYPE ral_http_request_phase_seconds histogram');
+        RenderHistograms(vOut, 'ral_http_request_phase_seconds', FPhases, FBuckets);
       end;
     finally
       FLock.Leave;
@@ -1563,6 +1635,8 @@ end;
 
 procedure TRALMetricsPlugin.ValidateRequest(ARequest: TRALRequest; AResponse: TRALResponse);
 begin
+  if FPhaseTimes then
+    ARequest.TimePhases := True;
   FRegistry.AddRef;
   FRegistry.Started;
   ARequest.AddFinishHandler({$IFDEF FPC}@{$ENDIF}FRegistry.RequestDone);

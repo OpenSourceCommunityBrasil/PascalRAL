@@ -426,6 +426,11 @@ function RALStreamSlice(AParent: TStream; AStart, ASize: Int64RAL): TStream;
   fixed buffer - TStream.CopyFrom on some compilers allocates as much as the
   whole count. }
 procedure RALCopyStream(ASource, ADest: TStream; ACount: Int64RAL);
+{ The size of a work buffer for reading AStream from its position to the end:
+  what is left when that is below DEFAULTBUFFERSTREAMSIZE, else
+  DEFAULTBUFFERSTREAMSIZE (also when the size is unknown). A fixed 64 KB
+  buffer, allocated and zeroed for a body of 1 KB, cost ten times the copy }
+function RALWorkBufferSize(AStream: TStream): IntegerRAL;
 { Removes spooled bodies older than a day from RALSpoolFolder (a process
   killed in the middle of a request leaves them behind). }
 procedure RALCleanSpoolFolder;
@@ -474,6 +479,17 @@ begin
     Result := TRALMemoryView.Create(PByte(TCustomMemoryStream(AParent).Memory) + AStart, ASize)
   else
     Result := TRALStreamSlice.Create(AParent, AStart, ASize);
+end;
+
+function RALWorkBufferSize(AStream: TStream): IntegerRAL;
+var
+  vLeft: Int64RAL;
+begin
+  vLeft := AStream.Size - AStream.Position;
+  if (vLeft <= 0) or (vLeft > DEFAULTBUFFERSTREAMSIZE) then
+    Result := DEFAULTBUFFERSTREAMSIZE
+  else
+    Result := vLeft;
 end;
 
 procedure RALCopyStream(ASource, ADest: TStream; ACount: Int64RAL);

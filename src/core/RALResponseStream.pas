@@ -173,6 +173,9 @@ function RALChunkTrailer: RawByteString;
 
 implementation
 
+uses
+  RALStream;
+
 function RALChunkHeader(ASize: IntegerRAL): RawByteString;
 begin
   Result := RawByteString(IntToHex(ASize, 1)) + #13#10;
@@ -414,8 +417,8 @@ begin
   Result := not Closed;
   if (AStream = nil) or (not Result) then
     Exit;
-  SetLength(vBuffer, DEFAULTBUFFERSTREAMSIZE);
   AStream.Position := 0;
+  SetLength(vBuffer, RALWorkBufferSize(AStream));
   repeat
     vRead := AStream.Read(vBuffer[0], Length(vBuffer));
     if vRead > 0 then

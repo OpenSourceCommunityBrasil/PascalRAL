@@ -2586,7 +2586,11 @@ begin
       end;
       if not vStop then
       begin
+        if ARequest.TimePhases then
+          ARequest.HandlerStartTick := RALTickMicro;
         ExecuteRoute(vRoute, ARequest, AResponse);
+        if ARequest.TimePhases then
+          ARequest.HandlerEndTick := RALTickMicro;
         if Assigned(vRoute.OnAfterExecute) then
           vRoute.OnAfterExecute(ARequest, AResponse);
         if (vGroup <> nil) and Assigned(vGroup.OnAfterExecute) then
@@ -2595,8 +2599,13 @@ begin
       AfterExecute(ARequest, AResponse);
     except
       on e: Exception do
+      begin
+        if ARequest.TimePhases and (ARequest.HandlerStartTick > 0) and
+           (ARequest.HandlerEndTick = 0) then
+          ARequest.HandlerEndTick := RALTickMicro;
         if not HandleException(ARequest, AResponse, e) then
           raise;
+      end;
     end;
   end
   else

@@ -879,7 +879,8 @@ sets `SSL_OP_IGNORE_UNEXPECTED_EOF` on OpenSSL 3 only (0x80 meant something else
 `src/crypto/RALSCRAM` (pacote-base); `RALMQTTAuth` wraps it.
 The broker runs on `TRALSocketLoop` (`RALSocketLoop`: an accepting thread, N poll
 threads each owning a slice of the connections and woken by a datagram to itself, a
-timer); its connection descends from `TRALSocketLoopConnection` and gives the protocol in
+timer; the wake count is cleared only after the waker is drained, or a new connection
+waits the 100 ms poll slice; `CPUAffinity` pins poll thread N to processor N); its connection descends from `TRALSocketLoopConnection` and gives the protocol in
 `Serve`, `HandleError`, `FlushOutput`, `Stopping`. The net units know nothing of MQTT:
 they raise `ERALSocketError`/`ERALTLSError`/
 `ERALWebSocketError` (a `CloseCode`), and the broker turns a WebSocket error into the
@@ -937,6 +938,15 @@ socket - free the channel stack only). Delphi has no `Trim`/`UniqueString` for
   lazily by "whoever asks first".
 - `TRALConcurrencyPlugin` caps concurrent requests (503 + `Retry-After`); its slot is
   given back by `TRALRequest.Finish`.
+- A work buffer for copying a stream is `RALWorkBufferSize(stream)` bytes, never a fixed
+  `DEFAULTBUFFERSTREAMSIZE`: allocating and zeroing 64 KB for a 1 KB body cost ten times
+  the copy (12 threads, FPC).
+- Phase times: a plugin sets `ARequest.TimePhases` in `ValidateRequest` and the module
+  notes `HandlerStartTick`/`HandlerEndTick` around the handler; off, nothing is read
+  (`TRALMetricsPlugin.PhaseTimes`).
+- Every tuning stays only if the same bench measured a gain (K9: `CPUAffinity` on the
+  socket loop and the balancer stayed, ~5% with kept-alive connections;
+  `TCP_DEFER_ACCEPT` and a per-thread buffer pool did not).
 
 ## Conventions
 

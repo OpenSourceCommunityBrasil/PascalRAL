@@ -127,6 +127,8 @@ type
     FFinished: boolean;
     /// Finish handlers past the first two.
     FFinishMore: array of TRALOnRequestFinish;
+    FHandlerEndTick: Int64RAL;
+    FHandlerStartTick: Int64RAL;
     FHost: StringRAL;
     FHttpVersion: StringRAL;
     /// Who the request is, created on first read.
@@ -145,6 +147,7 @@ type
     FRouteOwner: TObject;
     FRouteResolved: boolean;
     FStartTick: Int64RAL;
+    FTimePhases: boolean;
     FTraceId: StringRAL;
     FTrusted: boolean;
 
@@ -213,6 +216,12 @@ type
     property BytesSent: Int64RAL read FBytesSent write FBytesSent;
     /// True once Finish ran.
     property Finished: boolean read FFinished;
+    { RALTickMicro when the route handler returned (or raised); 0 unless
+      TimePhases, or when no handler ran }
+    property HandlerEndTick: Int64RAL read FHandlerEndTick write FHandlerEndTick;
+    { RALTickMicro when the module started the route handler; 0 unless
+      TimePhases, or when no handler ran (a plugin or a 404 answered) }
+    property HandlerStartTick: Int64RAL read FHandlerStartTick write FHandlerStartTick;
     { Who the request is, filled by the authenticator that accepted it; created
       on first read, empty when nobody authenticated the request. }
     property Identity: TRALIdentity read GetIdentity;
@@ -234,6 +243,10 @@ type
     property RouteResolved: boolean read FRouteResolved;
     /// RALTickMicro when the server took the request (ValidateRequest); 0 on a client.
     property StartTick: Int64RAL read FStartTick write FStartTick;
+    { Asks the module to note HandlerStartTick and HandlerEndTick (a plugin sets
+      it in ValidateRequest: TRALMetricsPlugin.PhaseTimes); off, nothing is
+      timed }
+    property TimePhases: boolean read FTimePhases write FTimePhases;
     { Trace id of the request (W3C trace context, set by a tracing plugin), used by
       the log and the error body; empty without one. }
     property TraceId: StringRAL read FTraceId write FTraceId;

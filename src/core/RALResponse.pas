@@ -809,8 +809,8 @@ begin
       Result := FChannel.SendStream(AStream)
     else
     begin
-      SetLength(vBuffer, DEFAULTBUFFERSTREAMSIZE);
       AStream.Position := 0;
+      SetLength(vBuffer, RALWorkBufferSize(AStream));
       repeat
         vRead := AStream.Read(vBuffer[0], Length(vBuffer));
         if vRead > 0 then
