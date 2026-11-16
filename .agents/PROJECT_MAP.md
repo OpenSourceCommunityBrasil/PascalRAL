@@ -86,6 +86,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/protobuf/` | `RALModuleProtobufPackage` | Protocol Buffers: runtime, well-known types, `.proto` parser and the Pascal generator of `tools/ralprotoc` |
 | `src/modules/grpc/` | `RALModuleGrpcPackage` (requires `RALModuleProtobufPackage`) | gRPC: framing, the module (gRPC-Web, gRPC-Web text, native over HTTP/2), the client |
 | `src/modules/websocket/` | `RALModuleWebSocketPackage` (requires `RALNetPackage`); `mqtt/` `RALModuleWebSocketMQTTPackage` | WebSocket routes, connections and hubs of connections, the client, hubs (JSON protocol, `ralhub.js`), the hub backplane over MQTT |
+| `src/modules/signalr/` | `RALModuleSignalRPackage` (requires `RALNetPackage`, `RALModuleWebSocketPackage`) | the ASP.NET Core SignalR protocol (negotiate, JSON hub protocol over WebSockets) for the official clients |
 | `src/modules/web/` | `RALModuleWebPackage` (requires `RALNetPackage`) | Web module (static files, sessions in memory, a store or a signed cookie), Mustache templates, views and HTMX, CSRF, HTML escaping and sanitizing, User-Agent, upload scanning (ClamAV) |
 | `src/modules/xml/` | `RALModuleXMLPackage` | XML reader, writer, DOM, and the XML storage |
 | `src/others/` | (the package that uses each) | submodules only: ZSTD, pascal_brotli (kxBSON is registered but unused) |
@@ -312,6 +313,10 @@ on its own sockets.
   protocol and `ralhub.js`), `RALWebSocketHubClient` (`TRALHubClient`),
   `RALModuleWebSocketReg`; `mqtt/RALWebSocketHubMQTT` (`TRALHubMQTTBackplane`),
   `mqtt/RALModuleWebSocketMQTTReg` - RALModuleWebSocketMQTTPackage
+- `signalr/` (RALModuleSignalRPackage, requires PascalRAL, RALNetPackage and
+  RALModuleWebSocketPackage): `RALSignalR` (`TRALSignalRModule`, `TRALSignalRCall`,
+  `TRALSignalRMethods`; negotiate v0/v1 with single-use tokens, the JSON hub protocol,
+  server streams, keep-alive pings), `RALModuleSignalRReg`
 - `web/` (RALModuleWebPackage): `RALWebModule`, `RALTemplate` (`TRALTemplateEngine`,
   `TRALMustacheEngine`, data views, `TRALTemplateMap`), `RALTemplateDB` (datasets as
   template data), `RALHtml` (HTML, attribute, JavaScript and URL escaping, `TRALHtmlSanitizer`),

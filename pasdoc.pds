@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=86
+Count=87
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -154,9 +154,10 @@ Item_82=src\modules\stateful
 Item_83=src\modules\hypermedia
 Item_84=src\engine\scgi
 Item_85=src\engine\uwsgi
+Item_86=src\modules\signalr
 
 [Files]
-Count=327
+Count=329
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -484,6 +485,8 @@ Item_323=src\engine\scgi\RALSCGIServer.pas
 Item_324=src\engine\scgi\RALSCGIReg.pas
 Item_325=src\engine\uwsgi\RALUwsgiServer.pas
 Item_326=src\engine\uwsgi\RALUwsgiReg.pas
+Item_327=src\modules\signalr\RALSignalR.pas
+Item_328=src\modules\signalr\RALModuleSignalRReg.pas
 [AdditionalFiles]
 Count=0
 

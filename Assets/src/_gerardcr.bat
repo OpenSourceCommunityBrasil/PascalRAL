@@ -33,6 +33,8 @@ echo RALModuleWebSocket
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleWebSocketPackage.dcr" "RALModuleWebSocket.rc"
 echo RALModuleWebSocketMQTT
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleWebSocketMQTTPackage.dcr" "RALModuleWebSocketMQTT.rc"
+echo RALModuleSignalR
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleSignalRPackage.dcr" "RALModuleSignalR.rc"
 echo RALModuleProxy
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleProxyDsgn.dcr" "RALModuleProxy.rc"
 echo RALStorage

@@ -869,6 +869,18 @@ does not fault, and a refusal is answered as a fault through the core hook
   input requests is sealed with HMAC-SHA256 (expiry, method, name). Tasks run in their own
   thread and wait for `tasks/update` like a retried call.
 
+### SignalR (`src/modules/signalr`)
+
+`RALModuleSignalRPackage`: `TRALSignalRModule` (a `TRALModuleRoutes` with its own
+`<Path>/negotiate` route and a `TRALWebSocketRoute` at `<Path>`) speaks ASP.NET Core
+SignalR for the official clients: negotiate v0/v1 (a token used once, `TokenLifetime`;
+the WebSocket's `OnHandshake` checks `id`), records ended by 0x1E, the handshake
+`{"protocol":"json","version":1}`, invocation/completion/stream items/ping/close. Each
+connection carries a `TRALSignalRState` in `Data` (`OwnsData`): nothing is sent before
+the handshake, and a pinger thread sends `{"type":6}` to the idle ones. Only JSON over
+WebSockets; streams run on the connection's thread (a cancel arrives after); the
+browser's `access_token` query is not read by the authenticators.
+
 ### MQTT (`src/modules/mqtt`)
 
 `RALModuleMQTTPackage` (requires `PascalRAL`, `RALNetPackage` and `RALPluginAuthPackage`): client and
