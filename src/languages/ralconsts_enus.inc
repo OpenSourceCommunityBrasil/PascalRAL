@@ -731,6 +731,10 @@
   // Event bus (RALModuleEventBusPackage)
   emEventBusBadSubscription = 'A subscription needs a filter and a handler.';
   // end of Event bus
+  // Tasks (RALHostingTaskPackage)
+  emTaskBusy = 'The task %s is already queued or running.';
+  emTaskSelfNext = 'The task %s cannot be its own Next.';
+  // end of Tasks
 
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Missing JSON number digits.';

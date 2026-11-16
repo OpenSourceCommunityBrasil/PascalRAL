@@ -731,6 +731,10 @@
   // Event bus (RALModuleEventBusPackage)
   emEventBusBadSubscription = 'Uma assinatura precisa de um filtro e de um handler.';
   // end of Event bus
+  // Tasks (RALHostingTaskPackage)
+  emTaskBusy = 'A tarefa %s já está na fila ou rodando.';
+  emTaskSelfNext = 'A tarefa %s não pode ser o próprio Next.';
+  // end of Tasks
 
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Faltam dígitos no número JSON.';

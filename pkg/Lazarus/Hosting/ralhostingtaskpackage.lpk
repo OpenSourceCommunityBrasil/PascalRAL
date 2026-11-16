@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALHostingTaskPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\hosting\task"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralhostingtaskpackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | Hosting: background tasks"/>
+    <Version Major="2"/>
+    <Files Count="4">
+      <Item1>
+        <Filename Value="..\..\..\src\hosting\task\RALTask.pas"/>
+        <UnitName Value="RALTask"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\hosting\task\RALTaskAnon.pas"/>
+        <UnitName Value="RALTaskAnon"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\hosting\task\RALTaskReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALTaskReg"/>
+      </Item3>
+      <Item4>
+        <Filename Value="ralhostingtaskpackage.lrs"/>
+        <Type Value="LRS"/>
+      </Item4>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>
