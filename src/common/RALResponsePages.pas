@@ -56,6 +56,22 @@ implementation
 function RALHTTPReason(AStatusCode: IntegerRAL): StringRAL;
 begin
   case AStatusCode of
+    100: Result := 'Continue';
+    101: Result := 'Switching Protocols';
+    200: Result := 'OK';
+    201: Result := 'Created';
+    202: Result := 'Accepted';
+    203: Result := 'Non-Authoritative Information';
+    204: Result := 'No Content';
+    205: Result := 'Reset Content';
+    206: Result := 'Partial Content';
+    300: Result := 'Multiple Choices';
+    301: Result := 'Moved Permanently';
+    302: Result := 'Found';
+    303: Result := 'See Other';
+    304: Result := 'Not Modified';
+    307: Result := 'Temporary Redirect';
+    308: Result := 'Permanent Redirect';
     400: Result := 'Bad Request';
     401: Result := 'Unauthorized';
     402: Result := 'Payment Required';

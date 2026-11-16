@@ -11,7 +11,7 @@ interface
 uses
   Classes, SysUtils, SyncObjs, DateUtils,
   RALTypes, RALConsts, RALTools, RALServer, RALRequest, RALResponse, RALParams,
-  RALCustomObjects, RALResponseStream, RALSocket;
+  RALCustomObjects, RALResponseStream, RALResponsePages, RALSocket;
 
 const
   /// FastCGI record types (the specification, section 8).
@@ -373,9 +373,23 @@ var
   vAnswer: array[0..7] of Byte;
   vPairs: RawByteString;
 
+  { all ACount bytes: ReadWait gives what is there, and a record larger than
+    one TCP segment (a body nginx sends in 64 KB records) arrives in pieces }
   function ReadExact(var ABuffer; ACount: IntegerRAL): boolean;
+  var
+    vGot, vRead: IntegerRAL;
   begin
-    Result := (ACount = 0) or (FChannel.ReadWait(ABuffer, ACount, FServer.ReadTimeout) = ACount);
+    Result := False;
+    vGot := 0;
+    while vGot < ACount do
+    begin
+      vRead := FChannel.ReadWait(PByte(NativeUInt(@ABuffer) + NativeUInt(vGot))^,
+        ACount - vGot, FServer.ReadTimeout);
+      if vRead <= 0 then
+        Exit;
+      Inc(vGot, vRead);
+    end;
+    Result := True;
   end;
 
   procedure AddPair(const AName, AValue: RawByteString);
@@ -639,7 +653,10 @@ var
   vParam: TRALParam;
   vCookies: TStringList;
 begin
-  Result := RawByteString('Status: ' + IntToStr(AStatusCode)) + #13#10;
+  { with the reason phrase: nginx copies the line, and HTTP/1.1 wants the
+    space after the code even when the phrase is empty }
+  Result := RawByteString('Status: ' + IntToStr(AStatusCode) + ' ' +
+    string(RALHTTPReason(AStatusCode))) + #13#10;
   if AResponse.ContentType <> '' then
     Result := Result + 'Content-Type: ' + RawByteString(AResponse.ContentType) + #13#10;
   if AResponse.ContentEncoding <> '' then
