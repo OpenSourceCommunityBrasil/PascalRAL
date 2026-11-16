@@ -869,6 +869,16 @@ does not fault, and a refusal is answered as a fault through the core hook
   input requests is sealed with HMAC-SHA256 (expiry, method, name). Tasks run in their own
   thread and wait for `tasks/update` like a retried call.
 
+### LiveBindings (`src/client/livebindings`, Delphi only)
+
+`RALClientLiveBindingsPackage` (Delphi XE3+, where `TBindSourceAdapter` exists; no Lazarus
+package): `TRALJSONBindSourceAdapter` keeps the records as a `TRALJSONArray` and makes its
+fields as `TBindSourceAdapterReadWriteField<T>` with readers and writers that read and
+replace the member in the current record (`TRALJSONObject.Add` refuses a second member of a
+name: `Extract` first). `FieldDefs` gives the fields at design time; otherwise they come from
+the data. Test bindings with `TLinkPropertyToField`/`TLinkControlToField`: a raw
+`TBindExpression` on a field gives the field object.
+
 ### GraphQL (`src/modules/graphql`)
 
 `RALModuleGraphQLPackage`: `TRALGraphQLModule` builds a `TRALGraphQLSchema` from its SDL

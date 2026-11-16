@@ -39,6 +39,8 @@ echo RALModuleGraphQL
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleGraphQLPackage.dcr" "RALModuleGraphQL.rc"
 echo RALModuleGraphQLDB
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleGraphQLDBPackage.dcr" "RALModuleGraphQLDB.rc"
+echo RALClientLiveBindings
+%path_brcc32% -fo "..\..\pkg\Delphi\Client\RALClientLiveBindingsPackage.dcr" "RALClientLiveBindings.rc"
 echo RALModuleProxy
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleProxyDsgn.dcr" "RALModuleProxy.rc"
 echo RALStorage
