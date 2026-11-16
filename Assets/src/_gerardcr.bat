@@ -15,6 +15,8 @@ echo RALPluginObservability
 %path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginObservabilityPackage.dcr" "RALPluginObservability.rc"
 echo RALPluginTraffic
 %path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginTrafficPackage.dcr" "RALPluginTraffic.rc"
+echo RALPluginFeatureFlags
+%path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginFeatureFlagsPackage.dcr" "RALPluginFeatureFlags.rc"
 echo RALPluginCache
 %path_brcc32% -fo "..\..\pkg\Delphi\Plugins\RALPluginCachePackage.dcr" "RALPluginCache.rc"
 echo RALPluginForwarded

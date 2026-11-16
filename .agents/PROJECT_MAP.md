@@ -90,6 +90,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/plugins/auth/` | `RALPluginAuthPackage` | Basic and JWT (`RALAuthentication`), Digest, OAuth2, policies (`RALAuthorization`), OpenID Connect (`RALOIDC`) |
 | `src/plugins/cache/` | `RALPluginCachePackage` | response cache and dynamic ETag (`RALResponseCache`) |
 | `src/plugins/forwarded/` | `RALPluginForwardedPackage` | the client behind a proxy: `TRALForwardedPlugin` (Forwarded, X-Forwarded-*, trusted proxies), `TRALIPRanges` |
+| `src/plugins/flags/` | `RALPluginFeatureFlagsPackage` (requires `RALHostingPackage`) | `RALFeatureFlags` (`TRALFeatureFlags`: feature flags in the Object Inspector and in `TRALConfig`, read again when the file changes; on for a stable share of users, a list of users or roles, between dates; the routes in a flag's `Paths` answer 404 while it is off; `IsEnabled` in code) |
 | `src/plugins/observability/` | `RALPluginObservabilityPackage` | access log, trace context and OTLP export, Prometheus metrics, health checks (`RALObservability`) |
 | `src/plugins/tls/` | `RALPluginTLSPackage` | self-signed certificate plugin (`RALSelfSigned`) |
 | `src/plugins/traffic/` | `RALPluginTrafficPackage` | rate limit, HTTPS redirect, maintenance, method override (`RALTraffic`) |

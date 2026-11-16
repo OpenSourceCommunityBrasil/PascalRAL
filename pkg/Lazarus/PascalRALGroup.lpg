@@ -35,6 +35,7 @@
       <Target FileName="Database\raldbsqldbpackage.lpk"/>
       <Target FileName="Database\raldbsqldbdsgn.lpk"/>
       <Target FileName="Plugins\ralpluginforwardedpackage.lpk"/>
+      <Target FileName="Plugins\ralpluginfeatureflagspackage.lpk"/>
       <Target FileName="Net\ralnetpackage.lpk"/>
       <Target FileName="Modules\ralmoduleproxypackage.lpk"/>
       <Target FileName="Modules\ralmoduleproxydsgn.lpk"/>
