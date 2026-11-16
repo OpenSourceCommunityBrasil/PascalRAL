@@ -869,6 +869,23 @@ does not fault, and a refusal is answered as a fault through the core hook
   input requests is sealed with HMAC-SHA256 (expiry, method, name). Tasks run in their own
   thread and wait for `tasks/update` like a retried call.
 
+### GraphQL (`src/modules/graphql`)
+
+`RALModuleGraphQLPackage`: `TRALGraphQLModule` builds a `TRALGraphQLSchema` from its SDL
+(`Schema`, plus what each `TRALGraphQLContributor` adds; `extend type` merges into the
+type of its name or becomes it) when the server starts or on the first request, and
+retires (never frees) a replaced one. Values are `TRALJSON`: a resolver
+(`TRALGraphQLResolve.Return*`) answers JSON and a field without a resolver reads its name
+in the parent's JSON. `TRALGraphQLExecution` parses, validates (a subset of the rules),
+coerces variables and arguments, executes (non-null propagation through `CompleteValue`'s
+boolean; the field name and node are parameters, not fields, because recursion would
+overwrite them) and answers `{"data","errors"}`. Introspection is the `__*` SDL added to
+every schema, resolved inside the executor from the schema by type name. On FPC the name of
+a function alone inside it is its result: a recursive call needs `()`. On Delphi a byte is
+appended to a `UTF8String` with `AppendByte`, never `+ AnsiChar`. `db/RALGraphQLDB`
+(`TRALGraphQLDBBinding`) reads `RALDBTableInfo` for each table and generates the type and
+two `Query` fields whose SQL takes params and catalog names only.
+
 ### SignalR (`src/modules/signalr`)
 
 `RALModuleSignalRPackage`: `TRALSignalRModule` (a `TRALModuleRoutes` with its own

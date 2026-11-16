@@ -49,6 +49,8 @@
       <Target FileName="Modules\ralmodulewebsocketpackage.lpk"/>
       <Target FileName="Modules\ralmodulewebsocketmqttpackage.lpk"/>
       <Target FileName="Modules\ralmodulesignalrpackage.lpk"/>
+      <Target FileName="Modules\ralmodulegraphqlpackage.lpk"/>
+      <Target FileName="Modules\ralmodulegraphqldbpackage.lpk"/>
       <Target FileName="Modules\ralmodulemcppackage.lpk"/>
       <Target FileName="Modules\ralmodulemcpdbpackage.lpk"/>
       <Target FileName="Modules\ralmoduleswaggerpackage.lpk"/>
