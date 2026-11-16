@@ -196,6 +196,14 @@ bcrypt core), `RALSalsa20` (the Salsa20 core), `RALOTP` (HOTP/TOTP, base32, otpa
   `RALNetPackage`): FastCGI 1.0 responder of its own on `RALSocket`, both compilers,
   kept connections and live streams, behind nginx or Apache (IIS's FastCGI only
   talks to processes it starts, over a pipe)
+- `scgi/` - `RALGatewayServer`, `RALSCGIServer`, `RALSCGIReg` (`SCGIRAL`, requires
+  `RALNetPackage`): `TRALGatewayServer`, the base of the one-request-per-connection
+  gateway engines (listener, a thread per connection, the request from the CGI
+  variables, the answer as it is until the connection closes, live streams), and the
+  SCGI engine on it (netstring head, `Status:` answer)
+- `uwsgi/` - `RALUwsgiServer`, `RALUwsgiReg` (`UwsgiRAL`, requires `SCGIRAL`): the uwsgi
+  engine on `TRALGatewayServer` (4-byte head, length-prefixed variables, `HTTP/1.1`
+  answer)
 - `nghttp2/` - `RALNgHttp2Server`, `RALNgHttp2Client`, `RALNgHttp2Reg` (`NgHttp2RAL`,
   requires `RALNetPackage`, binding `src/bindings/nghttp2.pas`): HTTP/2 framed by
   nghttp2 on `RALSocket`/`TRALSocketLoop`, h2 (ALPN) and h2c, server and client engine

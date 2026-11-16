@@ -294,6 +294,15 @@ time on it (`FCGI_MPXS_CONNS` 0). Without `FCGI_KEEP_CONN` the connection closes
 the request ends, not at `BEGIN_REQUEST`. Streams are live (`STDOUT` records, the writer
 frames itself); `ABORT_REQUEST` ends a request whose body has not finished arriving.
 
+**SCGI and uwsgi** (`src/engine/scgi`, `SCGIRAL`; `src/engine/uwsgi`, `UwsgiRAL` requires
+it): one request per connection on `TRALGatewayServer`, which reads the descendant's
+block of CGI variables (`ReadEnvironment`), judges the request (`ValidateRequest`)
+before reading the body, and writes the answer raw with `Content-Length`, or live until
+the connection closes; SCGI answers `Status: 200 OK`, uwsgi `HTTP/1.1 200 OK`. Reads of a
+fixed size loop over `ReadWait`, which returns what is there (FastCGI read a record split
+across TCP segments as a closed connection until this was fixed). `RALHTTPReason` knows
+the 1xx-3xx phrases too.
+
 **InProc** (`src/engine/inproc`): `TRALInProcServer` registers its `ServerName` while
 active; the `InProc` client engine hands `inproc://name/path` straight to it, through
 `ValidateRequest`, `ProcessCommands` and `TakeWireStream`, plugins included. A
