@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=82
+Count=83
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -150,9 +150,10 @@ Item_78=src\modules\eventbus
 Item_79=src\modules\eventbus\mqtt
 Item_80=src\plugins\flags
 Item_81=src\hosting\task
+Item_82=src\modules\stateful
 
 [Files]
-Count=318
+Count=320
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -471,6 +472,8 @@ Item_314=src\plugins\flags\RALFeatureFlagsReg.pas
 Item_315=src\hosting\task\RALTask.pas
 Item_316=src\hosting\task\RALTaskAnon.pas
 Item_317=src\hosting\task\RALTaskReg.pas
+Item_318=src\modules\stateful\RALStatefulModule.pas
+Item_319=src\modules\stateful\RALStatefulReg.pas
 [AdditionalFiles]
 Count=0
 

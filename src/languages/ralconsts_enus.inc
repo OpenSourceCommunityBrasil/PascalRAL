@@ -735,6 +735,11 @@
   emTaskBusy = 'The task %s is already queued or running.';
   emTaskSelfNext = 'The task %s cannot be its own Next.';
   // end of Tasks
+  // Stateful resources (RALModuleStatefulPackage)
+  emStatefulRouteOutside = '%s.Route is only called from DefineRoutes.';
+  emStatefulForeignHandler = 'The handler of the route %1:s must be a method of %0:s.';
+  emStatefulUnknownClass = 'The resource class %s is not registered (RALRegisterResource).';
+  // end of Stateful resources
 
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Missing JSON number digits.';

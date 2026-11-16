@@ -735,6 +735,11 @@
   emTaskBusy = 'A tarefa %s já está na fila ou rodando.';
   emTaskSelfNext = 'A tarefa %s não pode ser o próprio Next.';
   // end of Tasks
+  // Stateful resources (RALModuleStatefulPackage)
+  emStatefulRouteOutside = '%s.Route só é chamado dentro de DefineRoutes.';
+  emStatefulForeignHandler = 'O handler da rota %1:s precisa ser um método de %0:s.';
+  emStatefulUnknownClass = 'A classe de recurso %s não está registrada (RALRegisterResource).';
+  // end of Stateful resources
 
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Faltam dígitos no número JSON.';

@@ -225,6 +225,9 @@
         <Projects Include="Modules\RALModuleEventBusMQTTPackage.dproj">
             <Dependencies>PascalRAL.dproj;Modules\RALModuleEventBusPackage.dproj;Modules\RALModuleMQTTPackage.dproj</Dependencies>
         </Projects>
+        <Projects Include="Modules\RALModuleStatefulPackage.dproj">
+            <Dependencies>PascalRAL.dproj</Dependencies>
+        </Projects>
         <Projects Include="Compression\RALCompressZStdPackage.dproj">
             <Dependencies>PascalRAL.dproj</Dependencies>
         </Projects>
@@ -896,14 +899,23 @@
     <Target Name="RALModuleEventBusPackage:Make" DependsOnTargets="PascalRAL:Make">
         <MSBuild Projects="Modules\RALModuleEventBusPackage.dproj" Targets="Make"/>
     </Target>
-    <Target Name="RALModuleEventBusMQTTPackage" DependsOnTargets="PascalRAL;RALModuleEventBusPackage;RALModuleEventBusMQTTPackage;RALModuleMQTTPackage">
+    <Target Name="RALModuleEventBusMQTTPackage" DependsOnTargets="PascalRAL;RALModuleEventBusPackage;RALModuleEventBusMQTTPackage;RALModuleStatefulPackage;RALModuleMQTTPackage">
         <MSBuild Projects="Modules\RALModuleEventBusMQTTPackage.dproj"/>
     </Target>
-    <Target Name="RALModuleEventBusMQTTPackage:Clean" DependsOnTargets="PascalRAL:Clean;RALModuleEventBusPackage:Clean;RALModuleEventBusMQTTPackage:Clean;RALModuleMQTTPackage:Clean">
+    <Target Name="RALModuleEventBusMQTTPackage:Clean" DependsOnTargets="PascalRAL:Clean;RALModuleEventBusPackage:Clean;RALModuleEventBusMQTTPackage:Clean;RALModuleStatefulPackage:Clean;RALModuleMQTTPackage:Clean">
         <MSBuild Projects="Modules\RALModuleEventBusMQTTPackage.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="RALModuleEventBusMQTTPackage:Make" DependsOnTargets="PascalRAL:Make;RALModuleEventBusPackage:Make;RALModuleEventBusMQTTPackage:Make;RALModuleMQTTPackage:Make">
+    <Target Name="RALModuleEventBusMQTTPackage:Make" DependsOnTargets="PascalRAL:Make;RALModuleEventBusPackage:Make;RALModuleEventBusMQTTPackage:Make;RALModuleStatefulPackage:Make;RALModuleMQTTPackage:Make">
         <MSBuild Projects="Modules\RALModuleEventBusMQTTPackage.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RALModuleStatefulPackage" DependsOnTargets="PascalRAL">
+        <MSBuild Projects="Modules\RALModuleStatefulPackage.dproj"/>
+    </Target>
+    <Target Name="RALModuleStatefulPackage:Clean" DependsOnTargets="PascalRAL:Clean">
+        <MSBuild Projects="Modules\RALModuleStatefulPackage.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RALModuleStatefulPackage:Make" DependsOnTargets="PascalRAL:Make">
+        <MSBuild Projects="Modules\RALModuleStatefulPackage.dproj" Targets="Make"/>
     </Target>
     <Target Name="RALCompressZStdPackage" DependsOnTargets="PascalRAL">
         <MSBuild Projects="Compression\RALCompressZStdPackage.dproj"/>

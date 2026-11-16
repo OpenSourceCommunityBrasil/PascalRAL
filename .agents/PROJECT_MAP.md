@@ -74,6 +74,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/chat/db/` | `RALModuleChatDBPackage` (requires `PascalRAL`, `RALDBPackage`) | `RALChatDBStore` (`TRALChatDBStore`: a `TRALKeyValueStore` in a database table through a `TRALDBModule`, for the bot's sessions shared by several processes) |
 | `src/modules/eventbus/` | `RALModuleEventBusPackage` | `RALEventBus` (`TRALEventBus`: publish/subscribe inside the application on topics with the MQTT wildcards, delivery in the publisher's thread or on a pool that keeps each subscriber's order, items in the Object Inspector), `RALEventBusAnon` (anonymous handlers through a class helper, only where `RALHasAnonMethods`) |
 | `src/modules/eventbus/mqtt/` | `RALModuleEventBusMQTTPackage` (requires `RALModuleEventBusPackage`, `RALModuleMQTTPackage`) | `RALEventBusMQTT` (`TRALEventBusMQTT`: bus events out through an MQTT client and MQTT messages into the bus, by filters, without loops) |
+| `src/modules/stateful/` | `RALModuleStatefulPackage` | `RALStatefulModule` (`TRALStatefulModule`: the routes of a `TRALStatefulResource` class answered on an instance shared, per session (cookie, expiry, `MaxSessions`) or per request; calls to one instance serialized; `RALRegisterResource`) |
 | `src/modules/soap/` | `RALModuleSOAPPackage` | SOAP module, client, WSDL |
 | `src/modules/soap/design/` | `RALModuleSOAPDsgn` | SOAP IDE verbs |
 | `src/modules/swagger/` | `RALModuleSwaggerPackage` | Swagger module, Swagger and Postman exporters, swagger.yaml |
