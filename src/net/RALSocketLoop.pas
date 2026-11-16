@@ -390,10 +390,14 @@ begin
     end;
     if (vPoll[0].Returned and RALPollIn) <> 0 then
     begin
-      FWakePending := 0;
       repeat
         vRes := FWaker.ReceiveFrom(vBuffer, SizeOf(vBuffer), vFrom);
       until vRes <= 0;
+      { only after the drain: a Wake from here on sends a datagram the next
+        poll sees. Cleared before, a Wake in between had its datagram drained
+        here and left the count above 0, so later Wakes sent nothing and new
+        connections waited for the poll slice }
+      FWakePending := 0;
     end;
 
     vNow := RALSocketNow;
