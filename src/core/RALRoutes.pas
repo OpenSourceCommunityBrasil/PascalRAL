@@ -317,6 +317,12 @@ type
     function IsMethodAllowed(const AMethod: TRALMethod): boolean;
     /// True when AMethod skips authentication on this route.
     function IsMethodSkipped(const AMethod: TRALMethod): boolean;
+    { The JSON Schemas (OpenAPI 3.1) of the body AMethod takes and of the answer it
+      gives, with the status of a success; empty text = not described. False (the
+      default) when the route does not know them: a module's route class that does
+      (the DBWare resources) overrides it, and Swagger asks it. }
+    function OpenAPISchemas(AMethod: TRALMethod; out ARequestSchema,
+      AResponseSchema: StringRAL; out AStatus: IntegerRAL): boolean; virtual;
     /// The policy the route asks: its own Policy, else its group's; '' = none.
     function RequiredPolicy: StringRAL;
     { The roles the route asks (its own Roles, else its group's) and whether all
@@ -930,6 +936,15 @@ begin
 
   Result := (amALL in AllowedMethods) or
             (not(amALL in AllowedMethods) and (AMethod in AllowedMethods));
+end;
+
+function TRALBaseRoute.OpenAPISchemas(AMethod: TRALMethod; out ARequestSchema,
+  AResponseSchema: StringRAL; out AStatus: IntegerRAL): boolean;
+begin
+  ARequestSchema := '';
+  AResponseSchema := '';
+  AStatus := HTTP_OK;
+  Result := False;
 end;
 
 function TRALBaseRoute.IsMethodSkipped(const AMethod: TRALMethod): boolean;

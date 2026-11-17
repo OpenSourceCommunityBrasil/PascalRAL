@@ -7,16 +7,17 @@ interface
 
 uses
   {$IFDEF FPC}
-  LResources, PropEdits, CodeCache, SrcEditorIntf, LazIDEIntf, CodeToolManager,
-  PackageIntf, ProjectIntf,
+  LResources, PropEdits, ComponentEditors, Dialogs, CodeCache, SrcEditorIntf, LazIDEIntf,
+  CodeToolManager, PackageIntf, ProjectIntf,
   {$ELSE}
     {$IFDEF DELPHI2005UP}
       ToolsAPI,
     {$ENDIF}
       DesignEditors, DesignIntf,
+      {$IFDEF DELPHIXE2UP}Vcl.Dialogs,{$ELSE}Dialogs,{$ENDIF}
   {$ENDIF}
   Classes, SysUtils,
-  RALDBModule, RALDBCrudModule, RALDBConnection, RALDBBase, RALTypes;
+  RALDBModule, RALDBCrudModule, RALDBConnection, RALDBBase, RALTypes, RALConsts;
 
 type
   {$IFNDEF FPC}
@@ -26,6 +27,15 @@ type
       procedure RequiresUnits(Proc: TGetStrProc); override;
     end;
   {$ENDIF}
+
+  { Verb of TRALDBCrudModule: reads the columns of every resource's table from the
+    catalog of DBModule into its Fields (and KeyFields when empty). }
+  TRALDBCrudModuleEditor = class(TComponentEditor)
+  public
+    procedure ExecuteVerb(AIndex: Integer); override;
+    function GetVerb(AIndex: Integer): string; override;
+    function GetVerbCount: Integer; override;
+  end;
 
   /// Property editor that lists the registered drivers.
   TRALDBDatabases = class(TStringProperty)
@@ -51,10 +61,55 @@ begin
   RegisterComponents('RAL - Modules', [TRALDBModule, TRALDBCrudModule]);
 
   RegisterPropertyEditor(TypeInfo(String), TRALDBModule, 'DatabaseLink', TRALDBDatabases);
+  RegisterComponentEditor(TRALDBCrudModule, TRALDBCrudModuleEditor);
 
   {$IFNDEF FPC}
     RegisterSelectionEditor(TRALDBModule,  TRALDBModuleSelectionEditor);
   {$ENDIF}
+end;
+
+{ TRALDBCrudModuleEditor }
+
+procedure TRALDBCrudModuleEditor.ExecuteVerb(AIndex: Integer);
+var
+  vModule: TRALDBCrudModule;
+  vReport: TStringList;
+  vInt: Integer;
+  vResource: TRALDBCrudResource;
+begin
+  if AIndex <> 0 then
+    Exit;
+  vModule := TRALDBCrudModule(Component);
+  vReport := TStringList.Create;
+  try
+    for vInt := 0 to vModule.Resources.Count - 1 do
+    begin
+      vResource := vModule.Resources[vInt];
+      if (vResource.TableName = '') and (vResource.SelectSQL = '') then
+        Continue;
+      try
+        vReport.Add(Format(cmDBCrudColumnsRead, [vResource.DisplayName,
+          vModule.ReadColumns(vResource)]));
+      except
+        on E: Exception do
+          vReport.Add(Format(cmDBCrudColumnsFailed, [vResource.DisplayName, E.Message]));
+      end;
+    end;
+    Designer.Modified;
+    ShowMessage(vReport.Text);
+  finally
+    vReport.Free;
+  end;
+end;
+
+function TRALDBCrudModuleEditor.GetVerb(AIndex: Integer): string;
+begin
+  Result := cmDBCrudReadColumns;
+end;
+
+function TRALDBCrudModuleEditor.GetVerbCount: Integer;
+begin
+  Result := 1;
 end;
 
 { TRALDBDatabases }

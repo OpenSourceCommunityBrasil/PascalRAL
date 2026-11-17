@@ -343,6 +343,35 @@ var
   vInt: IntegerRAL;
   vRouteParam: TRALRouteParam;
   vURIParams: TStringList;
+  { what the route says of its own body and answer (OpenAPISchemas), for the
+    method being written }
+  vHasSchemas: boolean;
+  vRequestSchema, vResponseSchema: StringRAL;
+  vSuccess: IntegerRAL;
+
+  { the JSON Schema text ASchema as the content object of application/json; nil
+    when it does not parse to an object }
+  function JSONContent(const ASchema: StringRAL): TRALJSONObject;
+  var
+    jcJSON: TRALJSONValue;
+    jcMedia: TRALJSONObject;
+  begin
+    Result := nil;
+    try
+      jcJSON := TRALJSON.ParseJSON(ASchema);
+    except
+      Exit;
+    end;
+    if not (jcJSON is TRALJSONObject) then
+    begin
+      jcJSON.Free;
+      Exit;
+    end;
+    jcMedia := TRALJSONObject.Create;
+    jcMedia.Add('schema', jcJSON);
+    Result := TRALJSONObject.Create;
+    Result.Add(rctAPPLICATIONJSON, jcMedia);
+  end;
 
   function getParameterStr(AParam: StringRAL; AType: StringRAL): TRALJSONObject;
   var
@@ -452,8 +481,19 @@ var
     case vMethod of
       amDELETE, amPOST, amPATCH, amPUT:
         begin
+          rbAux3 := nil;
+          if vHasSchemas and (vRequestSchema <> '') then
+            rbAux3 := JSONContent(vRequestSchema);
+          { a route that describes its own body documents it }
+          if rbAux3 <> nil then
+          begin
+            rbAux4 := TRALJSONObject.Create;
+            rbAux4.Add('required', True);
+            rbAux4.Add('content', rbAux3);
+            vjMethod.Add('requestBody', rbAux4);
+          end
           { a route that reads its body into a class documents the class }
-          if (ARoute.BodyClass <> '') and AddClassSchema(ARoute.BodyClass,
+          else if (ARoute.BodyClass <> '') and AddClassSchema(ARoute.BodyClass,
              ARoute.ValidationRules) then
           begin
             rbAux1 := TRALJSONObject.Create;
@@ -569,6 +609,8 @@ begin
           Continue;
 
         vjMethod := TRALJSONObject.Create;
+        vHasSchemas := ARoute.OpenAPISchemas(vMethod, vRequestSchema, vResponseSchema,
+          vSuccess);
 
         vStrMethod := LowerCase(RALMethodToHTTPMethod(vMethod));
 
@@ -643,7 +685,16 @@ begin
           vAux2.Add('content', vContent);
         end;
 
-        vAux1.Add('200', vAux2);
+        if vHasSchemas and (vResponseSchema <> '') and not ARoute.Streaming then
+        begin
+          vContent := JSONContent(vResponseSchema);
+          if vContent <> nil then
+            vAux2.Add('content', vContent);
+        end;
+        if vHasSchemas and (vSuccess > 0) then
+          vAux1.Add(StringRAL(IntToStr(vSuccess)), vAux2)
+        else
+          vAux1.Add('200', vAux2);
         if (ARoute.BodyClass <> '') and Assigned(RALObjectSchemaProvider) and
            (vMethod in [amPOST, amPUT, amPATCH, amDELETE]) then
         begin

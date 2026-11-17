@@ -24,6 +24,7 @@ type
   TRALDBTenantMode = (tmNone, tmColumn, tmSchema, tmDatabase);
 
   TRALDBCrudResource = class;
+  TRALDBCrudModule = class;
 
   { Fired before a write of AResource: AValues holds what goes to the table
     (insert, update) or the key (delete); change it, or set AAllow False to
@@ -147,8 +148,16 @@ type
   /// A route of a resource; the item route ends in /:ral_key.
   TRALDBCrudRoute = class(TRALRoute)
   private
+    /// The module that made the route.
+    FModule: TRALDBCrudModule;
     FResource: TRALDBCrudResource;
   public
+    { The schemas of the resource, from the catalog of its table: a record (an array
+      of them on the list), the writable columns for POST, PUT and PATCH, 201 on POST
+      and 204 on DELETE. False when the catalog cannot be read. }
+    function OpenAPISchemas(AMethod: TRALMethod; out ARequestSchema,
+      AResponseSchema: StringRAL; out AStatus: IntegerRAL): boolean; override;
+
     /// The resource the route serves.
     property Resource: TRALDBCrudResource read FResource write FResource;
   end;
@@ -206,8 +215,16 @@ type
     destructor Destroy; override;
 
     function DefaultContentType: StringRAL; override;
+    { Reads the columns of the table of AResource from the catalog into its Fields
+      (all of them) and, when empty, its KeyFields: what the IDE verb "Read columns"
+      does. Returns how many columns; raises when the catalog cannot be read. }
+    function ReadColumns(AResource: TRALDBCrudResource): IntegerRAL;
     /// Rebuilds the routes from Resources (done when the server starts).
     procedure RefreshRoutes;
+    { The JSON Schema (OpenAPI 3.1) of a record of AResource, from the catalog: the
+      columns it shows, or with AWrite the ones a request may write (ARequired lists
+      those that have no default). Empty when the catalog cannot be read. }
+    function ResourceSchema(AResource: TRALDBCrudResource; AWrite, ARequired: Boolean): StringRAL;
   published
     /// Minutes the catalog of a table is kept; 0 = read on every request.
     property CatalogLife: IntegerRAL read FCatalogLife write FCatalogLife default 10;
@@ -473,6 +490,51 @@ begin
   Result := TRALDBCrudResource(inherited Items[AIndex]);
 end;
 
+{ TRALDBCrudRoute }
+
+function TRALDBCrudRoute.OpenAPISchemas(AMethod: TRALMethod; out ARequestSchema,
+  AResponseSchema: StringRAL; out AStatus: IntegerRAL): boolean;
+var
+  vItem: Boolean;
+  vRecord: StringRAL;
+begin
+  inherited OpenAPISchemas(AMethod, ARequestSchema, AResponseSchema, AStatus);
+  Result := False;
+  if (FModule = nil) or (FResource = nil) then
+    Exit;
+  vItem := RALPosText(':' + cKeyParam, Route) > 0;
+  vRecord := '';
+  if AMethod in [amGET, amPOST, amPUT, amPATCH] then
+  begin
+    vRecord := FModule.ResourceSchema(FResource, False, False);
+    if vRecord = '' then
+      Exit;
+  end;
+  Result := True;
+  case AMethod of
+    amGET:
+      if vItem then
+        AResponseSchema := vRecord
+      else
+        AResponseSchema := '{"type":"array","items":' + vRecord + '}';
+    amPOST:
+      begin
+        ARequestSchema := FModule.ResourceSchema(FResource, True, True);
+        AResponseSchema := vRecord;
+        AStatus := HTTP_Created;
+      end;
+    amPUT, amPATCH:
+      begin
+        ARequestSchema := FModule.ResourceSchema(FResource, True, AMethod = amPUT);
+        AResponseSchema := vRecord;
+      end;
+    amDELETE:
+      AStatus := HTTP_NoContent;
+  else
+    Result := False;
+  end;
+end;
+
 { TRALDBCrudModule }
 
 constructor TRALDBCrudModule.Create(AOwner: TComponent);
@@ -700,6 +762,144 @@ begin
   end;
 end;
 
+function TRALDBCrudModule.ReadColumns(AResource: TRALDBCrudResource): IntegerRAL;
+var
+  vDB: TRALDBBase;
+  vInfo: TRALDBTableInfo;
+  vInt: IntegerRAL;
+begin
+  if FDBModule = nil then
+    raise ERALDBFilterError.Create(emDBCrudNoDBModule);
+  vDB := FDBModule.AcquireDatabase(nil, nil);
+  try
+    // fresh from the catalog, whatever CatalogLife says
+    FLock.Enter;
+    try
+      AResource.FInfoTime := 0;
+    finally
+      FLock.Leave;
+    end;
+    vInfo := InfoOf(AResource, vDB);
+    AResource.Fields.BeginUpdate;
+    try
+      AResource.Fields.Clear;
+      for vInt := 0 to vInfo.ColumnCount - 1 do
+        AResource.Fields.Add(FromRAL(vInfo[vInt].Name));
+    finally
+      AResource.Fields.EndUpdate;
+    end;
+    if AResource.KeyFields = '' then
+      AResource.KeyFields := vInfo.KeyFields;
+    Result := vInfo.ColumnCount;
+  finally
+    FDBModule.ReleaseDatabase(vDB);
+  end;
+end;
+
+function TRALDBCrudModule.ResourceSchema(AResource: TRALDBCrudResource;
+  AWrite, ARequired: Boolean): StringRAL;
+var
+  vDB: TRALDBBase;
+  vInfo: TRALDBTableInfo;
+  vColumn: TRALDBColumnInfo;
+  vObject, vProperties, vProperty: TRALJSONObject;
+  vRequired, vTypes: TRALJSONArray;
+  vInt: IntegerRAL;
+  vType, vFormat: StringRAL;
+begin
+  Result := '';
+  if FDBModule = nil then
+    Exit;
+  try
+    vDB := FDBModule.AcquireDatabase(nil, nil);
+  except
+    // no connection: the documentation goes without the schema
+    Exit;
+  end;
+  try
+    try
+      vInfo := InfoOf(AResource, vDB);
+    except
+      Exit;
+    end;
+    vObject := TRALJSONObject.Create;
+    try
+      vObject.Add('type', 'object');
+      vProperties := TRALJSONObject.Create;
+      vObject.Add('properties', vProperties);
+      vRequired := TRALJSONArray.Create;
+      for vInt := 0 to vInfo.ColumnCount - 1 do
+      begin
+        vColumn := vInfo[vInt];
+        if AWrite then
+        begin
+          if not AResource.CanWrite(vColumn) then
+            Continue;
+        end
+        else if not AResource.CanRead(vColumn.Name) then
+          Continue;
+        vFormat := '';
+        case vColumn.DataType of
+          ftBoolean:
+            vType := 'boolean';
+          ftSmallint, ftInteger, ftWord, ftAutoInc:
+            vType := 'integer';
+          ftLargeint:
+            begin
+              vType := 'integer';
+              vFormat := 'int64';
+            end;
+          ftFloat, ftCurrency, ftBCD, ftFMTBcd:
+            vType := 'number';
+          ftDate, ftTime, ftDateTime, ftTimeStamp:
+            begin
+              vType := 'string';
+              vFormat := 'date-time';
+            end;
+          ftBlob, ftGraphic, ftVarBytes, ftBytes:
+            begin
+              vType := 'string';
+              vFormat := 'byte';
+            end;
+        else
+          vType := 'string';
+        end;
+        vProperty := TRALJSONObject.Create;
+        vProperties.Add(vColumn.Name, vProperty);
+        // a key is never null, whatever the catalog says (SQLite allows it)
+        if vColumn.Nullable and not vColumn.IsKey then
+        begin
+          vTypes := TRALJSONArray.Create;
+          vTypes.Add(vType);
+          vTypes.Add('null');
+          vProperty.Add('type', vTypes);
+        end
+        else
+          vProperty.Add('type', vType);
+        if vFormat <> '' then
+          vProperty.Add('format', vFormat);
+        if (vType = 'string') and (vFormat = '') and (vColumn.Size > 0) and
+          (vColumn.DataType in [ftString, ftWideString, ftFixedChar, ftFixedWideChar]) then
+          vProperty.Add('maxLength', Int64RAL(vColumn.Size));
+        if vColumn.IsKey then
+          vProperty.Add('description', 'key');
+        if ARequired and (not vColumn.Nullable or vColumn.IsKey) and
+          (vColumn.DefaultValue = '') then
+          vRequired.Add(vColumn.Name);
+      end;
+      if vRequired.Count > 0 then
+        vObject.Add('required', vRequired)
+      else
+        vRequired.Free;
+      Result := vObject.ToJSON;
+    finally
+      vObject.Free;
+    end;
+  finally
+    FDBModule.ReleaseDatabase(vDB);
+  end;
+end;
+
 procedure TRALDBCrudModule.RefreshRoutes;
 var
   vInt: IntegerRAL;
@@ -716,9 +916,11 @@ begin
       vPath := '/' + vResource.TableName;
     vRoute := TRALDBCrudRoute(CreateRoute(vPath, {$IFDEF FPC}@{$ENDIF}Reply));
     vRoute.Resource := vResource;
+    vRoute.FModule := Self;
     vRoute.AllowedMethods := [amGET, amPOST];
     vRoute := TRALDBCrudRoute(CreateRoute(vPath + '/:' + cKeyParam, {$IFDEF FPC}@{$ENDIF}Reply));
     vRoute.Resource := vResource;
+    vRoute.FModule := Self;
     vRoute.AllowedMethods := [amGET, amPUT, amPATCH, amDELETE];
   end;
 end;

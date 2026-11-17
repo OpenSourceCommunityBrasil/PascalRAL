@@ -774,7 +774,11 @@ the same through every driver). Filters (`RALDBFilter`): simple syntax and RQL i
 tree. A generated key is read by the dialect (`LastInsertIdSQL`, Firebird `RETURNING`):
 the sqldb driver reports it only for MySQL. Tenants: column (added to every statement),
 schema (`search_path`/`USE`, undone on release) or database (a pool per tenant, freed
-when idle).
+when idle). Swagger asks a route `TRALBaseRoute.OpenAPISchemas` (core, default False); a
+`TRALDBCrudRoute` answers with `ResourceSchema` from the catalog (a connection taken
+with `AcquireDatabase(nil, nil)`, nothing when it fails), and the IDE verb "Read
+columns" is `ReadColumns`. SQLite's catalog reads size and scale from the declared
+type (`varchar(60)`); a key column is never null in a schema.
 
 ### Objects (`src/modules/objects`, `src/modules/controllers`)
 

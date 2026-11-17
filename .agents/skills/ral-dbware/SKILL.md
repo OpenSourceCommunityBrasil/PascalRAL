@@ -57,6 +57,18 @@ it the client gets **429**), `IdleTimeout`, `MaxLifetime`, `MaxUses`,
 `AcquireDatabase(ARequest, AResponse)` and gives it back in a `finally` with
 `ReleaseDatabase` - never create a `TRALDBBase` per request.
 
+## Data API: REST resources over tables
+
+`TRALDBCrudModule` (`RALDBCrudModule`, same package) with `DBModule` set serves each
+item of `Resources` (`Route`, `TableName` or `SelectSQL`, `KeyFields`, `Operations`,
+`Fields`/`HiddenFields`/`ReadOnlyFields`, roles, `TenantField`, `VersionField`) as
+`GET`/`POST` on the route and `GET`/`PUT`/`PATCH`/`DELETE` on `route/key`, with filters in
+the URL (simple syntax or RQL). Every SQL is generated with params and every name of the
+URL is checked against the catalog. The IDE verb **Read columns** (`ReadColumns`) fills
+`Fields` and `KeyFields` from the catalog; a `TRALSwaggerModule` on the same server shows
+each resource with its schema from the catalog (`ResourceSchema`: record, writable
+columns, required ones; 201 on POST, 204 on DELETE).
+
 ## Client
 
 1. A `TRALClient` with `BaseURL` and an engine (`ral-client`).

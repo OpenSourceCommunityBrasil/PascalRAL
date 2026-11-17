@@ -262,6 +262,30 @@ var
   vQuery: TDataSet;
   vColumn: TRALDBColumnInfo;
   vKeys: IntegerRAL;
+
+  { the size and scale a declared type carries, varchar(60) or numeric(10,2):
+    SQLite keeps the declaration as it was written }
+  procedure ReadSize(AColumn: TRALDBColumnInfo);
+  var
+    vOpen, vComma, vClose: IntegerRAL;
+    vType: StringRAL;
+  begin
+    vType := AColumn.DBType;
+    vOpen := Pos('(', vType);
+    vClose := Pos(')', vType);
+    if (vOpen = 0) or (vClose < vOpen) then
+      Exit;
+    vType := Copy(vType, vOpen + 1, vClose - vOpen - 1);
+    vComma := Pos(',', vType);
+    if vComma > 0 then
+    begin
+      AColumn.Scale := StrToIntDef(Trim(string(Copy(vType, vComma + 1, MaxInt))), 0);
+      vType := Copy(vType, 1, vComma - 1);
+    end;
+    AColumn.Size := StrToIntDef(Trim(string(vType)), 0);
+    AColumn.Precision := AColumn.Size;
+  end;
+
 begin
   vParams := NewParams(['ptable'], [AInfo.Name]);
   try
@@ -276,6 +300,7 @@ begin
     begin
       vColumn := AInfo.AddColumn(FieldText(vQuery, 'name'));
       vColumn.DBType := FieldText(vQuery, 'type');
+      ReadSize(vColumn);
       vColumn.Nullable := FieldInt(vQuery, 'notnull') = 0;
       vColumn.DefaultValue := FieldText(vQuery, 'dflt_value');
       vColumn.KeyOrder := FieldInt(vQuery, 'pk');

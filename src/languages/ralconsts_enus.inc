@@ -82,6 +82,7 @@
   emDBProcRejected = 'Stored procedure call rejected by OnValidateProc.';
   emDBQueueOpen = 'Not available while the connection queues statements (StartTransaction): it needs an answer at once.';
   emDBRolledBack = 'Rolled back: another statement of the same request failed.';
+  emDBCrudNoDBModule = 'The data API module has no DBModule.';
   emHMACEmptyText = 'Input text must be provided.';
   emInvalidFormat = 'Invalid Format.';
   emInvalidJSONFormat = 'Invalid JSON Format.';
@@ -257,6 +258,9 @@
   cmDBParamSchemaDescription = 'Schema of database';
   cmDBParamSystemDescription = 'Include system tables';
   cmDBSQL = 'SQL';
+  cmDBCrudReadColumns = 'Read columns';
+  cmDBCrudColumnsRead = '%s: %d column(s).';
+  cmDBCrudColumnsFailed = '%s: %s';
   cmDBTableName = 'Table name';
   cmDBProcDescription = 'Run a stored procedure of the database by name';
   cmDBProcName = 'Name of the stored procedure';

@@ -83,6 +83,7 @@
   emDBProcRejected = 'Llamada al procedimiento rechazada por OnValidateProc.';
   emDBQueueOpen = 'No disponible mientras la conexión pone instrucciones en cola (StartTransaction): necesita una respuesta inmediata.';
   emDBRolledBack = 'Deshecho: otra instrucción de la misma petición falló.';
+  emDBCrudNoDBModule = 'El módulo de la API de datos no tiene DBModule.';
   emInvalidFormat = 'Formato no és válido.';
   emInvalidJSONFormat = 'Formato JSON no és válido.';
   emQueryVersionError = 'Versión de estructura no és válida.';
@@ -257,6 +258,9 @@
   cmDBParamSystemDescription = 'Incluye tablas del sistema.';
   cmDBBinary = 'Formato Binario.';
   cmDBSQL = 'SQL';
+  cmDBCrudReadColumns = 'Leer columnas';
+  cmDBCrudColumnsRead = '%s: %d columna(s).';
+  cmDBCrudColumnsFailed = '%s: %s';
   cmDBTableName = 'Nombre de la tabla.';
   cmDBProcDescription = 'Ejecuta un procedimiento almacenado de la base de datos por el nombre.';
   cmDBProcName = 'Nombre del procedimiento almacenado.';
