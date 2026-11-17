@@ -1,0 +1,36 @@
+/// O cliente {{NOME}}: edite-o pelo Object Inspector.
+unit uDados;
+
+{{#LAZARUS}}
+{$mode delphi}{$H+}
+
+{{/LAZARUS}}
+interface
+
+uses
+{{#DELPHI}}
+  System.SysUtils, System.Classes,
+{{/DELPHI}}
+{{#LAZARUS}}
+  SysUtils, Classes, LResources,
+{{/LAZARUS}}
+  RALTypes, RALClient, {{CLIENTE_UNIT}};
+
+type
+  TDados = class(TDataModule)
+    Cliente: TRALClient;
+  end;
+
+var
+  Dados: TDados;
+
+implementation
+
+{{#DELPHI}}
+{$R *.dfm}
+{{/DELPHI}}
+{{#LAZARUS}}
+{$R *.lfm}
+{{/LAZARUS}}
+
+end.

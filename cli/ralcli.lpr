@@ -19,6 +19,16 @@ program ralcli;
 //   ralcli limpar   [--pasta=<pasta>] [--manter=<n,m>] [--sim]
 //   ralcli versao
 //   ralcli atualizar [--verificar]
+//   ralcli novo <servidor|cliente> <Nome> [--ide=delphi,lazarus] [--motor=<m>]
+//               [--plugins=cors,compress,log,health,metrics] [--crud]
+//               [--porta=<n>] [--pasta=<pasta>] [--forcar]
+//
+// novo (ou new): um projeto RAL 2.0 a partir dos modelos embutidos (pasta
+// modelos), com os componentes num data module (.dfm/.lfm). Sem --ide, os
+// dois; com os dois, cada um na sua subpasta (Delphi, Lazarus). Motores:
+// servidor Delphi indy (padrao), synopse, sagui; Lazarus fphttp (padrao), indy,
+// synopse, sagui; cliente Delphi nethttp (padrao), indy, synopse; Lazarus
+// fphttp (padrao), indy, synopse. --crud: recurso /itens sobre SQLite.
 //
 // opcoes de plano/instalar:
 //   --versao=<ref>        estavel (padrao), uma tag, um release ou um ramo
@@ -62,8 +72,8 @@ uses
   {$IFDEF MSWINDOWS} Windows, RALInst.IDE.Delphi, RALInst.Instalar.Delphi, {$ENDIF}
   Classes, SysUtils,
   RALInst.AutoAtualizacao, RALInst.Catalogo, RALInst.GitHub, RALInst.IDE,
-  RALInst.IDE.Lazarus, RALInst.Instalar.Lazarus, RALInst.Limpeza, RALInst.Processo,
-  RALInst.Recibos, RALInst.Rodada, RALInst.Versao;
+  RALInst.IDE.Lazarus, RALInst.Instalar.Lazarus, RALInst.Limpeza, RALInst.Novo,
+  RALInst.Processo, RALInst.Recibos, RALInst.Rodada, RALInst.Versao;
 
 // as receitas e o manifesto embutidos (ralcli.lpi, como no instalador grafico)
 {$R *.res}
@@ -104,6 +114,9 @@ begin
   WriteLn('  ralcli limpar [--pasta=<pasta>] [--manter=n,m] [--sim]');
   WriteLn('  ralcli versao');
   WriteLn('  ralcli atualizar [--verificar]');
+  WriteLn('  ralcli novo <servidor|cliente> <Nome> [--ide=delphi,lazarus] [--motor=<m>]');
+  WriteLn('              [--plugins=cors,compress,log,health,metrics] [--crud]');
+  WriteLn('              [--porta=<n>] [--pasta=<pasta>] [--forcar]');
   Halt(2);
 end;
 
@@ -137,13 +150,13 @@ begin
       Exit(True);
 end;
 
-procedure ConferirOpcoes(const APermitidas: array of string);
+procedure ConferirOpcoesDe(AInicio: integer; const APermitidas: array of string);
 var
   vInt, vPerm: integer;
   vParam, vNome: string;
   vAchou: boolean;
 begin
-  for vInt := 2 to ParamCount do
+  for vInt := AInicio to ParamCount do
   begin
     vParam := ParamStr(vInt);
     if Copy(vParam, 1, 2) <> '--' then
@@ -162,6 +175,74 @@ begin
       WriteLn('opção desconhecida para ', ParamStr(1), ': ', vParam);
       Halt(2);
     end;
+  end;
+end;
+
+// as opcoes de um verbo sem argumentos posicionais
+procedure ConferirOpcoes(const APermitidas: array of string);
+begin
+  ConferirOpcoesDe(2, APermitidas);
+end;
+
+// ralcli novo <servidor|cliente> <Nome> [opcoes]
+procedure Novo;
+var
+  vOpcoes: TNovoOpcoes;
+  vLog: TStringList;
+  vIDEs: TStringList;
+  vLinha: string;
+begin
+  if (ParamCount < 3) or (Copy(ParamStr(2), 1, 2) = '--') or (Copy(ParamStr(3), 1, 2) = '--') then
+    Uso;
+  ConferirOpcoesDe(4, ['ide', 'motor', 'plugins', 'crud', 'porta', 'pasta', 'forcar']);
+  vOpcoes := Default(TNovoOpcoes);
+  if SameText(ParamStr(2), 'servidor') or SameText(ParamStr(2), 'server') then
+    vOpcoes.Tipo := ntServidor
+  else if SameText(ParamStr(2), 'cliente') or SameText(ParamStr(2), 'client') then
+    vOpcoes.Tipo := ntCliente
+  else
+  begin
+    WriteLn('tipo desconhecido: ', ParamStr(2), ' (servidor ou cliente)');
+    Halt(2);
+  end;
+  vOpcoes.Nome := ParamStr(3);
+  vIDEs := TStringList.Create;
+  try
+    vIDEs.CommaText := LowerCase(Opcao('ide'));
+    vOpcoes.Delphi := (vIDEs.Count = 0) or (vIDEs.IndexOf('delphi') >= 0);
+    vOpcoes.Lazarus := (vIDEs.Count = 0) or (vIDEs.IndexOf('lazarus') >= 0);
+    if vIDEs.Count > Ord(vIDEs.IndexOf('delphi') >= 0) + Ord(vIDEs.IndexOf('lazarus') >= 0) then
+    begin
+      WriteLn('--ide aceita delphi e lazarus');
+      Halt(2);
+    end;
+  finally
+    vIDEs.Free;
+  end;
+  vOpcoes.Motor := LowerCase(Opcao('motor'));
+  vOpcoes.Plugins := Opcao('plugins');
+  vOpcoes.Crud := Chave('crud');
+  vOpcoes.Forcar := Chave('forcar');
+  vOpcoes.Porta := StrToIntDef(Opcao('porta'), 8000);
+  vOpcoes.Pasta := Opcao('pasta');
+  if vOpcoes.Pasta = '' then
+    vOpcoes.Pasta := GetCurrentDir;
+  vLog := TStringList.Create;
+  try
+    if NovoProjeto(vOpcoes, vLog) then
+    begin
+      WriteLn('projeto ', vOpcoes.Nome, ' criado:');
+      for vLinha in vLog do
+        WriteLn('  ', vLinha);
+    end
+    else
+    begin
+      for vLinha in vLog do
+        WriteLn(vLinha);
+      Halt(2);
+    end;
+  finally
+    vLog.Free;
   end;
 end;
 
@@ -734,6 +815,8 @@ begin
       BuscarIDEs;
       Desinstalar;
     end
+    else if (GVerbo = 'novo') or (GVerbo = 'new') then
+      Novo
     else if GVerbo = 'limpar' then
     begin
       ConferirOpcoes(['pasta', 'manter', 'sim']);

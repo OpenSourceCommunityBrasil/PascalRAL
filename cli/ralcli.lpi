@@ -13,7 +13,7 @@
       <Title Value="ralcli"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
-      <Resources Count="10">
+      <Resources Count="18">
         <Resource_0 FileName="../receitas/mormot2.json" Type="RCDATA" ResourceName="RECEITA_MORMOT2"/>
         <Resource_1 FileName="../receitas/zeos.json" Type="RCDATA" ResourceName="RECEITA_ZEOS"/>
         <Resource_2 FileName="../receitas/indy.json" Type="RCDATA" ResourceName="RECEITA_INDY"/>
@@ -24,6 +24,14 @@
         <Resource_7 FileName="../receitas/libsagui.json" Type="RCDATA" ResourceName="RECEITA_LIBSAGUI"/>
         <Resource_8 FileName="../receitas/brotli.json" Type="RCDATA" ResourceName="RECEITA_BROTLI"/>
         <Resource_9 FileName="../receitas/zstd.json" Type="RCDATA" ResourceName="RECEITA_ZSTD"/>
+        <Resource_10 FileName="../modelos/programa_servidor.txt" Type="RCDATA" ResourceName="MODELO_PROGRAMA_SERVIDOR"/>
+        <Resource_11 FileName="../modelos/dados_servidor.txt" Type="RCDATA" ResourceName="MODELO_DADOS_SERVIDOR"/>
+        <Resource_12 FileName="../modelos/dados_servidor_form.txt" Type="RCDATA" ResourceName="MODELO_DADOS_SERVIDOR_FORM"/>
+        <Resource_13 FileName="../modelos/programa_cliente.txt" Type="RCDATA" ResourceName="MODELO_PROGRAMA_CLIENTE"/>
+        <Resource_14 FileName="../modelos/dados_cliente.txt" Type="RCDATA" ResourceName="MODELO_DADOS_CLIENTE"/>
+        <Resource_15 FileName="../modelos/dados_cliente_form.txt" Type="RCDATA" ResourceName="MODELO_DADOS_CLIENTE_FORM"/>
+        <Resource_16 FileName="../modelos/projeto_lpi.txt" Type="RCDATA" ResourceName="MODELO_PROJETO_LPI"/>
+        <Resource_17 FileName="../modelos/projeto_dproj.txt" Type="RCDATA" ResourceName="MODELO_PROJETO_DPROJ"/>
       </Resources>
     </General>
     <VersionInfo>

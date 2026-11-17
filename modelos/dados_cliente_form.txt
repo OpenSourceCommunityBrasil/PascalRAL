@@ -1,0 +1,11 @@
+object Dados: TDados
+  Height = 150
+  Width = 250
+  object Cliente: TRALClient
+    BaseURL.Strings = (
+      'http://localhost:{{PORTA}}')
+    EngineType = '{{CLIENTE_MOTOR}}'
+    Left = 40
+    Top = 24
+  end
+end

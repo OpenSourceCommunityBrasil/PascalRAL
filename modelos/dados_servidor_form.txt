@@ -1,0 +1,72 @@
+object Dados: TDados
+  OnCreate = DataModuleCreate
+  Height = 260
+  Width = 420
+  object Servidor: {{MOTOR_CLASS}}
+    Port = {{PORTA}}
+    Routes = <
+      item
+        Route = '/ping'
+        OnReply = ServidorPing
+      end>
+    Left = 40
+    Top = 24
+  end
+{{#CORS}}
+  object CORS: TRALCORSPlugin
+    Server = Servidor
+    Options.AllowOrigin = '*'
+    Left = 130
+    Top = 24
+  end
+{{/CORS}}
+{{#COMPRESS}}
+  object Compressao: TRALCompressPlugin
+    Server = Servidor
+    Left = 220
+    Top = 24
+  end
+{{/COMPRESS}}
+{{#LOG}}
+  object Log: TRALLogPlugin
+    Server = Servidor
+    Console = True
+    Left = 40
+    Top = 90
+  end
+{{/LOG}}
+{{#HEALTH}}
+  object Saude: TRALHealthPlugin
+    Server = Servidor
+    Left = 130
+    Top = 90
+  end
+{{/HEALTH}}
+{{#METRICS}}
+  object Metricas: TRALMetricsPlugin
+    Server = Servidor
+    Left = 220
+    Top = 90
+  end
+{{/METRICS}}
+{{#CRUD}}
+  object Banco: TRALDBModule
+    Database = 'dados.sqlite'
+    DatabaseLink = '{{DB_LINK}}'
+    DatabaseType = dtSQLite
+    Left = 40
+    Top = 160
+  end
+  object Crud: TRALDBCrudModule
+    DBModule = Banco
+    Server = Servidor
+    Resources = <
+      item
+        Route = '/itens'
+        TableName = 'itens'
+      end>
+    Left = 130
+    Top = 160
+  end
+{{/CRUD}}
+end

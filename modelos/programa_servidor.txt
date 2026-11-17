@@ -1,0 +1,35 @@
+program {{NOME}};
+
+{{#DELPHI}}
+{$APPTYPE CONSOLE}
+{{/DELPHI}}
+{{#LAZARUS}}
+{$mode delphi}{$H+}
+{{/LAZARUS}}
+
+// Servidor RAL 2.0 gerado pelo 'ralcli novo servidor'. Os componentes (motor,
+// plugins{{#CRUD}}, banco e recurso CRUD{{/CRUD}}) estao no data module Dados: abra-o na IDE e
+// ajuste pelo Object Inspector.
+
+uses
+{{#LAZARUS}}
+  {$IFDEF UNIX}cthreads,{$ENDIF}
+  SysUtils,
+{{/LAZARUS}}
+{{#DELPHI}}
+  System.SysUtils,
+{{/DELPHI}}
+  uDados in 'uDados.pas' {Dados: TDataModule};
+
+begin
+  Dados := TDados.Create(nil);
+  try
+    Dados.Servidor.Active := True;
+    WriteLn('{{NOME}}: http://localhost:', Dados.Servidor.Port, '/ping{{#CRUD}} e /itens{{/CRUD}}');
+    WriteLn('Enter para terminar...');
+    ReadLn;
+    Dados.Servidor.Active := False;
+  finally
+    Dados.Free;
+  end;
+end.

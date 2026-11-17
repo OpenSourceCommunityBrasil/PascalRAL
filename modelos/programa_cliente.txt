@@ -1,0 +1,52 @@
+program {{NOME}};
+
+{{#DELPHI}}
+{$APPTYPE CONSOLE}
+{{/DELPHI}}
+{{#LAZARUS}}
+{$mode delphi}{$H+}
+{{/LAZARUS}}
+
+// Cliente RAL 2.0 gerado pelo 'ralcli novo cliente'. O TRALClient (endereco,
+// motor) esta no data module Dados: abra-o na IDE e ajuste pelo Object Inspector.
+
+uses
+{{#LAZARUS}}
+  {$IFDEF UNIX}cthreads,{$ENDIF}
+  SysUtils,
+{{/LAZARUS}}
+{{#DELPHI}}
+  System.SysUtils,
+{{/DELPHI}}
+  RALResponse,
+  uDados in 'uDados.pas' {Dados: TDataModule};
+
+var
+  vResposta: TRALResponse;
+  vRota: string;
+begin
+  vRota := '/ping';
+  if ParamCount > 0 then
+    vRota := ParamStr(1);
+  Dados := TDados.Create(nil);
+  try
+    try
+      Dados.Cliente.Get(vRota, vResposta);
+    except
+      on E: Exception do
+      begin
+        // sem resposta: o servidor fora do ar, o endereco errado
+        WriteLn('falhou: ', E.Message);
+        ExitCode := 1;
+        Exit;
+      end;
+    end;
+    try
+      WriteLn(vResposta.StatusCode, ' ', string(vResposta.ResponseText));
+    finally
+      vResposta.Free;
+    end;
+  finally
+    Dados.Free;
+  end;
+end.

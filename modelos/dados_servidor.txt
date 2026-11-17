@@ -1,0 +1,104 @@
+/// Os componentes do servidor {{NOME}}: edite-os pelo Object Inspector.
+unit uDados;
+
+{{#LAZARUS}}
+{$mode delphi}{$H+}
+
+{{/LAZARUS}}
+interface
+
+uses
+{{#DELPHI}}
+  System.SysUtils, System.Classes,
+{{/DELPHI}}
+{{#LAZARUS}}
+  SysUtils, Classes, LResources,
+{{/LAZARUS}}
+  RALTypes, RALConsts, RALMIMETypes, RALServer, RALRequest, RALResponse,
+  {{MOTOR_UNIT}}{{#CORS}}, RALCORS{{/CORS}}{{#COMPRESS}}, RALContent, RALCompressZLib{{/COMPRESS}}{{#OBS}},
+  RALObservability{{/OBS}}{{#CRUD}},
+  RALDBBase, RALDBModule, RALDBCrudModule, {{DB_UNITS}}{{/CRUD}};
+
+type
+  TDados = class(TDataModule)
+    Servidor: {{MOTOR_CLASS}};
+{{#CORS}}
+    CORS: TRALCORSPlugin;
+{{/CORS}}
+{{#COMPRESS}}
+    Compressao: TRALCompressPlugin;
+{{/COMPRESS}}
+{{#LOG}}
+    Log: TRALLogPlugin;
+{{/LOG}}
+{{#HEALTH}}
+    Saude: TRALHealthPlugin;
+{{/HEALTH}}
+{{#METRICS}}
+    Metricas: TRALMetricsPlugin;
+{{/METRICS}}
+{{#CRUD}}
+    Banco: TRALDBModule;
+    Crud: TRALDBCrudModule;
+{{/CRUD}}
+    procedure DataModuleCreate(Sender: TObject);
+    procedure ServidorPing(ARequest: TRALRequest; AResponse: TRALResponse);
+  end;
+
+var
+  Dados: TDados;
+
+implementation
+
+{{#DELPHI}}
+{$R *.dfm}
+{{/DELPHI}}
+{{#LAZARUS}}
+{$R *.lfm}
+{{/LAZARUS}}
+
+procedure TDados.DataModuleCreate(Sender: TObject);
+{{#CRUD}}
+var
+  vBanco: TRALDBBase;
+  vLinhas, vUltimo: Int64RAL;
+{{#LAZARUS}}
+  {$IFDEF LINUX}
+  vLib: string;
+  {$ENDIF}
+{{/LAZARUS}}
+{{/CRUD}}
+begin
+{{#CRUD}}
+{{#LAZARUS}}
+  {$IFDEF LINUX}
+  // o sqldb procura libsqlite3.so, que so vem com o pacote de desenvolvimento:
+  // a biblioteca de execucao, onde a distribuicao a poe
+  if Banco.LibLocation = '' then
+    for vLib in ['/usr/lib/x86_64-linux-gnu/libsqlite3.so.0', '/usr/lib/aarch64-linux-gnu/libsqlite3.so.0',
+      '/usr/lib64/libsqlite3.so.0', '/usr/lib/libsqlite3.so.0'] do
+      if FileExists(vLib) then
+      begin
+        Banco.LibLocation := vLib;
+        Break;
+      end;
+  {$ENDIF}
+{{/LAZARUS}}
+  // a tabela do recurso /itens, criada na primeira vez (SQLite em dados.sqlite)
+  vBanco := Banco.AcquireDatabase(nil, nil);
+  try
+    vBanco.ExecSQL('create table if not exists itens (id integer primary key, ' +
+      'nome varchar(100) not null)', nil, vLinhas, vUltimo);
+  finally
+    Banco.ReleaseDatabase(vBanco);
+  end;
+{{/CRUD}}
+end;
+
+{ a rota /ping, ligada no Routes do Servidor }
+procedure TDados.ServidorPing(ARequest: TRALRequest; AResponse: TRALResponse);
+begin
+  AResponse.Answer(HTTP_OK, '{"pong":true}', rctAPPLICATIONJSON);
+end;
+
+end.
