@@ -962,7 +962,10 @@ no AEAD/OCB packets), `TRALMailQueue` (jobs `ral.mail.send` on a
 `TRALJobQueue`: payload = envelope lines + the wire message; each recipient counts on its
 own, so a partial failure enqueues a new job for the rest carrying the attempts made;
 at-least-once: a kill between the final 250 and the store's update sends again),
-`TRALSMTPServer` (a `TRALServer` on `TRALSocketLoop` like the MQTT broker: AUTH and each
+`TRALMailRestModule` (`POST <Domain>/send`, JSON or form; authors limited to
+`DefaultFrom`/`AllowedFrom`, request headers to `X-*`/`List-*`; a copy of `Client` per
+request, or `Queue` and 202) and the action `TRALSendMail` (a copy of `Message` per send,
+a `Client` copy per thread), `TRALSMTPServer` (a `TRALServer` on `TRALSocketLoop` like the MQTT broker: AUTH and each
 new connection go through the internal route `smtp/auth`, so the auth, address-list,
 brute-force and flood plugins apply; the input is served a 16 KB block at a time, so a
 message never sits whole in the buffer; data only ends at CRLF.CRLF (SMTP smuggling);

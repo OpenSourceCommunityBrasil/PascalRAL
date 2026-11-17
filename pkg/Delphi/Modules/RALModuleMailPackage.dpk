@@ -50,6 +50,8 @@ contains
   RALMailServerBase in '..\..\..\src\modules\mail\RALMailServerBase.pas',
   RALPOP3Server in '..\..\..\src\modules\mail\RALPOP3Server.pas',
   RALIMAPServer in '..\..\..\src\modules\mail\RALIMAPServer.pas',
-  RALOpenPGP in '..\..\..\src\modules\mail\RALOpenPGP.pas';
+  RALOpenPGP in '..\..\..\src\modules\mail\RALOpenPGP.pas',
+  RALMailRestModule in '..\..\..\src\modules\mail\RALMailRestModule.pas',
+  RALMailActions in '..\..\..\src\modules\mail\RALMailActions.pas';
 
 end.

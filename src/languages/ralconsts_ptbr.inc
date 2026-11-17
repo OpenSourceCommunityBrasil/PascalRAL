@@ -594,6 +594,14 @@
   emDKIMNoFrom = 'DKIM: a mensagem não tem From.';
   emMailQueueActive = 'Pare a fila de e-mail antes de mudar %s.';
   emMailQueueNoClient = 'A fila de e-mail não tem Client.';
+  emMailRestNoClient = 'O módulo REST de e-mail não tem Client nem Queue.';
+  emMailRestBadBody = 'O corpo deve ser um objeto JSON ou um formulário.';
+  emMailRestBadField = 'Campo inválido: %s';
+  emMailRestBadHeader = 'Este campo de cabeçalho não pode ser definido: %s';
+  emMailRestNoFrom = 'A mensagem precisa de exatamente um autor (from ou DefaultFrom).';
+  emMailRestFromRefused = 'Este autor não é permitido: %s';
+  emMailRestTooManyRecipients = 'Destinatários demais: %d (no máximo %d).';
+  emMailActionNoClient = 'A ação de enviar e-mail não tem Client nem Queue.';
   emDNSBadAddress = 'DNS: não é um endereço IP: %s';
   emDNSBadName = 'DNS: nome inválido: %s';
   emDNSNoAnswer = 'DNS: sem resposta de %s em %d ms.';

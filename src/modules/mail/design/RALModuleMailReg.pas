@@ -1,5 +1,5 @@
-{ Registers the mail components in the IDE, with the verbs "Test connection"
-  (SMTP client) and "Test ports" (SMTP server). }
+{ Registers the mail components and the send action in the IDE, with the verbs
+  "Test connection" (SMTP client) and "Test ports" (SMTP server). }
 unit RALModuleMailReg;
 
 {$I ..\..\..\core\PascalRAL.inc}
@@ -8,15 +8,16 @@ interface
 
 uses
   {$IFDEF FPC}
-  LResources, ComponentEditors, Dialogs,
+  LResources, ComponentEditors, Dialogs, ActnList,
   {$ELSE}
   DesignEditors, DesignIntf,
   {$IFDEF DELPHIXE2UP}Vcl.Dialogs,{$ELSE}Dialogs,{$ENDIF}
+  {$IFDEF DELPHIXE3UP}System.Actions,{$ELSE}ActnList,{$ENDIF}
   {$ENDIF}
   Classes, SysUtils,
   RALTypes, RALConsts, RALDKIM, RALSMTPClient, RALMailQueue, RALSMTPServer, RALDNS,
   RALMailVerifier, RALIMAPClient, RALPOP3Client, RALSMIME, RALMailStore, RALMailServerBase,
-  RALPOP3Server, RALIMAPServer, RALOpenPGP;
+  RALPOP3Server, RALIMAPServer, RALOpenPGP, RALMailRestModule, RALMailActions;
 
 type
   /// Verb of TRALSMTPClient: tests a copy of its settings; lists what the server offers.
@@ -55,6 +56,8 @@ begin
     TRALIMAPClient, TRALPOP3Client, TRALDNSResolver, TRALSMIME, TRALOpenPGP]);
   RegisterComponents('RAL - Server', [TRALSMTPServer, TRALDKIMVerifier, TRALMailVerifier,
     TRALMailStore, TRALPOP3Server, TRALIMAPServer]);
+  RegisterComponents('RAL - Modules', [TRALMailRestModule]);
+  RegisterActions('RAL', [TRALSendMail], nil);
   RegisterComponentEditor(TRALSMTPClient, TRALSMTPClientEditor);
   RegisterComponentEditor(TRALSMTPServer, TRALSMTPServerEditor);
   RegisterComponentEditor(TRALPOP3Server, TRALMailServerEditor);

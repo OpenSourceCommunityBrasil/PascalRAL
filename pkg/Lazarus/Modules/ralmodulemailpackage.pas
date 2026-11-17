@@ -11,7 +11,7 @@ uses
   RALMailMIME, RALDKIM, RALSMTPClient, RALMailQueue, RALSMTPServer, RALDNS, RALMailVerifier,
   RALMailTransport, RALIMAPClient, RALPOP3Client,
   RALSMIME, RALMailStore, RALMailServerBase, RALPOP3Server, RALIMAPServer,
-  RALOpenPGP,
+  RALOpenPGP, RALMailRestModule, RALMailActions,
   LazarusPackageIntf;
 
 implementation

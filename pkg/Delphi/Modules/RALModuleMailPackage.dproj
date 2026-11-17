@@ -191,6 +191,8 @@
         <DCCReference Include="..\..\..\src\modules\mail\RALPOP3Server.pas"/>
         <DCCReference Include="..\..\..\src\modules\mail\RALIMAPServer.pas"/>
         <DCCReference Include="..\..\..\src\modules\mail\RALOpenPGP.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALMailRestModule.pas"/>
+        <DCCReference Include="..\..\..\src\modules\mail\RALMailActions.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

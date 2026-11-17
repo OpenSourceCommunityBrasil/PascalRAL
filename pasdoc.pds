@@ -160,7 +160,7 @@ Item_88=src\modules\graphql\db
 Item_89=src\client\livebindings
 
 [Files]
-Count=337
+Count=339
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -498,6 +498,8 @@ Item_333=src\modules\graphql\db\RALGraphQLDB.pas
 Item_334=src\modules\graphql\db\RALModuleGraphQLDBReg.pas
 Item_335=src\client\livebindings\RALLiveBindings.pas
 Item_336=src\client\livebindings\RALClientLiveBindingsReg.pas
+Item_337=src\modules\mail\RALMailRestModule.pas
+Item_338=src\modules\mail\RALMailActions.pas
 [AdditionalFiles]
 Count=0
 

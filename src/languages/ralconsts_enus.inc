@@ -594,6 +594,14 @@
   emDKIMNoFrom = 'DKIM: the message has no From.';
   emMailQueueActive = 'Stop the mail queue before changing %s.';
   emMailQueueNoClient = 'The mail queue has no Client.';
+  emMailRestNoClient = 'The mail REST module has no Client nor Queue.';
+  emMailRestBadBody = 'The body must be a JSON object or a form.';
+  emMailRestBadField = 'Invalid field: %s';
+  emMailRestBadHeader = 'This header field cannot be set: %s';
+  emMailRestNoFrom = 'The message needs exactly one author (from or DefaultFrom).';
+  emMailRestFromRefused = 'This author is not allowed: %s';
+  emMailRestTooManyRecipients = 'Too many recipients: %d (at most %d).';
+  emMailActionNoClient = 'The send mail action has no Client nor Queue.';
   emDNSBadAddress = 'DNS: not an IP address: %s';
   emDNSBadName = 'DNS: invalid name: %s';
   emDNSNoAnswer = 'DNS: no answer from %s within %d ms.';

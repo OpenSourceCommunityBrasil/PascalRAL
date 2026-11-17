@@ -10,7 +10,7 @@ the map for whoever changes it; the user guide is the wiki (`email*.md` pages).
 | package | holds | requires |
 |---|---|---|
 | `RALModuleMailPackage` (runtime) | every unit of this folder | `PascalRAL`, `RALNetPackage`, `RALCryptoCurvesPackage`, `RALHostingJobQueuePackage` |
-| `RALModuleMailDsgn` (design) | `design/RALModuleMailReg`: palette, "Test connection" (client), "Test ports" (server) | `RALModuleMailPackage`, `designide` |
+| `RALModuleMailDsgn` (design) | `design/RALModuleMailReg`: palette, the `TRALSendMail` action, "Test connection" (client), "Test ports" (server) | `RALModuleMailPackage`, `designide` |
 
 `RALCryptoCurvesPackage` gives Ed25519 to DKIM; `RALHostingJobQueuePackage` gives the
 queue its store, workers and retries.
@@ -35,6 +35,8 @@ queue its store, workers and retries.
 | `RALIMAPServer` | `TRALIMAPServer` | RFC 9051, 3501, 2177, 4315, 6851, 5161 |
 | `RALSMIME` | `TRALSMIME`, CMS SignedData/EnvelopedData/AuthEnvelopedData, the PFX reader, AES, RSA-OAEP and RSAES-PKCS1-v1_5 of its own | RFC 8551, 5652, 5083, 5084, 8017, 7292 |
 | `RALOpenPGP` | `TRALOpenPGP`, `TRALPGPKeyRing`, packets and armor, v4 keys (RSA, EdDSA, ECDH Curve25519), SEIPD v1 | RFC 4880, 6637, 3156 (GnuPG 2.4 compatible) |
+| `RALMailRestModule` | `TRALMailRestModule`: `POST <Domain>/send` (JSON or form) to a `TRALSMTPClient` or a `TRALMailQueue` | |
+| `RALMailActions` | `TRALSendMail`: an action (VCL, FMX, LCL) that sends a copy of its `Message` | |
 
 ## Things that are easy to break
 
@@ -72,6 +74,13 @@ queue its store, workers and retries.
   at a time (slow for big data; a block-cipher export would speed it up).
 - **One store folder, one process**: the POP3 maildrop lock and the index lock live in the
   process.
+- **The REST module is an open door if misconfigured.** Only `DefaultFrom` and the
+  `AllowedFrom` entries may be authors; header fields from the request are limited to
+  `X-*` and `List-*`, and a CR, LF or NUL in any field that becomes a header is a 400
+  (header injection). Protect the route with an authentication plugin like any other.
+- **One SMTP client per thread.** The REST module takes an idle copy of `Client` per
+  request (`Assign`, kept up to eight with their connections), and `TRALSendMail` keeps
+  one per thread; a copy whose send failed outside an SMTP reply is dropped.
 - **Events run on the server's poll threads.** A slow `OnMessage` holds every
   connection of its thread.
 
@@ -80,4 +89,5 @@ queue its store, workers and retries.
 Local tests (not in the repository) cover the client against a test server, DKIM against
 the RFC 8463 vectors, the queue killed in the middle of a batch, and the server against
 the RAL client, Python's smtplib and raw sockets (pipelining, smuggling, STARTTLS
-injection, 1000 connections, a 100 MB message with constant memory).
+injection, 1000 connections, a 100 MB message with constant memory), and the REST module
+and the action against the RAL server through the InProc engine.
