@@ -32,7 +32,7 @@ const
                    + RALVERSION_PATCH;
 
   /// Package name shown in the IDE.
-  RALPACKAGENAME           = 'Pascal REST API Lite (RAL) Components';
+  RALPACKAGENAME           = 'Pascal Rapid API Library (RAL) Components';
   /// Short package name.
   RALPACKAGESHORT          = 'PascalRAL';
   /// Short name with the version, shown in the IDE splash and about box.
