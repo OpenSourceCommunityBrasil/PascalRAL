@@ -3,7 +3,7 @@
 Every normative statement of the MQTT standards, the unit of `RALModuleMQTTPackage` that answers for it and the test that proves its area. Generated from the OASIS documents; the statement text is not reproduced here - read it in the standard by its number.
 
 - **binds**: who must obey it (client, server, or both: sender/receiver statements).
-- **proven by**: the test programs of the scratch battery (`codec`, `transport`, `auth`, `client` against Mosquitto and against the RAL broker, `paho` - the Eclipse Paho Python client against the RAL broker, `adapter`, `persist`, `reliability`, `sn`, `rest`, `ide`) and the orchestrator suite `mqtt`/`mqttfpc`.
+- **proven by**: the test programs of the scratch battery (`codec`, `transport`, `auth`, `client` against Mosquitto and against the RAL broker, `paho` - the Eclipse Paho client against the RAL broker, `adapter`, `persist`, `reliability`, `sn`, `rest`, `ide`) and the orchestrator suite `mqtt`/`mqttfpc`.
 - **cited in**: the units whose source names the statement next to the code that implements it; `-` means the area is covered by the unit and its tests without a citation in the source.
 
 Not implemented on purpose: MQTT over QUIC (future step MQ18); the MQTT-SN 2.0 PROTECTION envelope.
@@ -416,7 +416,7 @@ Not implemented on purpose: MQTT over QUIC (future step MQ18); the MQTT-SN 2.0 P
 
 ## MQTT-SN 2.0 (OASIS working draft, read 26/10/2026)
 
-The draft does not number its statements: each row is a MUST/SHALL sentence, named by its section and its order there. The PROTECTION envelope (section 3.x) is not implemented. MQTT-SN 1.2 has no numbered statements either; its behaviour is proven by the same `sn` cases in 1.2 and by `sn12-python`, an encoder written from the 1.2 text that shares no code with RAL.
+The draft does not number its statements: each row is a MUST/SHALL sentence, named by its section and its order there. The PROTECTION envelope (section 3.x) is not implemented. MQTT-SN 1.2 has no numbered statements either; its behaviour is proven by the same `sn` cases in 1.2 and by `sn12-ref`, an independent reference encoder written from the 1.2 text that shares no code with RAL.
 
 138 statements.
 
@@ -438,53 +438,53 @@ The draft does not number its statements: each row is a MUST/SHALL sentence, nam
 | SN20-2.2-4 | 2.2 Packet Identifier | RALMQTTSNTypes | sn |
 | SN20-2.2-5 | 2.2 Packet Identifier | RALMQTTSNTypes | sn |
 | SN20-2.2-6 | 2.2 Packet Identifier | RALMQTTSNTypes | sn |
-| SN20-3.1.2.2-1 | 3.1.2.2 Radius | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.2.2-2 | 3.1.2.2 Radius | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.2-1 | 3.1.4.2 Connect Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.2-2 | 3.1.4.2 Connect Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.4-1 | 3.1.4.4 Protocol Version | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.5-1 | 3.1.4.5 Keep Alive Timer | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.5-2 | 3.1.4.5 Keep Alive Timer | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.5-3 | 3.1.4.5 Keep Alive Timer | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.5-4 | 3.1.4.5 Keep Alive Timer | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.6-1 | 3.1.4.6 Session Expiry Interval | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.7-1 | 3.1.4.7 Max Packet Size | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.7-2 | 3.1.4.7 Max Packet Size | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.8-1 | 3.1.4.8 Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.8-2 | 3.1.4.8 Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.4.8-3 | 3.1.4.8 Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.2-1 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.2-2 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.2-3 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.2-4 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.2-5 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.2-6 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.2-7 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.2-8 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.2-9 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.4-1 | 3.1.5.4 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.4-2 | 3.1.5.4 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.10-1 | 3.1.5.10 Assigned Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.10-2 | 3.1.5.10 Assigned Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.5.10-3 | 3.1.5.10 Assigned Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.6.2-1 | 3.1.6.2 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.8.5-1 | 3.1.8.5 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.10-1 | 3.1.10 PUBLISH WITHOUT SESSION | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.11-1 | 3.1.11 PUBLISH (used for QoS 0) | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.12-1 | 3.1.12 PUBLISH (used for QoS 1 & 2) | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.13.3-1 | 3.1.13.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.14.3-1 | 3.1.14.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.15.3-1 | 3.1.15.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.16.3-1 | 3.1.16.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.17.2-1 | 3.1.17.2 SUBSCRIBE Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.18.5-1 | 3.1.18.5 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.20.3-1 | 3.1.20.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.21.3-1 | 3.1.21.3 Client Identifier (optional) | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.23.2-1 | 3.1.23.2 Disconnect Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.23.3-1 | 3.1.23.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.25-1 | 3.1.25 Protection Encapsulation | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.25-2 | 3.1.25 Protection Encapsulation | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
-| SN20-3.1.25.9-1 | 3.1.25.9 Protected MQTT-SN Packet | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-python (1.2) |
+| SN20-3.1.2.2-1 | 3.1.2.2 Radius | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.2.2-2 | 3.1.2.2 Radius | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.2-1 | 3.1.4.2 Connect Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.2-2 | 3.1.4.2 Connect Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.4-1 | 3.1.4.4 Protocol Version | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.5-1 | 3.1.4.5 Keep Alive Timer | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.5-2 | 3.1.4.5 Keep Alive Timer | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.5-3 | 3.1.4.5 Keep Alive Timer | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.5-4 | 3.1.4.5 Keep Alive Timer | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.6-1 | 3.1.4.6 Session Expiry Interval | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.7-1 | 3.1.4.7 Max Packet Size | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.7-2 | 3.1.4.7 Max Packet Size | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.8-1 | 3.1.4.8 Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.8-2 | 3.1.4.8 Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.4.8-3 | 3.1.4.8 Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.2-1 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.2-2 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.2-3 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.2-4 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.2-5 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.2-6 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.2-7 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.2-8 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.2-9 | 3.1.5.2 Connack Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.4-1 | 3.1.5.4 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.4-2 | 3.1.5.4 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.10-1 | 3.1.5.10 Assigned Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.10-2 | 3.1.5.10 Assigned Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.5.10-3 | 3.1.5.10 Assigned Client Identifier | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.6.2-1 | 3.1.6.2 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.8.5-1 | 3.1.8.5 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.10-1 | 3.1.10 PUBLISH WITHOUT SESSION | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.11-1 | 3.1.11 PUBLISH (used for QoS 0) | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.12-1 | 3.1.12 PUBLISH (used for QoS 1 & 2) | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.13.3-1 | 3.1.13.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.14.3-1 | 3.1.14.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.15.3-1 | 3.1.15.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.16.3-1 | 3.1.16.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.17.2-1 | 3.1.17.2 SUBSCRIBE Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.18.5-1 | 3.1.18.5 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.20.3-1 | 3.1.20.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.21.3-1 | 3.1.21.3 Client Identifier (optional) | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.23.2-1 | 3.1.23.2 Disconnect Flags | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.23.3-1 | 3.1.23.3 Reason Code | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.25-1 | 3.1.25 Protection Encapsulation | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.25-2 | 3.1.25 Protection Encapsulation | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
+| SN20-3.1.25.9-1 | 3.1.25.9 Protected MQTT-SN Packet | RALMQTTSNPacket20, RALMQTTSNTypes | sn (codec), sn12-ref (1.2) |
 | SN20-4.1.2-1 | 4.1.2 Aggregating Gateway | RALMQTTSNClient, RALMQTTSNGateway | sn |
 | SN20-4.2-1 | 4.2 Networks & Transport Layers | RALMQTTSNClient, RALMQTTSNGateway | sn |
 | SN20-4.4-1 | 4.4 Session Establishment | RALMQTTSNClient, RALMQTTSNGateway | sn |
