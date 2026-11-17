@@ -25,6 +25,10 @@ uses
   RALExceptions, RALTypes, RALConsts;
 
 const
+  { The default accept queue of Listen; the system caps it at its own maximum. A
+    short queue drops the SYNs of a burst of connects (clients coming back after a
+    restart), and each drop costs its client a second or more. }
+  RALSocketListenBacklog = 4096;
   /// Read or Write found nothing to do without waiting.
   RALSocketWouldBlock = -1;
   /// poll event: data to read (or a connection to accept).
@@ -130,7 +134,7 @@ type
     { Binds to AAddress (empty is every address) and APort, and listens.
       AFamily mifAny opens IPv6 with IPv4 mapped where the system allows it }
     procedure Listen(const AAddress: StringRAL; APort: IntegerRAL;
-      AFamily: TRALIPFamily = mifIPv4; ABacklog: IntegerRAL = 128);
+      AFamily: TRALIPFamily = mifIPv4; ABacklog: IntegerRAL = RALSocketListenBacklog);
     /// The port the socket is bound to (a listener on port 0 gets one from the system).
     function LocalPort: IntegerRAL;
     /// Opens a UDP socket bound to APort (0: any) on AAddress (empty: every address).

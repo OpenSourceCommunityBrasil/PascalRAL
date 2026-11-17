@@ -3522,7 +3522,7 @@ begin
       if vAddress = '0.0.0.0' then
         vAddress := '';
     end;
-    vSocket.Listen(vAddress, Port, vFamily, 1024);
+    vSocket.Listen(vAddress, Port, vFamily);
   except
     vSocket.Free;
     raise;
