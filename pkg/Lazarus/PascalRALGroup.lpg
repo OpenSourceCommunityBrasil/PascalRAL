@@ -75,6 +75,8 @@
       <Target FileName="Modules\ralmodulechatslackdsgn.lpk"/>
       <Target FileName="Modules\ralmodulechatteamspackage.lpk"/>
       <Target FileName="Modules\ralmodulechatteamsdsgn.lpk"/>
+      <Target FileName="Modules\ralmodulechatmetapackage.lpk"/>
+      <Target FileName="Modules\ralmodulechatmetadsgn.lpk"/>
       <Target FileName="Modules\ralmodulechatdbpackage.lpk"/>
       <Target FileName="Modules\ralmoduleeventbuspackage.lpk"/>
       <Target FileName="Modules\ralmoduleeventbusmqttpackage.lpk"/>

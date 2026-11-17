@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=90
+Count=91
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -158,9 +158,10 @@ Item_86=src\modules\signalr
 Item_87=src\modules\graphql
 Item_88=src\modules\graphql\db
 Item_89=src\client\livebindings
+Item_90=src\modules\chat\meta
 
 [Files]
-Count=339
+Count=349
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -500,6 +501,16 @@ Item_335=src\client\livebindings\RALLiveBindings.pas
 Item_336=src\client\livebindings\RALClientLiveBindingsReg.pas
 Item_337=src\modules\mail\RALMailRestModule.pas
 Item_338=src\modules\mail\RALMailActions.pas
+Item_339=src\modules\chat\design\RALModuleChatReg.pas
+Item_340=src\modules\chat\discord\design\RALModuleChatDiscordReg.pas
+Item_341=src\modules\chat\slack\design\RALModuleChatSlackReg.pas
+Item_342=src\modules\chat\teams\design\RALModuleChatTeamsReg.pas
+Item_343=src\modules\chat\telegram\design\RALModuleChatTelegramReg.pas
+Item_344=src\modules\mail\design\RALModuleMailReg.pas
+Item_345=src\modules\chat\meta\RALChatGraph.pas
+Item_346=src\modules\chat\meta\RALChatWhatsApp.pas
+Item_347=src\modules\chat\meta\RALChatMeta.pas
+Item_348=src\modules\chat\meta\design\RALModuleChatMetaReg.pas
 [AdditionalFiles]
 Count=0
 

@@ -731,6 +731,27 @@
   cmChatSlTestToken = 'Test token';
   cmChatTmTestCredentials = 'Test credentials';
   // end of Chat channels
+  // Chat Meta (WhatsApp Cloud API, Messenger, Instagram)
+  emChatMeApi = 'Meta refused %s: %s (code %d/%d, trace %s)';
+  emChatMeBadHost = 'Meta sent a file address that is not a Meta host.';
+  emChatMeTooBig = 'The file is larger than the limit of %d bytes.';
+  emChatMeToken = 'Meta refused the access token of the channel %s (code 190): generate a new one.';
+  emChatMeWindow = 'The person has not written in the last 24 hours: only a message with the HUMAN_AGENT tag can go now.';
+  emChatMeQuickReply = 'A quick reply needs an id of 1 to 1000 characters.';
+  emChatMeTooManyChoices = 'The message has %d choices; this channel shows at most %d.';
+  emChatWaWindow = 'The user has not written in the last 24 hours: only an approved template can go now (TemplateMessage).';
+  emChatWaNoPhone = 'The WhatsApp channel %s has no PhoneNumberId.';
+  emChatWaButtonId = 'A button needs an id of 1 to 256 characters, or a link.';
+  emChatWaRowId = 'A list item needs an id of 1 to 200 characters.';
+  cmChatWaListButton = 'Options';
+  cmChatWaTokenOk = 'The token is valid: number %s (%s).';
+  cmChatMeTokenOk = 'The token is valid: %s (%s).';
+  cmChatMeWebhookInfo = 'Callback URL: %s'#10'Verify token: %s'#10'Fields to subscribe: %s';
+  cmChatMeNoVerifyToken = '(empty: set VerifyToken first)';
+  cmChatMeTestToken = 'Test token';
+  cmChatMeWebhookSettings = 'Webhook settings...';
+  cmChatMeAskUrl = 'Public address of the webhook module (https://host/domain):';
+  // end of Chat Meta
   // Service container (RALHostingContainerPackage)
   emContainerUnknown = 'There is no service named %s.';
   emContainerUnknownClass = 'The class %s of the service %s is not registered (RALRegisterService).';
