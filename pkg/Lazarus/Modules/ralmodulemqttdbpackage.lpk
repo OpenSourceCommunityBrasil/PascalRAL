@@ -3,7 +3,7 @@
   <Package Version="5">
     <PathDelim Value="\"/>
     <Name Value="RALModuleMQTTDBPackage"/>
-    <Type Value="RunAndDesignTime"/>
+    <Type Value="RunTime"/>
     <AddToProjectUsesSection Value="True"/>
     <Author Value="OpenSourceCommunityBrasil"/>
     <CompilerOptions>
@@ -26,20 +26,11 @@
     </CompilerOptions>
     <Description Value="PascalRAL | MQTT messages in a dataset"/>
     <Version Major="2"/>
-    <Files Count="3">
+    <Files Count="1">
       <Item1>
         <Filename Value="..\..\..\src\modules\mqtt\db\RALMQTTDataSetLink.pas"/>
         <UnitName Value="RALMQTTDataSetLink"/>
       </Item1>
-      <Item2>
-        <Filename Value="..\..\..\src\modules\mqtt\db\RALModuleMQTTDBReg.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="RALModuleMQTTDBReg"/>
-      </Item2>
-      <Item3>
-        <Filename Value="ralmodulemqttdbpackage.lrs"/>
-        <Type Value="LRS"/>
-      </Item3>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="3">

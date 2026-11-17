@@ -78,7 +78,7 @@ echo RALModuleChatTeams
 echo RALModuleChatDB
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleChatDBPackage.dcr" "RALModuleChatDB.rc"
 echo RALModuleMQTTDB
-%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleMQTTDBPackage.dcr" "RALModuleMQTTDB.rc"
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleMQTTDBDsgn.dcr" "RALModuleMQTTDB.rc"
 echo RALModuleSOAP
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleSOAPDsgn.dcr" "RALModuleSOAP.rc"
 echo NetHttp

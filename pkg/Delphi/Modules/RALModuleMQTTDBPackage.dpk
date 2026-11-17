@@ -1,7 +1,6 @@
 package RALModuleMQTTDBPackage;
 
 {$R *.res}
-{$R 'RALModuleMQTTDBPackage.dcr'}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -36,6 +35,5 @@ requires
   RALDBPackage;
 
 contains
-  RALMQTTDataSetLink in '..\..\..\src\modules\mqtt\db\RALMQTTDataSetLink.pas',
-  RALModuleMQTTDBReg in '..\..\..\src\modules\mqtt\db\RALModuleMQTTDBReg.pas';
+  RALMQTTDataSetLink in '..\..\..\src\modules\mqtt\db\RALMQTTDataSetLink.pas';
 end.

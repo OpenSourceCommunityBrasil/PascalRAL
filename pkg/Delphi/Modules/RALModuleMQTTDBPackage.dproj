@@ -192,7 +192,6 @@
         <DCCReference Include="RALModuleMQTTPackage.dcp"/>
         <DCCReference Include="RALDBPackage.dcp"/>
         <DCCReference Include="..\..\..\src\modules\mqtt\db\RALMQTTDataSetLink.pas"/>
-        <DCCReference Include="..\..\..\src\modules\mqtt\db\RALModuleMQTTDBReg.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

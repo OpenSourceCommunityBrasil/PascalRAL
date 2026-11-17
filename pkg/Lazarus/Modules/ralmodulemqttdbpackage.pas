@@ -8,15 +8,8 @@ unit RALModuleMQTTDBPackage;
 interface
 
 uses
-  RALMQTTDataSetLink, RALModuleMQTTDBReg, LazarusPackageIntf;
+  RALMQTTDataSetLink;
 
 implementation
 
-procedure Register;
-begin
-  RegisterUnit('RALModuleMQTTDBReg', @RALModuleMQTTDBReg.Register);
-end;
-
-initialization
-  RegisterPackage('RALModuleMQTTDBPackage', @Register);
 end.

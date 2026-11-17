@@ -62,6 +62,7 @@
       <Target FileName="Modules\ralmodulemqttpackage.lpk"/>
       <Target FileName="Modules\ralmodulemqttdsgn.lpk"/>
       <Target FileName="Modules\ralmodulemqttdbpackage.lpk"/>
+      <Target FileName="Modules\ralmodulemqttdbdsgn.lpk"/>
       <Target FileName="Modules\ralmodulemailpackage.lpk"/>
       <Target FileName="Modules\ralmodulemaildsgn.lpk"/>
       <Target FileName="Modules\ralmodulechatpackage.lpk"/>

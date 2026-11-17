@@ -59,6 +59,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/mqtt/` | `RALModuleMQTTPackage` | MQTT 3.1.1/5.0 and MQTT-SN client, broker, SN gateway, REST bridge |
 | `src/modules/mqtt/design/` | `RALModuleMQTTDsgn` | MQTT IDE registration and verbs |
 | `src/modules/mqtt/db/` | `RALModuleMQTTDBPackage` | `TRALMQTTDataSetLink` (messages into a dataset) |
+| `src/modules/mqtt/db/design/` | `RALModuleMQTTDBDsgn` | registration of `TRALMQTTDataSetLink` and the list of `Subscription` (the client's topic filters) |
 | `src/modules/mail/` | `RALModuleMailPackage` (requires `RALNetPackage`, `RALCryptoCurvesPackage`, `RALHostingJobQueuePackage`) | e-mail: MIME (`RALMailMIME`), SMTP client and server, persistent send queue, DKIM signer and verifier, IMAP and POP3 clients and servers with a mail store, DNS resolver, SPF/DKIM/DMARC verifier, S/MIME, OpenPGP, the REST bridge (`TRALMailRestModule`) and the `TRALSendMail` action |
 | `src/modules/mail/design/` | `RALModuleMailDsgn` | mail IDE registration, the `TRALSendMail` action and verbs ("Test connection", "Test ports") |
 | `src/modules/chat/` | `RALModuleChatPackage` (requires only `PascalRAL`) | chat integration, base for the per-channel packages: one message model (`RALChatMessage`: kinds, buttons, lists, media on demand, text dialects, capabilities and fallback), `RALChatChannel` (the base a platform implements), `RALChatVerify` (secret, HMAC, event verifiers), `RALChatOutbox` (queue with three-level token-bucket limiter, Retry-After, retries), `RALChatStore` (memory store with journal file), `RALChatBot` (channels, commands, sessions, send/reply), `RALChatWebhook` (one route per channel, verify, dedup, worker pool), `RALChatHttp` (the HTTP client, Retry-After, capped download, JSON and URL helpers the platform channels share), `RALChatGateway` (`TRALChatGateway`: the generic channel for REST gateways such as Evolution API, WPPConnect Server and Z-API: endpoints with placeholders, auth header, JSON mapping both ways, profiles, webhook verifier by HMAC, secret header or IP list), `RALChatFlow` (`TRALChatFlow`: a conversation in steps built in the Object Inspector, an interceptor of the bot) |
@@ -277,8 +278,8 @@ on its own sockets.
   `RALMQTTSNClient`, `RALMQTTBroker` (`TRALMQTTBroker`, a `TRALServer`),
   `RALMQTTBrokerStore` (journal), `RALMQTTSNGateway`, `RALMQTTRestModule`;
   `design/RALModuleMQTTReg` (RALModuleMQTTDsgn: "Test connection", "Test ports");
-  `db/RALMQTTDataSetLink` + `db/RALModuleMQTTDBReg` (RALModuleMQTTDBPackage, requires
-  RALDBPackage)
+  `db/RALMQTTDataSetLink` (RALModuleMQTTDBPackage, requires RALDBPackage);
+  `db/design/RALModuleMQTTDBReg` (RALModuleMQTTDBDsgn: the list of `Subscription`)
 - `proxy/` (RALModuleProxyPackage, requires PascalRAL and RALNetPackage): `RALProxyCore`
   (`TRALUpstream`), `RALProxyModule` (`TRALProxyModule`), `RALBalancer` (`TRALBalancer`,
   `RALBalancerAccessLine`), `RALProxyConfig` (`TRALProxyConfig`, `TRALProxyHost`);
