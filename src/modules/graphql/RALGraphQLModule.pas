@@ -78,7 +78,9 @@ type
     them. A GET from a browser without a query gets GraphiQL }
   TRALGraphQLModule = class(TRALModuleRoutes)
   private
+    /// Error text of the last failed schema build; empty when it succeeded.
     FBuildError: StringRAL;
+    /// The schema built from the SDL, or nil until the first build.
     FBuilt: TRALGraphQLSchema;
     FContext: TObject;
     /// TRALGraphQLContributor that add to the schema.
@@ -92,12 +94,14 @@ type
     FResolvers: TRALGraphQLResolvers;
     /// Schemas replaced, kept until the module dies (a request may be using one).
     FRetired: TObjectList;
+    /// The route that answers the GraphQL endpoint.
     FRoute: TRALRoute;
     FSchema: TStrings;
 
     function GetPath: StringRAL;
     /// Answers GET and POST.
     procedure Reply(ARequest: TRALRequest; AResponse: TRALResponse);
+    /// Drops the built schema when the SDL changes, so it is built again.
     procedure SchemaChanged(Sender: TObject);
     procedure SetPath(const AValue: StringRAL);
     procedure SetResolvers(const AValue: TRALGraphQLResolvers);

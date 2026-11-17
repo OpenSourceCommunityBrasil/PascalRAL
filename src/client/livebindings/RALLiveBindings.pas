@@ -28,7 +28,9 @@ type
     /// The records (owned).
     FRows: TRALJSONArray;
 
+    /// Creates the fields from FieldDefs, or from the first record when it is empty.
     procedure CreateFields;
+    /// Recreates the fields when FieldDefs changes.
     procedure FieldDefsChanged(Sender: TObject);
     procedure SetClient(const AValue: TRALClient);
     procedure SetFieldDefs(const AValue: TStrings);
@@ -88,24 +90,29 @@ type
   /// Reads the member of the field in the current record.
   TRALJSONReader<T> = class(TValueReader<T>)
   protected
+    /// Returns the member of the field in the current record, or nil.
     function Node: TRALJSON;
   end;
 
+  /// Reads a string field.
   TRALJSONStringReader = class(TRALJSONReader<string>)
   public
     function GetValue: string; override;
   end;
 
+  /// Reads an integer field.
   TRALJSONIntegerReader = class(TRALJSONReader<Integer>)
   public
     function GetValue: Integer; override;
   end;
 
+  /// Reads a floating point field.
   TRALJSONFloatReader = class(TRALJSONReader<Double>)
   public
     function GetValue: Double; override;
   end;
 
+  /// Reads a boolean field.
   TRALJSONBooleanReader = class(TRALJSONReader<Boolean>)
   public
     function GetValue: Boolean; override;
@@ -114,24 +121,29 @@ type
   /// Writes the member of the field in the current record.
   TRALJSONWriter<T> = class(TValueWriter<T>)
   protected
+    /// Replaces the member of the field in the current record.
     procedure Store(AValue: TRALJSON);
   end;
 
+  /// Writes a string field.
   TRALJSONStringWriter = class(TRALJSONWriter<string>)
   public
     procedure SetValue(const AValue: string); override;
   end;
 
+  /// Writes an integer field.
   TRALJSONIntegerWriter = class(TRALJSONWriter<Integer>)
   public
     procedure SetValue(const AValue: Integer); override;
   end;
 
+  /// Writes a floating point field.
   TRALJSONFloatWriter = class(TRALJSONWriter<Double>)
   public
     procedure SetValue(const AValue: Double); override;
   end;
 
+  /// Writes a boolean field.
   TRALJSONBooleanWriter = class(TRALJSONWriter<Boolean>)
   public
     procedure SetValue(const AValue: Boolean); override;
@@ -139,6 +151,7 @@ type
 
 { TRALJSONReader<T> }
 
+/// Returns the member of the field in the current record, or nil.
 function TRALJSONReader<T>.Node: TRALJSON;
 var
   vRow: TRALJSONObject;
@@ -198,6 +211,7 @@ end;
 
 { TRALJSONWriter<T> }
 
+/// Replaces the member of the field in the current record.
 procedure TRALJSONWriter<T>.Store(AValue: TRALJSON);
 var
   vRow: TRALJSONObject;
@@ -210,7 +224,7 @@ begin
     Exit;
   end;
   vName := StringRAL(FField.MemberName);
-  // TRALJSONObject refuses a second member of a name: the old one goes first
+  // Add needs the name free: extract any member of that name first
   vRow.Extract(vName).Free;
   vRow.Add(vName, AValue);
 end;

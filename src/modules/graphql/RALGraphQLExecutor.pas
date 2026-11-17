@@ -1,8 +1,8 @@
 (* The GraphQL executor: the schema built from its SDL text, the validation of a
   document against it (a subset of the rules of the specification: fields,
   arguments, fragments, variables, directives, leaf selections), the coercion of
-  variables and arguments, the execution (fragments, @skip, @include, aliases,
-  non-null propagation, errors with path and locations), the introspection
+  variables and arguments, the execution (fragments, the skip and include directives,
+  aliases, non-null propagation, errors with path and locations), the introspection
   (__schema, __type, __typename: GraphiQL works) and the depth and cost limits.
   Values are TRALJSON: a resolver answers a JSON value, and the fields under it
   are read from that value unless a resolver of their own is set. *)
@@ -27,16 +27,21 @@ type
   private
     FArgs: TRALJSONObject;
     FContext: TObject;
+    /// Message of the failure set by the resolver.
     FError: StringRAL;
+    /// The execution this call belongs to.
     FExecution: TRALGraphQLExecution;
+    /// True once the resolver reported a failure.
     FFailed: boolean;
     FFieldName: StringRAL;
     FParent: TRALJSON;
     FParentType: StringRAL;
     FRequest: TObject;
+    /// The value set by the resolver.
     FResult: TRALJSON;
     FSelection: TRALGQLSelection;
 
+    /// Stores the resolved value, replacing the previous one.
     procedure SetResult(AValue: TRALJSON);
   public
     destructor Destroy; override;
@@ -101,6 +106,7 @@ type
     /// Name -> TRALGQLTypeDef.
     FTypes: TStringList;
 
+    /// Checks the built types for the errors of the specification.
     procedure Check;
   public
     { Parses and checks ASDL; raises ERALGraphQLSyntax or an exception that says
@@ -131,50 +137,71 @@ type
     property SubscriptionType: StringRAL read FSubscriptionType;
   end;
 
-  /// One execution of a document: build it, set the limits, call Run, read the
-  /// answer (the JSON text of the data and the errors).
+  { One execution of a document: build it, set the limits, call Run, read the
+    answer (the JSON text of the data and the errors). }
   TRALGraphQLExecution = class
   private
     FAllowMutation: boolean;
     FComplexity: IntegerRAL;
     FContext: TObject;
     FDepth: IntegerRAL;
+    /// The parsed document.
     FDocument: TRALGQLDocument;
+    /// The errors collected so far.
     FErrors: TRALJSONArray;
     FMaxComplexity: IntegerRAL;
     FMaxDepth: IntegerRAL;
     FOnResolveType: TRALGraphQLOnResolveType;
+    /// The operation chosen to run.
     FOperation: TRALGQLExecutable;
     FOperationName: StringRAL;
+    /// The source text of the document.
     FQuery: StringRAL;
     FRequest: TObject;
     FRootValue: TRALJSON;
+    /// The schema the document runs against.
     FSchema: TRALGraphQLSchema;
     /// The coerced variables.
     FVariables: TRALJSONObject;
     FVariablesIn: TRALJSONObject;
 
+    /// Adds an error with its path and the source location of the node.
     procedure AddError(const AMessage: StringRAL; ANode: TRALGQLNode; APath: TStrings);
+    /// Tells whether the skip and include directives keep the node.
     function ApplyDirectives(ADirectives: TObjectList): boolean;
+    /// Coerces the argument literals of a selection against the field definition.
     function CoerceArgs(AField: TRALGQLFieldDef; ASelection: TRALGQLSelection;
       out AArgs: TRALJSONObject): StringRAL;
+    /// Coerces a variable value to an input type; returns an error text or empty.
     function CoerceInput(AValue: TRALJSON; AType: TRALGQLTypeRef; out AResult: TRALJSON): StringRAL;
+    /// Coerces an argument literal to an input type; returns an error text or empty.
     function CoerceLiteral(AValue: TRALGQLValue; AType: TRALGQLTypeRef; out AResult: TRALJSON): StringRAL;
+    /// Coerces the variables of the request; false when one is invalid.
     function CoerceVariables: boolean;
+    /// Groups the fields of the selections by response name, following fragments.
     procedure CollectFields(const AType: StringRAL; ASelections: TObjectList; AGroups: TStringList;
       AVisited: TStrings);
+    /// Completes a resolved value against its type; false on a non-null violation.
     function CompleteValue(AType: TRALGQLTypeRef; AValue: TRALJSON; AFields: TList;
       APath: TStrings; const AField: StringRAL; ANode: TRALGQLNode; out AResult: TRALJSON): boolean;
+    /// Tells whether a fragment condition applies to the given type.
     function DoesApply(const ACondition, AType: StringRAL): boolean;
+    /// Executes one field group and returns its value in AResult.
     function ExecuteField(const AType: StringRAL; AParent: TRALJSON; AFields: TList;
       APath: TStrings; out AResult: TRALJSON): boolean;
+    /// Executes the grouped selections against a value, producing a JSON object.
     function ExecuteSelections(const AType: StringRAL; AValue: TRALJSON; AFields: TList;
       APath: TStrings; out AResult: TRALJSON): boolean;
+    /// Answers the schema, type and type name fields of the introspection.
     procedure Introspect(AInfo: TRALGraphQLResolve; AField: TRALGQLFieldDef);
+    /// Returns the cost of the selections, checking the depth limit.
     function Measure(const AType: StringRAL; ASelections: TObjectList; ADepth: IntegerRAL;
       AVisited: TStrings): IntegerRAL;
+    /// Picks the operation to run from the document and the operation name.
     function SelectOperation: boolean;
+    /// Validates the document against the schema before running it.
     procedure Validate;
+    /// Validates the selections of a type, field by field.
     procedure ValidateSelections(const AType: StringRAL; ASelections: TObjectList; AVisited: TStrings;
       AUsed: TStrings);
   public
@@ -240,6 +267,7 @@ type
   /// Holds a resolver in a string list.
   TRALGraphQLResolverHolder = class
   public
+    /// The resolver callback.
     Resolver: TRALGraphQLOnResolve;
   end;
 
@@ -323,11 +351,13 @@ begin
   end;
 end;
 
+/// Returns a new JSON null.
 function NewNull: TRALJSON;
 begin
   Result := TRALJSONNull.Create;
 end;
 
+/// Tells whether the value is nil or JSON null.
 function IsNullValue(AValue: TRALJSON): boolean;
 begin
   Result := (AValue = nil) or (AValue.Kind = rjkNull);
@@ -1932,6 +1962,7 @@ end;
 /// The __Type of a type reference: wrappers with ofType, a named type by its name.
 function TypeRefJSON(ASchema: TRALGraphQLSchema; ARef: TRALGQLTypeRef): TRALJSON; forward;
 
+/// Describes a type definition as an introspection __Type object.
 function NamedTypeJSON(ASchema: TRALGraphQLSchema; ADef: TRALGQLTypeDef): TRALJSONObject;
 begin
   Result := TRALJSONObject.Create;
@@ -1948,6 +1979,7 @@ begin
   Result.Add('ofType');
 end;
 
+/// Describes a type reference as an introspection __Type object.
 function TypeRefJSON(ASchema: TRALGraphQLSchema; ARef: TRALGQLTypeRef): TRALJSON;
 var
   vObj: TRALJSONObject;
@@ -1969,6 +2001,7 @@ begin
   Result := vObj;
 end;
 
+/// Describes an argument or input field as an introspection __InputValue object.
 function InputValueJSON(ASchema: TRALGraphQLSchema; ADef: TRALGQLFieldDef): TRALJSONObject;
 begin
   Result := TRALJSONObject.Create;

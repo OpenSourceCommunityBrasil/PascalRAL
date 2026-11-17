@@ -78,6 +78,8 @@ type
     { The reason phrase of AStatusCode for a status line ('OK', 'Not Found'),
       'Unknown' for a code it does not know }
     class function ReasonPhrase(AStatusCode: IntegerRAL): string;
+    { Builds the status line and headers of an answer; Content-Length is written
+      when ALength is not negative. }
     function ResponseHead(AResponse: TRALResponse; AStatusCode: IntegerRAL;
       ALength: Int64RAL): RawByteString;
     class function SupportsLiveStream: boolean; override;

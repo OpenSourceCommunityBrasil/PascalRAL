@@ -1,5 +1,5 @@
 (* The SignalR protocol on RAL's WebSocket: TRALSignalRModule lets the official
-  clients (@microsoft/signalr for JavaScript, Microsoft.AspNetCore.SignalR.Client
+  clients (the signalr package for JavaScript, Microsoft.AspNetCore.SignalR.Client
   for .NET) connect to a RAL server, call its methods and receive its calls.
 
   What it speaks (the protocol of ASP.NET Core SignalR):
@@ -282,6 +282,7 @@ const
   /// A ping record.
   cPing: StringRAL = '{"type":6}';
 
+/// Returns the current time in milliseconds.
 function NowMs: Int64RAL;
 begin
   Result := RALTickMicro div 1000;
@@ -313,6 +314,7 @@ begin
     Result := vParam.AsString;
 end;
 
+/// Returns the SignalR state kept in the connection data, or nil.
 function StateOf(AConnection: TRALWebSocketConnection): TRALSignalRState;
 begin
   if AConnection.Data is TRALSignalRState then

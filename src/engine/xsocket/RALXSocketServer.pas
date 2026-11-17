@@ -217,7 +217,8 @@ type
       stream keeps one of them waiting, so at most IoThreads - 1 streams are live
       at once; the others are answered whole. }
     property IoThreads: IntegerRAL read FIoThreads write FIoThreads default 0;
-    /// Worker threads that run the requests; 0 = four per processor. Unused with ExecuteInIOThread.
+    { Worker threads that run the requests; 0 = four per processor. Unused with
+      ExecuteInIOThread. }
     property PoolCount: IntegerRAL read FPoolCount write FPoolCount default 0;
     /// TLS: the certificate and key files, or PEM text.
     property SSL: TRALXSocketSSL read GetSSL write SetSSL;

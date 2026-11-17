@@ -19,11 +19,11 @@ const
   RALGraphQLDBDefaultMaxRows = 100;
 
 type
-  /// Puts the tables of Tables ("orders", or "orders=Order" to name the type) of
-  /// DBModule in the schema of Module: a type Order with the columns, and in Query
-  /// orders(limit, offset, orderBy, a filter per column): [Order!]! and
-  /// order(key: ID!): Order. The catalog is read when the schema is built (the
-  /// server starting, or the first request).
+  { Puts the tables of Tables ("orders", or "orders=Order" to name the type) of
+    DBModule in the schema of Module: a type Order with the columns, and in Query
+    orders(limit, offset, orderBy, a filter per column): [Order!]! and
+    order(key: ID!): Order. The catalog is read when the schema is built (the
+    server starting, or the first request). }
   TRALGraphQLDBBinding = class(TRALGraphQLContributor)
   private
     FDBModule: TRALDBModule;
@@ -35,7 +35,9 @@ type
     /// The tables read from the catalog (TRALGraphQLDBTable).
     FTables: TObjectList;
 
+    /// Resolves a list field: reads the rows of the table as a JSON array.
     procedure ResolveList(AInfo: TRALGraphQLResolve);
+    /// Resolves a single-row field by its key.
     procedure ResolveOne(AInfo: TRALGraphQLResolve);
     procedure SetDBModule(const AValue: TRALDBModule);
     procedure SetModule(const AValue: TRALGraphQLModule);
@@ -119,6 +121,7 @@ begin
     end;
 end;
 
+/// Returns the text with its first letter in lower case.
 function LowerFirst(const AText: StringRAL): StringRAL;
 begin
   Result := AText;
@@ -126,6 +129,7 @@ begin
     Result[1] := AnsiChar(Ord(Result[1]) + 32);
 end;
 
+/// Returns the text with its first letter in upper case.
 function UpperFirst(const AText: StringRAL): StringRAL;
 begin
   Result := AText;

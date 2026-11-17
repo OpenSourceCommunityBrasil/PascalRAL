@@ -53,6 +53,7 @@ type
       enum name, the variable name (without $) }
     Text: StringRAL;
 
+    /// Creates a value of the given kind.
     constructor Create(AKind: TRALGQLValueKind);
     destructor Destroy; override;
   end;
@@ -84,7 +85,7 @@ type
   public
     /// The arguments (TRALGQLArgument).
     Args: TObjectList;
-    /// Directive name, without @.
+    /// Directive name, without the at sign.
     Name: StringRAL;
 
     constructor Create;
@@ -136,6 +137,7 @@ type
     /// Type condition of an inline fragment; empty is none.
     TypeCondition: StringRAL;
 
+    /// Creates a selection of the given kind.
     constructor Create(AKind: TRALGQLSelectionKind);
     destructor Destroy; override;
 
@@ -230,9 +232,10 @@ type
     Name: StringRAL;
     /// Member types of a union.
     PossibleTypes: TStringList;
-    /// URL of @specifiedBy of a scalar.
+    /// URL given by the specifiedBy directive of a scalar.
     SpecifiedByURL: StringRAL;
 
+    /// Creates a type definition of the given kind.
     constructor Create(AKind: TRALGQLTypeKind);
     destructor Destroy; override;
 
@@ -273,45 +276,78 @@ type
   /// The lexer and the parser.
   TRALGQLParser = class
   private
+    /// True while parsing an executable document.
     FExecutable: boolean;
     /// The current token.
     FKind: TRALGQLTokenKind;
+    /// Current line number of the lexer.
     FLine: IntegerRAL;
     /// Start of the current line (byte index), for columns.
     FLineStart: IntegerRAL;
+    /// Current byte position in the source.
     FPos: IntegerRAL;
+    /// True while parsing a type system document.
     FSchema: boolean;
+    /// The GraphQL source text.
     FSource: StringRAL;
+    /// Text of the current token.
     FText: StringRAL;
+    /// Line and column where the current token starts.
     FTokLine, FTokCol: IntegerRAL;
 
+    /// Raises a syntax error at the current token.
     procedure Error(const AMessage: string);
+    /// Consumes the punctuator or reports an error; false on failure.
     function Expect(const APunct: StringRAL): boolean;
+    /// Consumes the keyword or reports an error; false on failure.
     function ExpectKeyword(const AWord: StringRAL): boolean;
+    /// Consumes a name token and returns it, or reports an error.
     function ExpectName: StringRAL;
+    /// Tells whether the current token is the given keyword.
     function IsKeyword(const AWord: StringRAL): boolean;
+    /// Tells whether the current token is the given punctuator.
     function IsPunct(const APunct: StringRAL): boolean;
+    /// Advances to the next token.
     procedure Next;
+    /// Parses an argument list in parentheses.
     function ParseArguments(AConst: boolean): TObjectList;
+    /// Parses an optional description string.
     function ParseDescription: StringRAL;
+    /// Parses a list of directive applications.
     function ParseDirectives(AConst: boolean): TObjectList;
+    /// Parses an operation or fragment definition.
     function ParseExecutable: TRALGQLExecutable;
+    /// Parses a field or input value definition.
     function ParseFieldDef(AInput: boolean): TRALGQLFieldDef;
+    /// Parses a list of field definitions between the given punctuators.
     function ParseFieldDefs(AInput: boolean; const AOpen, AClose: StringRAL): TObjectList;
+    /// Parses a field selection, spread or inline fragment.
     function ParseSelection: TRALGQLSelection;
+    /// Parses a braced selection set into a list of selections.
     function ParseSelectionSet: TObjectList;
+    /// Parses a type reference, with list and non-null wrappers.
     function ParseType: TRALGQLTypeRef;
+    /// Parses one type system definition or extension into the document.
     procedure ParseTypeSystem(ADocument: TRALGQLDocument; const ADescription: StringRAL);
+    /// Parses a value literal; variables are refused when AConst is true.
     function ParseValue(AConst: boolean): TRALGQLValue;
+    /// Parses the variable definitions of an operation.
     function ParseVariableDefs: TObjectList;
+    /// Reads a block string token into the current token text.
     procedure ReadBlockString;
+    /// Reads an Int or Float token into the current token.
     procedure ReadNumber;
+    /// Reads a quoted string token, resolving its escapes.
     procedure ReadString;
+    /// Consumes the punctuator when it is the current token.
     function Skip(const APunct: StringRAL): boolean;
+    /// Skips whitespace, commas and comments.
     procedure SkipIgnored;
   public
+    /// Creates a parser over the GraphQL source text.
     constructor Create(const ASource: StringRAL);
 
+    /// Parses the whole source into a document.
     function Parse: TRALGQLDocument;
   end;
 

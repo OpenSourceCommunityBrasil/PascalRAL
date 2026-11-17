@@ -194,7 +194,7 @@ begin
 end;
 
 const
-  { UTF-8's code page: CP_UTF8 is declared only in Windows on Delphi XE2 to 10 Seattle }
+  /// UTF-8's code page: CP_UTF8 is declared only in Windows on Delphi XE2 to 10 Seattle.
   cUTF8CodePage = 65001;
 
 function StringToBytes(const AString: StringRAL): TBytes;
