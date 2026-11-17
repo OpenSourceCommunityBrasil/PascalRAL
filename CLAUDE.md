@@ -9,9 +9,9 @@ that are still true; procedures live in the skills.
 
 ## What this is
 
-PascalRAL (Pascal REST API Lite) is an Object Pascal component suite for building and
-consuming REST APIs: a library installed into the IDE, with no `main`, no runnable binary
-and no test runner here. One `src/` tree targets Delphi XE+ and Lazarus/FPC; packages are
+PascalRAL (Pascal Rapid API Library) is an Object Pascal component suite for building
+and consuming APIs (HTTP/REST and the protocols below): a library installed into the IDE,
+with no `main`, no runnable binary and no test runner here. One `src/` tree targets Delphi XE+ and Lazarus/FPC; packages are
 in `pkg/Delphi` (`.dpk`/`.dproj`) and `pkg/Lazarus` (`.lpk`).
 
 ### Folders and packages (2.0)

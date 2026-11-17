@@ -5,9 +5,10 @@ everything else.
 
 ## What PascalRAL is
 
-PascalRAL (Pascal REST API Lite) is an Object Pascal **component suite** for building and
-consuming REST APIs, installed into the Delphi (XE and later) and Lazarus/FPC IDEs from
-one shared `src/` tree. It is a library: no `main`, no runnable binary and no test
+PascalRAL (Pascal Rapid API Library) is an Object Pascal **component suite** for building
+and consuming APIs (HTTP/REST, WebSocket, gRPC, GraphQL, SOAP, JSON-RPC/MCP, MQTT,
+e-mail), installed into the Delphi (XE and later) and Lazarus/FPC IDEs from one shared
+`src/` tree. It is a library: no `main`, no runnable binary and no test
 runner in this repository. `PascalRAL` (runtime) + `PascalRALDsgn` (design) are the
 mandatory pair, and at least one engine package (`<Engine>RAL`) is needed.
 
@@ -62,7 +63,7 @@ skills load them by their description; others open the file when the task matche
 
 | skill | use it to |
 |---|---|
-| `ral-server` | build a REST server: engine, routes, handlers, the plugins a 2.0 server needs, modules |
+| `ral-server` | build an API server: engine, routes, handlers, the plugins a 2.0 server needs, modules |
 | `ral-client` | call APIs with `TRALClient`: engines, sending, the two call styles, errors, threads |
 | `ral-body` | read and write params, JSON, uploads, streams, compression, the AES body cipher |
 | `ral-dbware` | expose a database over HTTP and use remote datasets |

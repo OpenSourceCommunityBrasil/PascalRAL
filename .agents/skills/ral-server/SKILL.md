@@ -1,14 +1,14 @@
 ---
 name: ral-server
 description: >
-  Builds a REST server with PascalRAL 2.0: choosing the engine, creating routes and
+  Builds an API server (HTTP/REST) with PascalRAL 2.0: choosing the engine, creating routes and
   handlers, path and query params, answering, linking the plugins a 2.0 server needs
   (compression, CORS, limits, security), serving files and Swagger. Use for "create an
   API", "add an endpoint/route", "REST server in Delphi/Lazarus", or a TRALServer
   descendant in an application.
 ---
 
-# A REST server with RAL
+# An API server with RAL
 
 ## Pick the engine
 

@@ -1,7 +1,7 @@
 ---
 name: ral-client
 description: >
-  Calls REST APIs with PascalRAL's TRALClient: engine choice, BaseURL and failover,
+  Calls HTTP APIs (REST and others) with PascalRAL's TRALClient: engine choice, BaseURL and failover,
   sending query/headers/body/files, the two calling styles and who frees the response,
   threads, timeouts, retries and error kinds. Use for "consume an API", "HTTP request
   from Delphi/Lazarus", "TRALClient", or a client that hangs the UI, leaks or loses a

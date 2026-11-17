@@ -1,7 +1,7 @@
 ![Banner](Assets/Banner.png)
 <br><a href=".\READMEPT.md"><img src="https://img.shields.io/badge/Traduzir-PT--BR-blue" /></a><a href=".\READMEES.md"><img src="https://img.shields.io/badge/Traducir-ES--ES-blue" /></a><a href=".\README.md"><img src="https://img.shields.io/badge/Translate-EN--US-blue" /></a>
 
-Pascal REST API Lite es un conjunto de componentes para crear y consumir APIs de una manera simple, liviana y rápida.
+**Pascal Rapid API Library** (RAL) es un conjunto de componentes para Delphi y Lazarus para crear y consumir APIs de una manera simple, liviana y rápida: HTTP y REST, WebSocket y SignalR, gRPC, GraphQL, SOAP, JSON-RPC y MCP, MQTT, correo (SMTP, IMAP, POP3), chatbots y proxy inverso. El framework Pascal más rápido, más liviano y más completo.
 
 ## Flujo mínimo para agentes de IA (compacto)
 Existe un guía corto orientado a agentes, optimizado para ventanas de contexto pequeñas:
