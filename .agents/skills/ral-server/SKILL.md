@@ -26,6 +26,8 @@ The engine is the `TRALServer` descendant; the routes and handlers are the same 
 | `TRALAdvancedHTTPServer` (`RALAdvancedHTTPServer`) | no | FPC 3.3+ | experimental: AdvancedHTTPServer, broken keep-alive and TLS on Windows |
 | `TRALCGIServer` (`RALCGIServer`) | yes | yes | behind IIS/Apache/nginx |
 | `TRALFastCGIServer` (`RALFastCGIServer`) | yes | yes | behind nginx/Apache over FastCGI (TCP); needs `RALNetPackage` |
+| `TRALSCGIServer` (`RALSCGIServer`) | yes | yes | behind nginx/Apache over SCGI (package `SCGIRAL`); needs `RALNetPackage` |
+| `TRALUwsgiServer` (`RALUwsgiServer`) | yes | yes | behind nginx over uwsgi (package `UwsgiRAL`, requires `SCGIRAL`) |
 | `TRALWebBrokerServer` (`RALWebBrokerServer`) | yes | yes | a library: ISAPI (IIS) or Apache 2.4 module on Delphi, Apache 2.4 on Lazarus |
 | `TRALInProcServer` (`RALInProc`) | yes | yes | no socket: tests with a `TRALClient` on `inproc://name` |
 | `TRALUniGUIServer` | yes | no | inside a UniGUI application |
@@ -180,6 +182,13 @@ matching client. `tools/ralopenapi` writes classes and a client from an OpenAPI 
   `AConnection.Send`, reach the others with `Route.Hub` (`Broadcast`, `Join`,
   `SendToGroup`, `SendToUser`). Hubs with calls and events: `TRALHubModule` (`Methods`,
   `Emit`), browsers load `<Domain>/ralhub.js`; several servers: `TRALHubMQTTBackplane`.
+- SignalR for the official ASP.NET Core clients (`RALModuleSignalRPackage`, on the
+  WebSocket package): `TRALSignalRModule` (`Path`, `Methods` answer invocations,
+  `Send` by scope, `Join`/`Leave`); JSON over WebSockets only.
+- GraphQL (`RALModuleGraphQLPackage`): `TRALGraphQLModule` with the SDL in `Schema` and
+  `Resolvers.AddResolver('Type', 'field', Proc)`; a field without a resolver reads its
+  name in the parent's JSON; GraphiQL on a browser GET. Tables as types:
+  `TRALGraphQLDBBinding` (`RALModuleGraphQLDBPackage`, on DBWare).
 
 ## Running as a service
 
@@ -223,6 +232,9 @@ Guides (Portuguese): wiki
 [resposta-em-fluxo](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/resposta-em-fluxo),
 [servico](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/servico),
 [fastcgi](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/fastcgi),
+[scgi-uwsgi](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/scgi-uwsgi),
+[signalr](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/signalr),
+[graphql](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/graphql),
 [iis-apache](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/iis-apache),
 [configuracao](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/configuracao),
 [testes-em-memoria](https://github.com/OpenSourceCommunityBrasil/PascalRAL/wiki/testes-em-memoria).

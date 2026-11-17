@@ -131,6 +131,10 @@ FClient.Get('events', {$IFDEF FPC}@{$ENDIF}OnEvent, vResponse); // frees vRespon
 many users). `Execute(route, method, response, OnData)` sends any method;
 `Response.Params.SetCookieLines` has each `Set-Cookie` whole.
 
+Delphi XE3+ forms: `TRALJSONBindSourceAdapter` (`RALClientLiveBindingsPackage`) loads a
+JSON array from a `TRALClient` route (`Client`, `Route`, `RootPath`, `FieldDefs`,
+`Execute`) for a `TAdapterBindSource`; `ToJSON` gives the edited records back.
+
 ## Common errors
 
 | symptom | cause |
