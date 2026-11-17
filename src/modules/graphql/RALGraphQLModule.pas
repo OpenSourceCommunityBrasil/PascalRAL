@@ -31,10 +31,10 @@ type
     TRALGraphQLModule.AddContributor and leaves with RemoveContributor }
   TRALGraphQLContributor = class(TRALComponent)
   public
-    /// Adds SDL to ASDL (the module's own is already there).
-    procedure ContributeSDL(ASDL: TStrings); virtual; abstract;
     /// Sets the resolvers of what it added.
     procedure ContributeResolvers(ASchema: TRALGraphQLSchema); virtual; abstract;
+    /// Adds SDL to ASDL (the module's own is already there).
+    procedure ContributeSDL(ASDL: TStrings); virtual; abstract;
   end;
 
   /// The resolver of one field (or of every field of a type).
@@ -78,8 +78,8 @@ type
     them. A GET from a browser without a query gets GraphiQL }
   TRALGraphQLModule = class(TRALModuleRoutes)
   private
-    FBuilt: TRALGraphQLSchema;
     FBuildError: StringRAL;
+    FBuilt: TRALGraphQLSchema;
     FContext: TObject;
     /// TRALGraphQLContributor that add to the schema.
     FContributors: TList;
@@ -98,10 +98,10 @@ type
     function GetPath: StringRAL;
     /// Answers GET and POST.
     procedure Reply(ARequest: TRALRequest; AResponse: TRALResponse);
+    procedure SchemaChanged(Sender: TObject);
     procedure SetPath(const AValue: StringRAL);
     procedure SetResolvers(const AValue: TRALGraphQLResolvers);
     procedure SetSchema(const AValue: TStrings);
-    procedure SchemaChanged(Sender: TObject);
   protected
     procedure ServerActivating; override;
   public
@@ -110,8 +110,6 @@ type
 
     /// Adds AContributor to the schema (built again on the next request).
     procedure AddContributor(AContributor: TRALGraphQLContributor);
-    /// Takes AContributor out.
-    procedure RemoveContributor(AContributor: TRALGraphQLContributor);
     { Runs AQuery (with AVariables, a JSON object as text or empty, and
       AOperationName) and gives the answer as JSON text; ARequest goes to the
       resolvers (nil outside HTTP) }
@@ -122,6 +120,8 @@ type
     function GetSchema: TRALGraphQLSchema;
     /// Builds the schema again from Schema and Resolvers (after changing them in code).
     procedure Reload;
+    /// Takes AContributor out.
+    procedure RemoveContributor(AContributor: TRALGraphQLContributor);
 
     /// The application's object, given to every resolver (TRALGraphQLResolve.Context).
     property Context: TObject read FContext write FContext;

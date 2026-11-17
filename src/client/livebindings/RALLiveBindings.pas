@@ -63,8 +63,13 @@ type
     property Rows: TRALJSONArray read FRows;
   published
     property Active;
+    property AfterOpen;
+    property AfterPost;
+    property AfterScroll;
     property AutoEdit;
     property AutoPost;
+    property BeforeOpen;
+    property BeforePost;
     /// The client of Execute.
     property Client: TRALClient read FClient write SetClient;
     { The fields, one a line: "name" (text) or "name:integer", "name:float",
@@ -75,11 +80,6 @@ type
     property RootPath: string read FRootPath write FRootPath;
     /// The route Execute asks for.
     property Route: StringRAL read FRoute write FRoute;
-    property AfterOpen;
-    property AfterPost;
-    property AfterScroll;
-    property BeforeOpen;
-    property BeforePost;
   end;
 
 implementation

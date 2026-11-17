@@ -29,8 +29,8 @@ type
     FContext: TObject;
     FError: StringRAL;
     FExecution: TRALGraphQLExecution;
-    FFieldName: StringRAL;
     FFailed: boolean;
+    FFieldName: StringRAL;
     FParent: TRALJSON;
     FParentType: StringRAL;
     FRequest: TObject;
@@ -108,10 +108,10 @@ type
     constructor Create(const ASDL: StringRAL);
     destructor Destroy; override;
 
-    /// The type AName, or nil.
-    function FindType(const AName: StringRAL): TRALGQLTypeDef;
     /// The field AField of the type AType, or nil.
     function FindField(const AType, AField: StringRAL): TRALGQLFieldDef;
+    /// The type AName, or nil.
+    function FindType(const AName: StringRAL): TRALGQLTypeDef;
     /// Whether the object type AObject is (or implements, or is a member of) AType.
     function IsPossible(const AType, AObject: StringRAL): boolean;
     /// The resolver of AType.AField; Code nil when none.

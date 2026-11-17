@@ -161,9 +161,9 @@ type
     threads, or on the library's IO threads with ExecuteInIOThread. }
   TRALXSocketServer = class(TRALServer)
   private
+    FExecuteInIOThread: boolean;
     /// The library's server.
     FHttp: ICrossHttpServer;
-    FExecuteInIOThread: boolean;
     FIoThreads: IntegerRAL;
     /// Live writers now.
     FLiveStreams: IntegerRAL;
@@ -208,15 +208,15 @@ type
     class function SupportsLiveStream: boolean; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
   published
-    { IO threads of the library; 0 = twice the processors plus one. A live
-      stream keeps one of them waiting, so at most IoThreads - 1 streams are live
-      at once; the others are answered whole. }
-    property IoThreads: IntegerRAL read FIoThreads write FIoThreads default 0;
     { Runs the requests on the IO threads instead of the workers: faster for short
       handlers (about 20% on a 2-processor machine), but a handler that blocks
       (a database, a call to another server) or streams holds an IO thread and
       every connection on it waits. }
     property ExecuteInIOThread: boolean read FExecuteInIOThread write FExecuteInIOThread default False;
+    { IO threads of the library; 0 = twice the processors plus one. A live
+      stream keeps one of them waiting, so at most IoThreads - 1 streams are live
+      at once; the others are answered whole. }
+    property IoThreads: IntegerRAL read FIoThreads write FIoThreads default 0;
     /// Worker threads that run the requests; 0 = four per processor. Unused with ExecuteInIOThread.
     property PoolCount: IntegerRAL read FPoolCount write FPoolCount default 0;
     /// TLS: the certificate and key files, or PEM text.

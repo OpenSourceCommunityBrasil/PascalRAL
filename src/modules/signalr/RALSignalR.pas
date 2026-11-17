@@ -194,9 +194,10 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    { Records AFrame (one record, without the separator) as sent to AConnection
-      and sends it; False when the connection is gone }
-    function SendRecord(AConnection: TRALWebSocketConnection; const AFrame: StringRAL): boolean;
+    /// Puts AConnection in AGroup.
+    procedure Join(AConnection: TRALWebSocketConnection; const AGroup: StringRAL);
+    /// Takes AConnection out of AGroup.
+    procedure Leave(AConnection: TRALWebSocketConnection; const AGroup: StringRAL);
     { Calls the client method ATarget with AArgs (a JSON array as text; empty is
       []) on the clients of AScope/AKey; the count reached }
     function Send(const ATarget: StringRAL; const AArgs: StringRAL = '';
@@ -204,10 +205,9 @@ type
     /// Calls ATarget on every client but AExcept (Clients.Others).
     function SendOthers(AExcept: TRALWebSocketConnection; const ATarget: StringRAL;
       const AArgs: StringRAL = ''): IntegerRAL;
-    /// Puts AConnection in AGroup.
-    procedure Join(AConnection: TRALWebSocketConnection; const AGroup: StringRAL);
-    /// Takes AConnection out of AGroup.
-    procedure Leave(AConnection: TRALWebSocketConnection; const AGroup: StringRAL);
+    { Records AFrame (one record, without the separator) as sent to AConnection
+      and sends it; False when the connection is gone }
+    function SendRecord(AConnection: TRALWebSocketConnection; const AFrame: StringRAL): boolean;
 
     /// The WebSocket connections (including those still in the handshake).
     property Hub: TRALWebSocketHub read GetHub;
@@ -254,10 +254,10 @@ type
   /// What the module keeps for a connection (TRALWebSocketConnection.Data).
   TRALSignalRState = class
   public
-    /// The handshake was answered.
-    Ready: boolean;
     /// RALTickMicro div 1000 of the last record sent.
     LastSent: Int64RAL;
+    /// The handshake was answered.
+    Ready: boolean;
   end;
 
   /// The thread that sends the keep-alive pings.

@@ -31,9 +31,9 @@ type
     FFields: TStringList;
     FMaxRows: IntegerRAL;
     FModule: TRALGraphQLModule;
+    FTableNames: TStrings;
     /// The tables read from the catalog (TRALGraphQLDBTable).
     FTables: TObjectList;
-    FTableNames: TStrings;
 
     procedure ResolveList(AInfo: TRALGraphQLResolve);
     procedure ResolveOne(AInfo: TRALGraphQLResolve);

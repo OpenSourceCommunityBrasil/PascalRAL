@@ -89,6 +89,7 @@ type
 
     constructor Create;
     destructor Destroy; override;
+
     /// The argument AName, or nil.
     function Arg(const AName: StringRAL): TRALGQLArgument;
   end;
@@ -107,6 +108,7 @@ type
     OfType: TRALGQLTypeRef;
 
     destructor Destroy; override;
+
     /// The named type at the bottom.
     function NamedType: StringRAL;
     /// The type as GraphQL writes it ('[User!]!').
@@ -136,6 +138,7 @@ type
 
     constructor Create(AKind: TRALGQLSelectionKind);
     destructor Destroy; override;
+
     /// The argument AName, or nil.
     function Arg(const AName: StringRAL): TRALGQLArgument;
     /// The response key: the alias, else the name.
@@ -200,6 +203,7 @@ type
 
     constructor Create;
     destructor Destroy; override;
+
     /// The argument AName, or nil.
     function Arg(const AName: StringRAL): TRALGQLFieldDef;
   end;
@@ -231,6 +235,7 @@ type
 
     constructor Create(AKind: TRALGQLTypeKind);
     destructor Destroy; override;
+
     /// The field (or input field, or enum value) AName, or nil.
     function Field(const AName: StringRAL): TRALGQLFieldDef;
   end;
@@ -248,6 +253,7 @@ type
 
     constructor Create;
     destructor Destroy; override;
+
     /// The fragment AName, or nil.
     function Fragment(const AName: StringRAL): TRALGQLExecutable;
   end;
@@ -268,31 +274,24 @@ type
   TRALGQLParser = class
   private
     FExecutable: boolean;
+    /// The current token.
+    FKind: TRALGQLTokenKind;
+    FLine: IntegerRAL;
     /// Start of the current line (byte index), for columns.
     FLineStart: IntegerRAL;
-    FLine: IntegerRAL;
     FPos: IntegerRAL;
     FSchema: boolean;
     FSource: StringRAL;
-    /// The current token.
-    FKind: TRALGQLTokenKind;
     FText: StringRAL;
     FTokLine, FTokCol: IntegerRAL;
 
     procedure Error(const AMessage: string);
-    procedure Next;
-    procedure ReadBlockString;
-    procedure ReadNumber;
-    procedure ReadString;
-    procedure SkipIgnored;
-
     function Expect(const APunct: StringRAL): boolean;
-    function ExpectName: StringRAL;
     function ExpectKeyword(const AWord: StringRAL): boolean;
-    function IsPunct(const APunct: StringRAL): boolean;
+    function ExpectName: StringRAL;
     function IsKeyword(const AWord: StringRAL): boolean;
-    function Skip(const APunct: StringRAL): boolean;
-
+    function IsPunct(const APunct: StringRAL): boolean;
+    procedure Next;
     function ParseArguments(AConst: boolean): TObjectList;
     function ParseDescription: StringRAL;
     function ParseDirectives(AConst: boolean): TObjectList;
@@ -305,8 +304,14 @@ type
     procedure ParseTypeSystem(ADocument: TRALGQLDocument; const ADescription: StringRAL);
     function ParseValue(AConst: boolean): TRALGQLValue;
     function ParseVariableDefs: TObjectList;
+    procedure ReadBlockString;
+    procedure ReadNumber;
+    procedure ReadString;
+    function Skip(const APunct: StringRAL): boolean;
+    procedure SkipIgnored;
   public
     constructor Create(const ASource: StringRAL);
+
     function Parse: TRALGQLDocument;
   end;
 

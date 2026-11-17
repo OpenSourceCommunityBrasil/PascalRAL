@@ -156,11 +156,11 @@ type
     FPrivateKey: TStrings;
     FRedirectURIs: TStrings;
     FRefreshTokenLifetime: IntegerRAL;
-    FResourceMetadata: StringRAL;
     /// JWK set fetched from JWKSURL.
     FRemoteKeys: TRALJWKSet;
     /// When FRemoteKeys was fetched.
     FRemoteKeysAt: TDateTime;
+    FResourceMetadata: StringRAL;
     /// Keys replaced, kept until the plugin is freed.
     FRetired: TList;
     FRevocationStore: TRALKeyValueStore;
