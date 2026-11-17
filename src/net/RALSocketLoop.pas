@@ -98,12 +98,22 @@ type
     FLock: TCriticalSection;
     /// The loop the thread belongs to.
     FLoop: TRALSocketLoop;
+    /// A Wake of this thread to itself came during the pass: the next poll does not wait.
+    FRunAgain: boolean;
+    { Other threads a Wake from this one asked for during the pass: each gets one
+      datagram when the pass ends, however many packets were queued for it }
+    FWakeLater: TList;
     /// Wake datagrams sent and not yet read; one is enough.
     FWakePending: IntegerRAL;
     /// The datagram socket that wakes the poll.
     FWaker: TRALSocket;
     /// The address of FWaker.
     FWakerAddress: TRALSocketAddress;
+
+    /// Sends the datagrams FWakeLater asked for.
+    procedure WakeDeferred;
+    /// Sends the wake datagram now, unless one is still unread.
+    procedure WakeNow;
   protected
     procedure Execute; override;
   public
@@ -115,7 +125,9 @@ type
     procedure Adopt(AConnection: TRALSocketLoopConnection);
     /// Number of connections.
     function Count: IntegerRAL;
-    /// Wakes the poll (from any thread).
+    { Wakes the poll (from any thread). From a poll thread of the same loop the
+      datagram waits for the end of that thread's pass, and a thread waking
+      itself only skips the next wait }
     procedure Wake;
 
     { An object of the loop's owner for this thread (a pool of connections),
@@ -197,6 +209,10 @@ uses
   RALDynLibs,
   {$ENDIF}
   RALTools;
+
+threadvar
+  /// The poll thread running on this thread; nil on any other thread.
+  tvLoopThread: TRALSocketLoopThread;
 
 {$IFDEF RALWindows}
 { declared here: the Windows unit of FPC has a TCriticalSection of its own,
@@ -390,6 +406,7 @@ begin
   FIndex := ALoop.FThreads.Count;
   FConnections := TList.Create;
   FIncoming := TList.Create;
+  FWakeLater := TList.Create;
   FLock := TCriticalSection.Create;
   // the waker: a datagram to itself ends the poll of this thread
   FWaker := TRALSocket.Create;
@@ -408,6 +425,7 @@ begin
     TObject(FIncoming[vInt]).Free;
   FreeAndNil(FConnections);
   FreeAndNil(FIncoming);
+  FreeAndNil(FWakeLater);
   FreeAndNil(FContext);
   FreeAndNil(FWaker);
   FreeAndNil(FLock);
@@ -438,6 +456,34 @@ end;
 
 procedure TRALSocketLoopThread.Wake;
 var
+  vRunning: TRALSocketLoopThread;
+begin
+  vRunning := tvLoopThread;
+  if vRunning = Self then
+    // the pass running now ends before the next poll, which then does not wait
+    FRunAgain := True
+  else if (vRunning <> nil) and (vRunning.FLoop = FLoop) then
+  begin
+    { a packet for a connection of another thread: one datagram when this
+      pass ends instead of one per packet (a fan-out queues hundreds) }
+    if vRunning.FWakeLater.IndexOf(Self) < 0 then
+      vRunning.FWakeLater.Add(Self);
+  end
+  else
+    WakeNow;
+end;
+
+procedure TRALSocketLoopThread.WakeDeferred;
+var
+  vInt: IntegerRAL;
+begin
+  for vInt := 0 to FWakeLater.Count - 1 do
+    TRALSocketLoopThread(FWakeLater[vInt]).WakeNow;
+  FWakeLater.Clear;
+end;
+
+procedure TRALSocketLoopThread.WakeNow;
+var
   vByte: Byte;
 begin
   // one datagram is enough until the thread reads it
@@ -462,6 +508,7 @@ var
 begin
   if FLoop.FCPUAffinity then
     PinThread(FIndex);
+  tvLoopThread := Self;
   while not Terminated do
   begin
     // new connections
@@ -487,6 +534,9 @@ begin
     end;
     // a TLS layer with bytes already decrypted does not wait for the socket
     vRes := FLoop.FPollSlice;
+    if FRunAgain then
+      vRes := 0;
+    FRunAgain := False;
     for vInt := 0 to vCount - 1 do
       if TRALSocketLoopConnection(FConnections[vInt]).FChannel.HasBuffered then
         vRes := 0;
@@ -543,7 +593,11 @@ begin
         vConn.Free;
       end;
     end;
+    WakeDeferred;
   end;
+  // from here a Wake goes at once: no pass ends after this
+  WakeDeferred;
+  tvLoopThread := nil;
   // stopping: the protocol's last words, then every connection closes
   for vInt := 0 to FConnections.Count - 1 do
   begin
@@ -746,11 +800,11 @@ begin
     TRALSocketLoopThread(FThreads[vInt]).Terminate;
     TRALSocketLoopThread(FThreads[vInt]).Wake;
   end;
+  // all stopped before any is freed: one still in its pass may wake another
   for vInt := 0 to FThreads.Count - 1 do
-  begin
     TRALSocketLoopThread(FThreads[vInt]).WaitFor;
+  for vInt := 0 to FThreads.Count - 1 do
     TRALSocketLoopThread(FThreads[vInt]).Free;
-  end;
   FThreads.Clear;
 end;
 
