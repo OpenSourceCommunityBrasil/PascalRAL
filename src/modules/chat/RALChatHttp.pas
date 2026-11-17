@@ -95,6 +95,10 @@ function RALChatUrlDecode(const AText: StringRAL): StringRAL;
 function RALChatHexToBytes(const AText: StringRAL): TBytes;
 /// The text of AMs milliseconds of a Retry-After in seconds (a number, maybe fractional).
 function RALChatSecondsToMs(const AText: StringRAL): Int64RAL;
+{ The host of AUrl in lower case, without the port; empty when the address carries
+  credentials (user:password@@host) or a backslash, which hide the real host from a
+  check by name. }
+function RALChatUrlHost(const AUrl: StringRAL): string;
 
 implementation
 
@@ -472,6 +476,36 @@ begin
     FreeAndNil(Result);
     raise;
   end;
+end;
+
+function RALChatUrlHost(const AUrl: StringRAL): string;
+var
+  vPos: Integer;
+begin
+  Result := LowerCase(string(AUrl));
+  vPos := Pos('://', Result);
+  if vPos > 0 then
+    Delete(Result, 1, vPos + 2);
+  vPos := 1;
+  while (vPos <= Length(Result)) and not CharInSet(Result[vPos], ['/', '?', '#']) do
+    Inc(vPos);
+  Result := Copy(Result, 1, vPos - 1);
+  if (Pos('@', Result) > 0) or (Pos('\', Result) > 0) then
+  begin
+    Result := '';
+    Exit;
+  end;
+  if (Result <> '') and (Result[1] = '[') then
+  begin
+    // an IPv6 literal keeps its colons
+    vPos := Pos(']', Result);
+    if vPos > 0 then
+      Result := Copy(Result, 1, vPos);
+    Exit;
+  end;
+  vPos := Pos(':', Result);
+  if vPos > 0 then
+    Result := Copy(Result, 1, vPos - 1);
 end;
 
 end.

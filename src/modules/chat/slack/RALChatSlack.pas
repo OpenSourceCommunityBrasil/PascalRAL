@@ -678,20 +678,8 @@ var
   vHost, vApi: string;
 
   function HostOf(const AValue: string): string;
-  var
-    vP: Integer;
   begin
-    Result := AValue;
-    vP := Pos('://', Result);
-    if vP > 0 then
-      Delete(Result, 1, vP + 2);
-    vP := Pos('/', Result);
-    if vP > 0 then
-      Result := Copy(Result, 1, vP - 1);
-    vP := Pos(':', Result);
-    if vP > 0 then
-      Result := Copy(Result, 1, vP - 1);
-    Result := LowerCase(Result);
+    Result := RALChatUrlHost(StringRAL(AValue));
   end;
 
 begin

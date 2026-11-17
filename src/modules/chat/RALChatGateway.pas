@@ -16,7 +16,7 @@ uses
   Classes, SysUtils, SyncObjs,
   RALTypes, RALConsts, RALTools, RALJson, RALClient, RALRequest, RALResponse, RALBase64,
   RALHashBase, RALSHA1, RALSHA2_32, RALSHA2_64,
-  RALChatMessage, RALChatVerify, RALChatChannel;
+  RALChatMessage, RALChatVerify, RALChatChannel, RALChatHttp;
 
 type
   /// The gateways the component knows how to fill in.
@@ -2024,19 +2024,8 @@ begin
 end;
 
 function TRALChatGateway.HostOf(const AUrl: StringRAL): StringRAL;
-var
-  vText: string;
-  vPos: Integer;
 begin
-  vText := LowerCase(string(AUrl));
-  vPos := Pos('://', vText);
-  if vPos > 0 then
-    Delete(vText, 1, vPos + 2);
-  vPos := 1;
-  while (vPos <= Length(vText)) and (vText[vPos] <> '/') and (vText[vPos] <> '?') and
-         (vText[vPos] <> '#') and (vText[vPos] <> ':') do
-    Inc(vPos);
-  Result := StringRAL(Copy(vText, 1, vPos - 1));
+  Result := StringRAL(RALChatUrlHost(AUrl));
 end;
 
 procedure TRALChatGateway.Loaded;

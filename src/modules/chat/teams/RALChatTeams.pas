@@ -855,24 +855,14 @@ end;
 function TRALChatTeams.MediaHostOk(const AUrl: StringRAL): Boolean;
 var
   vText, vHost: string;
-  vP, vIdx: Integer;
+  vIdx: Integer;
   vSuffixes: TStringList;
 begin
   Result := False;
   vText := string(AUrl);
   if FRequireHttps and (Copy(LowerCase(vText), 1, 8) <> 'https://') then
     Exit;
-  vHost := vText;
-  vP := Pos('://', vHost);
-  if vP > 0 then
-    Delete(vHost, 1, vP + 2);
-  vP := Pos('/', vHost);
-  if vP > 0 then
-    vHost := Copy(vHost, 1, vP - 1);
-  vP := Pos(':', vHost);
-  if vP > 0 then
-    vHost := Copy(vHost, 1, vP - 1);
-  vHost := LowerCase(vHost);
+  vHost := RALChatUrlHost(AUrl);
   if (vHost = '') or (Pos('@', vHost) > 0) then
     Exit;
   vSuffixes := TStringList.Create;
