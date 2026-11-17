@@ -80,7 +80,7 @@ type
     destructor Destroy; override;
   end;
 
-  /// A directive applied somewhere: @name(args).
+  /// A directive applied somewhere: @@name(args).
   TRALGQLDirective = class(TRALGQLNode)
   public
     /// The arguments (TRALGQLArgument).
@@ -192,9 +192,9 @@ type
     Args: TObjectList;
     /// Default value of an input value (owned); nil when none.
     DefaultValue: TRALGQLValue;
-    /// Reason of @deprecated; empty when not deprecated.
+    /// Reason of @@deprecated; empty when not deprecated.
     DeprecationReason: StringRAL;
-    /// Is @deprecated.
+    /// Is @@deprecated.
     Deprecated: boolean;
     /// The description written before it.
     Description: StringRAL;
@@ -1369,7 +1369,7 @@ begin
   end;
 end;
 
-/// Reads @deprecated(reason:) of ADirectives into ADef.
+/// Reads @@deprecated(reason:) of ADirectives into ADef.
 procedure ApplyDeprecated(ADirectives: TObjectList; ADef: TRALGQLFieldDef);
 var
   vInt: IntegerRAL;
