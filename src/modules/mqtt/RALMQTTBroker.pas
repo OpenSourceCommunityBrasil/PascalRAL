@@ -175,6 +175,18 @@ type
     FRefCount: IntegerRAL;
     FRetain: boolean;
     FTopic: StringRAL;
+    { The 5.0 properties as a PUBLISH carries them, without their length, the
+      Message Expiry and the Subscription Identifiers (those change per copy) }
+    FWireProps: TBytes;
+    /// FWireProps and FWireTopic are built.
+    FWireReady: boolean;
+    /// The Topic Name as a PUBLISH carries it: length and UTF-8.
+    FWireTopic: TBytes;
+
+    { Builds the parts every copy of the message shares, once: each PUBLISH is
+      then written straight into the connection's outbox (under the broker's lock) }
+    procedure PrepareWire;
+    procedure SetTopic(const AValue: StringRAL);
   public
     constructor Create;
     destructor Destroy; override;
@@ -199,7 +211,7 @@ type
     /// RETAIN as published.
     property Retain: boolean read FRetain write FRetain;
     /// Topic Name.
-    property Topic: StringRAL read FTopic write FTopic;
+    property Topic: StringRAL read FTopic write SetTopic;
   end;
 
   /// A connection may go on (AReasonCode 0) or is refused with AReasonCode.
@@ -268,6 +280,8 @@ type
     FIncoming: TList;
     /// Messages sent and not yet acknowledged.
     FInflight: TList;
+    /// The journal holds a record of the session.
+    FJournaled: boolean;
     /// The session outlives the connection (and the journal keeps it).
     FPersistent: boolean;
     /// Messages waiting to be sent.
@@ -361,6 +375,15 @@ type
     FWebSocket: TRALWebSocketChannel;
     /// The client disconnected normally: its will is discarded.
     FWillDiscard: boolean;
+
+    /// Drops from the outbox what went out already; under FOutLock.
+    procedure CompactOutbox;
+    { Queues a PUBLISH of AMessage written from its shared parts, with no
+      packet object; False when the connection is gone or the packet exceeds
+      the client's limit [MQTT-3.1.2-25] }
+    function QueuePublish(AMessage: TRALMQTTBrokerMessage; AQoS: TRALMQTTQoS;
+      ARetain: boolean; const ASubIds: array of Cardinal; APacketId: Word;
+      ADup: boolean): boolean;
   protected
     /// Phase closed, and the broker told (the session goes or waits).
     procedure Closed; override;
@@ -1053,10 +1076,54 @@ begin
   Result := Cardinal(vLeft);
 end;
 
+procedure TRALMQTTBrokerMessage.PrepareWire;
+var
+  vWriter: TRALMQTTWriter;
+  vProps: TRALMQTTProperties;
+  vSkip: IntegerRAL;
+begin
+  if FWireReady then
+    Exit;
+  vWriter := TRALMQTTWriter.Create;
+  try
+    vWriter.WriteString(FTopic);
+    FWireTopic := vWriter.ToBytes;
+    vProps := TRALMQTTProperties.Create;
+    try
+      // the properties go unaltered [MQTT-3.3.2-4, 15..20]; the two that change go
+      // per copy
+      vProps.Assign(FProperties);
+      vProps.Remove(MQTTP_TopicAlias);
+      vProps.Remove(MQTTP_MessageExpiry);
+      vProps.ClearSubscriptionIds;
+      vWriter.Clear;
+      vProps.Encode(vWriter);
+    finally
+      vProps.Free;
+    end;
+    // past the Variable Byte Integer of the length
+    vSkip := 1;
+    while (vWriter.Buffer[vSkip - 1] and $80) <> 0 do
+      Inc(vSkip);
+    SetLength(FWireProps, vWriter.Size - vSkip);
+    if vWriter.Size > vSkip then
+      Move(vWriter.Buffer[vSkip], FWireProps[0], vWriter.Size - vSkip);
+  finally
+    vWriter.Free;
+  end;
+  FWireReady := True;
+end;
+
 procedure TRALMQTTBrokerMessage.Release;
 begin
   if RALAtomicDec(FRefCount) = 0 then
     Free;
+end;
+
+procedure TRALMQTTBrokerMessage.SetTopic(const AValue: StringRAL);
+begin
+  FTopic := AValue;
+  FWireReady := False;
 end;
 
 { TRALMQTTBrokerSession }
@@ -1169,22 +1236,7 @@ begin
       Exit;
     FOutLock.Acquire;
     try
-      if FOutHead > 0 then
-      begin
-        // what went out leaves the buffer before it grows
-        if FOutHead < FOutbox.Size then
-        begin
-          vWriter.Clear;
-          vWriter.WriteRaw(FOutbox.Buffer[FOutHead], FOutbox.Size - FOutHead);
-          FOutbox.Clear;
-          FOutbox.WriteRaw(vWriter.Buffer[0], vWriter.Size);
-          vWriter.Clear;
-          APacket.EncodeTo(vWriter, FVersion, FMaxPacket);
-        end
-        else
-          FOutbox.Clear;
-        FOutHead := 0;
-      end;
+      CompactOutbox;
       FOutbox.WriteRaw(vWriter.Buffer[0], vWriter.Size);
     finally
       FOutLock.Release;
@@ -1195,6 +1247,87 @@ begin
     vWriter.Free;
   end;
   Wake;
+end;
+
+function TRALMQTTBrokerConnection.QueuePublish(AMessage: TRALMQTTBrokerMessage;
+  AQoS: TRALMQTTQoS; ARetain: boolean; const ASubIds: array of Cardinal;
+  APacketId: Word; ADup: boolean): boolean;
+var
+  vBody, vProps, vSize, vInt: IntegerRAL;
+  vExpiry: Cardinal;
+  vFlags: Byte;
+begin
+  Result := False;
+  if FPhase = mbpClosed then
+    Exit;
+  AMessage.PrepareWire;
+  vBody := Length(AMessage.FWireTopic) + Length(AMessage.FPayload);
+  if AQoS > mqQoS0 then
+    Inc(vBody, 2);
+  vProps := 0;
+  vExpiry := 0;
+  if FVersion = mv50 then
+  begin
+    vProps := Length(AMessage.FWireProps);
+    if AMessage.FExpiresAt > 0 then
+    begin
+      vExpiry := AMessage.ExpiryLeft; // [MQTT-3.3.2-6]
+      Inc(vProps, 5);
+    end;
+    for vInt := 0 to High(ASubIds) do
+      Inc(vProps, 1 + RALMQTTVarIntSize(ASubIds[vInt]));
+    Inc(vBody, RALMQTTVarIntSize(vProps) + vProps);
+  end;
+  vSize := 1 + RALMQTTVarIntSize(vBody) + vBody;
+  if (FMaxPacket > 0) and (Cardinal(vSize) > FMaxPacket) then
+    Exit;
+  vFlags := (Ord(mptPUBLISH) shl 4) or (Ord(AQoS) shl 1);
+  if ADup and (AQoS > mqQoS0) then // [MQTT-3.3.1-2]
+    vFlags := vFlags or $08;
+  if ARetain then
+    vFlags := vFlags or $01;
+  FOutLock.Acquire;
+  try
+    CompactOutbox;
+    FOutbox.WriteByte(vFlags);
+    FOutbox.WriteVarInt(vBody);
+    FOutbox.WriteRaw(AMessage.FWireTopic[0], Length(AMessage.FWireTopic));
+    if AQoS > mqQoS0 then
+      FOutbox.WriteWord(APacketId);
+    if FVersion = mv50 then
+    begin
+      FOutbox.WriteVarInt(vProps);
+      if AMessage.FWireProps <> nil then
+        FOutbox.WriteRaw(AMessage.FWireProps[0], Length(AMessage.FWireProps));
+      if AMessage.FExpiresAt > 0 then
+      begin
+        FOutbox.WriteByte(MQTTP_MessageExpiry);
+        FOutbox.WriteCardinal(vExpiry);
+      end;
+      for vInt := 0 to High(ASubIds) do
+      begin
+        FOutbox.WriteByte(MQTTP_SubscriptionId);
+        FOutbox.WriteVarInt(ASubIds[vInt]);
+      end;
+    end;
+    if AMessage.FPayload <> nil then
+      FOutbox.WriteRaw(AMessage.FPayload[0], Length(AMessage.FPayload));
+  finally
+    FOutLock.Release;
+  end;
+  FBroker.Stat(RALMQTTStatBytesOut, vSize);
+  Result := True;
+  Wake;
+end;
+
+procedure TRALMQTTBrokerConnection.CompactOutbox;
+begin
+  // what went out leaves the buffer before it grows
+  if FOutHead > 0 then
+  begin
+    FOutbox.Consume(FOutHead);
+    FOutHead := 0;
+  end;
 end;
 
 { TRALMQTTBrokerConnection: the loop's side }
@@ -2145,8 +2278,20 @@ begin
       vSession.FWill := TRALMQTTWill.Create;
       vSession.FWill.Assign(APacket.Will);
     end;
+    // only a session that outlives its connection is written: a clean one costs no record
     if FStore <> nil then
-      FStore.SessionPut(vClientID, vExpiry, APacket.Version);
+    begin
+      if vSession.FPersistent then
+      begin
+        FStore.SessionPut(vClientID, vExpiry, APacket.Version);
+        vSession.FJournaled := True;
+      end
+      else if vSession.FJournaled then
+      begin
+        FStore.SessionDel(vClientID);
+        vSession.FJournaled := False;
+      end;
+    end;
     AConnection.FSession := vSession;
     AConnection.FPhase := mbpConnected;
     AConnection.FConnectedAt := RALMQTTNow;
@@ -2730,6 +2875,9 @@ begin
     try
       vSession.FExpiry := APacket.Properties.SessionExpiry;
       vSession.FPersistent := vSession.FExpiry > 0;
+      // the new expiry is what a restart must see (0: the session goes at the close)
+      if (FStore <> nil) and vSession.FJournaled and vSession.FPersistent then
+        FStore.SessionPut(vSession.FClientID, vSession.FExpiry, vSession.FVersion);
     finally
       FLock.Release;
     end;
@@ -2879,7 +3027,7 @@ begin
   vIndex := FSessions.IndexOf(string(ASession.FClientID));
   if (vIndex >= 0) and (FSessions.Objects[vIndex] = ASession) then
     FSessions.Delete(vIndex);
-  if FStore <> nil then
+  if (FStore <> nil) and ASession.FJournaled then
     FStore.SessionDel(ASession.FClientID);
   ASession.Free;
 end;
@@ -3022,41 +3170,18 @@ function TRALMQTTBroker.SendPublish(ASession: TRALMQTTBrokerSession;
   AMessage: TRALMQTTBrokerMessage; AQoS: TRALMQTTQoS; ARetain: boolean;
   const ASubIds: array of Cardinal; APacketId: Word; ADup: boolean): boolean;
 var
-  vPacket: TRALMQTTPublishPacket;
-  vInt: IntegerRAL;
   vConn: TRALMQTTBrokerConnection;
 begin
   Result := False;
   vConn := ASession.FConnection;
   if vConn = nil then
     Exit;
-  vPacket := TRALMQTTPublishPacket.Create;
-  try
-    vPacket.Topic := AMessage.FTopic;
-    vPacket.Payload := AMessage.FPayload;
-    vPacket.QoS := AQoS;
-    vPacket.Retain := ARetain;
-    vPacket.PacketId := APacketId;
-    vPacket.Dup := ADup;
-    if vConn.FVersion = mv50 then
-    begin
-      // the properties go unaltered [MQTT-3.3.2-4, 15..20]
-      vPacket.Properties.Assign(AMessage.FProperties);
-      vPacket.Properties.ClearSubscriptionIds;
-      for vInt := 0 to High(ASubIds) do
-        vPacket.Properties.AddSubscriptionId(ASubIds[vInt]);
-      if AMessage.FExpiresAt > 0 then
-        vPacket.Properties.MessageExpiry := AMessage.ExpiryLeft; // [MQTT-3.3.2-6]
-    end;
-    // too large for the client: dropped as if delivered [MQTT-3.1.2-25]
-    Result := vConn.Queue(vPacket);
-    if Result then
-      Stat(RALMQTTStatSent)
-    else
-      Stat(RALMQTTStatDropped);
-  finally
-    vPacket.Free;
-  end;
+  // too large for the client: dropped as if delivered [MQTT-3.1.2-25]
+  Result := vConn.QueuePublish(AMessage, AQoS, ARetain, ASubIds, APacketId, ADup);
+  if Result then
+    Stat(RALMQTTStatSent)
+  else
+    Stat(RALMQTTStatDropped);
 end;
 
 procedure TRALMQTTBroker.DeliverTo(ASession: TRALMQTTBrokerSession;
@@ -3555,6 +3680,9 @@ begin
     end;
     Result.FExpiry := AExpiry;
     Result.FPersistent := False; // an SN client's session lives in memory
+    if (FStore <> nil) and Result.FJournaled then
+      FStore.SessionDel(AClientID);
+    Result.FJournaled := False;
     Result.FDisconnectedAt := 0;
   finally
     FLock.Release;
@@ -3734,6 +3862,9 @@ begin
     ASession.FExternal := True;
     ASession.FWake := AWake;
     ASession.FPersistent := False;
+    if (FStore <> nil) and ASession.FJournaled then
+      FStore.SessionDel(ASession.FClientID);
+    ASession.FJournaled := False;
   finally
     FLock.Release;
   end;
@@ -3991,6 +4122,7 @@ begin
       vSession := TRALMQTTBrokerSession.Create(Self, vInfo.ClientID);
       vSession.FExpiry := vInfo.Expiry;
       vSession.FPersistent := True;
+      vSession.FJournaled := True;
       vSession.FVersion := TRALMQTTVersion(vInfo.Version);
       vSession.FDisconnectedAt := RALMQTTNow; // the clock of expiry starts again here
       FSessions.AddObject(string(vInfo.ClientID), vSession);

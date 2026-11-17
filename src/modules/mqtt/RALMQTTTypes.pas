@@ -419,6 +419,8 @@ type
   public
     /// Empties the writer, keeping its buffer.
     procedure Clear;
+    /// Drops the first ACount bytes (what went out), keeping the rest at the front.
+    procedure Consume(ACount: IntegerRAL);
     /// A copy of what was written.
     function ToBytes: TBytes;
     /// Writes two-byte length and the bytes of AValue.
@@ -1236,6 +1238,19 @@ end;
 procedure TRALMQTTWriter.Clear;
 begin
   FSize := 0;
+end;
+
+procedure TRALMQTTWriter.Consume(ACount: IntegerRAL);
+begin
+  if ACount >= FSize then
+  begin
+    FSize := 0;
+    Exit;
+  end;
+  if ACount <= 0 then
+    Exit;
+  Move(FBuffer[ACount], FBuffer[0], FSize - ACount);
+  Dec(FSize, ACount);
 end;
 
 procedure TRALMQTTWriter.Grow(ANeeded: IntegerRAL);

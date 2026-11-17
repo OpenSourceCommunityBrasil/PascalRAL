@@ -932,14 +932,14 @@ sets `SSL_OP_IGNORE_UNEXPECTED_EOF` on OpenSSL 3 only (0x80 meant something else
 The broker runs on `TRALSocketLoop` (`RALSocketLoop`: an accepting thread, N poll
 threads each owning a slice of the connections and woken by a datagram to itself, a
 timer; the wake count is cleared only after the waker is drained, or a new connection
-waits the 100 ms poll slice; `CPUAffinity` pins poll thread N to processor N); its connection descends from `TRALSocketLoopConnection` and gives the protocol in
+waits the 100 ms poll slice; a `Wake` given from a poll thread of the same loop is sent at the end of that thread's pass, one datagram per thread woken, and a thread waking itself only skips its next wait - so `StopThreads` waits for every thread before freeing any; `CPUAffinity` pins poll thread N to processor N); its connection descends from `TRALSocketLoopConnection` and gives the protocol in
 `Serve`, `HandleError`, `FlushOutput`, `Stopping`. The net units know nothing of MQTT:
 they raise `ERALSocketError`/`ERALTLSError`/
 `ERALWebSocketError` (a `CloseCode`), and the broker turns a WebSocket error into the
 DISCONNECT reason. `TRALMQTTSSL`/`TRALMQTTProxy` are empty subclasses of the net ones;
 published enum values keep their old names (`mtv12`, `mpkHTTP`), which forms stream. `TRALMQTTBroker` is a `TRALServer`:
 each CONNECT runs `ValidateRequest`/`ProcessCommands` on an internal route, so the
-server's plugins and authenticators judge MQTT logins. The client's certificate rule is
+server's plugins and authenticators judge MQTT logins. A PUBLISH is never a packet object on the way out: the message builds its topic and 5.0 properties once (`PrepareWire`, under the broker's lock) and `QueuePublish` writes each copy straight into the connection's outbox, adding packet id, Message Expiry left and Subscription Identifiers. Only a session that outlives its connection is journaled (`FJournaled`). The client's certificate rule is
 `TRALClient`'s. The MQTT-SN gateway is a `TRALMQTTBrokerExtension` (sessions of the
 broker itself; the wake callback runs under the broker's lock). Wire text is
 `AnsiString`/`StringRAL`, never `string` (UTF-16 on Delphi). Guide and traps:
