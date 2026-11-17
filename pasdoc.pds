@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=91
+Count=93
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -159,9 +159,11 @@ Item_87=src\modules\graphql
 Item_88=src\modules\graphql\db
 Item_89=src\client\livebindings
 Item_90=src\modules\chat\meta
+Item_91=src\store\redis
+Item_92=src\modules\websocket\redis
 
 [Files]
-Count=349
+Count=353
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -511,6 +513,10 @@ Item_345=src\modules\chat\meta\RALChatGraph.pas
 Item_346=src\modules\chat\meta\RALChatWhatsApp.pas
 Item_347=src\modules\chat\meta\RALChatMeta.pas
 Item_348=src\modules\chat\meta\design\RALModuleChatMetaReg.pas
+Item_349=src\store\redis\RALRedisClient.pas
+Item_350=src\store\redis\RALRedisSubscriber.pas
+Item_351=src\store\redis\RALRedisStore.pas
+Item_352=src\modules\websocket\redis\RALWebSocketHubRedis.pas
 [AdditionalFiles]
 Count=0
 

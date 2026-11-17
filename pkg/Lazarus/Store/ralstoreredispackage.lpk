@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALStoreRedisPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\store\redis"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralstoreredispackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | Redis client and store"/>
+    <Version Major="2"/>
+    <Files Count="5">
+      <Item1>
+        <Filename Value="..\..\..\src\store\redis\RALRedisClient.pas"/>
+        <UnitName Value="RALRedisClient"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\store\redis\RALRedisSubscriber.pas"/>
+        <UnitName Value="RALRedisSubscriber"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\store\redis\RALRedisStore.pas"/>
+        <UnitName Value="RALRedisStore"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\store\redis\RALStoreRedisReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="RALStoreRedisReg"/>
+      </Item4>
+      <Item5>
+        <Filename Value="ralstoreredispackage.lrs"/>
+        <Type Value="LRS"/>
+      </Item5>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="3">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="RALNetPackage"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="FCL"/>
+      </Item3>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

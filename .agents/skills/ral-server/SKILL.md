@@ -161,8 +161,10 @@ matching client. `tools/ralopenapi` writes classes and a client from an OpenAPI 
   requires `RALNetPackage`): `DocumentRoot` (empty serves nothing), `BlockedExtensions`,
   `CacheControl`. Sessions: `OpenSession` (handlers that need one), `Session.Values`
   (text), `SessionStorage` `wssMemory`/`wssStore` (`SessionStore`, e.g. a shared
-  `TRALFileStore`)/`wssCookie` (`SessionSecret`); `RegenerateSession` at login,
-  `EndSession` at logout; `Objects` only in memory.
+  `TRALFileStore` on one machine, `TRALRedisStore` of `RALStoreRedisPackage` across machines)/
+  `wssCookie` (`SessionSecret`); `RegenerateSession` at login, `EndSession` at logout;
+  `Objects` only in memory. The same store, linked to `TRALRateLimitPlugin.Store`, makes
+  several servers count one limit.
 - Pages: `TRALMustacheEngine` + `TRALViewModule` (`CreateView('/x', 'template',
   OnGetContext)`; HTMX requests get the fragment, `TRALHtmx` reads `HX-*` and sets the
   response headers); `TRALCSRFPlugin` (token in `{{csrf_token}}`/`{{{csrf_field}}}`,

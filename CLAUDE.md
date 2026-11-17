@@ -347,6 +347,29 @@ Binary goes through `TBytes` (`TRALBase64.Encode(TBytes)`), never through a `Str
 and the ANSI code page: `StringToBytes`/`BytesToString` copy the bytes as they are only
 where that page is UTF-8.
 
+### Redis (`src/store/redis`, `src/modules/websocket/redis`)
+
+`RALStoreRedisPackage` (requires `RALNetPackage`): `TRALRedisClient` speaks RESP2 and RESP3 on
+RAL's sockets (TLS by `TRALRedisSSL` and the certificate rule of `TRALClient`). A connection
+says `HELLO 3` (with `AUTH` and `SETNAME`) and falls back to RESP2 only on a server that does
+not know it; a refused login raises. Any thread may call the client: each command takes a
+connection from a pool (`PoolSize` idle ones kept) and gives it back; a broken one is freed,
+never pooled. A pooled connection is checked before reuse (`Alive`): any poll event on an
+idle connection drops it - Windows reports a connection the server killed as a hang-up, not
+as readable. A reply `-ERR` raises `ERALRedisReplyError` (the connection stays good);
+transport problems are `ERALRedisError`. RESP3 pushes on a command connection are skipped,
+attributes are read and dropped. `TRALRedisPipeline` sends N commands in one write
+(`MULTI`/`EXEC` with `Transaction`), and a refused command there is an `rrkError` reply, not an
+exception. `TRALRedisSubscriber` runs pub/sub on a connection and thread of its own (a
+subscribed connection takes no other command), keeps `Channels`/`Patterns` across
+reconnections and applies `Subscribe`/`Unsubscribe` from the thread between reads.
+`TRALRedisStore` is the `TRALKeyValueStore` in Redis (`KeyPrefix`, default `ral:`):
+`Increment` and `Expire` are Lua scripts so they stay atomic for every server, and the TTLs
+are the server's (its `Clock` only changes `Current`). `TRALHubRedisBackplane`
+(`RALModuleWebSocketRedisPackage`) carries hub events over one Redis channel
+(`ChannelPrefix` + the hub's channel); `Subscribed` says when it hears. Tests: a Redis and a
+Valkey (see `.agents/local/ENVIRONMENT.md`).
+
 ### `TRALSynopseServer.Mode`
 
 `smThreads` (default, a thread per kept-alive connection), `smAsync` (mORMot2's event

@@ -133,3 +133,7 @@ echo RALModuleStateful
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleStatefulPackage.dcr" "RALModuleStateful.rc"
 echo RALModuleHypermedia
 %path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleHypermediaPackage.dcr" "RALModuleHypermedia.rc"
+echo RALStoreRedis
+%path_brcc32% -fo "..\..\pkg\Delphi\Store\RALStoreRedisPackage.dcr" "RALStoreRedis.rc"
+echo RALModuleWebSocketRedis
+%path_brcc32% -fo "..\..\pkg\Delphi\Modules\RALModuleWebSocketRedisPackage.dcr" "RALModuleWebSocketRedis.rc"

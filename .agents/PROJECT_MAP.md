@@ -88,7 +88,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/modules/jsonrpc/` | `RALModuleJSONRPCPackage` | JSON-RPC 2.0: dispatcher, HTTP module, client, objects by RTTI |
 | `src/modules/protobuf/` | `RALModuleProtobufPackage` | Protocol Buffers: runtime, well-known types, `.proto` parser and the Pascal generator of `tools/ralprotoc` |
 | `src/modules/grpc/` | `RALModuleGrpcPackage` (requires `RALModuleProtobufPackage`) | gRPC: framing, the module (gRPC-Web, gRPC-Web text, native over HTTP/2), the client |
-| `src/modules/websocket/` | `RALModuleWebSocketPackage` (requires `RALNetPackage`); `mqtt/` `RALModuleWebSocketMQTTPackage` | WebSocket routes, connections and hubs of connections, the client, hubs (JSON protocol, `ralhub.js`), the hub backplane over MQTT |
+| `src/modules/websocket/` | `RALModuleWebSocketPackage` (requires `RALNetPackage`); `mqtt/` `RALModuleWebSocketMQTTPackage`; `redis/` `RALModuleWebSocketRedisPackage` | WebSocket routes, connections and hubs of connections, the client, hubs (JSON protocol, `ralhub.js`), the hub backplane over MQTT or Redis |
 | `src/client/livebindings/` | `RALClientLiveBindingsPackage` (Delphi XE3+ only; requires `bindengine`, `bindcomp`) | LiveBindings over JSON: `TRALJSONBindSourceAdapter` for a `TAdapterBindSource` |
 | `src/modules/graphql/` | `RALModuleGraphQLPackage`; `db/` `RALModuleGraphQLDBPackage` (requires `RALDBPackage`) | GraphQL: the parser, the executor (validation, introspection, limits), the HTTP endpoint with GraphiQL; DBWare tables as types |
 | `src/modules/signalr/` | `RALModuleSignalRPackage` (requires `RALNetPackage`, `RALModuleWebSocketPackage`) | the ASP.NET Core SignalR protocol (negotiate, JSON hub protocol over WebSockets) for the official clients |
@@ -103,6 +103,7 @@ unit. Design-time units live in a `design/` subfolder. Packages are `PascalRAL` 
 | `src/plugins/observability/` | `RALPluginObservabilityPackage` | access log, trace context and OTLP export, Prometheus metrics, health checks (`RALObservability`) |
 | `src/plugins/tls/` | `RALPluginTLSPackage` | self-signed certificate plugin (`RALSelfSigned`) |
 | `src/plugins/traffic/` | `RALPluginTrafficPackage` | rate limit, HTTPS redirect, maintenance, method override (`RALTraffic`) |
+| `src/store/redis/` | `RALStoreRedisPackage` (requires `RALNetPackage`) | Redis and Valkey: `TRALRedisClient` (RESP2/RESP3, pool, pipelines, MULTI/EXEC), `TRALRedisSubscriber` (pub/sub), `TRALRedisStore` (the `TRALKeyValueStore` of sessions, limits and revocation in Redis) |
 | `src/storage/` | `RALStoragePackage` | dataset storage: base, types (`RALStorageTypes`; `RALDBTypes` is the deprecated old name), BIN, JSON, CSV |
 | `src/storage/bson/` | `RALStorageBSONPackage` | BSON storage over the native `RALBSON` (`src/common`) |
 | `src/wizard/delphi/` | `RALWizardDsgn` | Delphi project wizards (`cgi/`, `console/`, `standalone/`) |
@@ -317,7 +318,9 @@ on its own sockets.
   (`TRALWebSocketClient`), `RALWebSocketHub` (`TRALHubModule`, `TRALHubBackplane`, the
   protocol and `ralhub.js`), `RALWebSocketHubClient` (`TRALHubClient`),
   `RALModuleWebSocketReg`; `mqtt/RALWebSocketHubMQTT` (`TRALHubMQTTBackplane`),
-  `mqtt/RALModuleWebSocketMQTTReg` - RALModuleWebSocketMQTTPackage
+  `mqtt/RALModuleWebSocketMQTTReg` - RALModuleWebSocketMQTTPackage;
+  `redis/RALWebSocketHubRedis` (`TRALHubRedisBackplane`), `redis/RALModuleWebSocketRedisReg`
+  - RALModuleWebSocketRedisPackage
 - `graphql/` (RALModuleGraphQLPackage, requires PascalRAL): `RALGraphQLAST` (lexer, syntax
   tree, parser of documents and SDL with `extend`), `RALGraphQLExecutor` (`TRALGraphQLSchema`,
   `TRALGraphQLExecution`, `TRALGraphQLResolve`; validation, coercion, execution, introspection,
@@ -357,6 +360,15 @@ on its own sockets.
 - `traffic/` (RALPluginTrafficPackage): `RALTraffic` (`TRALRateLimitPlugin`,
   `TRALHttpsRedirectPlugin`, `TRALMaintenancePlugin`, `TRALMethodOverridePlugin`),
   `RALPluginTrafficReg`
+
+### `src/store/redis/` (RALStoreRedisPackage, requires PascalRAL and RALNetPackage)
+
+- `RALRedisClient`: `TRALRedisClient` (pool, helpers, `Command`), `TRALRedisConnection` (one
+  connection: TCP or TLS, `HELLO 3` falling back to RESP2, `AUTH`, `SELECT`),
+  `TRALRedisReply`, `TRALRedisPipeline`, `TRALRedisSSL`
+- `RALRedisSubscriber`: `TRALRedisSubscriber` (pub/sub on its own connection and thread)
+- `RALRedisStore`: `TRALRedisStore` (`TRALKeyValueStore`; Lua for `Increment` and `Expire`)
+- `RALStoreRedisReg`
 
 ### `src/storage/`
 

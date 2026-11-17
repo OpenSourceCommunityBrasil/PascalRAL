@@ -773,6 +773,19 @@
   emStatefulForeignHandler = 'El handler de la ruta %1:s debe ser un método de %0:s.';
   emStatefulUnknownClass = 'La clase de recurso %s no está registrada (RALRegisterResource).';
   // end of Stateful resources
+  // Redis (RALStoreRedisPackage)
+  emRedisConnect = 'No se pudo conectar a Redis en %s:%d: %s';
+  emRedisCertRefused = 'El certificado del servidor Redis fue rechazado: %s';
+  emRedisAuthFailed = 'El servidor Redis rechazó el inicio de sesión: %s';
+  emRedisSelect = 'El servidor Redis rechazó la base %d: %s';
+  emRedisClosed = 'El servidor Redis cerró la conexión.';
+  emRedisTimeout = 'El servidor Redis no respondió en %d ms.';
+  emRedisProtocol = 'El servidor Redis envió algo que no es RESP.';
+  emRedisWrite = 'No se pudo enviar al servidor Redis: %s';
+  emRedisReply = 'Redis: %s';
+  emRedisNoClient = 'No hay ningún TRALRedisClient enlazado.';
+  emRedisRead = 'No se pudo leer del servidor Redis: %s';
+  // end of Redis
 
   // JSON, BSON and OpenSSL errors.
   emJSONMissingNumberDigits = 'Faltan dígitos en el número JSON.';

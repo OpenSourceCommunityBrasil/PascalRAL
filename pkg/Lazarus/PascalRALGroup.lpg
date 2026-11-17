@@ -40,6 +40,7 @@
       <Target FileName="Plugins\ralpluginforwardedpackage.lpk"/>
       <Target FileName="Plugins\ralpluginfeatureflagspackage.lpk"/>
       <Target FileName="Net\ralnetpackage.lpk"/>
+      <Target FileName="Store\ralstoreredispackage.lpk"/>
       <Target FileName="Modules\ralmoduleproxypackage.lpk"/>
       <Target FileName="Modules\ralmoduleproxydsgn.lpk"/>
       <Target FileName="Modules\ralmodulewebpackage.lpk"/>
@@ -48,6 +49,7 @@
       <Target FileName="Modules\ralmodulegrpcpackage.lpk"/>
       <Target FileName="Modules\ralmodulewebsocketpackage.lpk"/>
       <Target FileName="Modules\ralmodulewebsocketmqttpackage.lpk"/>
+      <Target FileName="Modules\ralmodulewebsocketredispackage.lpk"/>
       <Target FileName="Modules\ralmodulesignalrpackage.lpk"/>
       <Target FileName="Modules\ralmodulegraphqlpackage.lpk"/>
       <Target FileName="Modules\ralmodulegraphqldbpackage.lpk"/>

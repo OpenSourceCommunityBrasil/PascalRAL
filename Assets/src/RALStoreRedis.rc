@@ -1,0 +1,3 @@
+TRALRedisClient BITMAP "..\components\base\redis\TRALRedisClient.bmp"
+TRALRedisSubscriber BITMAP "..\components\base\redis\TRALRedisSubscriber.bmp"
+TRALRedisStore BITMAP "..\components\base\redis\TRALRedisStore.bmp"
