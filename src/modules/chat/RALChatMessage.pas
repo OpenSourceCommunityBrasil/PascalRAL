@@ -293,12 +293,17 @@ type
     function HasMedia: Boolean;
     /// Whether ReplyTo is set, without creating it.
     function HasReplyTo: Boolean;
-    { Turns what ACaps cannot show into text, or raises (AFallback = cfRaise). The ids
-      of the buttons the numbers stand for come back in ADegraded, in order; empty when
-      nothing was degraded. }
+    { Turns what ACaps cannot show into text, or raises (AFallback = cfRaise): buttons
+      past AMaxButtons and the items of a list (not a poll) past AMaxListItems become
+      numbered lines too (0 = no limit). The ids the numbers stand for come back in
+      ADegraded, in order; empty when nothing was degraded. }
+    procedure Prepare(ACaps: TRALChatCapabilitySet; AMaxButtons, AMaxListItems: Integer;
+      AFallback: TRALChatFallback; const AChannel: StringRAL;
+      out ADegraded: TStringList); overload;
+    /// As the other Prepare, with no limit on the items of a list.
     procedure Prepare(ACaps: TRALChatCapabilitySet; AMaxButtons: Integer;
       AFallback: TRALChatFallback; const AChannel: StringRAL;
-      out ADegraded: TStringList);
+      out ADegraded: TStringList); overload;
 
     /// Buttons under the message.
     property Buttons: TRALChatButtons read FButtons write FButtons;
@@ -366,6 +371,7 @@ type
   TRALChatCapabilities = class(TPersistent)
   private
     FMaxButtons: Integer;
+    FMaxListItems: Integer;
     FMaxMediaBytes: Int64RAL;
     FMaxText: Integer;
     FSupported: TRALChatCapabilitySet;
@@ -379,6 +385,9 @@ type
 
     /// The most buttons a message may have; 0 = no limit.
     property MaxButtons: Integer read FMaxButtons write FMaxButtons;
+    { The most items a list (not a poll) may have; past it the bot sends the list as
+      numbered text. 0 = no limit }
+    property MaxListItems: Integer read FMaxListItems write FMaxListItems;
     /// The largest file a message may carry, in bytes; 0 = unknown.
     property MaxMediaBytes: Int64RAL read FMaxMediaBytes write FMaxMediaBytes;
     /// The longest text of a message, in bytes; 0 = no limit.
@@ -583,6 +592,13 @@ end;
 
 procedure TRALChatMessage.Prepare(ACaps: TRALChatCapabilitySet; AMaxButtons: Integer;
   AFallback: TRALChatFallback; const AChannel: StringRAL; out ADegraded: TStringList);
+begin
+  Prepare(ACaps, AMaxButtons, 0, AFallback, AChannel, ADegraded);
+end;
+
+procedure TRALChatMessage.Prepare(ACaps: TRALChatCapabilitySet; AMaxButtons,
+  AMaxListItems: Integer; AFallback: TRALChatFallback; const AChannel: StringRAL;
+  out ADegraded: TStringList);
 var
   vLines: TStringList;
   vRow, vIdx: Integer;
@@ -626,7 +642,9 @@ begin
             AddChoice(FKeyboard[vRow][vIdx].Id, FKeyboard[vRow][vIdx].Caption);
       FKeyboard := nil;
     end;
-    if (Length(FList.Items) > 0) and not (ccLists in ACaps) then
+    if (Length(FList.Items) > 0) and (not (ccLists in ACaps) or
+       ((AMaxListItems > 0) and (FKind <> ckPoll) and
+       (Length(FList.Items) > AMaxListItems))) then
     begin
       Need(ccLists, 'lists');
       for vIdx := 0 to High(FList.Items) do
@@ -693,6 +711,7 @@ begin
   if Source is TRALChatCapabilities then
   begin
     FMaxButtons := TRALChatCapabilities(Source).FMaxButtons;
+    FMaxListItems := TRALChatCapabilities(Source).FMaxListItems;
     FMaxMediaBytes := TRALChatCapabilities(Source).FMaxMediaBytes;
     FMaxText := TRALChatCapabilities(Source).FMaxText;
     FSupported := TRALChatCapabilities(Source).FSupported;

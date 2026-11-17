@@ -810,6 +810,8 @@ begin
   ChannelName := 'telegram';
   Capabilities.Supported := [ccButtons, ccLists, ccKeyboard, ccEdit, ccDelete, ccTyping, ccPolls, ccMedia];
   Capabilities.MaxButtons := 100;
+  // a list goes as an inline keyboard, one button per item
+  Capabilities.MaxListItems := 100;
   Capabilities.MaxText := 4096;
   Capabilities.MaxMediaBytes := 52428800;
   // about 1 message a second to a chat, 30 a second in all, 20 a minute to a group

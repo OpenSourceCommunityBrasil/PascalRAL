@@ -225,6 +225,8 @@ begin
   ReplayWindow := 300;
   Capabilities.Supported := [ccButtons, ccLists, ccEdit, ccDelete, ccMedia];
   Capabilities.MaxButtons := 25;
+  // a static_select takes 100 options
+  Capabilities.MaxListItems := 100;
   // Slack cuts a text at 40000 characters and advises 4000
   Capabilities.MaxText := 4000;
   Capabilities.MaxMediaBytes := 1073741824;

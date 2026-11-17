@@ -869,6 +869,7 @@ var
 begin
   ACopy.ChannelName := AChannel.ChannelName;
   ACopy.Prepare(AChannel.Capabilities.Supported, AChannel.Capabilities.MaxButtons,
+    AChannel.Capabilities.MaxListItems,
     FFallback, AChannel.ChannelName, vDegraded);
   try
     if vDegraded.Count > 0 then

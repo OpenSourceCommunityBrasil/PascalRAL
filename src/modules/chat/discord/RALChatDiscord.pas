@@ -349,6 +349,8 @@ begin
   ReplayWindow := 300;
   Capabilities.Supported := [ccButtons, ccLists, ccEdit, ccDelete, ccTyping, ccMedia];
   Capabilities.MaxButtons := 25;
+  // a select menu takes 25 options
+  Capabilities.MaxListItems := 25;
   Capabilities.MaxText := cMaxContent;
   // the default upload limit of a server without boosts
   Capabilities.MaxMediaBytes := 10485760;

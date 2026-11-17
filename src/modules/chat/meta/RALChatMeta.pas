@@ -113,6 +113,7 @@ begin
   ChannelName := 'meta';
   Capabilities.Supported := [ccButtons, ccLists, ccTyping, ccReadReceipts, ccMedia];
   Capabilities.MaxButtons := cQuickRepliesMax;
+  Capabilities.MaxListItems := cQuickRepliesMax;
   Capabilities.MaxMediaBytes := 26214400;
   // the Send API of a Page takes a few hundred calls a second; a person, about one
   Rates.Total := 200;

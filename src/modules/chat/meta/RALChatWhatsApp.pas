@@ -157,6 +157,7 @@ begin
     ccTemplates, ccMedia];
   // up to 3 are reply buttons, up to 10 a list; more become numbered text
   Capabilities.MaxButtons := cListRowsMax;
+  Capabilities.MaxListItems := cListRowsMax;
   Capabilities.MaxText := 4096;
   Capabilities.MaxMediaBytes := 104857600;
   // 80 messages a second per number; a pair (number, user) 1 every 6 s with a burst of 45
