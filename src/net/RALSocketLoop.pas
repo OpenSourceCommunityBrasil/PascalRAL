@@ -90,10 +90,10 @@ type
     /// The connections this thread polls.
     FConnections: TList;
     FContext: TObject;
-    /// The order of the thread in its loop, from 0 (the CPU of CPUAffinity).
-    FIndex: IntegerRAL;
     /// Connections handed over, not yet polled.
     FIncoming: TList;
+    /// The order of the thread in its loop, from 0 (the CPU of CPUAffinity).
+    FIndex: IntegerRAL;
     /// Guards FIncoming.
     FLock: TCriticalSection;
     /// The loop the thread belongs to.
