@@ -321,8 +321,8 @@ type
       from one side before the other drains }
     property BufferSize: IntegerRAL read FBufferSize write FBufferSize default 16384;
     { Pins each poll thread to one processor (TRALSocketLoop.CPUAffinity), for
-      a machine that runs mostly the balancer: about 5% more requests per
-      second measured with kept-alive connections. Read when it starts }
+      a machine that runs mostly the balancer with kept-alive connections. Read
+      when it starts }
     property CPUAffinity: boolean read FCPUAffinity write FCPUAffinity default False;
     /// Milliseconds a client has to send the whole request head.
     property HeaderTimeout: IntegerRAL read FHeaderTimeout write FHeaderTimeout default 30000;

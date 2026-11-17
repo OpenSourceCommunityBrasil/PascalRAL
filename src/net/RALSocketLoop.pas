@@ -175,11 +175,10 @@ type
     procedure StopTimer;
 
     { Pins each poll thread to one processor (thread N to processor N, round
-      robin), for a machine that runs mostly this server: measured on the
-      balancer with kept-alive connections and a thread per processor, about
-      5% more requests per second (median 141k against 131k); nothing with a
-      connection per request. Set before StartThreads. Does nothing where the
-      system has no way to pin a thread (macOS) }
+      robin), for a machine that runs mostly this server: it helps kept-alive
+      connections with a thread per processor, not a connection per request.
+      Set before StartThreads. Does nothing where the system has no way to pin
+      a thread (macOS) }
     property CPUAffinity: boolean read FCPUAffinity write FCPUAffinity;
     /// A connection was accepted, on the accepting thread.
     property OnAccept: TRALSocketLoopAccept read FOnAccept write FOnAccept;
@@ -202,8 +201,10 @@ uses
 {$IFDEF RALWindows}
 { declared here: the Windows unit of FPC has a TCriticalSection of its own,
   which would hide the one of SyncObjs }
+/// The pseudo handle of the calling thread (GetCurrentThread).
 function RALGetCurrentThread: THandle; stdcall;
   external 'kernel32.dll' name 'GetCurrentThread';
+/// Restricts AThread to the processors of AMask (SetThreadAffinityMask).
 function RALSetThreadAffinityMask(AThread: THandle; AMask: NativeUInt): NativeUInt; stdcall;
   external 'kernel32.dll' name 'SetThreadAffinityMask';
 {$ELSE}
