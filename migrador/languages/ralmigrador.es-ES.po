@@ -158,6 +158,10 @@ msgstr "Informe: %s"
 msgid "Relatório (HTML): %s"
 msgstr "Informe (HTML): %s"
 
+#: ralmig.console.mensagens.cmclisemrelatorio
+msgid "Nenhum passo a aplicar (a origem já é o destino ou os passos já foram feitos): nenhum relatório foi gravado."
+msgstr "Ningún paso que aplicar (el origen ya es el destino o los pasos ya se hicieron): no se grabó ningún informe."
+
 #: ralmig.console.mensagens.cmclirelatoriomantido
 msgid "Nada foi alterado; o relatório da migração anterior foi mantido: %s"
 msgstr "No se cambió nada; se conservó el informe de la migración anterior: %s"
@@ -673,6 +677,10 @@ msgstr "Informe: %s"
 #: ralmig.tela.mensagens.cmrelhtml
 msgid "Relatório (HTML): %s"
 msgstr "Informe (HTML): %s"
+
+#: ralmig.tela.mensagens.cmrelsempassos
+msgid "Nenhum passo a aplicar (a origem já é o destino ou os passos já foram feitos): nenhum relatório foi gravado."
+msgstr "Ningún paso que aplicar (el origen ya es el destino o los pasos ya se hicieron): no se grabó ningún informe."
 
 #: ralmig.tela.mensagens.cmrelmantido
 msgid "Nada foi alterado; o relatório da migração anterior foi mantido: %s"

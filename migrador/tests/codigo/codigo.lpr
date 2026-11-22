@@ -653,14 +653,15 @@ begin
   Caso('UCripto', '1.0', '1.1', [], False);
   Caso('UAvisos10', '1.0', '1.1', ['1.1/addcookie-obsoleto@39', '1.1/dbbase-descendente@13',
     '1.1/jwt-eventos-of-object@28', '1.1/jwt-eventos-of-object@29'], False);
-  Caso('USagui', '1.1', '1.2', ['1.2/cliente-chamada-sincrona@40',
-    '1.2/params-body-obsoleto@44', '1.2/params-por-origem@42', '1.2/sagui-maxconnections@27',
-    '1.2/webmodule-domain@43'], False);
-  Caso('UPadroes12', '1.1', '1.2', ['1.2/cliente-chamada-sincrona@35',
-    '1.2/cliente-chamada-sincrona@38', '1.2/cookie-samesite-zero@32', '1.2/cookie-samesite-zero@39',
+  Caso('USagui', '1.1', '1.2', ['1.2/params-body-obsoleto@47', '1.2/params-por-origem@45', '1.2/sagui-maxconnections@27',
+    '1.2/webmodule-domain@46'], False);
+  Caso('UPadroes12', '1.1', '1.2', ['1.2/cookie-samesite-zero@32', '1.2/cookie-samesite-zero@39',
     '1.2/cors-codigo-aviso@52', '1.2/memtable-excecoes@44'], False);
+  Caso('UChamadas12', '1.1', '1.2', ['1.2/cliente-chamada-sincrona@22',
+    '1.2/cliente-chamada-sincrona@23'], False);
   Caso('UServidor', '1.2', '2.0', [], True);
   Caso('UPlugins20', '1.2', '2.0', [], True);
+  Caso('UEnumerado', '1.2', '2.0', [], True);
   Caso('UPadroes20', '1.2', '2.0', ['2.0/classe-security-sumiu@22', '2.0/oauth1-removido@19', '2.0/oauth1-removido@20',
     '2.0/plugin-blacklist@32', '2.0/plugin-securityheaders@33', '2.0/plugin-whitelist@31'], False);
   Caso('UNaoProvado', '1.2', '2.0', ['2.0/plugin-compress@24', '2.0/plugin-compress@30',

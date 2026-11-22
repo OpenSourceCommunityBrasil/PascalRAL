@@ -53,6 +53,7 @@ resourcestring
   cmCliGravados = '%d arquivo(s) gravado(s).';
   cmCliRelatorioMd = 'Relatório: %s';
   cmCliRelatorioHtml = 'Relatório (HTML): %s';
+  cmCliSemRelatorio = 'Nenhum passo a aplicar (a origem já é o destino ou os passos já foram feitos): nenhum relatório foi gravado.';
   cmCliRelatorioMantido = 'Nada foi alterado; o relatório da migração anterior foi mantido: %s';
   wmCliRelatorioSemRegistro = 'O relatório não foi registrado na cópia de segurança (o desfazer não o removerá): %s';
   cmCliCopia = 'Cópia de segurança: %s';

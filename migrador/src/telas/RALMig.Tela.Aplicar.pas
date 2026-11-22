@@ -227,7 +227,9 @@ begin
   else
   begin
     FResumo.Caption := Estado.Resumo;
-    if Estado.RelatorioMantido then
+    if Estado.SemPassos then
+      FMd.Caption := cmRelSemPassos
+    else if Estado.RelatorioMantido then
       FMd.Caption := Format(cmRelMantido, [Estado.RelatorioMd])
     else
       FMd.Caption := Format(cmRelMd, [Estado.RelatorioMd]);

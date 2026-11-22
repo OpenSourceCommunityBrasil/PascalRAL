@@ -116,6 +116,7 @@ resourcestring
   cmRelNaoAplicada = 'A migração não está aplicada.';
   cmRelMd = 'Relatório: %s';
   cmRelHtml = 'Relatório (HTML): %s';
+  cmRelSemPassos = 'Nenhum passo a aplicar (a origem já é o destino ou os passos já foram feitos): nenhum relatório foi gravado.';
   cmRelMantido = 'Nada foi alterado; o relatório da migração anterior foi mantido: %s';
   cmRelCopia = 'Cópia de segurança: %s';
   cmRelSemCopia = 'Sem cópia de segurança: não há como desfazer.';

@@ -726,6 +726,22 @@ begin
     (SHA256Arquivo(vArq) = Copy(ALinha, 1, Pos(#9, ALinha) - 1));
 end;
 
+/// A report that already existed was kept in the copy (and registered by
+/// RegistrarDepois with the old content): its new content is registered as a
+/// report, so the line of the old one goes
+function LinhaDeUmDosRelatorios(const ALinha: string; ARelativos: TStrings): boolean;
+var
+  vTab, vInt: integer;
+begin
+  Result := False;
+  vTab := Pos(#9, ALinha);
+  if vTab = 0 then
+    Exit;
+  for vInt := 0 to Pred(ARelativos.Count) do
+    if CaminhoRelativo(ARelativos[vInt]) = Copy(ALinha, vTab + 1, MaxInt) then
+      Exit(True);
+end;
+
 function RegistrarRelatorios(const AZip, APastaProjeto: string; ARelativos: TStrings;
   out AErro: string): boolean;
 var
@@ -748,7 +764,7 @@ begin
     for vInt := 0 to Pred(vTodas.Count) do
       if vTodas[vInt] = SECAO_RELATORIOS then
         Break
-      else
+      else if not LinhaDeUmDosRelatorios(vTodas[vInt], ARelativos) then
         vTexto := vTexto + vTodas[vInt] + #10;
   finally
     vTodas.Free;
@@ -775,22 +791,30 @@ end;
 procedure ListarRelatoriosMantidos(const AZip, APastaProjeto: string; AMantidos: TStrings);
 var
   vLinhas: TStringList;
+  vManifesto: TManifesto;
   vInt: integer;
+  vErro: string;
 begin
   vLinhas := TStringList.Create;
+  vManifesto := TManifesto.Create;
   try
     LerRelatorios(AZip, vLinhas);
+    // a report that was in the copy is restored by Desfazer, not kept
+    if not LerManifesto(AZip, vManifesto, vErro) then
+      vManifesto.Existentes.Clear;
     for vInt := 0 to Pred(vLinhas.Count) do
       if not RelatorioIntacto(APastaProjeto, vLinhas[vInt]) and
+         (vManifesto.Existentes.IndexOfName(RelatorioDaLinha(vLinhas[vInt])) < 0) and
          FileExists(CaminhoNoDisco(APastaProjeto, RelatorioDaLinha(vLinhas[vInt]))) then
         AMantidos.Add(RelatorioDaLinha(vLinhas[vInt]));
   finally
+    vManifesto.Free;
     vLinhas.Free;
   end;
 end;
 
 /// Deletes the reports the migration wrote and nobody touched since
-procedure RemoverRelatorios(const AZip, APastaProjeto: string);
+procedure RemoverRelatorios(const AZip, APastaProjeto: string; AManifesto: TManifesto);
 var
   vLinhas: TStringList;
   vInt: integer;
@@ -800,7 +824,8 @@ begin
   try
     LerRelatorios(AZip, vLinhas);
     for vInt := 0 to Pred(vLinhas.Count) do
-      if RelatorioIntacto(APastaProjeto, vLinhas[vInt]) then
+      if RelatorioIntacto(APastaProjeto, vLinhas[vInt]) and
+         (AManifesto.Existentes.IndexOfName(RelatorioDaLinha(vLinhas[vInt])) < 0) then
       begin
         vRel := RelatorioDaLinha(vLinhas[vInt]);
         DeleteFile(CaminhoNoDisco(APastaProjeto, vRel));
@@ -874,7 +899,7 @@ begin
       end;
       LimparPastasVazias(APastaProjeto, vManifesto.Novos[vInt]);
     end;
-    RemoverRelatorios(AZip, APastaProjeto);
+    RemoverRelatorios(AZip, APastaProjeto, vManifesto);
     Result := True;
   finally
     vManifesto.Free;

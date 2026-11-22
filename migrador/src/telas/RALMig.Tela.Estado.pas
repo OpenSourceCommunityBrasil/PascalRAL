@@ -119,6 +119,8 @@ type
     property RelatorioHtml: string read FRelatorioHtml;
     /// The report of an earlier run was kept (nothing changed)
     property RelatorioMantido: boolean read FRelatorioMantido;
+    /// The last run had no step to apply: no report was written
+    function SemPassos: boolean;
     property RelatorioMd: string read FRelatorioMd;
     /// One line with the counts of the applied run
     property Resumo: string read FResumo;
@@ -395,6 +397,11 @@ begin
   end;
 end;
 
+function TEstadoMig.SemPassos: boolean;
+begin
+  Result := (FMotor <> nil) and FMotor.SemPassos;
+end;
+
 procedure TEstadoMig.GravarRelatorioDaRodada(AAlterados: integer);
 var
   vDados: TDadosRelatorio;
@@ -404,6 +411,13 @@ begin
   vDados := DadosRelatorio(FMotor.Resultado, FMotor.Conjunto, FMotor.Conjunto.Pasta,
     FMotor.ZipCopia, True);
   FResumo := LinhaResumo(vDados);
+  // nenhum passo se aplica: nao ha relatorio a gravar
+  if FMotor.SemPassos then
+  begin
+    FRelatorioMd := '';
+    FRelatorioHtml := '';
+    Exit;
+  end;
   FRelatorioMd := FMotor.Conjunto.Pasta + NomeRelatorio(FMotor.Resultado.De,
     FMotor.Resultado.Para, 'md');
   FRelatorioHtml := FMotor.Conjunto.Pasta + NomeRelatorio(FMotor.Resultado.De,

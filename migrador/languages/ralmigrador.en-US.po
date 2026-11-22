@@ -158,6 +158,10 @@ msgstr "Report: %s"
 msgid "Relatório (HTML): %s"
 msgstr "Report (HTML): %s"
 
+#: ralmig.console.mensagens.cmclisemrelatorio
+msgid "Nenhum passo a aplicar (a origem já é o destino ou os passos já foram feitos): nenhum relatório foi gravado."
+msgstr "No step to apply (the source is already the target, or the steps were already done): no report was written."
+
 #: ralmig.console.mensagens.cmclirelatoriomantido
 msgid "Nada foi alterado; o relatório da migração anterior foi mantido: %s"
 msgstr "Nothing was changed; the report of the previous migration was kept: %s"
@@ -673,6 +677,10 @@ msgstr "Report: %s"
 #: ralmig.tela.mensagens.cmrelhtml
 msgid "Relatório (HTML): %s"
 msgstr "Report (HTML): %s"
+
+#: ralmig.tela.mensagens.cmrelsempassos
+msgid "Nenhum passo a aplicar (a origem já é o destino ou os passos já foram feitos): nenhum relatório foi gravado."
+msgstr "No step to apply (the source is already the target, or the steps were already done): no report was written."
 
 #: ralmig.tela.mensagens.cmrelmantido
 msgid "Nada foi alterado; o relatório da migração anterior foi mantido: %s"

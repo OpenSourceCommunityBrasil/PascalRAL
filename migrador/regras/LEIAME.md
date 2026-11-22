@@ -60,7 +60,7 @@ separado por vírgula na leitura.
 | `valor-padrao-materializar` | `classe!` (glob) `propriedade!` `valor!` (como o `.dfm` escreve: `'*'`, `False`) `quando` (`ausente`) `modo` (`escrever` padrão, `so-relatar`, `perguntar`) |
 | `propriedade-remover` | `classe!` `propriedades!` `valores-descartaveis` (mapa propriedade → lista de valores que são o padrão e podem sumir; valor diferente vira item manual; propriedade sem entrada sempre some) |
 | `objeto-sem-equivalente` | `classes!` (objetos do formulário) `alternativa!` `unit` `identificadores` (nomes no código) |
-| `padrao-avisar` | `padrao!` (mapa, ver abaixo) `trecho` (código pronto para o relatório) |
+| `padrao-avisar` | `padrao!` (mapa, ver abaixo) `trecho` (código pronto para o relatório) `acrescentar` (só em `chamada-metodo`: texto posto como último argumento da chamada com receptor provado e dois argumentos, o segundo `nil`, `@Evento` ou de tipo achado; o resto segue como item manual) `acrescentar-unit` (unit a pôr no `uses`) `feito!` (texto, exigido com `acrescentar`) |
 | `pacote-design-para-runtime` | `de!` `para!` `ide!` `manter-se` (`designonly`, `tem-register`: não troca se o pacote é de design) |
 
 `padrao.tipo`: `identificador` (`nomes`, aceita `Classe.Membro`), `chamada-metodo`

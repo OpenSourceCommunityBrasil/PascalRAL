@@ -80,6 +80,13 @@
         "classe": "TRALClient",
         "metodos": ["Get", "Post", "Put", "Patch", "Delete"]
       },
+      "acrescentar": "ebMultiThread",
+      "acrescentar-unit": "RALTypes",
+      "feito": {
+        "pt-BR": "Chamada %nome% com evento, sem o comportamento de execução: acrescentado ebMultiThread, que era o comportamento da 1.1.",
+        "en-US": "Call to %nome% with an event and no execution behavior: ebMultiThread was added, which was the 1.1 behavior.",
+        "es-ES": "Llamada a %nome% con evento y sin comportamiento de ejecución: se agregó ebMultiThread, que era el comportamiento de la 1.1."
+      },
       "descricao": {
         "pt-BR": "As chamadas do cliente que recebem um evento (callback) sem informar o comportamento de execução passaram de ebMultiThread para ebSingleThread: agora esperam a resposta antes de continuar.",
         "en-US": "Client calls that take an event (callback) without stating the execution behavior changed from ebMultiThread to ebSingleThread: they now wait for the response before moving on.",

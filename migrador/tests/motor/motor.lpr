@@ -312,6 +312,75 @@ begin
   Conferir(Foto(vPasta, True) = vAntes, 'a pasta voltou identica');
 end;
 
+procedure TesteRelatorioAnterior;
+var
+  vPasta, vAntes, vZip, vErro, vMd: string;
+  vMotor: TMotorMigracao;
+  vRel: TStringList;
+begin
+  WriteLn('relatorio de uma rodada anterior volta no desfazer');
+  vPasta := GRaiz + 'relat' + PathDelim;
+  CriarProjeto(vPasta);
+  vMd := vPasta + 'MIGRACAO-RAL-1.1-2.0.md';
+  Gravar(vMd, '# relatorio de antes');
+  vAntes := Foto(vPasta, True);
+  vRel := TStringList.Create;
+  vMotor := NovoMotor(vPasta, '1.1', '2.0');
+  try
+    vMotor.Simular;
+    Conferir(not vMotor.SemPassos, 'ha passos a aplicar');
+    Conferir(vMotor.Gravar(True), 'Gravar(com copia)');
+    vZip := vMotor.ZipCopia;
+    // o que o ralmigra faz depois: grava o relatorio e o registra na copia
+    Gravar(vMd, '# relatorio novo');
+    vRel.Add('MIGRACAO-RAL-1.1-2.0.md');
+    Conferir(RegistrarRelatorios(vZip, vPasta, vRel, vErro), 'RegistrarRelatorios ' + vErro);
+  finally
+    vRel.Free;
+    vMotor.Free;
+  end;
+  Conferir(Foto(vPasta, True) <> vAntes, 'a pasta mudou');
+  Conferir(Desfazer(vZip, vPasta, nil, vErro), 'Desfazer ' + vErro);
+  Conferir(FileExists(vMd) and (Ler(vMd) = '# relatorio de antes'), 'o relatorio anterior voltou');
+  Conferir(Foto(vPasta, True) = vAntes, 'a pasta voltou identica');
+end;
+
+procedure TesteSemPassos;
+var
+  vPasta: string;
+  vMotor: TMotorMigracao;
+begin
+  WriteLn('sem passo a aplicar');
+  vPasta := GRaiz + 'cadeia-a' + PathDelim;
+  // a pasta ja foi migrada para a 2.0: pedir 2.0 -> 2.0 nao tem passo nenhum
+  vMotor := NovoMotor(vPasta, '2.0', '2.0');
+  try
+    vMotor.Simular;
+    Conferir(vMotor.SemPassos, 'de = para: SemPassos');
+  finally
+    vMotor.Free;
+  end;
+  // 1.1 -> 2.0 sobre um projeto ja na 2.0: os passos sao pulados, nao ha o que relatar
+  vMotor := NovoMotor(vPasta, '1.1', '2.0');
+  try
+    vMotor.Simular;
+    Conferir(vMotor.SemPassos or (vMotor.Resultado.De <> vMotor.Resultado.Para),
+      'a origem do relatorio nunca e igual ao destino');
+  finally
+    vMotor.Free;
+  end;
+  // projeto da 1.1: ha passos, e a origem e a pedida
+  CriarProjeto(GRaiz + 'novo' + PathDelim);
+  vMotor := NovoMotor(GRaiz + 'novo' + PathDelim, '1.1', '2.0');
+  try
+    vMotor.Simular;
+    Conferir(not vMotor.SemPassos and (vMotor.Resultado.De = '1.1') and
+      (vMotor.Resultado.Para = '2.0'), 'com passos: De e Para reais');
+  finally
+    vMotor.Free;
+  end;
+end;
+
 procedure TesteDeteccao;
 var
   vEvid: TStrings;
@@ -361,6 +430,8 @@ begin
     TesteAcaoDesconhecida;
     TesteRetrocesso;
     TesteCopiaDesfazer;
+    TesteRelatorioAnterior;
+    TesteSemPassos;
     TesteDeteccao;
   finally
     ApagarPasta(GRaiz);

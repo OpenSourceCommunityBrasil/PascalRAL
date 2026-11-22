@@ -246,6 +246,12 @@ var
   vDados: TDadosRelatorio;
   vMd, vHtml, vErro: string;
 begin
+  // nenhum passo se aplica: de e para seriam a mesma versao, nao ha o que relatar
+  if AMotor.SemPassos then
+  begin
+    WriteLn(cmCliSemRelatorio);
+    Exit;
+  end;
   vDados := DadosRelatorio(AMotor.Resultado, AMotor.Conjunto, AMotor.Conjunto.Pasta,
     AMotor.ZipCopia, True);
   vMd := AMotor.Conjunto.Pasta + NomeRelatorio(AMotor.Resultado.De, AMotor.Resultado.Para, 'md');

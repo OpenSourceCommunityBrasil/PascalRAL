@@ -929,7 +929,7 @@ begin
     arObjetoSemEquivalente:
       Result := 'classes:l!;alternativa:s!;unit:s;identificadores:l';
     arPadraoAvisar:
-      Result := 'padrao:m!;trecho:s';
+      Result := 'padrao:m!;trecho:s;acrescentar:s;acrescentar-unit:s;feito:t';
     arPacoteDesignParaRuntime:
       Result := 'de:s!;para:s!;ide:' + SpecIdeTres + '!;manter-se:l';
   else
@@ -1325,6 +1325,16 @@ begin
   end;
   if ARegra.Acao = arPadraoAvisar then
     ConferirPadrao(ARegra, AOnde);
+  if (ARegra.Acao = arPadraoAvisar) and (ARegra.Param('acrescentar') <> '') then
+  begin
+    if ARegra.PadraoTipo <> 'chamada-metodo' then
+      Falha(AOnde, '"acrescentar" so vale em padrao do tipo "chamada-metodo"');
+    if ARegra.Texto('feito', IdiomaPtBR) = '' then
+      Falha(AOnde, '"acrescentar" pede o texto "feito"');
+  end
+  else if (ARegra.Acao = arPadraoAvisar) and
+    ((ARegra.Param('acrescentar-unit') <> '') or (ARegra.Texto('feito', IdiomaPtBR) <> '')) then
+    Falha(AOnde, '"acrescentar-unit" e "feito" so valem junto com "acrescentar"');
   if ARegra.Acao = arPacoteDesignParaRuntime then
     for vInt := 0 to Pred(ARegra.Lista('manter-se').Count) do
       if not EmLista(ARegra.Lista('manter-se')[vInt], MantemValidos) then

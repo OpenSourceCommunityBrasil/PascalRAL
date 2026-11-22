@@ -43,6 +43,7 @@ type
     FRecusado: boolean;
     FRegras: TConjuntoRegras;
     FRegrasCarregadas: boolean;
+    FSemPassos: boolean;
     /// the last CarregarRegras worked (a refused ralmigracao.json stops Simular)
     FRegrasOk: boolean;
     FForcarDe: boolean;
@@ -60,6 +61,7 @@ type
     procedure Reiniciar;
     function ListaParaCopia(out AForaDaPasta: string): TStringList;
     function GravarArquivos(ALista: TList): boolean;
+    procedure CopiarRelatoriosExistentes(ALista: TStrings);
   public
     constructor Create;
     destructor Destroy; override;
@@ -106,6 +108,10 @@ type
     /// Confidence of the last Detectar
     property Confianca: TConfianca read FConfianca;
     property Resultado: TResultadoMigracao read FResultado;
+    /// Last Simular found no step to apply (source already equals target, or
+    /// every step already done): there is no report to write. When steps do apply,
+    /// Resultado.De is the version they really start from
+    property SemPassos: boolean read FSemPassos;
     /// Last Simular was refused because the target is older (D-M8)
     property Recusado: boolean read FRecusado;
     property ZipCopia: string read FZipCopia;
@@ -115,7 +121,7 @@ type
 implementation
 
 uses
-  RALInst.Traducao, RALMig.Copia, RALMig.Inventario,
+  RALInst.Traducao, RALMig.Copia, RALMig.Inventario, RALMig.Relatorio,
   // as acoes se registram no initialization: o motor traz todas
   RALMig.Acoes.Projeto, RALMig.Acoes.Formulario, RALMig.Acoes.Codigo;
 
@@ -163,6 +169,7 @@ begin
   FreeAndNil(FLocalizador);
   FConjunto := nil;
   FRecusado := False;
+  FSemPassos := False;
   FZipCopia := '';
   FErroGravacao := '';
 end;
@@ -393,6 +400,10 @@ begin
     FResultado.Erros.AddStrings(FLocalizador.Erros);
     AdicionarIgnorados;
     PularPassosJaFeitos(vCadeia);
+    FSemPassos := (vErro = ceNenhum) and (vCadeia.Count = 0);
+    // the report carries the real source: steps already done were skipped
+    if vCadeia.Count > 0 then
+      FResultado.De := vCadeia[0].De;
     vAcoes := TStringList.Create;
     try
       vAcoes.OwnsObjects := True;
@@ -464,6 +475,26 @@ begin
   end;
 end;
 
+/// A report of an earlier run with the name this run will write is overwritten:
+/// it goes into the copy too, so that undoing brings it back
+procedure TMotorMigracao.CopiarRelatoriosExistentes(ALista: TStrings);
+var
+  vNome: string;
+  vExt: integer;
+begin
+  if FSemPassos or (FResultado = nil) then
+    Exit;
+  for vExt := 0 to 1 do
+  begin
+    if vExt = 0 then
+      vNome := NomeRelatorio(FResultado.De, FResultado.Para, 'md')
+    else
+      vNome := NomeRelatorio(FResultado.De, FResultado.Para, 'html');
+    if FileExists(FConjunto.Pasta + vNome) and (ALista.IndexOf(vNome) < 0) then
+      ALista.Add(vNome);
+  end;
+end;
+
 function TMotorMigracao.Gravar(ACopia: boolean): boolean;
 var
   vLista: TList;
@@ -483,6 +514,7 @@ begin
       Exit(True);
     if ACopia then
     begin
+      CopiarRelatoriosExistentes(vCopiar);
       if vFora <> '' then
       begin
         FErroGravacao := Format(emMotorForaDaPasta, [vFora]);

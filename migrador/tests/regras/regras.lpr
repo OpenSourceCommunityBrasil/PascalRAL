@@ -308,6 +308,25 @@ begin
       '''trecho'':''x''') + ',' + Regra('2.0/q', 'caminho-trocar',
       '''de'':''base'',''modo'':''trocar'',''para'':[''core'',''storage''],' +
       '''para-se-unit'':{''plugins\\auth'':[''RALAuthentication'',''RALDigest'']}'))), 'padrao e caminho validos');
+    // acrescentar: so em chamada-metodo, e pede o texto "feito"
+    Conferir(Carrega(vSet, Passo('1.1', '1.2', Regra('1.2/c', 'padrao-avisar',
+      '''padrao'':{''tipo'':''chamada-metodo'',''classe'':''TRALClient'',''metodos'':[''Get'']},' +
+      '''acrescentar'':''ebMultiThread'',''acrescentar-unit'':''RALTypes'',''feito'':' + Tx('feito')))),
+      'acrescentar valido');
+    Conferir(not Carrega(vSet, Passo('1.1', '1.2', Regra('1.2/c', 'padrao-avisar',
+      '''padrao'':{''tipo'':''chamada-metodo'',''classe'':''TRALClient'',''metodos'':[''Get'']},' +
+      '''acrescentar'':''ebMultiThread'''))), 'acrescentar sem "feito" recusa');
+    Conferir(not Carrega(vSet, Passo('1.1', '1.2', Regra('1.2/c', 'padrao-avisar',
+      '''padrao'':{''tipo'':''identificador'',''nomes'':[''X'']},' +
+      '''acrescentar'':''ebMultiThread'',''feito'':' + Tx('feito')))),
+      'acrescentar fora de chamada-metodo recusa');
+    Conferir(not Carrega(vSet, Passo('1.1', '1.2', Regra('1.2/c', 'padrao-avisar',
+      '''padrao'':{''tipo'':''chamada-metodo'',''classe'':''TRALClient'',''metodos'':[''Get'']},' +
+      '''acrescentar'':''ebMultiThread'',''feito'':' + TxPtEn('a', 'b')))),
+      'feito sem os tres idiomas recusa');
+    Conferir(not Carrega(vSet, Passo('1.1', '1.2', Regra('1.2/c', 'padrao-avisar',
+      '''padrao'':{''tipo'':''chamada-metodo'',''classe'':''TRALClient'',''metodos'':[''Get'']},' +
+      '''acrescentar-unit'':''RALTypes'''))), 'acrescentar-unit sem acrescentar recusa');
     vRegra := vSet.BuscarRegra('2.0/p');
     Conferir((vRegra <> nil) and (vRegra.PadraoTipo = 'conversao-tipo'), 'PadraoTipo');
     vRegra := vSet.BuscarRegra('2.0/q');

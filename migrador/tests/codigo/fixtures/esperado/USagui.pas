@@ -19,6 +19,9 @@ type
 
 implementation
 
+uses
+  RALTypes;
+
 procedure TPrincipal.Ligar(AOutro: TObject);
 begin
   FSagui := TRALSaguiServer.Create(nil);
@@ -37,7 +40,7 @@ var
   vPar: TRALParams;
   vModulo: TRALWebModule;
 begin
-  FCli.Get('http://x', nil);
+  FCli.Get('http://x', nil, ebMultiThread);
   vLista.Get(0);
   vPar.GetKind(1);
   vModulo.Domain := 'api';

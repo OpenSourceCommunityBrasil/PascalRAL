@@ -32,10 +32,10 @@ var
   vEscopo: TRALCookieSiteScope;
 begin
   FCli.Get('/a', vResp);
-  FCli.Get('/b', @Retorno);
+  FCli.Get('/b', @Retorno, ebMultiThread);
   FCli.Post('/c', @Retorno, ebMultiThread);
   FCli.Put('/d', nil, ebSingleThread);
-  FCli.Delete('/e', @Retorno);
+  FCli.Delete('/e', @Retorno, ebMultiThread);
   vEscopo := cssLax;
 end;
 

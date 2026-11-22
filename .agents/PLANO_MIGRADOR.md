@@ -610,12 +610,11 @@ testes de `migrador/tests` passam com `--testes` (o `traducao` sem argumento).
   - rodar o workflow de verdade.
 - **Falta, pequeno:**
   - regerar `api-v1.0/1.1/dev` com `le-antigos`;
-  - `case` com rótulo enumerado ainda deixa `X: ;`;
-  - `Get(url, cb)` → `Get(url, cb, ebMultiThread)` pede um campo novo na regra (hoje é
-    item manual);
-  - relatório que já existia antes de uma segunda rodada é sobrescrito e não volta no
-    desfazer (o `Motor.Gravar` teria de pô-lo na cópia);
-  - rodada sem alteração mas com item manual grava `MIGRACAO-RAL-<x>-<x>`.
+  - feitos depois (sem commit): `case` com rótulo enumerado sem o `X: ;`; `Get(url, cb)` ->
+    `Get(url, cb, ebMultiThread)` (campos `acrescentar`, `acrescentar-unit` e `feito` do
+    `padrao-avisar`; só com receptor provado e dois argumentos, o resto segue manual);
+    relatório anterior vai na cópia e volta no desfazer; rodada sem passo
+    (`Motor.SemPassos`) não grava relatório e o `De` do relatório é a origem real.
 **25/10/2026 (sem commit): conferido no Windows, pela VM `win10`.**
 - Instalador, `ralcli`, `ralmigra` e `ralmigrador` (`--bm=Windows64`) compilam no
   Lazarus/Windows. Os 14 testes do migrador e os 6 do instalador passam no Windows

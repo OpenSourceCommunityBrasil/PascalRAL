@@ -1821,6 +1821,53 @@ begin
   end;
 end;
 
+/// `Get(url, cb)` -> `Get(url, cb, ebMultiThread)`: appends the rule's `acrescentar`
+/// as the last argument when the call is provably the callback overload (receiver
+/// proved, exactly two arguments, the second `nil`, `@Handler` or of a known type).
+/// False leaves the call to the manual item
+function AcrescentarArgumento(ARegra: TRegraMigracao; AContexto: TContextoMigracao;
+  AAn: TAnalise; AMembro: integer; AClasses: TStrings): boolean;
+var
+  vAbre, vFecha, vIni, vFim, j, vVirgulas: integer;
+  vMarcas: TMarcas;
+begin
+  Result := False;
+  if (ARegra.Param('acrescentar') = '') or (AAn.Veredito(AMembro, AClasses) <> vSim) then
+    Exit;
+  vAbre := AAn.Toks.Proximo(AMembro);
+  if not (AAn.EhSimb(vAbre, '(') and AAn.UltimoArgumento(vAbre, vIni, vFim)) then
+    Exit;
+  vFecha := AAn.Fecha(vAbre);
+  vVirgulas := 0;
+  j := AAn.Toks.Proximo(vAbre);
+  while j < vFecha do
+  begin
+    if AAn.EhPal(j, 'begin') or AAn.EhPal(j, 'procedure') or AAn.EhPal(j, 'function') then
+      Exit;
+    if AAn.EhSimb(j, '(') or AAn.EhSimb(j, '[') then
+      j := AAn.Fecha(j)
+    else if AAn.EhSimb(j, ',') then
+      Inc(vVirgulas);
+    j := AAn.Toks.Proximo(j);
+  end;
+  if vVirgulas <> 1 then
+    Exit;
+  if not (AAn.EhSimb(vIni, '@') or AAn.IdIs(vIni, 'nil') or AAn.EhPal(vIni, 'nil') or
+    (AAn.TipoDesignador(vIni, vFim) <> '')) then
+    Exit;
+  AAn.Texto.AdicionarEdicao(AAn.Toks[vFim].Fim, 0, ', ' + ARegra.Param('acrescentar'));
+  if ARegra.Param('acrescentar-unit') <> '' then
+  begin
+    if AAn.EhUnit then
+      UsesUmaVez(AAn.Texto, ARegra.Param('acrescentar-unit'), suImplementation)
+    else
+      UsesUmaVez(AAn.Texto, ARegra.Param('acrescentar-unit'), suPrograma);
+  end;
+  vMarcas := Marcas(['nome', AAn.N(AMembro), 'variavel', Receptor(AAn, AMembro)]);
+  AddFeito(AContexto, ARegra, AAn, AMembro, TextoRegra(ARegra, 'feito', AContexto, vMarcas));
+  Result := True;
+end;
+
 procedure PadraoChamada(ARegra: TRegraMigracao; AContexto: TContextoMigracao; AAn: TAnalise);
 var
   vClasses, vMetodos: TStringList;
@@ -1849,6 +1896,8 @@ begin
       // the overload that hands the value back through a var parameter
       // (synchronous, no callback) is not the call the rule is about
       if AAn.ChamadaViaVar(i, vClasses) then
+        Continue;
+      if AcrescentarArgumento(ARegra, AContexto, AAn, i, vClasses) then
         Continue;
       vRec := Receptor(AAn, i);
       vFim := i;
@@ -2537,6 +2586,7 @@ type
     FBracos: TList;
     function RemoverReal(AOc: TOcorrencia): boolean;
     function EhBraco(AOc: TOcorrencia): boolean;
+    function RemoverBracoComRotulo(AIni, AFim: integer): boolean;
     function CaseDoBraco(AIni: integer): integer;
     function FimDoCase(AOf: integer): integer;
     function CaseVazio(ACase: integer; out AOf, AEnd: integer): boolean;
@@ -2843,8 +2893,8 @@ begin
     vIndent + APlugin + '.' + Ligacao + ' := ' + AServidor + ';');
 end;
 
-/// True when the statement is the whole body of a numeric/string labelled arm
-/// (`1: X := ..;`) or of the `else` of a case: tokens before it say so
+/// True when the statement is the whole body of a numeric/string/enumerated labelled
+/// arm (`1: X := ..;`, `tmUm: X := ..;`) or of the `else` of a case: tokens before it say so
 function TPlugin.EhBraco(AOc: TOcorrencia): boolean;
 var
   vPrev, vLab: integer;
@@ -2853,7 +2903,10 @@ begin
   if An.EhSimb(vPrev, ':') then
   begin
     vLab := An.Toks.Anterior(vPrev);
-    Exit(An.Toks[vLab].Tipo in [ttNumero, ttString]);
+    if An.Toks[vLab].Tipo in [ttNumero, ttString] then
+      Exit(True);
+    // enumerated label: only inside a case, where `Id:` cannot be a goto label
+    Exit((An.Toks[vLab].Tipo = ttIdentificador) and (CaseDoBraco(AOc.Ini) >= 0));
   end;
   Result := An.EhPal(vPrev, 'else');
 end;
@@ -2948,6 +3001,37 @@ begin
   Result := True;
 end;
 
+/// Removes an arm (`label: stmt;`) with its labels, so no `X: ;` is left behind.
+/// False when the labels are not plain (then only the statement goes)
+function TPlugin.RemoverBracoComRotulo(AIni, AFim: integer): boolean;
+var
+  vIni, vPrev, vAnt: integer;
+begin
+  Result := False;
+  vIni := AIni;
+  vPrev := An.Toks.Anterior(vIni);
+  if not An.EhSimb(vPrev, ':') then
+    Exit;
+  // walks back over the label list (`a, b:` and `1..3:`) up to the arm start
+  vIni := An.Toks.Anterior(vPrev);
+  while vIni >= 0 do
+  begin
+    vAnt := An.Toks.Anterior(vIni);
+    if An.EhSimb(vAnt, ';') or An.EhPal(vAnt, 'of') then
+      Break;
+    if not (An.EhSimb(vAnt, ',') or An.EhSimb(vAnt, '..') or An.EhSimb(vAnt, '.')) then
+      Exit;
+    vIni := An.Toks.Anterior(vAnt);
+  end;
+  if vIni < 0 then
+    Exit;
+  if An.IniciaLinha(vIni) and An.FimDeLinhaDepois(AFim) then
+    An.Texto.RemoverLinhas(An.Linha(vIni), An.Linha(AFim))
+  else
+    An.Texto.AdicionarEdicao(An.Toks[vIni].Inicio, An.Toks[AFim].Fim - An.Toks[vIni].Inicio, '');
+  Result := True;
+end;
+
 procedure TPlugin.ResolverBracos;
 var
   vInt, vCase, vOf, vEnd, vFim, vL1, vL2, vPv: integer;
@@ -2982,6 +3066,8 @@ begin
     begin
       vCase := CaseDoBraco(IntDe(FBracos[vInt * 2]));
       if (vCase >= 0) and (vFeitos.IndexOf(PtrDe(vCase)) >= 0) then
+        Continue;
+      if (vCase >= 0) and RemoverBracoComRotulo(IntDe(FBracos[vInt * 2]), IntDe(FBracos[vInt * 2 + 1])) then
         Continue;
       vOc := TOcorrencia.Create;
       try
