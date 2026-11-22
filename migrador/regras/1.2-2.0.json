@@ -1128,6 +1128,23 @@
         "es-ES": "En %arquivo%, línea %linha%: lea %trecho% como TStream (sin convertir a TMemoryStream). Para escribir, use AsStream, que devuelve una copia."
       },
       "wiki": "atualizacao.md#12--20-"
+    },
+    {
+      "id": "2.0/bibliotecas-dinamicas",
+      "acao": "padrao-avisar",
+      "onde": ["pas"],
+      "padrao": { "tipo": "identificador", "nomes": ["RALExternalsLibraries", "TRALExternalsLibraries", "TRALOpenSSL.LibraryName"] },
+      "descricao": {
+        "pt-BR": "A unit RALExternalsLibraries e a classe TRALExternalsLibraries saíram: as bibliotecas dinâmicas carregam por TRALDynLibs (RALDynLibs). O TRALOpenSSL descende agora de TRALOpenSSLLibrary, e o seu LibraryName virou LibraryFilename.",
+        "en-US": "The unit RALExternalsLibraries and the class TRALExternalsLibraries are gone: dynamic libraries load through TRALDynLibs (RALDynLibs). TRALOpenSSL now descends from TRALOpenSSLLibrary, and its LibraryName is now LibraryFilename.",
+        "es-ES": "La unit RALExternalsLibraries y la clase TRALExternalsLibraries ya no existen: las bibliotecas dinámicas se cargan con TRALDynLibs (RALDynLibs). TRALOpenSSL ahora desciende de TRALOpenSSLLibrary, y su LibraryName pasó a ser LibraryFilename."
+      },
+      "manual": {
+        "pt-BR": "Em %arquivo%, linha %linha%: troque %nome%. Uma DLL ou .so carregada por RALExternalsLibraries passa a TRALDynLibs.Create(nome), com Bind ou TryBind para cada função; o arquivo do OpenSSL em uso é TRALOpenSSL.LibraryFilename.",
+        "en-US": "In %arquivo%, line %linha%: replace %nome%. A DLL or .so loaded through RALExternalsLibraries moves to TRALDynLibs.Create(name), with Bind or TryBind for each function; the OpenSSL file in use is TRALOpenSSL.LibraryFilename.",
+        "es-ES": "En %arquivo%, línea %linha%: cambie %nome%. Una DLL o .so cargada con RALExternalsLibraries pasa a TRALDynLibs.Create(nombre), con Bind o TryBind para cada función; el archivo de OpenSSL en uso es TRALOpenSSL.LibraryFilename."
+      },
+      "wiki": "migrar-para-2.0.md#json-bson-erros-e-bibliotecas"
     }
   ],
   "comportamento": [

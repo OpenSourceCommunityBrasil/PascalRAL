@@ -29,7 +29,7 @@
         <Resource_13 FileName="regras/1.2-2.0.json" Type="RCDATA" ResourceName="REGRAS_1_2__2_0"/>
         <Resource_14 FileName="api/api-v1.0.json" Type="RCDATA" ResourceName="API_V1_0"/>
         <Resource_15 FileName="api/api-1.1.json" Type="RCDATA" ResourceName="API_1_1"/>
-        <Resource_16 FileName="api/api-dev.json" Type="RCDATA" ResourceName="API_DEV"/>
+        <Resource_16 FileName="api/api-1.2.json" Type="RCDATA" ResourceName="API_1_2"/>
         <Resource_17 FileName="api/api-2.0.json" Type="RCDATA" ResourceName="API_2_0"/>
         <Resource_18 FileName="languages/ralmigrador.pt-BR.po" Type="RCDATA" ResourceName="PO_PT_BR"/>
         <Resource_19 FileName="languages/ralmigrador.en-US.po" Type="RCDATA" ResourceName="PO_EN_US"/>

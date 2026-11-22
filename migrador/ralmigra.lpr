@@ -34,7 +34,7 @@ program ralmigra;
 //
 // Recursos embutidos (RCDATA) no .lpi: REGRAS_1_0__1_1, REGRAS_1_1__1_2,
 // REGRAS_1_2__2_0 (regras/*.json) e API_V1_0, API_1_1, API_DEV, API_2_0
-// (api/api-v1.0.json, api-1.1.json, api-dev.json, api-2.0.json). Sem eles o
+// (api/api-v1.0.json, api-1.1.json, api-1.2.json, api-2.0.json). Sem eles o
 // programa procura migrador/regras e migrador/api subindo da pasta do exe.
 
 uses

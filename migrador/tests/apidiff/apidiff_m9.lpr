@@ -3,7 +3,7 @@ program apidiff_m9;
 {$mode ObjFPC}{$H+}
 
 // "Pronto quando" da M9: toda quebra nova traz a regra.
-// Pega migrador/api/api-dev.json, renomeia de proposito uma propriedade published
+// Pega migrador/api/api-1.2.json, renomeia de proposito uma propriedade published
 // (TRALServer.CookieLife -> CookieLifeX) numa copia em memoria e confere que:
 //   - o diff contra o original lista published-sumiu:...CookieLife com o nome;
 //   - uma regra na cobertura (em memoria) tira a diferenca da lista;
@@ -86,7 +86,7 @@ var
   vArq, vTexto: string;
   vTrocadas: integer;
 begin
-  vArq := ArquivoApi(GRaiz + PathDelim + 'api', 'dev');
+  vArq := ArquivoApi(GRaiz + PathDelim + 'api', '1.2');
   if not FileExists(vArq) then
   begin
     Conferir(False, 'falta ' + vArq);

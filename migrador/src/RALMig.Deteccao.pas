@@ -28,7 +28,7 @@ const
   VersoesDeApi: array[0..3] of string = ('1.0', '1.1', '1.2', '2.0');
 
 /// The API of a public version ('1.0'...): embedded resource API_V1_0, API_1_1,
-/// API_DEV, API_2_0, else <APastaApi>/api-*.json; nil when there is none.
+/// API_1_2, API_2_0, else <APastaApi>/api-*.json; nil when there is none.
 /// The caller frees it.
 function CarregarApiDaVersao(const AVersao, APastaApi: string): TApi;
 /// Text of an embedded RCDATA resource; '' when there is none
@@ -53,8 +53,8 @@ resourcestring
 const
   // RT_RCDATA: no Windows vem da unit Windows, nos outros do system
   RecursoDados = PChar(10);
-  RecursosApi: array[0..3] of string = ('API_V1_0', 'API_1_1', 'API_DEV', 'API_2_0');
-  ArquivosApi: array[0..3] of string = ('v1.0', '1.1', 'dev', '2.0');
+  RecursosApi: array[0..3] of string = ('API_V1_0', 'API_1_1', 'API_1_2', 'API_2_0');
+  ArquivosApi: array[0..3] of string = ('v1.0', '1.1', '1.2', '2.0');
 
 function LerRecursoTexto(const ANome: string): string;
 var

@@ -31,7 +31,7 @@ Gerado por `apidiff inventario` a partir de `migrador/api/api-*.json` e `migrado
 | `unit-pasta-mudou:RALSwaggerModule` | src/base -> src/base/modules | regra `1.1/caminho-plugins-modules` |
 | `unit-pasta-mudou:RALWebModule` | src/base -> src/base/modules | regra `1.1/caminho-plugins-modules` |
 
-## 1.1 -> dev (aberto)
+## 1.1 -> 1.2 (aberto)
 
 12 diferencas: 12 cobertas, **0 pendentes**, 0 itens de cobertura sem correspondencia.
 
@@ -52,19 +52,32 @@ Gerado por `apidiff inventario` a partir de `migrador/api/api-*.json` e `migrado
 | `publico-sumiu:TRALCriptoAES.Destroy` | metodo destructor() | o destrutor herdado continua; Free e Destroy compilam igual |
 | `published-sumiu:TRALSaguiServer.ConnectionLimit` | agora public, nao published | regra `1.2/sagui-maxconnections` |
 
-## dev -> 2.0 (aberto)
+## 1.2 -> 2.0 (aberto)
 
-213 diferencas: 213 cobertas, **0 pendentes**, 0 itens de cobertura sem correspondencia.
+230 diferencas: 230 cobertas, **0 pendentes**, 0 itens de cobertura sem correspondencia.
 
-### Cobertas (213)
+### Cobertas (230)
 
 | chave | detalhe | regra ou justificativa |
 | --- | --- | --- |
+| `ancestral-mudou:ERALDBPoolTimeout` | Exception -> ERALException | ERALException = class(Exception): on E: Exception continua pegando |
+| `ancestral-mudou:ERALMsQuicCertError` | Exception -> ERALException | ERALException = class(Exception): on E: Exception continua pegando |
 | `ancestral-mudou:TRALAuthServer` | TRALAuthentication -> TRALPlugin | regra `2.0/classe-auth-server-base` |
+| `ancestral-mudou:TRALJSONArray` | TRALJSONValue -> TRALJSON | o JSON proprio da 2.0 (RALJson): TRALJSONValue e apelido de TRALJSON, entao o ancestral e o mesmo |
+| `ancestral-mudou:TRALJSONObject` | TRALJSONValue -> TRALJSON | o JSON proprio da 2.0 (RALJson): TRALJSONValue e apelido de TRALJSON, entao o ancestral e o mesmo |
+| `ancestral-mudou:TRALOpenSSL` | TRALExternalsLibraries -> TRALOpenSSLLibrary | regra `2.0/bibliotecas-dinamicas` |
 | `ancestral-mudou:TRALServer` | TRALComponent -> TRALPluginHost | ganhou um ancestral intermediario (TRALPluginHost = class(TRALComponent)): continua descendente de TRALComponent |
 | `ancestral-mudou:TRALStringStream` | TMemoryStream -> TRALMemoryStream | TRALMemoryStream = class(TMemoryStream): continua descendente de TMemoryStream |
 | `assinatura-mudou:TRALAuthServer.AttemptOf` | function(TRALRequest; TRALResponse; Boolean): TRALAuthAttempt -> function(TRALRequest; TRALResponse; TRALAuthResult; Boolean): TRALAuthAttempt | regra `2.0/auth-attemptof` |
 | `assinatura-mudou:TRALDigest.Load` | procedure(const StringRAL) -> function(const StringRAL): Boolean | procedure virou function (Boolean): a chamada antiga compila igual |
+| `assinatura-mudou:TRALJSON.ParseJSON` | class function(const StringRAL): TRALJSONValue \| class function(TStream): TRALJSONValue -> class function(const StringRAL; Int64; Integer; Integer): TRALJSON \| class function(const TBytes; Int64; Integer; Integer): TRALJSON \| class function(TStream; Int64; Integer; Integer): TRALJSON | o JSON proprio da 2.0 (RALJson): os limites novos tem padrao 0 e o resultado TRALJSON e o TRALJSONValue de antes: a chamada antiga compila igual |
+| `assinatura-mudou:TRALJSONArray.Add` | function(): TRALJSONArray \| function(const Boolean): TRALJSONArray \| function(const DoubleRAL): TRALJSONArray \| function(const Int64RAL): TRALJSONArray \| function(const IntegerRAL): TRALJSONArray \| function(const StringRAL): TRALJSONArray \| function(const TRALJSONValue): TRALJSONArray -> function(): TRALJSONArray \| function(Boolean): TRALJSONArray \| function(const StringRAL): TRALJSONArray \| function(Double): TRALJSONArray \| function(Int64): TRALJSONArray \| function(Integer): TRALJSONArray \| function(TRALJSON): TRALJSONArray | o JSON proprio da 2.0 (RALJson): IntegerRAL, Int64RAL e DoubleRAL sao Integer, Int64 e Double, e TRALJSONValue e TRALJSON: a chamada antiga compila igual |
+| `assinatura-mudou:TRALJSONArray.Count` | metodo -> prop | o JSON proprio da 2.0 (RALJson): metodo virou propriedade de leitura: Count sem parenteses compila igual |
+| `assinatura-mudou:TRALJSONArray.Get` | function(IntegerRAL): TRALJSONValue -> function(Integer): TRALJSON | o JSON proprio da 2.0 (RALJson): IntegerRAL e Integer e o resultado TRALJSON e o TRALJSONValue de antes |
+| `assinatura-mudou:TRALJSONObject.Add` | function(const StringRAL): TRALJSONObject \| function(const StringRAL; const Boolean): TRALJSONObject \| function(const StringRAL; const DoubleRAL): TRALJSONObject \| function(const StringRAL; const Int64RAL): TRALJSONObject \| function(const StringRAL; const IntegerRAL): TRALJSONObject \| function(const StringRAL; const StringRAL): TRALJSONObject \| function(const StringRAL; const TRALJSONValue): TRALJSONObject -> function(const StringRAL): TRALJSONObject \| function(const StringRAL; Boolean): TRALJSONObject \| function(const StringRAL; const StringRAL): TRALJSONObject \| function(const StringRAL; Double): TRALJSONObject \| function(const StringRAL; Int64): TRALJSONObject \| function(const StringRAL; Integer): TRALJSONObject \| function(const StringRAL; TRALJSON): TRALJSONObject | o JSON proprio da 2.0 (RALJson): IntegerRAL, Int64RAL e DoubleRAL sao Integer, Int64 e Double, e TRALJSONValue e TRALJSON: a chamada antiga compila igual |
+| `assinatura-mudou:TRALJSONObject.Count` | metodo -> prop | o JSON proprio da 2.0 (RALJson): metodo virou propriedade de leitura: Count sem parenteses compila igual |
+| `assinatura-mudou:TRALJSONObject.Get` | function(const StringRAL): TRALJSONValue \| function(IntegerRAL): TRALJSONValue -> function(const StringRAL): TRALJSON \| function(Integer): TRALJSON | o JSON proprio da 2.0 (RALJson): IntegerRAL e Integer e o resultado TRALJSON e o TRALJSONValue de antes |
+| `assinatura-mudou:TRALJSONObject.GetName` | function(IntegerRAL): StringRAL -> function(Integer): StringRAL | o JSON proprio da 2.0 (RALJson): IntegerRAL e Integer: a chamada antiga compila igual |
 | `assinatura-mudou:TRALServerJWTAuth.AttemptOf` | function(TRALRequest; TRALResponse; Boolean): TRALAuthAttempt -> function(TRALRequest; TRALResponse; TRALAuthResult; Boolean): TRALAuthAttempt | regra `2.0/auth-attemptof` |
 | `classe-mudou-unit:TRALAuthClient` | RALAuthentication -> RALAuthBase | apelido em RALAuthentication (TRALAuthClient = RALAuthBase.TRALAuthClient): o uses antigo continua valendo |
 | `classe-mudou-unit:TRALAuthentication` | RALAuthentication -> RALAuthBase | apelido em RALAuthentication: o uses antigo continua valendo |
@@ -92,7 +105,9 @@ Gerado por `apidiff inventario` a partir de `migrador/api/api-*.json` e `migrado
 | `classe-mudou-unit:TRALServerOAuth2` | RALAuthentication -> RALOAuth2 | regra `2.0/classe-oauth2` |
 | `classe-sumiu:TRALBruteForceProtection` | unit RALServer | regra `2.0/classe-security-sumiu` |
 | `classe-sumiu:TRALClientOAuth` | unit RALAuthentication | regra `2.0/oauth1-removido` |
+| `classe-sumiu:TRALExternalsLibraries` | unit RALExternalsLibraries | regra `2.0/bibliotecas-dinamicas` |
 | `classe-sumiu:TRALfpHttpConnectionThread` | unit RALfpHTTPServer | thread interna do motor fpHTTP |
+| `classe-sumiu:TRALJSONValue` | unit RALJson | o JSON proprio da 2.0 (RALJson): continua como apelido (TRALJSONValue = TRALJSON), so deixou de ser uma classe propria |
 | `classe-sumiu:TRALOAuth` | unit RALToken | regra `2.0/oauth1-removido` |
 | `classe-sumiu:TRALSecurity` | unit RALServer | regra `2.0/classe-security-sumiu` |
 | `classe-sumiu:TRALServerOAuth` | unit RALAuthentication | regra `2.0/oauth1-removido` |
@@ -159,6 +174,8 @@ Gerado por `apidiff inventario` a partir de `migrador/api/api-*.json` e `migrado
 | `published-sumiu:TRALMsQuicServer.MaxRequestSize` | tipo Int64RAL | regra `2.0/plugin-limits` |
 | `published-sumiu:TRALMsQuicServer.Security` | tipo TRALSecurity | regra `2.0/plugin-bruteforce, 2.0/plugin-flood, 2.0/plugin-pathtraversal, 2.0/plugin-whitelist, 2.0/plugin-blacklist, 2.0/seguranca-descartar-vazio` |
 | `published-sumiu:TRALMsQuicServer.SecurityHeaders` | tipo TRALSecurityHeaders | regra `2.0/plugin-securityheaders` |
+| `published-sumiu:TRALOpenSSL.LibraryHandle` | agora public, nao published | TRALOpenSSL nao e componente (nada o grava em formulario); LibraryHandle continua publico, so de leitura |
+| `published-sumiu:TRALOpenSSL.LibraryName` | tipo StringRAL | regra `2.0/bibliotecas-dinamicas` |
 | `published-sumiu:TRALSaguiServer.CompressType` | tipo TRALCompressType | regra `2.0/plugin-compress` |
 | `published-sumiu:TRALSaguiServer.CORSOptions` | tipo TRALCORSOptions | regra `2.0/plugin-cors` |
 | `published-sumiu:TRALSaguiServer.CriptoOptions` | tipo TRALCriptoOptions | regra `2.0/plugin-cripto` |
@@ -188,21 +205,21 @@ Gerado por `apidiff inventario` a partir de `migrador/api/api-*.json` e `migrado
 | `published-sumiu:TRALUniGUIServer.Security` | tipo TRALSecurity | regra `2.0/plugin-bruteforce, 2.0/plugin-flood, 2.0/plugin-pathtraversal, 2.0/plugin-whitelist, 2.0/plugin-blacklist, 2.0/seguranca-descartar-vazio` |
 | `published-sumiu:TRALUniGUIServer.SecurityHeaders` | tipo TRALSecurityHeaders | regra `2.0/plugin-securityheaders` |
 | `published-tipo:TRALDigestParams.Stale` | StringRAL -> Boolean | regra `2.0/digest-stale` |
-| `rotina-sumiu:RALBSONReg.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALCGIRegister.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALDBFireDACLinkReg.register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALDBRegister.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALDBSQLDBLinkReg.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALDBZeosLinkReg.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALfpHTTPRegister.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALIndyRegister.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALKwikRegister.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALMsQuicRegister.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALNetHTTPRegister.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALOkHttpRegister.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALSaguiRegister.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALSynopseRegister.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
-| `rotina-sumiu:RALUniGUIRegister.Register` | mesmo nome em 26 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALBSONReg.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALCGIRegister.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALDBFireDACLinkReg.register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALDBRegister.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALDBSQLDBLinkReg.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALDBZeosLinkReg.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALfpHTTPRegister.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALIndyRegister.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALKwikRegister.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALMsQuicRegister.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALNetHTTPRegister.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALOkHttpRegister.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALSaguiRegister.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALSynopseRegister.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
+| `rotina-sumiu:RALUniGUIRegister.Register` | mesmo nome em 74 outras units | Register so e chamado pela IDE ao carregar o pacote; a unit inteira ja tem regra (unit-reg-*) |
 | `tipo-sumiu:TRALOAuthAlgorithm` | enum da unit RALToken | regra `2.0/oauth1-removido` |
 | `tipo-sumiu:TRALOnGetTokenSecret` | proc da unit RALAuthentication | regra `2.0/oauth1-removido` |
 | `unit-pasta-mudou:libsagui` | src/others -> src/bindings | regra `2.0/caminho-reforma` |
@@ -221,7 +238,6 @@ Gerado por `apidiff inventario` a partir de `migrador/api/api-*.json` e `migrado
 | `unit-pasta-mudou:RALCriptoOpenSSL` | src/utils -> src/crypto | regra `2.0/caminho-reforma` |
 | `unit-pasta-mudou:RALCustomObjects` | src/utils -> src/core | regra `2.0/caminho-reforma` |
 | `unit-pasta-mudou:RALDBTypes` | src/base -> src/storage | regra `2.0/caminho-reforma` |
-| `unit-pasta-mudou:RALExternalsLibraries` | src/base/modules -> src/common | regra `2.0/caminho-reforma` |
 | `unit-pasta-mudou:RALHashBase` | src/utils -> src/crypto | regra `2.0/caminho-reforma` |
 | `unit-pasta-mudou:RALHashes` | src/utils -> src/crypto | regra `2.0/caminho-reforma` |
 | `unit-pasta-mudou:RALHexadecimal` | src/utils -> src/common | regra `2.0/caminho-reforma` |
@@ -264,6 +280,7 @@ Gerado por `apidiff inventario` a partir de `migrador/api/api-*.json` e `migrado
 | `unit-sumiu:RALDBRegister` | classes agora em RALDBReg (por exemplo TRALDBDatabases) | regra `2.0/unit-reg-motores` |
 | `unit-sumiu:RALDBSQLDBLinkReg` | classes agora em RALDBSQLDBReg (por exemplo TRALDBBufDatasetEditor) | regra `2.0/unit-reg-db` |
 | `unit-sumiu:RALDBZeosLinkReg` | classes agora em RALDBZeosReg (por exemplo TRALDBZMemTableEditor) | regra `2.0/unit-reg-db` |
+| `unit-sumiu:RALExternalsLibraries` | sem equivalente | regra `2.0/bibliotecas-dinamicas` |
 | `unit-sumiu:RALfpHTTPRegister` | sem equivalente | regra `2.0/unit-reg-motores` |
 | `unit-sumiu:RALIndyRegister` | sem equivalente | regra `2.0/unit-reg-motores` |
 | `unit-sumiu:RALKwikRegister` | sem equivalente | regra `2.0/unit-reg-motores` |
@@ -293,25 +310,25 @@ Nao aparecem na API; vem da wiki e viram itens do relatorio do migrador.
 | v1.0>1.1 | `1.1/forca-bruta-maxtry` | o bloqueio por forca bruta respeita MaxTry (antes bloqueava na primeira falha) | Se dependia do bloqueio na primeira falha, ponha MaxTry = 1. |  |
 | v1.0>1.1 | `1.1/uploads-nome-arquivo` | TRALParam.SaveToFile guarda so o ultimo componente do nome do arquivo | Se montava subpastas pelo nome do arquivo enviado, passe o caminho completo voce mesmo. |  |
 | v1.0>1.1 | `1.1/charral-delphi-xe3-101` | do Delphi XE3 ao 10.0, CharRAL passou a Char (UTF-16) | Codigo que declara CharRAL/PCharRAL nessas versoes precisa de revisao. |  |
-| 1.1>dev | `1.2/cors-fechado` | AllowOrigin comeca vazio: o CORS vem fechado. Formulario sem a linha AllowOrigin rodava aberto na 1.1 | O migrador escreve CORSOptions.AllowOrigin = '*' no formulario que nao tinha a linha (o projeto continua aberto). Servidor criado em codigo: CORSOptions.AllowOrigin := '*' ou a lista de sites. | atualizacao.md#11--12- |
-| 1.1>dev | `1.2/cliente-espera-resposta` | chamadas do cliente com evento esperam a resposta (ebSingleThread) | Onde a tela nao pode travar, passe ebMultiThread. | atualizacao.md#11--12- |
-| 1.1>dev | `1.2/cliente-conexao-compartilhada` | ShareConnection e PoolConnection.Enabled ligados por padrao | Quase ninguem e afetado; para conexao exclusiva, desligue os dois. | atualizacao.md#11--12- |
-| 1.1>dev | `1.2/webmodule-sem-docroot` | TRALWebModule com DocumentRoot vazio deixou de servir a pasta do executavel | Aponte DocumentRoot (relativo ao .exe) ou ligue UseApplicationPathAsRoot. | atualizacao.md#11--12- |
-| 1.1>dev | `1.2/webmodule-domain` | WebModule com Domain diferente de / responde so abaixo do Domain | Confira os links do site. | atualizacao.md#11--12- |
-| 1.1>dev | `1.2/verbo-rota-405` | rota existente que nao aceita o verbo: 404 virou 405 com Allow; metodo desconhecido responde 501 | Testes que esperavam 404 para verbo errado esperam 405. | atualizacao.md#11--12- |
-| 1.1>dev | `1.2/params-por-origem` | parametros separados por origem (rpkFIELD formulario, rpkQUERY URL, rpkHEADER cabecalho) nos motores Indy, UniGUI, fpHTTP e CGI | ParamByName continua igual; revise leitura por tipo. | atualizacao.md#11--12- |
-| 1.1>dev | `1.2/params-body-obsoleto` | Params.Body e TRALParam.AsStream obsoletos | Use Content, SaveToStream e Count(rpkBODY). | atualizacao.md#11--12- |
-| 1.1>dev | `1.2/dbware-decimal-milissegundos` | NUMERIC/DECIMAL viajam inteiros e datas com milissegundos: 1.1 e 1.2 nao se leem nessas colunas | Atualize cliente e servidor DBWare juntos ou use RALLegacyWire := True no lado novo. | atualizacao.md#11--12- |
-| 1.1>dev | `1.2/memtable-excecoes` | UPDATE/DELETE que nao afeta exatamente 1 registro e erro; falha de ApplyUpdates/ExecSQL e levantada | Envolva em try/except; para UpdateSQL que mexe em varios registros, CountUpdatedRecords := False. | atualizacao.md#11--12- |
-| 1.1>dev | `1.2/dao-validateapplyupdates` | no DAO FireDAC com OnValidateSQL e sem OnValidateApplyUpdates, o ApplyUpdates e recusado | Atribua tambem OnValidateApplyUpdates. |  |
-| 1.1>dev | `1.2/forca-bruta-conta-segredo` | forca bruta conta so segredo checado e recusado; pedido com corpo na rota de token e login | Se dependia de qualquer 401 contar como tentativa, revise MaxTry. |  |
-| 1.1>dev | `1.2/multipart-sem-parte-400` | multipart/form-data sem nenhuma parte responde 400 | Cliente que mandava multipart vazio recebe 400. |  |
-| 1.1>dev | `1.2/redirect-https` | com SSL.Required (ou pino) o redirecionamento https -> http nao e seguido | Nada, se o servidor nao redireciona para http. |  |
-| 1.1>dev | `1.2/cookie-samesite-zero` | TRALCookieSiteScope ganhou cssDefault na primeira posicao: os ordinais mudaram | Codigo que compara ordinal ou zera TRALCookie com FillChar: revise. |  |
-| dev>2.0 | `2.0/sem-plugin-sem-recurso` | sem plugin, o servidor nao comprime, nao cifra, nao manda CORS, nao limita pedido, nao protege e nao manda cabecalhos de seguranca | Confira os plugins ligados a cada servidor (paleta RAL - Plugins). O migrador cria os que correspondiam as propriedades que voce tinha. | plugins.md |
-| dev>2.0 | `2.0/compress-ignora-comprimidos` | imagem, audio, video, zip, pdf e fontes nao sao mais comprimidos (SkipCompressedTypes = True) | Quer comprimir tudo como antes? SkipCompressedTypes := False no plugin de compressao. | atualizacao.md#12--20- |
-| dev>2.0 | `2.0/corpo-somente-leitura` | Body.Content pode nao ser TMemoryStream (acima de 8 MB vai para disco); corpo recebido e somente leitura | Leia TMemoryStream(Param.Content).Memory como TStream; para escrever use AsStream (uma copia). | atualizacao.md#12--20- |
-| dev>2.0 | `2.0/responsetext-servidor` | ResponseText no OnResponse e o texto respondido, nao o gzip | Nada na maioria dos casos. | atualizacao.md#12--20- |
-| dev>2.0 | `2.0/classe-nao-encontrada` | auth, storage, Web e Swagger sairam do nucleo: 'Class ... not found' ao abrir o formulario sem o pacote novo | Instale o pacote novo que guarda a classe (o instalador ja faz). | migrar-para-2.0.md#erros-comuns |
-| dev>2.0 | `2.0/cors-multi-origem` | AllowOrigin aceita lista (espaco ou virgula) e AllowCredentials nao funciona com * | Informativo. | plugins.md |
+| 1.1>1.2 | `1.2/cors-fechado` | AllowOrigin comeca vazio: o CORS vem fechado. Formulario sem a linha AllowOrigin rodava aberto na 1.1 | O migrador escreve CORSOptions.AllowOrigin = '*' no formulario que nao tinha a linha (o projeto continua aberto). Servidor criado em codigo: CORSOptions.AllowOrigin := '*' ou a lista de sites. | atualizacao.md#11--12- |
+| 1.1>1.2 | `1.2/cliente-espera-resposta` | chamadas do cliente com evento esperam a resposta (ebSingleThread) | Onde a tela nao pode travar, passe ebMultiThread. | atualizacao.md#11--12- |
+| 1.1>1.2 | `1.2/cliente-conexao-compartilhada` | ShareConnection e PoolConnection.Enabled ligados por padrao | Quase ninguem e afetado; para conexao exclusiva, desligue os dois. | atualizacao.md#11--12- |
+| 1.1>1.2 | `1.2/webmodule-sem-docroot` | TRALWebModule com DocumentRoot vazio deixou de servir a pasta do executavel | Aponte DocumentRoot (relativo ao .exe) ou ligue UseApplicationPathAsRoot. | atualizacao.md#11--12- |
+| 1.1>1.2 | `1.2/webmodule-domain` | WebModule com Domain diferente de / responde so abaixo do Domain | Confira os links do site. | atualizacao.md#11--12- |
+| 1.1>1.2 | `1.2/verbo-rota-405` | rota existente que nao aceita o verbo: 404 virou 405 com Allow; metodo desconhecido responde 501 | Testes que esperavam 404 para verbo errado esperam 405. | atualizacao.md#11--12- |
+| 1.1>1.2 | `1.2/params-por-origem` | parametros separados por origem (rpkFIELD formulario, rpkQUERY URL, rpkHEADER cabecalho) nos motores Indy, UniGUI, fpHTTP e CGI | ParamByName continua igual; revise leitura por tipo. | atualizacao.md#11--12- |
+| 1.1>1.2 | `1.2/params-body-obsoleto` | Params.Body e TRALParam.AsStream obsoletos | Use Content, SaveToStream e Count(rpkBODY). | atualizacao.md#11--12- |
+| 1.1>1.2 | `1.2/dbware-decimal-milissegundos` | NUMERIC/DECIMAL viajam inteiros e datas com milissegundos: 1.1 e 1.2 nao se leem nessas colunas | Atualize cliente e servidor DBWare juntos ou use RALLegacyWire := True no lado novo. | atualizacao.md#11--12- |
+| 1.1>1.2 | `1.2/memtable-excecoes` | UPDATE/DELETE que nao afeta exatamente 1 registro e erro; falha de ApplyUpdates/ExecSQL e levantada | Envolva em try/except; para UpdateSQL que mexe em varios registros, CountUpdatedRecords := False. | atualizacao.md#11--12- |
+| 1.1>1.2 | `1.2/dao-validateapplyupdates` | no DAO FireDAC com OnValidateSQL e sem OnValidateApplyUpdates, o ApplyUpdates e recusado | Atribua tambem OnValidateApplyUpdates. |  |
+| 1.1>1.2 | `1.2/forca-bruta-conta-segredo` | forca bruta conta so segredo checado e recusado; pedido com corpo na rota de token e login | Se dependia de qualquer 401 contar como tentativa, revise MaxTry. |  |
+| 1.1>1.2 | `1.2/multipart-sem-parte-400` | multipart/form-data sem nenhuma parte responde 400 | Cliente que mandava multipart vazio recebe 400. |  |
+| 1.1>1.2 | `1.2/redirect-https` | com SSL.Required (ou pino) o redirecionamento https -> http nao e seguido | Nada, se o servidor nao redireciona para http. |  |
+| 1.1>1.2 | `1.2/cookie-samesite-zero` | TRALCookieSiteScope ganhou cssDefault na primeira posicao: os ordinais mudaram | Codigo que compara ordinal ou zera TRALCookie com FillChar: revise. |  |
+| 1.2>2.0 | `2.0/sem-plugin-sem-recurso` | sem plugin, o servidor nao comprime, nao cifra, nao manda CORS, nao limita pedido, nao protege e nao manda cabecalhos de seguranca | Confira os plugins ligados a cada servidor (paleta RAL - Plugins). O migrador cria os que correspondiam as propriedades que voce tinha. | plugins.md |
+| 1.2>2.0 | `2.0/compress-ignora-comprimidos` | imagem, audio, video, zip, pdf e fontes nao sao mais comprimidos (SkipCompressedTypes = True) | Quer comprimir tudo como antes? SkipCompressedTypes := False no plugin de compressao. | atualizacao.md#12--20- |
+| 1.2>2.0 | `2.0/corpo-somente-leitura` | Body.Content pode nao ser TMemoryStream (acima de 8 MB vai para disco); corpo recebido e somente leitura | Leia TMemoryStream(Param.Content).Memory como TStream; para escrever use AsStream (uma copia). | atualizacao.md#12--20- |
+| 1.2>2.0 | `2.0/responsetext-servidor` | ResponseText no OnResponse e o texto respondido, nao o gzip | Nada na maioria dos casos. | atualizacao.md#12--20- |
+| 1.2>2.0 | `2.0/classe-nao-encontrada` | auth, storage, Web e Swagger sairam do nucleo: 'Class ... not found' ao abrir o formulario sem o pacote novo | Instale o pacote novo que guarda a classe (o instalador ja faz). | migrar-para-2.0.md#erros-comuns |
+| 1.2>2.0 | `2.0/cors-multi-origem` | AllowOrigin aceita lista (espaco ou virgula) e AllowCredentials nao funciona com * | Informativo. | plugins.md |
 

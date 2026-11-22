@@ -13,7 +13,7 @@
       { "chave": "publico-sumiu:TRALMIMEType.ReleaseInstance", "justificativa": "singleton interno, chamado so pelo finalization da propria unit" },
       { "chave": "published-sumiu:TRALDB*.DriverType", "justificativa": "propriedade so de leitura: nunca foi gravada em formulario, e continua public" }
     ] },
-    { "de": "1.1", "para": "dev", "fechado": false, "itens": [
+    { "de": "1.1", "para": "1.2", "fechado": false, "itens": [
       { "chave": "default-mudou:TRALFDQuery.QueryBehavior", "regra": "1.2/fdquery-behavior-materializar, 1.2/cliente-chamada-sincrona" },
       { "chave": "published-sumiu:TRALSaguiServer.ConnectionLimit", "regra": "1.2/sagui-maxconnections" },
       { "chave": "ancestral-mudou:TRAL*SelectionEditor", "justificativa": "editor de selecao da IDE (design-time), nao aparece em projeto de usuario" },
@@ -24,7 +24,7 @@
       { "chave": "default-mudou:TRAL*Request.Protocol", "justificativa": "continua published; so deixou de ser gravada (stored False). Formulario antigo com a linha abre igual" },
       { "chave": "publico-sumiu:TRALCriptoAES.Destroy", "justificativa": "o destrutor herdado continua; Free e Destroy compilam igual" }
     ] },
-    { "de": "dev", "para": "2.0", "fechado": false, "itens": [
+    { "de": "1.2", "para": "2.0", "fechado": false, "itens": [
       { "chave": "published-sumiu:TRAL*Server.CompressType", "regra": "2.0/plugin-compress" },
       { "chave": "published-sumiu:TRAL*Server.CriptoOptions", "regra": "2.0/plugin-cripto" },
       { "chave": "published-sumiu:TRAL*Server.CORSOptions", "regra": "2.0/plugin-cors" },
@@ -82,7 +82,25 @@
       { "chave": "ancestral-mudou:TRALStringStream", "justificativa": "TRALMemoryStream = class(TMemoryStream): continua descendente de TMemoryStream" },
       { "chave": "assinatura-mudou:TRALDigest.Load", "justificativa": "procedure virou function (Boolean): a chamada antiga compila igual" },
       { "chave": "publico-sumiu:TRALDigest.Header", "justificativa": "TRALDigest e o leitor interno do cabecalho Digest, usado so pelo plugin" },
-      { "chave": "classe-sumiu:TRALfpHttpConnectionThread", "justificativa": "thread interna do motor fpHTTP" }
+      { "chave": "classe-sumiu:TRALfpHttpConnectionThread", "justificativa": "thread interna do motor fpHTTP" },
+      { "chave": "ancestral-mudou:ERALDBPoolTimeout", "justificativa": "ERALException = class(Exception): on E: Exception continua pegando" },
+      { "chave": "ancestral-mudou:ERALMsQuicCertError", "justificativa": "ERALException = class(Exception): on E: Exception continua pegando" },
+      { "chave": "ancestral-mudou:TRALJSONArray", "justificativa": "o JSON proprio da 2.0 (RALJson): TRALJSONValue e apelido de TRALJSON, entao o ancestral e o mesmo" },
+      { "chave": "ancestral-mudou:TRALJSONObject", "justificativa": "o JSON proprio da 2.0 (RALJson): TRALJSONValue e apelido de TRALJSON, entao o ancestral e o mesmo" },
+      { "chave": "assinatura-mudou:TRALJSON.ParseJSON", "justificativa": "o JSON proprio da 2.0 (RALJson): os limites novos tem padrao 0 e o resultado TRALJSON e o TRALJSONValue de antes: a chamada antiga compila igual" },
+      { "chave": "assinatura-mudou:TRALJSONArray.Add", "justificativa": "o JSON proprio da 2.0 (RALJson): IntegerRAL, Int64RAL e DoubleRAL sao Integer, Int64 e Double, e TRALJSONValue e TRALJSON: a chamada antiga compila igual" },
+      { "chave": "assinatura-mudou:TRALJSONArray.Count", "justificativa": "o JSON proprio da 2.0 (RALJson): metodo virou propriedade de leitura: Count sem parenteses compila igual" },
+      { "chave": "assinatura-mudou:TRALJSONArray.Get", "justificativa": "o JSON proprio da 2.0 (RALJson): IntegerRAL e Integer e o resultado TRALJSON e o TRALJSONValue de antes" },
+      { "chave": "assinatura-mudou:TRALJSONObject.Add", "justificativa": "o JSON proprio da 2.0 (RALJson): IntegerRAL, Int64RAL e DoubleRAL sao Integer, Int64 e Double, e TRALJSONValue e TRALJSON: a chamada antiga compila igual" },
+      { "chave": "assinatura-mudou:TRALJSONObject.Count", "justificativa": "o JSON proprio da 2.0 (RALJson): metodo virou propriedade de leitura: Count sem parenteses compila igual" },
+      { "chave": "assinatura-mudou:TRALJSONObject.Get", "justificativa": "o JSON proprio da 2.0 (RALJson): IntegerRAL e Integer e o resultado TRALJSON e o TRALJSONValue de antes" },
+      { "chave": "assinatura-mudou:TRALJSONObject.GetName", "justificativa": "o JSON proprio da 2.0 (RALJson): IntegerRAL e Integer: a chamada antiga compila igual" },
+      { "chave": "classe-sumiu:TRALJSONValue", "justificativa": "o JSON proprio da 2.0 (RALJson): continua como apelido (TRALJSONValue = TRALJSON), so deixou de ser uma classe propria" },
+      { "chave": "ancestral-mudou:TRALOpenSSL", "regra": "2.0/bibliotecas-dinamicas" },
+      { "chave": "classe-sumiu:TRALExternalsLibraries", "regra": "2.0/bibliotecas-dinamicas" },
+      { "chave": "unit-sumiu:RALExternalsLibraries", "regra": "2.0/bibliotecas-dinamicas" },
+      { "chave": "published-sumiu:TRALOpenSSL.LibraryName", "regra": "2.0/bibliotecas-dinamicas" },
+      { "chave": "published-sumiu:TRALOpenSSL.LibraryHandle", "justificativa": "TRALOpenSSL nao e componente (nada o grava em formulario); LibraryHandle continua publico, so de leitura" }
     ] }
   ],
   "comportamento": [
@@ -99,26 +117,26 @@
     { "passo": "v1.0>1.1", "id": "1.1/forca-bruta-maxtry", "descricao": "o bloqueio por forca bruta respeita MaxTry (antes bloqueava na primeira falha)", "fazer": "Se dependia do bloqueio na primeira falha, ponha MaxTry = 1.", "wiki": "" },
     { "passo": "v1.0>1.1", "id": "1.1/uploads-nome-arquivo", "descricao": "TRALParam.SaveToFile guarda so o ultimo componente do nome do arquivo", "fazer": "Se montava subpastas pelo nome do arquivo enviado, passe o caminho completo voce mesmo.", "wiki": "" },
     { "passo": "v1.0>1.1", "id": "1.1/charral-delphi-xe3-101", "descricao": "do Delphi XE3 ao 10.0, CharRAL passou a Char (UTF-16)", "fazer": "Codigo que declara CharRAL/PCharRAL nessas versoes precisa de revisao.", "wiki": "" },
-    { "passo": "1.1>dev", "id": "1.2/cors-fechado", "descricao": "AllowOrigin comeca vazio: o CORS vem fechado. Formulario sem a linha AllowOrigin rodava aberto na 1.1", "fazer": "O migrador escreve CORSOptions.AllowOrigin = '*' no formulario que nao tinha a linha (o projeto continua aberto). Servidor criado em codigo: CORSOptions.AllowOrigin := '*' ou a lista de sites.", "wiki": "atualizacao.md#11--12-" },
-    { "passo": "1.1>dev", "id": "1.2/cliente-espera-resposta", "descricao": "chamadas do cliente com evento esperam a resposta (ebSingleThread)", "fazer": "Onde a tela nao pode travar, passe ebMultiThread.", "wiki": "atualizacao.md#11--12-" },
-    { "passo": "1.1>dev", "id": "1.2/cliente-conexao-compartilhada", "descricao": "ShareConnection e PoolConnection.Enabled ligados por padrao", "fazer": "Quase ninguem e afetado; para conexao exclusiva, desligue os dois.", "wiki": "atualizacao.md#11--12-" },
-    { "passo": "1.1>dev", "id": "1.2/webmodule-sem-docroot", "descricao": "TRALWebModule com DocumentRoot vazio deixou de servir a pasta do executavel", "fazer": "Aponte DocumentRoot (relativo ao .exe) ou ligue UseApplicationPathAsRoot.", "wiki": "atualizacao.md#11--12-" },
-    { "passo": "1.1>dev", "id": "1.2/webmodule-domain", "descricao": "WebModule com Domain diferente de / responde so abaixo do Domain", "fazer": "Confira os links do site.", "wiki": "atualizacao.md#11--12-" },
-    { "passo": "1.1>dev", "id": "1.2/verbo-rota-405", "descricao": "rota existente que nao aceita o verbo: 404 virou 405 com Allow; metodo desconhecido responde 501", "fazer": "Testes que esperavam 404 para verbo errado esperam 405.", "wiki": "atualizacao.md#11--12-" },
-    { "passo": "1.1>dev", "id": "1.2/params-por-origem", "descricao": "parametros separados por origem (rpkFIELD formulario, rpkQUERY URL, rpkHEADER cabecalho) nos motores Indy, UniGUI, fpHTTP e CGI", "fazer": "ParamByName continua igual; revise leitura por tipo.", "wiki": "atualizacao.md#11--12-" },
-    { "passo": "1.1>dev", "id": "1.2/params-body-obsoleto", "descricao": "Params.Body e TRALParam.AsStream obsoletos", "fazer": "Use Content, SaveToStream e Count(rpkBODY).", "wiki": "atualizacao.md#11--12-" },
-    { "passo": "1.1>dev", "id": "1.2/dbware-decimal-milissegundos", "descricao": "NUMERIC/DECIMAL viajam inteiros e datas com milissegundos: 1.1 e 1.2 nao se leem nessas colunas", "fazer": "Atualize cliente e servidor DBWare juntos ou use RALLegacyWire := True no lado novo.", "wiki": "atualizacao.md#11--12-" },
-    { "passo": "1.1>dev", "id": "1.2/memtable-excecoes", "descricao": "UPDATE/DELETE que nao afeta exatamente 1 registro e erro; falha de ApplyUpdates/ExecSQL e levantada", "fazer": "Envolva em try/except; para UpdateSQL que mexe em varios registros, CountUpdatedRecords := False.", "wiki": "atualizacao.md#11--12-" },
-    { "passo": "1.1>dev", "id": "1.2/dao-validateapplyupdates", "descricao": "no DAO FireDAC com OnValidateSQL e sem OnValidateApplyUpdates, o ApplyUpdates e recusado", "fazer": "Atribua tambem OnValidateApplyUpdates.", "wiki": "" },
-    { "passo": "1.1>dev", "id": "1.2/forca-bruta-conta-segredo", "descricao": "forca bruta conta so segredo checado e recusado; pedido com corpo na rota de token e login", "fazer": "Se dependia de qualquer 401 contar como tentativa, revise MaxTry.", "wiki": "" },
-    { "passo": "1.1>dev", "id": "1.2/multipart-sem-parte-400", "descricao": "multipart/form-data sem nenhuma parte responde 400", "fazer": "Cliente que mandava multipart vazio recebe 400.", "wiki": "" },
-    { "passo": "1.1>dev", "id": "1.2/redirect-https", "descricao": "com SSL.Required (ou pino) o redirecionamento https -> http nao e seguido", "fazer": "Nada, se o servidor nao redireciona para http.", "wiki": "" },
-    { "passo": "1.1>dev", "id": "1.2/cookie-samesite-zero", "descricao": "TRALCookieSiteScope ganhou cssDefault na primeira posicao: os ordinais mudaram", "fazer": "Codigo que compara ordinal ou zera TRALCookie com FillChar: revise.", "wiki": "" },
-    { "passo": "dev>2.0", "id": "2.0/sem-plugin-sem-recurso", "descricao": "sem plugin, o servidor nao comprime, nao cifra, nao manda CORS, nao limita pedido, nao protege e nao manda cabecalhos de seguranca", "fazer": "Confira os plugins ligados a cada servidor (paleta RAL - Plugins). O migrador cria os que correspondiam as propriedades que voce tinha.", "wiki": "plugins.md" },
-    { "passo": "dev>2.0", "id": "2.0/compress-ignora-comprimidos", "descricao": "imagem, audio, video, zip, pdf e fontes nao sao mais comprimidos (SkipCompressedTypes = True)", "fazer": "Quer comprimir tudo como antes? SkipCompressedTypes := False no plugin de compressao.", "wiki": "atualizacao.md#12--20-" },
-    { "passo": "dev>2.0", "id": "2.0/corpo-somente-leitura", "descricao": "Body.Content pode nao ser TMemoryStream (acima de 8 MB vai para disco); corpo recebido e somente leitura", "fazer": "Leia TMemoryStream(Param.Content).Memory como TStream; para escrever use AsStream (uma copia).", "wiki": "atualizacao.md#12--20-" },
-    { "passo": "dev>2.0", "id": "2.0/responsetext-servidor", "descricao": "ResponseText no OnResponse e o texto respondido, nao o gzip", "fazer": "Nada na maioria dos casos.", "wiki": "atualizacao.md#12--20-" },
-    { "passo": "dev>2.0", "id": "2.0/classe-nao-encontrada", "descricao": "auth, storage, Web e Swagger sairam do nucleo: 'Class ... not found' ao abrir o formulario sem o pacote novo", "fazer": "Instale o pacote novo que guarda a classe (o instalador ja faz).", "wiki": "migrar-para-2.0.md#erros-comuns" },
-    { "passo": "dev>2.0", "id": "2.0/cors-multi-origem", "descricao": "AllowOrigin aceita lista (espaco ou virgula) e AllowCredentials nao funciona com *", "fazer": "Informativo.", "wiki": "plugins.md" }
+    { "passo": "1.1>1.2", "id": "1.2/cors-fechado", "descricao": "AllowOrigin comeca vazio: o CORS vem fechado. Formulario sem a linha AllowOrigin rodava aberto na 1.1", "fazer": "O migrador escreve CORSOptions.AllowOrigin = '*' no formulario que nao tinha a linha (o projeto continua aberto). Servidor criado em codigo: CORSOptions.AllowOrigin := '*' ou a lista de sites.", "wiki": "atualizacao.md#11--12-" },
+    { "passo": "1.1>1.2", "id": "1.2/cliente-espera-resposta", "descricao": "chamadas do cliente com evento esperam a resposta (ebSingleThread)", "fazer": "Onde a tela nao pode travar, passe ebMultiThread.", "wiki": "atualizacao.md#11--12-" },
+    { "passo": "1.1>1.2", "id": "1.2/cliente-conexao-compartilhada", "descricao": "ShareConnection e PoolConnection.Enabled ligados por padrao", "fazer": "Quase ninguem e afetado; para conexao exclusiva, desligue os dois.", "wiki": "atualizacao.md#11--12-" },
+    { "passo": "1.1>1.2", "id": "1.2/webmodule-sem-docroot", "descricao": "TRALWebModule com DocumentRoot vazio deixou de servir a pasta do executavel", "fazer": "Aponte DocumentRoot (relativo ao .exe) ou ligue UseApplicationPathAsRoot.", "wiki": "atualizacao.md#11--12-" },
+    { "passo": "1.1>1.2", "id": "1.2/webmodule-domain", "descricao": "WebModule com Domain diferente de / responde so abaixo do Domain", "fazer": "Confira os links do site.", "wiki": "atualizacao.md#11--12-" },
+    { "passo": "1.1>1.2", "id": "1.2/verbo-rota-405", "descricao": "rota existente que nao aceita o verbo: 404 virou 405 com Allow; metodo desconhecido responde 501", "fazer": "Testes que esperavam 404 para verbo errado esperam 405.", "wiki": "atualizacao.md#11--12-" },
+    { "passo": "1.1>1.2", "id": "1.2/params-por-origem", "descricao": "parametros separados por origem (rpkFIELD formulario, rpkQUERY URL, rpkHEADER cabecalho) nos motores Indy, UniGUI, fpHTTP e CGI", "fazer": "ParamByName continua igual; revise leitura por tipo.", "wiki": "atualizacao.md#11--12-" },
+    { "passo": "1.1>1.2", "id": "1.2/params-body-obsoleto", "descricao": "Params.Body e TRALParam.AsStream obsoletos", "fazer": "Use Content, SaveToStream e Count(rpkBODY).", "wiki": "atualizacao.md#11--12-" },
+    { "passo": "1.1>1.2", "id": "1.2/dbware-decimal-milissegundos", "descricao": "NUMERIC/DECIMAL viajam inteiros e datas com milissegundos: 1.1 e 1.2 nao se leem nessas colunas", "fazer": "Atualize cliente e servidor DBWare juntos ou use RALLegacyWire := True no lado novo.", "wiki": "atualizacao.md#11--12-" },
+    { "passo": "1.1>1.2", "id": "1.2/memtable-excecoes", "descricao": "UPDATE/DELETE que nao afeta exatamente 1 registro e erro; falha de ApplyUpdates/ExecSQL e levantada", "fazer": "Envolva em try/except; para UpdateSQL que mexe em varios registros, CountUpdatedRecords := False.", "wiki": "atualizacao.md#11--12-" },
+    { "passo": "1.1>1.2", "id": "1.2/dao-validateapplyupdates", "descricao": "no DAO FireDAC com OnValidateSQL e sem OnValidateApplyUpdates, o ApplyUpdates e recusado", "fazer": "Atribua tambem OnValidateApplyUpdates.", "wiki": "" },
+    { "passo": "1.1>1.2", "id": "1.2/forca-bruta-conta-segredo", "descricao": "forca bruta conta so segredo checado e recusado; pedido com corpo na rota de token e login", "fazer": "Se dependia de qualquer 401 contar como tentativa, revise MaxTry.", "wiki": "" },
+    { "passo": "1.1>1.2", "id": "1.2/multipart-sem-parte-400", "descricao": "multipart/form-data sem nenhuma parte responde 400", "fazer": "Cliente que mandava multipart vazio recebe 400.", "wiki": "" },
+    { "passo": "1.1>1.2", "id": "1.2/redirect-https", "descricao": "com SSL.Required (ou pino) o redirecionamento https -> http nao e seguido", "fazer": "Nada, se o servidor nao redireciona para http.", "wiki": "" },
+    { "passo": "1.1>1.2", "id": "1.2/cookie-samesite-zero", "descricao": "TRALCookieSiteScope ganhou cssDefault na primeira posicao: os ordinais mudaram", "fazer": "Codigo que compara ordinal ou zera TRALCookie com FillChar: revise.", "wiki": "" },
+    { "passo": "1.2>2.0", "id": "2.0/sem-plugin-sem-recurso", "descricao": "sem plugin, o servidor nao comprime, nao cifra, nao manda CORS, nao limita pedido, nao protege e nao manda cabecalhos de seguranca", "fazer": "Confira os plugins ligados a cada servidor (paleta RAL - Plugins). O migrador cria os que correspondiam as propriedades que voce tinha.", "wiki": "plugins.md" },
+    { "passo": "1.2>2.0", "id": "2.0/compress-ignora-comprimidos", "descricao": "imagem, audio, video, zip, pdf e fontes nao sao mais comprimidos (SkipCompressedTypes = True)", "fazer": "Quer comprimir tudo como antes? SkipCompressedTypes := False no plugin de compressao.", "wiki": "atualizacao.md#12--20-" },
+    { "passo": "1.2>2.0", "id": "2.0/corpo-somente-leitura", "descricao": "Body.Content pode nao ser TMemoryStream (acima de 8 MB vai para disco); corpo recebido e somente leitura", "fazer": "Leia TMemoryStream(Param.Content).Memory como TStream; para escrever use AsStream (uma copia).", "wiki": "atualizacao.md#12--20-" },
+    { "passo": "1.2>2.0", "id": "2.0/responsetext-servidor", "descricao": "ResponseText no OnResponse e o texto respondido, nao o gzip", "fazer": "Nada na maioria dos casos.", "wiki": "atualizacao.md#12--20-" },
+    { "passo": "1.2>2.0", "id": "2.0/classe-nao-encontrada", "descricao": "auth, storage, Web e Swagger sairam do nucleo: 'Class ... not found' ao abrir o formulario sem o pacote novo", "fazer": "Instale o pacote novo que guarda a classe (o instalador ja faz).", "wiki": "migrar-para-2.0.md#erros-comuns" },
+    { "passo": "1.2>2.0", "id": "2.0/cors-multi-origem", "descricao": "AllowOrigin aceita lista (espaco ou virgula) e AllowCredentials nao funciona com *", "fazer": "Informativo.", "wiki": "plugins.md" }
   ]
 }

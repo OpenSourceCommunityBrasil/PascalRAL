@@ -104,7 +104,7 @@ begin
   else if AVersao = '1.1' then
     vArq := 'api-1.1.json'
   else if AVersao = '1.2' then
-    vArq := 'api-dev.json'
+    vArq := 'api-1.2.json'
   else
     vArq := 'api-2.0.json';
   Result := TApi.Create;

@@ -86,7 +86,7 @@ var
   vRaiz: string;
   vInt: integer;
 const
-  Nomes: array[0..2] of string = ('api-1.1.json', 'api-dev.json', 'api-2.0.json');
+  Nomes: array[0..2] of string = ('api-1.1.json', 'api-1.2.json', 'api-2.0.json');
 begin
   vRaiz := AcharRaiz;
   if vRaiz = '' then
