@@ -78,3 +78,10 @@ backup/
 # a linha de comando (F11): o binario e o .res que o lazbuild gera
 cli/ralcli
 cli/ralcli.res
+# os .res que o lazbuild gera para cada programa (o instalador, o migrador e as ferramentas)
+RALInstaller.res
+migrador/ralmigra.res
+migrador/ralmigrador.res
+migrador/ralmigra
+migrador/ferramentas/apidiff/apidiff.res
+migrador/ferramentas/apidiff/apidiff

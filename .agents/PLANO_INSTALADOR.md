@@ -1538,3 +1538,453 @@ antes, e comparar número a número, nunca como texto (`v1.10` > `v1.9`).
   auto-update (F12) vale a pena o hash; para o zipball, discutível.
 - Auto-update no macOS: trocar o binário invalida a assinatura. Testar antes de
   prometer; pode acabar sendo "avisa que há versão nova" só nesse sistema.
+
+---
+
+## 9. Pedido de 13/10/2026 — fechar o produto
+
+### Pedido do dono (13/10/2026)
+
+"Alguns itens já funcionam", mas o plano tem de prever, se não funcionarem ou
+estiverem incompletos:
+
+1. instalar **qualquer versão** disponível no repositório;
+2. detectar a **versão instalada** e os **pacotes instalados**;
+3. **não permitir instalação errada**: o pacote não entra se não ficar funcional;
+4. trocar pacotes **dentro da mesma versão** (tirar o Indy, pôr o Synopse e a
+   compressão numa segunda rodada);
+5. **atualizar ou voltar** de versão, ajustando o library path do Delphi;
+6. **todas as IDEs** que o RAL suporta: Delphi XE até o mais recente, Lazarus/FPC
+   3.2.x até o mais recente, e o **FPC Unleashed**;
+7. library path do Delphi em **todas as plataformas** (o Delphi só roda no
+   Windows, mas compila para Android, iOS, macOS e Linux); plataforma que aquela
+   versão do RAL não suporta não recebe path;
+8. instalar **só o runtime**, sem design-time, se o usuário preferir;
+9. **desinstalar** limpando library paths e, com confirmação, as dependências
+   baixadas;
+10. **instalar sozinho as dependências** que a escolha exige.
+
+Mais a ferramenta de atualizar os projetos do usuário entre versões — essa tem
+plano próprio, `.agents/PLANO_MIGRADOR.md`, porque é outro programa, com outro
+ciclo de vida (muda a cada quebra do RAL, não a cada mudança do instalador). O
+instalador só a chama no fim (F21).
+
+### O que existe hoje, item por item
+
+Conferido no código em 13/10/2026 (`10df58b` + o que está sem commit):
+
+| # | Item | Estado | Onde / evidência |
+| --- | --- | --- | --- |
+| 1 | qualquer versão | **parcial** | F8: releases, tags e ramos (`RALInst.GitHub`). Tags no repo: `0.9.11-alpha`, `0.12.1/2/4`, `v1.0`, `1.1` — todas com a mesma estrutura de `pkg/`. Mas não há regra **por versão do RAL**: `manifesto/ral.json` não tem faixa de versão, e as tags antigas não têm `ralinstaller.json`. Quebras conhecidas (a 1.1 não compila no XE2, `RALClient.pas(991)`) não estão em dado nenhum: o usuário só descobre compilando |
+| 2 | detectar versão e pacotes | **feito**, com sobras | `RALInst.Existente` + `RALInst.Situacao` (revisões 2 e 3). Falta da F13: `RALVERSION` 2.0, links Lazarus de nome antigo. Instalação "só runtime" à mão (sem Known Packages) não é reconhecida |
+| 3 | não deixar instalar errado | **parcial — defeito real** | Regra do motor feita (F13), mas só bloqueia o Avançar. Pior: `RALInst.Instalar.Delphi.pas:1739` compila **direto** na pasta `Bpl`/`Dcp` da IDE, e `:1788` só aborta se **nada** compilou. Numa atualização 1.1 → 1.2 em que o motor falha, o `PascalRAL.bpl` novo sobrescreve o antigo, o `IndyRAL.bpl` antigo (compilado contra a 1.1) continua registrado, e a IDE não o carrega. O "nunca pior do que estava" não vale para o Delphi |
+| 4 | trocar pacotes na mesma versão | **feito** | Revisão 3: "mesmos fontes, outros pacotes" compila só o que falta e tira o desmarcado |
+| 5 | atualizar/voltar + library path | **feito para Win32/Win64** | `TirarCaminhosQueSumiram`, `TirarCaminhosDe`; voltar 2.0 → 1.x não conferido (F13) |
+| 6 | todas as IDEs | **parcial** | Tabela D7 → 13 Florence (`RALInst.IDE.pas:178-220`). **XE** (`VER220`, linha 190) está na tabela mas não existe nesta máquina: nunca rodou. O FPC Unleashed (`D:\IDE\lazarus\unleashed`) é achado como "Lazarus 4.99" com FPC 3.3.1 (`ralcli ides --buscar-em=D:\IDE\lazarus`, #14), **sem saber que é o Unleashed**; nada no código ou nas receitas fala dele. O mínimo de IDE por versão do RAL não é regra: D7, 2009 e 2010 aparecem como instaláveis |
+| 7 | library path em todas as plataformas | **falta** | `FPlataformas` nasce com `win32` (`RALInst.Instalar.Delphi.pas:300`) e só ganha `win64`; o Search Path só é escrito para elas (`:1138`). A IDE já sabe quais plataformas tem (`RALInst.IDE.Delphi.pas:51-59`) e o `.dproj` do RAL declara as dele (`PascalRAL.dproj`: Android, Android64, iOSDevice64, iOSSimARM64, Linux64, OSX64, OSXARM64, Win32, Win64, Win64x). Tirar já varre todas as subchaves de `Library` — só escrever é que não |
+| 8 | só runtime | **falta** | Existe "somente library path" (nada compilado), que é outra coisa. Não há opção de compilar os pacotes de runtime sem registrar os de design |
+| 9 | desinstalar e limpar | **parcial** | Desfaz recibos e o que foi feito à mão (revisão 2), library path de todas as plataformas. `TRodada.Desinstalar` (`RALInst.Rodada.pas:929`) **não apaga** `<pasta>/PascalRAL/<versão>/` nem `<pasta>/dependencias/...`, nem o cache de zips (F8: "não é limpo nunca") |
+| 10 | dependências automáticas | **quase feito** | F7: mORMot2, Zeos, Indy, uniGUI (só detecção), FireDAC/AnyDAC. Falta o `copiar-arquivo` (DLLs do libsagui, brotli/ZSTD em Win64 e Delphi antigo) e o path das dependências nas outras plataformas (item 7) |
+
+### Desenho
+
+Três ideias amarram as fases:
+
+- **Nunca pior do que estava.** Uma rodada compila tudo **fora** da IDE,
+  confere que o resultado é um conjunto funcional, e só então troca os arquivos
+  e escreve o registro/configuração. Falhou qualquer coisa do conjunto mínimo: a
+  IDE fica exatamente como estava, e o relatório diz por quê. É o que transforma
+  "avisar" em "não deixar" (pedido 3) sem precisar prever todo erro de antemão.
+- **Conjunto funcional** = núcleo (`PascalRAL`) + pelo menos um motor + o
+  design-time quando o modo é com design. Pacote opcional que falha (compressão,
+  banco) fica de fora com o motivo e não derruba a rodada — continua como hoje.
+- **Regra por versão do RAL é dado.** O que não se deduz do disco (mínimo de
+  IDE, quebra conhecida) vai para o manifesto embutido, com faixa
+  `ral-min`/`ral-max`, porque as tags já publicadas não podem ganhar um
+  `ralinstaller.json`. A versão que tiver `ralinstaller.json` continua mandando
+  sobre o embutido (F6). Plataforma **não** é regra: sai do `.dproj` (F17).
+
+Ordem: F14 primeiro (é segurança: hoje uma atualização pode quebrar a IDE),
+depois F15 e F16 (o que impede erro), F17 e F18 (plataformas e runtime), F19 e
+F20 (limpeza e dependências), F21 (fecha e chama o migrador).
+
+### F14 — Instalação transacional *(pedido 3)*
+
+- **Delphi:** compilar para uma pasta de preparo
+  (`<dados>\preparo\<bds>\<plataforma>\`), não para o `Package DPL/DCP Output`.
+  Conferido o conjunto funcional em cada plataforma que vai para a IDE (Win32, e
+  Win64 na IDE de 64 bits), promover: o `.bpl`/`.dcp` que vai ser substituído
+  ganha `.anterior` (renomear funciona com a IDE fechada, que já é exigida), o
+  novo entra no lugar, registra; falhou a promoção ou o registro, volta os
+  `.anterior` e o registro (o recibo já guarda o antes). Apagar os `.anterior` só
+  no fim da rodada que deu certo.
+- **Lazarus:** compilar cada `.lpk` com `lazbuild <lpk>` contra uma **cópia** da
+  configuração antes de tocar na verdadeira; com o conjunto funcional compilado,
+  aplica na verdadeira e faz o `--build-ide` (o rollback da F10 continua valendo
+  para o `--build-ide` que falhar).
+- O conjunto funcional entra no plano ("instala se compilar: PascalRAL,
+  PascalRALDsgn, IndyRAL; o resto é opcional") e no resumo ("nada mudou: IndyRAL
+  não compilou — <primeiro erro>").
+- `ralcli`: código de saída próprio para "nada mudou porque o conjunto mínimo
+  falhou".
+
+**Pronto quando:** numa cópia do registro do Delphi 13 com a 1.1 instalada, uma
+atualização para uma cópia local da `dev` com o motor forçado a falhar (fonte do
+motor quebrado na cópia) termina com o registro **idêntico** ao de antes e os
+`.bpl` da 1.1 intactos (tamanho e data do recibo); o mesmo no Lazarus 4.9 sobre
+uma cópia da configuração; e a rodada que dá certo não deixa `.anterior` nem
+pasta de preparo para trás.
+
+### F15 — Impedir, não avisar *(pedidos 1, 3, 6)*
+
+- **Tela:** terminar o item 2 da F13 — botão de instalar desabilitado enquanto
+  faltar motor, com o motivo visível (não só ao tentar avançar); IDE sem motor
+  possível não pode ser marcada, com a dica dizendo por quê.
+- **Manifesto com faixa de versão do RAL:** regra nova
+  `{ "ral-min", "ral-max", "delphi-min", "delphi-max", "fpc-min", "fpc-max",
+  "pacote" (opcional), "motivo" }`. Sem `pacote`, vale para a versão inteira
+  (aquela IDE não recebe aquela versão do RAL). Ramo (`dev`, `2.0`) casa pela
+  versão que o `PascalRAL.inc` dele declara. Primeiras regras, com o que já se
+  sabe: 1.1 e anteriores fora do XE2 (`RALClient.pas(991)`); FPC mínimo 3.2.0;
+  **Delphi mínimo XE em todas as versões** (D-I1: o piso do Unicode). O mínimo
+  é **dado** (uma regra sem `pacote` com `delphi-max` abaixo do XE e `ral-min`
+  vazio), não um `if` no código: se o estudo do porte para o Delphi 7 der
+  certo, a versão do RAL que o trouxer muda a regra no `ralinstaller.json`
+  dela, e o instalador passa a oferecer o D7 só para aquela versão em diante,
+  sem release nova. D7, 2009 e 2010 continuam na lista de IDEs, com "esta
+  versão do RAL não suporta esta IDE (mínimo: Delphi XE)", sem poder marcar.
+- **Lazarus:** a checagem de unidade que a F6 deixou só no Delphi (pacote
+  externo ausente hoje é aviso; vira "fica de fora", como no Delphi).
+- **Combinação** escolhida que não fecha: "só runtime" sem motor; pacote que
+  exige um desmarcado (hoje marca sozinho — conferir que não dá para desmarcar o
+  exigido deixando o dependente marcado).
+
+**Pronto quando:** `tests/compatibilidade --testes` cobre as regras com faixa de
+versão do RAL (casa, não casa, ramo sem número de tag); `ralcli plano` da 1.1 no
+XE2 recusa antes de baixar, com o motivo; na tela, com o XE2 marcado e a 1.1
+escolhida, a IDE aparece "não recebe esta versão: …" e o Instalar não acende.
+
+### F16 — Todas as versões, todas as IDEs *(pedidos 1, 6)*
+
+- **Lista de versões:** estáveis primeiro; pré-lançamentos (`0.9.11-alpha`,
+  `0.12.x`) e ramos num grupo "outras", com o rótulo. A tela diz, para a versão
+  escolhida, em quais IDEs marcadas ela **foi verificada** e em quais não.
+- **Verificação por amostragem** (ferramenta `tests/varredura`, roda aqui, não
+  no usuário; D-I5): o projeto testa por amostra, não todas as combinações. A
+  amostra padrão de cada versão do RAL é **a IDE mais velha que se tem (XE2), a
+  mais nova (Delphi 13) e uma sorteada no meio** — a ferramenta sorteia entre as
+  que ainda não foram verificadas para aquela versão, para que as rodadas
+  seguidas cubram o meio aos poucos. No Lazarus, o mesmo: o FPC 3.2.x mais
+  velho, o trunk mais novo, um sorteado no meio, e o Unleashed sempre (é outro
+  compilador, não uma versão). `--todas` roda a matriz inteira quando houver
+  tempo. Compila numa pasta temporária (sem registro, como os testes da F3) e
+  grava o resultado. O que falhar vira regra da F15 com o primeiro erro como
+  motivo; o que passar entra na lista de verificadas embutida
+  (`manifesto/verificadas.json`), que acumula entre as rodadas. Rodar a cada
+  versão nova do RAL e a cada IDE nova. A varredura entrega o dossiê no formato
+  do orquestrador, para o dono ler o que falhou.
+- **Delphi XE:** não há nesta máquina. O código já o conhece (`VER220`); fica
+  "não verificado" até o ambiente de testes com todas as versões do Delphi que o
+  dono está montando (D-I2). Por isso a varredura tem de rodar **sozinha numa
+  máquina sem nada além das IDEs** — só o executável e a pasta do RAL, sem
+  depender do workspace desta máquina —, e `--todas` é o modo daquele ambiente.
+  Delphi novo que a tabela não conhece (BDS acima de 37.0):
+  entra como "mais nova que o Delphi 13", com o que se lê do disco
+  (`rsvars.bat`, `bin\dcc*.exe`), em vez de sumir da lista.
+- **FPC Unleashed:** reconhecer pela marca do instalador dele (`installer.ini`
+  com "Unleashed Installer manifest", ao lado de `lazarus\` e `fpc\`), mostrar
+  "Lazarus 4.99 (FPC Unleashed 3.3.1)" e dar às receitas e ao manifesto um campo
+  `fpc-variante` (`oficial`, `unleashed`), porque as extensões de linguagem dele
+  podem mudar o que compila. Primeiro passo: instalar o RAL numa cópia da
+  configuração do Unleashed e ver o que acontece — sem isso não se sabe se ele
+  precisa de regra.
+- **Lazarus/FPC 3.2.x:** a varredura cobre 3.2.2, 3.2.3 e 3.2.4 (fpcupdeluxe) e
+  o trunk 3.3.1; 3.2.0 se aparecer uma instalação dele.
+
+**Pronto quando:** a varredura roda `v1.0`, `1.1` e `dev` na amostra (XE2,
+Delphi 13, uma sorteada; FPC 3.2.x mais velho, trunk, um sorteado, Unleashed),
+uma segunda rodada sorteia outra IDE do meio, e o arquivo de verificadas
+acumula as duas; `--todas` cobre as 13 Delphi e as 15 Lazarus; o Unleashed aparece
+com o nome dele e recebe a 1.1 numa cópia da configuração (ou fica de fora com o
+motivo certo); uma pasta de Delphi com BDS fictício 38.0 (cópia de `bin`/`lib`
+do 13) aparece na lista.
+
+### F17 — Library path em todas as plataformas do Delphi *(pedidos 5, 7)*
+
+- **Só o library path** (D-I3): o RAL não é compilado para as outras
+  plataformas. O usuário pode configurar o SDK de cada uma quando quiser, depois
+  de instalar; compilar na instalação obrigaria a ter o SDK antes, uma limitação
+  sem motivo.
+- **Plataforma instalada é a que tem `lib\<plat>` e o compilador dela**, não a
+  que tem chave no registro. Desde o 10.3/11 o instalador da Embarcadero deixa
+  escolher as plataformas, e o registro **mente**: conferido em 14/10/2026 no
+  Delphi 12 e no 13 desta máquina, `Library\` tem `iOSDevice32`,
+  `iOSSimulator` e `OSX32`, sem `lib\` nem compilador nenhum (plataformas que
+  saíram do produto), e `Win64x` tem `lib\win64x` mas nenhum `dcc` (é do C++).
+  A `RALInst.IDE.Delphi` já usa esse critério para `Plataformas`
+  (`lib\<plat>` + `bin\dcc*.exe`); o Search Path segue a mesma lista.
+  - Plataforma **não instalada**: não escreve nada, nem cria a chave.
+  - Plataforma instalada **sem** a chave `Library\<Plataforma>` (a IDE ainda
+    não foi aberta depois de instalar a plataforma): não escreve — criar a chave
+    antes da IDE pode fazê-la pular os valores padrão daquela plataforma, a
+    mesma armadilha da F1 —, e o plano diz "abra a IDE uma vez e rode o
+    instalador de novo".
+  - Plataforma instalada **depois** (pelo *Manage Platforms* da IDE): rodar o
+    instalador de novo acha a plataforma nova e só escreve o path dela —
+    `RALInst.Situacao` trata como "mesmos fontes, mesma escolha, plataforma
+    nova", sem recompilar nada. A tela do fim diz isso para o usuário.
+- **Que plataformas recebem o RAL:** as instaladas ∩ as que **o `.dproj` do pacote** daquela versão do RAL
+  habilita ∩ as que a checagem de unidades aceita, avaliando os `{$IFDEF}` com
+  os símbolos daquela plataforma (`ANDROID`, `IOS`, `LINUX`, `MACOS`, `POSIX`,
+  `CPU64`...) — a `RALInst.Compatibilidade` já sabe avaliar; falta dar a ela os
+  símbolos por plataforma. Plataforma que o `PascalRAL.dproj` daquela versão não
+  habilita não recebe nada: o caso "1.0 num Windows de 128 bits" do pedido sai
+  daqui sozinho, sem tabela. Um motor que não serve numa plataforma não põe a
+  pasta dele no path dela.
+- **O quê:** fontes, como no Win32 (`$(PascalRAL)\...`), mais o path das
+  dependências que valem naquela plataforma (mORMot2 no Linux64, com os
+  estáticos de Linux).
+- **Recibo** por plataforma; atualizar e voltar trocam as entradas de todas
+  (`TirarCaminhosQueSumiram` já varre todas as subchaves; falta escrever).
+
+**Pronto quando:** numa cópia do registro do Delphi 13, instalar a `dev` escreve
+o Search Path nas plataformas instaladas (Win32, Win64, Android, Android64,
+iOSDevice64, iOSSimARM64, Linux64, OSX64, OSXARM64) e **não** toca em
+`iOSDevice32`, `iOSSimulator`, `OSX32` nem `Win64x`; desinstalar devolve a
+cópia **idêntica**; com `lib\linux64` escondido (renomeado numa cópia da pasta
+da IDE) o Linux64 fica de fora, e ao voltar a pasta uma segunda rodada só
+escreve o path do Linux64; um fixture com o `PascalRAL.dproj` sem `Android` não escreve
+nada em `Library\Android*`; e um projeto console com `uses RALServer,
+RALIndyServer` compila as unidades com o `dcclinux64` usando só o Search Path
+escrito (a ligação depende do SDK do Linux e não faz parte do teste).
+
+### F18 — Só runtime *(pedido 8)*
+
+- Opção "Instalar sem componentes na IDE (só runtime)" na tela de recursos, por
+  IDE; `--so-runtime` na `ralcli`. Diferente do "somente library path": aqui os
+  pacotes de runtime **são compilados** (quem compila com pacotes de runtime
+  precisa do `.bpl`/`.dcp`), só não vão para a IDE.
+- **Delphi 2.0:** pula todo `{$DESIGNONLY}` (os `...Dsgn`), compila o resto,
+  nada em `Known Packages`, library path escrito.
+- **Delphi 1.x — armadilha:** os motores exigem `PascalRALDsgn` (runtime+design,
+  exige `designide`). "Só runtime" compila o `PascalRALDsgn` e **não o
+  registra**, e o relatório avisa que um programa com pacotes de runtime vai
+  precisar do `designide.bpl`, que não é redistribuível. É da 1.x e não tem
+  conserto no instalador.
+- **Lazarus:** só `--add-package-link` (o projeto do usuário passa a poder
+  exigir os pacotes), sem `--add-package` e sem `--build-ide`. Os `...dsgn` não
+  entram.
+- **Detectar e trocar de modo:** o recibo grava o modo; `RALInst.Situacao` trata
+  "com design → só runtime" (e o contrário) como "mesmos fontes, outros
+  pacotes": tira da IDE ou registra, sem recompilar. Instalação só runtime feita
+  à mão (sem `Known Packages`, só `$(PascalRAL)` e library path) passa a ser
+  reconhecida pelo `RALInst.Existente`.
+- O conjunto funcional da F14 em modo só runtime é núcleo + motor, sem design.
+
+**Pronto quando:** Delphi 13 e Lazarus 4.9 em cópias: instalar só runtime não
+mexe em `Known Packages` nem em `StaticAutoInstallPackages` e não reconstrói a
+IDE; um projeto de teste com "Build with runtime packages" (Delphi) e um `.lpi`
+que exige `indyral` (Lazarus) compilam; trocar para "com design" só registra
+(nada recompila); e desfazer tudo devolve as cópias idênticas.
+
+### F19 — Desinstalar e limpar *(pedido 9)*
+
+- Depois de desinstalar (e depois de uma atualização), o instalador monta a
+  lista do que **ele** baixou e **ninguém mais usa**: `<pasta>/PascalRAL/<versão>/`
+  (com a marca `.ralinstaller.json`) e `<pasta>/dependencias/<nome>/<versão>/` de
+  origem `instalada` que nenhum recibo vivo de nenhuma IDE cita; mais o cache de
+  zips. Cada linha com o tamanho.
+- **Confirmação** com a lista, **tudo marcado** (D-I4): o usuário desmarca o
+  que quer manter. Dependência
+  `encontrada` nunca aparece. Pasta sem a marca nunca é apagada (mesma regra da
+  F8). Apagar usa `\\?\` (caminho longo, F7).
+- O que foi apagado vai para o registro de desinstalação, sem como desfazer — a
+  confirmação diz isso.
+- `ralcli desinstalar --limpar` (com `--sim` não pergunta); `ralcli limpar`
+  sozinho para a sobra de atualizações antigas.
+- Library path: já sai de todas as plataformas; conferir com a F17 no ar.
+
+**Pronto quando:** numa pasta de teste com a 1.1 e a `dev` instaladas em duas
+IDEs (cópias), desinstalar uma lista só o que a outra não usa; desinstalar a
+segunda lista tudo, apaga o confirmado e deixa uma dependência `encontrada`
+intacta; a lista de uma pasta sem a marca vem vazia.
+
+### F20 — O que falta das dependências *(pedido 10)*
+
+- Ação `copiar-arquivo` no vocabulário das receitas (o que a F7 deixou), para as
+  DLLs de runtime: libsagui, e brotli/ZSTD em Win64 e nos Delphi sem o `.obj`
+  (revisão 2). Destino: `redist/<plataforma>` dentro da pasta de instalação, e o
+  relatório diz que a DLL tem de ir junto do executável do usuário — o
+  instalador não sabe onde ele fica.
+- Dependências nas outras plataformas do Delphi (F17): `plataformas` por ação
+  `libpath` na receita.
+- O Indy (em aberto na §8) — recomendação: não mexer no Indy da IDE; baixar e
+  compilar só onde a IDE não tem nenhum (Lazarus, por receita; Delphi, só se o
+  `.dcp` não existir).
+
+**Pronto quando:** marcar `SaguiRAL` num Delphi 13 sem a libsagui (cópia do
+registro) baixa a libsagui, põe as DLLs em `redist\win32` e `redist\win64`, e o
+relatório diz onde; o plano de um Delphi com Linux64 mostra o mORMot2 também no
+path do Linux64.
+
+### F21 — Fechar e entregar *(todos)*
+
+- O que a F13 deixou: links Lazarus com nome antigo, `RALVERSION` 2.0 no
+  `Existente`, `tests/catalogo` com fixture 2.0, `tests/situacao` 1.x → 2.0 →
+  1.x, a ordem do ramo `2.0` na lista, a página da wiki.
+- **Chamar o migrador** no fim de uma rodada que foi "Atualizar", "Voltar" ou
+  "Trocar" em alguma IDE: link "Atualizar os meus projetos para a <versão>", que
+  abre a ferramenta do `PLANO_MIGRADOR.md` já com a versão de origem e a de
+  destino (vêm do recibo). O binário do migrador sai no mesmo release do
+  instalador (D-M1/D-M2 do `PLANO_MIGRADOR.md`).
+- **A auto-atualização (F12) passa a trocar dois executáveis**: o instalador e o
+  migrador vêm do mesmo release, com o `SHA256SUMS` cobrindo os dois. Mesma
+  regra da F12 para cada um (baixar ao lado, conferir, renomear o antigo para
+  `.old`); o migrador aberto não pode ser trocado — se estiver em execução, o
+  instalador avisa e troca na próxima abertura. Versão nova do instalador sem o
+  migrador deste sistema não conta como atualizada.
+- Instalação real numa máquina limpa, com o dono; workflow de release rodado de
+  verdade.
+
+**Pronto quando:** o dono instala, troca pacotes, atualiza, volta e desinstala
+numa máquina limpa (Delphi e Lazarus) pela tela, sem nenhuma IDE quebrada no
+caminho, e o link do migrador abre com as versões certas.
+
+### F22 — Pacotes por versão do Delphi (RAL 2.0) *(pedido de 12/11/2026)*
+
+Pedido do dono (D2 do `PascalRAL-2.0/.agents/local/planos/PLANO_DPM.md`): a 2.0 passa a
+ter um `.dpk`/`.dproj` por versão do Delphi, com o sufixo da IDE no nome da bpl
+(`PascalRAL370.bpl` no 13), para duas IDEs de versões diferentes na mesma máquina não
+brigarem pelo mesmo fonte, e para o DPM, que espera um projeto por versão; "precisa
+incluir um plano de ajuste do instalador para que ele consiga identificar e controlar
+isso corretamente". Só a 2.0: uma árvore 1.x continua como hoje. Anda **junto com a F1
+do `PLANO_DPM`** (a reforma dos pacotes): os dois saem no mesmo release.
+
+Como fica a árvore 2.0 (seção 1 do `PLANO_DPM`): `pkg/Delphi/D<versão>/<Categoria>/`,
+pastas `D7`, `D2010`, `DXE`, `DXE2`…`DXE8`, `D100`…`D104`, `D110`, `D120`, `D130`
+(o esquema `D$compilershortversion$` do DPM); cada `.dpk` com `{$LIBSUFFIX '<sufixo>'}`;
+nome do pacote e do `.dcp` sem sufixo (`requires PascalRAL` não muda); saídas em
+`compiled\D<versão>\<pacote>`. O número do sufixo (D2a do `PLANO_DPM`, decidida
+pelo dono): o padrão da Embarcadero, como o do Indy, que é o `Sufixo` de
+`DelphiProdutos` (`RALInst.IDE.pas:180-224`; D7 `70` … 13 `370`), sempre escrito no
+`.dpk`, nunca `{$LIBSUFFIX AUTO}` (não funciona em todas as versões). O catálogo pode,
+então, conferir o sufixo lido do `.dpk` contra o da IDE e recusar uma pasta trocada.
+
+O que muda:
+- **Catálogo** (`RALInst.Catalogo.pas:2`, `:465`, hoje `pkg/Delphi/**/*.dpk`): numa
+  árvore com pastas `D<versão>`, ler só a da IDE (nome da pasta tirado de
+  `DelphiProdutos`); a ordem e o grafo saem do `requires` daquela pasta. Uma IDE sem
+  pasta (Delphi 2005-2009) é "sem pacotes para esta versão", com o motivo, não erro.
+  `RALInst.Compatibilidade` e `RALInst.Motores` passam a perguntar à pasta da IDE.
+- **Build** (`RALInst.Build.Delphi.pas:721-728`): o `{$LIBSUFFIX '<n>'}` já vira o nome
+  da bpl; conferir que o `.dcp` sem sufixo e a bpl com sufixo saem nas pastas do
+  instalador, não em `compiled\D<versão>` (o `-LE`/`-LN` da linha do `dcc32` vence o
+  `.dproj`).
+- **Registro e recibo**: `Known Packages` e `Known Packages x64` com a bpl sufixada; o
+  recibo guarda o nome com sufixo; a desinstalação (F10/F19) remove o nome do recibo.
+- **RAL que já está lá** (`RALInst.Existente.pas:147` já tira os dígitos do fim):
+  reconhecer, na mesma IDE, a bpl da 2.0 sem sufixo (de antes da reforma) e a da 1.x, e
+  tratar como "Atualizar"/"Trocar" (`RALInst.Situacao`): tirar dos `Known Packages` a
+  bpl sem sufixo antes de registrar a nova, senão a IDE carrega as duas e recusa a
+  segunda. Um pacote de terceiro com o mesmo nome e dígitos no fim (`ZCore290`) não
+  pode ser confundido com o RAL: casar com a lista do catálogo, como hoje.
+- **Herança 1.x → 2.0** (`RALInst.Heranca`): os herdeiros são nomes de pacote; a bpl
+  com sufixo sai do nome do pacote mais o sufixo da IDE, então a tabela não muda, e o
+  teste prova isso.
+- **DPM**: aviso quando o RAL está no cache do DPM daquela IDE (o caminho a F0 do
+  `PLANO_DPM` confirma), porque o RAL do instalador, registrado na IDE, e o do DPM,
+  carregado por projeto, levam a mesma bpl: texto novo em `resourcestring`
+  (`RALInst.Mensagens`) e entrada nos `.po`.
+- **Testes** (`tests/`, sobre cópias do registro): `tests/catalogo` com uma árvore 2.0
+  de três pastas (`DXE2`, `D120`, `D130`); `tests/situacao` 2.0 sem sufixo → 2.0 com
+  sufixo → desinstalar, e 1.x → 2.0 com sufixo.
+
+**Pronto quando:** na VM, com o RAL 2.0 reformado, o instalador instala no 12 e no 13
+juntos (cada um da sua pasta, bpls `…290`/`…370`), as duas IDEs
+abrem ao mesmo tempo com a paleta do RAL, uma atualização de cima de uma 2.0 sem sufixo
+não deixa a bpl velha nos `Known Packages`, a desinstalação limpa as duas, e
+`tests/catalogo` e `tests/situacao` passam.
+
+### Decisões
+
+Tomadas pelo dono (14/10/2026):
+
+- **D-I1 — Mínimo de IDE: Delphi XE**, para todas as versões. É o piso por
+  causa do Unicode. Um porte para o Delphi 7 está em estudo de viabilidade; por
+  isso o código do RAL é escrito compatível com o D7 (sem generics, sem `var`
+  inline, sem string multilinha, sem nada que só as versões novas aceitam). No
+  instalador: o mínimo é dado do manifesto, não código (F15), para que um RAL
+  que um dia suporte o D7 só mude a regra.
+- **D-I5 — Versão não verificada numa IDE: deixa instalar**, com o rótulo "não
+  verificada nesta IDE"; só o sabido quebrado é bloqueado. A F14 garante que uma
+  falha não muda nada. Os testes são por amostragem — XE2 (muito velha),
+  Delphi 13 (muito nova) e uma no meio —, e a varredura da F16 segue esse
+  desenho, sorteando a do meio.
+- **D-I2 — Delphi XE (e as que faltam aqui).** Não depende da comunidade: quem
+  acha que não funciona apaga o pacote e não reporta. O dono vai montar um
+  ambiente de testes com todas as versões do Delphi (o jeito ainda em estudo).
+  Até lá o XE fica "não verificado"; a varredura (F16) é feita para rodar
+  naquele ambiente.
+- **D-I3 — Outras plataformas: só o library path**, sem compilar. O usuário
+  configura o SDK quando quiser, depois de instalar. E prever a IDE sem a
+  plataforma instalada (do 11 em diante dá para não instalar plataformas): F17,
+  com o critério `lib\` + compilador, conferido nesta máquina.
+- **D-I4 — Limpeza: tudo marcado**; o usuário desmarca o que quer manter (F19).
+
+Abertas: nenhuma.
+
+### Estado
+
+**13/10/2026:** só o plano. Nada desta seção foi implementado.
+**14/10/2026:** todas as decisões respondidas (D-I1 a D-I5); F15, F16, F17, F19
+e F21 ajustadas. Próximo passo: F14.
+**18/10/2026 (sem commit):** F14 a F21 implementadas; `ralcli` e
+`RALInstaller.lpi` compilam com `lazbuild -B`; todas as ferramentas de `tests/`
+compilam (FPC 3.2.3). Peças novas: `RALInst.Promocao` (preparo, `.anterior`,
+desfazer), `RALInst.Limpeza`, `RALInst.Verificadas` (+ `manifesto/verificadas.json`,
+falha vira bloqueio), `RALInst.Migrador`, `RALInst.Tela.Limpeza`; manifesto com
+`bloqueios` e `ral-min`/`ral-max` (mínimo XE, FPC 3.2.0, 1.1 fora do XE2 como
+dado); `fpc-variante`; receitas `libsagui`, `brotli`, `zstd` (`copiar-arquivo`,
+`fonte.codigo: false`, `{versao}` no asset, `plataformas` no `libpath`); Unleashed
+reconhecido; BDS acima de 37.0 entra como "mais novo"; Lazarus: pacote externo
+ausente fica de fora (não é mais aviso); `ralcli`: `--so-runtime`, `limpar`,
+`desinstalar --limpar`, código de saída 3, versões agrupadas, acentuação UTF-8
+corrigida, `desinstalar --desfazer` aceito; tela: Avançar apaga com o motivo,
+IDE abaixo do mínimo não marca, "outras versões", verificada/não verificada,
+"só runtime", limpeza após desinstalar, link do migrador. Auto-atualização troca
+instalador e migrador; **release sem o migrador deste sistema não conta como
+versão nova** (até existir `migrador/`, a auto-atualização não oferece release).
+Workflow publica o migrador quando houver. Wiki: página `instalador`.
+Testes: `catalogo` (fixture 2.0), `compatibilidade` (F15/F16/F20),
+`atualizacao` (31, migrador), `traducao`, `situacao`, `recibos` passam;
+`tests/fechamento` (cópias de registro/configuração, Delphi 13 + Lazarus 4.9):
+F14 Delphi 14/14, F14 Lazarus 7/7, F15 4/4, F16 4/4, F17 tudo ok; F18 Delphi
+achou dois defeitos (corrigidos depois: só runtime agora compila Win64 na IDE
+de 64 bits; o teste do programa com pacotes listava pouco no `-LU`).
+**19/10/2026 (sem commit):** F18 Delphi 9/9, F18 Lazarus 7/7, F19 tudo ok,
+F20 7/7, F21 9/9. Defeitos achados e corrigidos: o plano só baixava as
+dependências dos pacotes marcados, não as dos que a IDE já tinha nem as dos
+herdeiros 2.0 (`TRodada.PacotesDaIDE`, usada também pelo `SemMotor`); o `.obj`
+do brotli só era procurado ao lado das unidades do pacote, e na 2.0 o
+`brotlilib.pas` vem pelo path (`MontarObjetos` olha também as pastas de busca);
+a receita `libsagui` não casava com o zip, que traz `libsagui-<versão>/bin/`. O
+zip do brotli é plano e o do zstd tem uma pasta por cima, como as receitas
+dizem. F18 Lazarus: "não mexe em `StaticAutoInstallPackages`" vale para o que
+entra; se a IDE tinha o RAL de outra pasta, trocar de fontes tira esses pacotes
+(os links deles saem junto), e o teste confere que nada entra. Rodada inteira
+de `tests/fechamento` depois das correções: 99 conferências, nenhuma falha.
+Falta: rodar a `tests/varredura` (amostra e `--todas` no ambiente do dono) para
+encher `verificadas.json`; instalação real numa máquina limpa pela tela; o
+migrador (PLANO_MIGRADOR); Indy no Delphi continua sendo o da IDE (a ação `dpk`
+só aceita uma pasta por BDS, e o Indy reparte os pacotes em três).
+**24/10/2026 (sem commit):** conferido no Linux (FPC 3.2.3 / Lazarus 4.6).
+`RALInstaller` (Linux64) e `ralcli` compilam com `lazbuild -B`. `catalogo`, `compatibilidade`,
+`recibos`, `traducao`, `situacao` (40/40) e `atualizacao` passam.
+- Corrigido: os `Resource_*` do `RALInstaller.lpi` e do `ralcli.lpi` usavam `\`, e o
+  release Linux/macOS saía sem imagens, `.po`, receitas e manifesto. Agora usam `/`.
+- Corrigido: `tests/atualizacao` esperava que o migrador aberto não pudesse ser trocado.
+  Isso só vale no Windows; fora dele a troca é imediata, e o teste confere isso. Antes, o
+  job Linux do workflow falhava.
+- O migrador está fechado no que esta máquina prova (ver o `PLANO_MIGRADOR.md`, 24/10).
+- O resto da "Falta" de 19/10 continua: varredura no ambiente do dono, instalação real
+  numa máquina limpa e o Indy no Delphi.

@@ -1,0 +1,5 @@
+{
+  "formato": 1,
+  "comentario": "Escrito pelo tests/varredura: os pares versao do RAL x IDE que o projeto conferiu. \"ok\" aparece como verificada; \"falhou\" vira bloqueio do manifesto, com o motivo.",
+  "verificacoes": []
+}
