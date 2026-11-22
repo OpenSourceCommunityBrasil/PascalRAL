@@ -258,18 +258,10 @@ type
     procedure Stopping; override;
   end;
 
-  { An SMTP server (RFC 5321) over the socket event loop: Port (25) takes mail
-    from other servers, SubmissionPort (587) and TLSPort (465, implicit TLS)
-    take mail from users, who must authenticate there. STARTTLS (RFC 3207),
-    PIPELINING (RFC 2920), CHUNKING/BDAT (RFC 3030), 8BITMIME, SMTPUTF8, SIZE
-    (RFC 1870) and enhanced status codes (RFC 2034). AUTH goes through the
-    server's plugins as a request to an internal route: the authenticators
-    (Basic, JWT as the password with PasswordIsToken), the address lists, the
-    brute-force and flood plugins apply as they do to HTTP; with no
-    authenticator, Users. Each connection also passes the address lists and the
-    flood plugin when it opens. The server stores nothing: OnMessage gets each
-    message with its envelope. With no OnRcptTo every recipient is accepted:
-    on Port, that is an open relay unless OnRcptTo checks the domains. }
+  { An SMTP server (RFC 5321): Port (25) takes mail from other servers, SubmissionPort
+    (587) and TLSPort (465, implicit TLS) take mail from users, who must authenticate.
+    AUTH goes through the server's plugins. OnMessage gets each message; with no
+    OnRcptTo every recipient is accepted (an open relay on Port). }
   TRALSMTPServer = class(TRALServer)
   private
     FAllowPlainAuthWithoutTLS: boolean;

@@ -163,9 +163,8 @@ type
     property Hub: TRALHubModule read FHub write SetHub;
   end;
 
-  { A hub: one WebSocket route (Path) that answers the calls of the protocol of
-    this unit with Methods, and sends events with Emit (to everyone, to a
-    connection, a user or a group), through Backplane to the other servers too.
+  { A hub: one WebSocket route (Path) that answers the calls of this unit's protocol
+    with Methods and sends events with Emit, through Backplane to other servers too.
     GET <Domain>/ralhub.js is the browser client }
   TRALHubModule = class(TRALModuleRoutes)
   private

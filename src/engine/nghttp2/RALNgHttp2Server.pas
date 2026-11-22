@@ -1,8 +1,6 @@
 { The HTTP/2 server of RAL's own sockets: h2 over TLS (ALPN) and h2c with prior
-  knowledge, framed by nghttp2 (loaded at run time, src/bindings/nghttp2.pas).
-  One poll thread owns each connection and its nghttp2 session; the requests
-  run on a pool of workers and hand their answers back to the connection
-  through a locked queue, so the session is only ever touched by its thread. }
+  knowledge, framed by nghttp2 (loaded at run time). Requests run on a pool of
+  workers; each nghttp2 session is only touched by the poll thread that owns it. }
 unit RALNgHttp2Server;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -25,7 +23,7 @@ type
   TRALNgHttp2Stream = class;
 
   { TLS of the HTTP/2 server: the certificate as PEM files or text; the ALPN
-    offered is h2 alone (D1: the server speaks only HTTP/2). }
+    offered is h2 alone. }
   TRALNgHttp2SSL = class(TRALSSL)
   private
     FCertFile: StringRAL;
@@ -55,10 +53,8 @@ type
     property MinVersion: TRALTLSVersion read FMinVersion write FMinVersion default mtv12;
   end;
 
-  { What a connection and the requests running for it share, counted by
-    reference: the lock, the streams with something new to send, and the
-    connection while it lives (a worker that ends after the connection closed
-    finds nil and drops its answer). }
+  { What a connection and its running requests share, counted by reference: the
+    lock, the streams with something to send and the connection (nil once closed). }
   TRALNgHttp2Link = class
   private
     /// The connection, nil once it closed.
@@ -82,10 +78,8 @@ type
     procedure Release;
   end;
 
-  { One HTTP/2 stream: the request as it arrives (poll thread), then the answer
-    as the worker writes it (under the link's lock) and nghttp2 reads it (poll
-    thread). Counted by reference: the connection while the stream is open and
-    the worker while the request runs. }
+  { One HTTP/2 stream: the request as it arrives, then the answer a worker writes
+    under the link's lock and nghttp2 reads. Counted by reference. }
   TRALNgHttp2Stream = class
   private
     /// The authority (:authority or host).
@@ -205,10 +199,8 @@ type
   end;
 
   { The HTTP/2 server: h2 (SSL.Enabled, ALPN h2) or h2c with prior knowledge on
-    Port. Requests run on PoolCount worker threads; MaxConcurrentStreams per
-    connection; nghttp2's own limits against the known floods are on.
-    SupportsLiveStream: a streamed answer goes out as DATA frames as it is
-    written, and the response's Trailers go as HTTP/2 trailers (gRPC). }
+    Port. Requests run on PoolCount worker threads. A streamed answer goes out as
+    DATA frames as it is written, and the response Trailers as HTTP/2 trailers. }
   TRALNgHttp2Server = class(TRALServer)
   private
     FExecuteInPollThread: boolean;
@@ -257,9 +249,8 @@ type
     class function SupportsLiveStream: boolean; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
   published
-    { Runs each request on the poll thread that read it, without the hand-off
-      to a worker: faster for short handlers, but a slow one stalls the other
-      connections of that thread (and a live stream waits on it). }
+    { Runs each request on the poll thread that read it, not on a worker; a slow
+      handler stalls the other connections of that thread. }
     property ExecuteInPollThread: boolean read FExecuteInPollThread
       write FExecuteInPollThread default False;
     /// Milliseconds a connection may stay with no stream open before GOAWAY; 0 = never.

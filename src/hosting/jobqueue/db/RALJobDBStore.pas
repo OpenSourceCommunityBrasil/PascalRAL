@@ -10,10 +10,9 @@ uses
   RALTypes, RALExceptions, RALErrorCodes, RALJobStore, RALDBBase, RALDBModule;
 
 type
-  { The jobs in a table of the database of DBModule (created by Open when
-    missing). A claim is one UPDATE that only a ready job, or one whose lease
-    ended, matches: the database decides which worker gets it, so any number of
-    processes and machines may share the table. The payload is kept in base64. }
+  { The jobs in a table of the database of DBModule (created by Open when missing).
+    The database decides which worker claims a job, so processes and machines may
+    share the table. The payload is kept in base64. }
   TRALJobDBStore = class(TRALJobStore)
   private
     FAutoCreate: boolean;

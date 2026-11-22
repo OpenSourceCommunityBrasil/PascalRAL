@@ -322,7 +322,8 @@ type
     property Syntax: TRALProtoSyntax read FSyntax write FSyntax;
   end;
 
-  /// Loads a file not found on the search paths; return '' when there is none.
+  { Supplies the source of a file found neither on the paths nor built in; AFound
+  stays False when there is none. }
   TRALProtoLoadEvent = procedure(const AFileName: StringRAL; var ASource: StringRAL;
     var AFound: Boolean) of object;
 
@@ -339,7 +340,7 @@ type
 
     function GetFile(AIndex: IntegerRAL): TRALProtoFileDef;
     function GetFileCount: IntegerRAL;
-    /// Adds the built-in google/protobuf files the generator knows.
+    /// Gives the source of a built-in google/protobuf file; False for any other name.
     function LoadBuiltIn(const AFileName: StringRAL; out ASource: StringRAL): Boolean;
     /// Indexes the types of a file and of its messages.
     procedure RegisterTypes(AFile: TRALProtoFileDef);

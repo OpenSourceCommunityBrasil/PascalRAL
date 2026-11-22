@@ -1,8 +1,5 @@
-{ A conversation in steps, built in the Object Inspector: each step asks something
-  (text, buttons), checks the answer, keeps it in the session of the conversation
-  and goes to the next step, or to the one the answer picks. The step a conversation
-  is at lives in the bot's sessions, so a persistent store resumes it after a
-  restart. }
+{ A conversation in steps: each step asks, checks the answer, keeps it in the
+  session and goes to the next step; a persistent store resumes it after a restart. }
 unit RALChatFlow;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -193,11 +190,9 @@ type
     property Items[AIndex: Integer]: TRALChatFlowStep read GetItem; default;
   end;
 
-  { A conversation in steps on a bot. A command (StartCommand) or the application
-    (Start) begins it; while it runs, every message of that conversation goes to it
-    and not to the bot's commands and events. The answers stay in the bot's
-    sessions under each step's variable, where the application reads them in
-    OnFinish or later. }
+  { A conversation in steps on a bot, begun by StartCommand or Start. While it runs,
+    the conversation's messages go to it and not to the bot's commands and events;
+    the answers stay in the bot's sessions under each step's variable. }
   TRALChatFlow = class(TRALChatInterceptor)
   private
     FBot: TRALChatBot;

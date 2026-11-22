@@ -99,13 +99,13 @@ type
     property AuthMethod: TRALMailAuthMethod read FAuthMethod write FAuthMethod default maAuto;
     /// Milliseconds to connect (and finish the TLS handshake).
     property ConnectTimeout: IntegerRAL read FConnectTimeout write FConnectTimeout default 30000;
-    /// The server.
+    /// Host name or address of the server.
     property Host: StringRAL read FHost write FHost;
     /// Called before a token login, to give a fresh token.
     property OnGetAccessToken: TRALSMTPTokenEvent read FOnGetAccessToken write FOnGetAccessToken;
     /// The conversation, with secrets masked.
     property OnLog: TRALPOP3LogEvent read FOnLog write FOnLog;
-    /// The password.
+    /// Password for the login; empty with no authentication.
     property Password: StringRAL read FPassword write FPassword;
     /// The port; 0 takes 995 for msImplicitTLS and 110 otherwise.
     property Port: IntegerRAL read FPort write FPort default 0;
@@ -115,7 +115,7 @@ type
     property Security: TRALMailSecurity read FSecurity write FSecurity default msStartTLSIfOffered;
     /// The certificate rules (those of TRALClient).
     property SSL: TRALSocketSSL read FSSL write SetSSL;
-    /// The user.
+    /// User name for the login; empty with no authentication.
     property UserName: StringRAL read FUserName write FUserName;
   end;
 

@@ -228,7 +228,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    { Publishes AEvent's topic and payload to the subscribers; returns how many it went
+    { Publishes APayload on ATopic to the subscribers; returns how many it went
       to. AData travels with the event without being copied; AOrigin says who sent it. }
     function Publish(const ATopic: StringRAL; const APayload: RawByteString = '';
       AData: TObject = nil; AOrigin: TObject = nil): Integer;

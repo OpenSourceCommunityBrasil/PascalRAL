@@ -1,6 +1,5 @@
-{ SCGI server engine (the protocol of python.ca/scgi, written here, the same
-  on Delphi and FPC): nginx (scgi_pass) or Apache (mod_proxy_scgi) hand each
-  request to it over TCP, on a connection of its own. }
+{ SCGI server engine: nginx (scgi_pass) or Apache (mod_proxy_scgi) hand each request
+  to it over TCP, on a connection of its own. }
 unit RALSCGIServer;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -12,10 +11,8 @@ uses
   RALTypes, RALGatewayServer;
 
 type
-  { The SCGI engine: the CGI variables arrive as a netstring of NUL-separated
-    names and values ("70:CONTENT_LENGTH\0...\0,"), the body after it, and the
-    answer is a CGI answer ("Status: 200 OK") until the connection closes.
-    Port is the TCP port nginx's scgi_pass points at }
+  { The SCGI engine: nginx (scgi_pass) sends each request on its own connection and
+    Port is the TCP port it points at. }
   TRALSCGIServer = class(TRALGatewayServer)
   protected
     function ReadEnvironment(AConnection: TRALGatewayConnection; AEnv: TStrings): boolean; override;

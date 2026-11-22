@@ -156,9 +156,8 @@ type
     { ENGINE API: True when the response went out as a live stream, so the engine
       sends nothing more and calls TRALServer.FinishStream }
     function StreamLive: boolean;
-    { ENGINE API: the handler of an upgrade, handed over to the caller (it now holds
-      the reference the response held); nil when there is none. See
-      TRALServer.TakeUpgrade }
+    { ENGINE API: hands the upgrade handler (and its reference) to the caller; nil
+      when there is none. See TRALServer.TakeUpgrade. }
     function TakeUpgrade: TRALUpgradeHandler;
     function TakeWireStream: TStream; override;
     function TakeWireString: RawByteString; override;
@@ -190,10 +189,8 @@ type
     property StreamRequest: TObject read FStreamRequest write FStreamRequest;
     /// The trailer fields (name=value), nil when none was added.
     property Trailers: TStringList read FTrailers;
-    { What takes the connection when the answer is 101 Switching Protocols (the
-      WebSocket package sets it). The response takes the reference it is given
-      (a handler is created with one) and releases it unless an engine took it
-      (TRALServer.TakeUpgrade) }
+    { Takes the connection when the answer is 101 Switching Protocols; the response
+      owns the handler's reference unless an engine takes it (TakeUpgrade). }
     property Upgrade: TRALUpgradeHandler read FUpgrade write SetUpgrade;
   published
     /// Error of the transport on a client, 0 when an HTTP response arrived.

@@ -336,12 +336,9 @@ type
   /// Lines a TRALMetricsPlugin adds to its output (each a full sample or a # comment).
   TRALOnMetricsCollect = procedure(Sender: TObject; AOutput: TStrings) of object;
 
-  { Prometheus metrics at Path (GET, public): ral_http_requests_total by method,
-    route and status, ral_http_request_duration_seconds by method and route
-    (histogram), with PhaseTimes ral_http_request_phase_seconds by method,
-    route and phase, and ral_http_requests_in_flight. The route label is the
-    route's path (/users/:id), never the URL, so the number of series stays
-    small. }
+  { Prometheus metrics at Path (GET, public): request counts, duration histograms
+    and requests in flight, labelled by method, route (the route path such as
+    /users/:id, never the URL) and status; PhaseTimes adds the phase histogram. }
   TRALMetricsPlugin = class(TRALPlugin)
   private
     FOnCollect: TRALOnMetricsCollect;
@@ -370,10 +367,8 @@ type
     property OnCollect: TRALOnMetricsCollect read FOnCollect write FOnCollect;
     /// Path of the metrics.
     property Path: StringRAL read FPath write SetPath;
-    { Times the phases of each request whose route handler ran, in the
-      histogram ral_http_request_phase_seconds (phase="before", "handler",
-      "after"): where a slow route spends its time. Two clock reads per
-      request; off, none }
+    { Times the before, handler and after phases of each request whose handler ran,
+      in ral_http_request_phase_seconds; costs two clock reads per request. }
     property PhaseTimes: boolean read FPhaseTimes write FPhaseTimes default False;
   end;
 

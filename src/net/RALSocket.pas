@@ -25,9 +25,7 @@ uses
   RALExceptions, RALTypes, RALConsts;
 
 const
-  { The default accept queue of Listen; the system caps it at its own maximum. A
-    short queue drops the SYNs of a burst of connects (clients coming back after a
-    restart), and each drop costs its client a second or more. }
+  /// The default accept queue of Listen; the system caps it at its own maximum.
   RALSocketListenBacklog = 4096;
   /// Read or Write found nothing to do without waiting.
   RALSocketWouldBlock = -1;

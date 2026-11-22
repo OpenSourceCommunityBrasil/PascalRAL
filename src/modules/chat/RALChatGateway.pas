@@ -1,7 +1,5 @@
-{ The generic channel for REST gateways (Evolution API, WPPConnect Server, Z-API,
-  signal-cli and the like): the address of each kind of message, the authentication
-  header and the fields of the JSON, both ways, are properties of the component; a
-  profile fills them in for the common gateways. }
+{ The generic channel for REST gateways (Evolution API, WPPConnect Server, Z-API...):
+  addresses, authentication and JSON fields are properties; a profile fills them in. }
 unit RALChatGateway;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -157,14 +155,9 @@ type
     property Url: StringRAL read FUrl write SetUrl;
   end;
 
-  { What the gateway is asked for each kind of message, and how it answers. The values
-    the placeholders can take: chat, jid, isgroup, text, caption, title, footer,
-    buttontext, reply (the id of the message answered), target (the id of the message
-    edited or removed), mediatype, mime, filename, extension, url, base64, datauri,
-    media (the URL, or else the base64), mediauri (the URL, or else the data URI),
-    latitude, longitude, address, contactname, contactphone, token, instance,
-    instancekey, buttons and rows (the arrays made with ButtonItem and RowItem, whose
-    placeholders are id, caption, url, title and description). }
+  { What the gateway is asked for each kind of message, and how it answers; the
+    placeholders in braces are replaced by the values of the message (chat, text,
+    caption, media, token, instance...). }
   TRALChatGatewayOutgoing = class(TPersistent)
   private
     FAudio: TRALChatGatewayEndpoint;
@@ -252,11 +245,9 @@ type
     property Video: TRALChatGatewayEndpoint read FVideo write SetVideo;
   end;
 
-  { Where each piece of a received message is in the JSON the gateway posts. A path is
-    the names of the members joined by dots, a number picking an element of an array
-    (data.key.id, response.0.id); several paths separated by semicolons are tried in
-    order and the first one found counts. Paths are relative to the item (see
-    ItemsPath), except EventPath. }
+  { Where each piece of a received message is in the JSON the gateway posts: member
+    names joined by dots, a number picking an array element (data.key.id); paths
+    separated by semicolons are tried in order. Relative to ItemsPath, except EventPath. }
   TRALChatGatewayIncoming = class(TPersistent)
   private
     FButtonIdPath: StringRAL;
@@ -335,10 +326,9 @@ type
     { Where the message is in the root of the JSON (data); an array holds several; empty
       = the root itself. }
     property ItemsPath: StringRAL read FItemsPath write FItemsPath;
-    { What kind a message is, one rule per line: path|value|kind. A rule matches when
-      the path exists (value empty) or holds the value; the first match wins; kinds are
-      text, image, audio, video, document, sticker, location, contact and callback. No
-      match = text. }
+    { What kind a message is, one rule per line: path|value|kind; the first match
+      wins and no match is text. Kinds: text, image, audio, video, document, sticker,
+      location, contact, callback. }
     property KindRules: TStrings read FKindRules write SetKindRules;
     /// Where the latitude of a place is.
     property LatitudePath: StringRAL read FLatitudePath write FLatitudePath;
@@ -370,12 +360,9 @@ type
     property TimestampPath: StringRAL read FTimestampPath write FTimestampPath;
   end;
 
-  { A channel for the REST gateways that put an HTTP API in front of an account that is
-    not the official one. Pick a Profile, fill Instance and the token (never in the
-    form: use TokenSource), point BaseUrl at the gateway and give the webhook module the
-    same route. Everything the profile fills can be changed.  These gateways are not the
-    official API: they can violate the terms of the platform and the number may be
-    banned, which is why the limits start low. }
+  { A channel for REST gateways in front of an unofficial account: pick a Profile,
+    fill Instance and the token, point BaseUrl at the gateway. They may violate the
+    platform's terms and get the number banned, so the limits start low. }
   TRALChatGateway = class(TRALChatChannel)
   private
     FAuthHeader: StringRAL;

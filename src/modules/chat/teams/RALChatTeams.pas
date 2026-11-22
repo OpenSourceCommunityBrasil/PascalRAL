@@ -56,11 +56,9 @@ type
     Root: TRALJSONObject;
   end;
 
-  { The Teams channel: activities posted by the Bot Framework, authenticated by their JWT
-    (RS256 by the published keys, with issuer, audience, serviceUrl and endorsements
-    checked), replies to the serviceUrl of the activity with a client-credentials token,
-    Adaptive Card buttons, edit, delete and typing. The secret and the tokens never reach
-    a log or an error text. The Token property holds the client secret of the app. }
+  { The Teams channel: activities posted by the Bot Framework, authenticated by their
+    JWT, answered to the serviceUrl of the activity with a client-credentials token.
+    The Token property holds the client secret of the app. }
   TRALChatTeams = class(TRALChatChannel)
   private
     /// When the cached access token ends, in Unix seconds.
@@ -130,7 +128,7 @@ type
     function StripMentions(const AText: StringRAL): StringRAL;
     /// The current time in Unix seconds.
     function UnixNow: Int64RAL;
-    /// Checks the Ed25519 signature of an interaction.
+    /// Checks the JWT of an activity.
     procedure VerifyRequest(const ABody: StringRAL; AHeaders: TRALChatHeaderReader;
       var ATimestamp: Int64RAL; var AValid: Boolean);
   protected

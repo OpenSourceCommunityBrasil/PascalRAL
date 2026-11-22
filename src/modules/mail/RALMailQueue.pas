@@ -30,16 +30,9 @@ type
   TRALMailDeferredEvent = procedure(Sender: TObject; const AId: StringRAL;
     ARecipients: TStrings; AAttempt: IntegerRAL; const AReason: StringRAL) of object;
 
-  { Sends messages in the background through Client, keeping them in a spool
-    folder (Folder) so a restart loses none: a temporary failure (a 4xx, the
-    network) is tried again after RetryDelay, doubled each time up to
-    RetryMaxDelay, until MaxAttempts or MaxAge; a 5xx bounces at once. Each
-    recipient counts on its own: those the server took are not sent again.
-    Runs on its own TRALJobQueue, or on the one linked in Queue (then its
-    workers, store and start). Each worker sends with its own copy of Client,
-    which keeps its connection between messages. The events run on the worker
-    threads. A message is sent at least once: a process killed between the
-    server's final reply and the spool update sends it again on restart. }
+  { Sends messages in the background through Client, spooled in Folder so a restart
+    loses none. A temporary failure (4xx, network) is retried after RetryDelay, up to
+    MaxAttempts or MaxAge; a 5xx bounces. Events run on the worker threads. }
   TRALMailQueue = class(TRALComponent)
   private
     FActive: Boolean;

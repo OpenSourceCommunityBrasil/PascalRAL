@@ -424,13 +424,9 @@ type
     { True when the engine can hand a connection over after a 101 (TakeUpgrade),
       which WebSocket routes need }
     class function SupportsWebSocket: boolean; virtual;
-    { ENGINE API: called when the handler returned and FinishStream said False.
-      nil when the answer is not a 101 with an upgrade handler: send it as always.
-      Otherwise the request is finished (a concurrency slot goes back: an upgraded
-      connection never holds one) and the engine writes UpgradeHead, wraps its
-      connection in a TRALUpgradeTransport, hands it to the handler (Attached,
-      Feed, Detached; TRALBlockingUpgradeTransport.Run does all three) and calls
-      Release on the handler at the end }
+    { ENGINE API: after the handler, returns the upgrade handler of a 101 answer, or
+      nil (send the answer as usual). The request is finished and the engine owns
+      the handler: it writes UpgradeHead, serves the connection and calls Release. }
     function TakeUpgrade(ARequest: TRALRequest; AResponse: TRALResponse): TRALUpgradeHandler;
     /// How the engine takes a certificate; tpNone when TLS is not its own.
     function TLSProvisioning: TRALTLSProvisioning; virtual;

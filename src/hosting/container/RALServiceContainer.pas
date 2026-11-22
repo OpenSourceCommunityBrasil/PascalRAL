@@ -1,7 +1,6 @@
-{ A container of services: the application lists in the Object Inspector which class
-  gives each service (by name or by interface) and how long an instance lives - one
-  for the whole program, one per request, or a new one each time - and asks the
-  container for it where it needs it, a route handler included. }
+{ A container of services: lists which class gives each service (by name or by
+  interface) and how long an instance lives, and hands the instance to whoever asks
+  for it, a route handler included. }
 unit RALServiceContainer;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -135,10 +134,8 @@ type
     ARequest: TRALRequest);
 
   { The container. Ask by name (Resolve, ResolveObject) or by interface (Resolve
-    with a GUID, ResolveAs); singletons are made once under a lock, per-request
-    instances go with the request (ARequest is the request of the route handler),
-    and a transient object belongs to the caller. A TRALService is counted by
-    reference: ask for it as an interface. }
+    with a GUID, ResolveAs); a transient object belongs to the caller, and a
+    TRALService is reference counted: ask for it as an interface. }
   TRALServiceContainer = class(TRALComponent)
   private
     /// Guards the singletons and the scopes.

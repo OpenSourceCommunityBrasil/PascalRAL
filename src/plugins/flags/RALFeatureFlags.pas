@@ -1,9 +1,6 @@
-{ Feature flags: a feature turned on or off without a new build - for everyone, for a
-  share of the users that stays the same for each user, for a list of users or roles,
-  or between two dates. The flags come from the Object Inspector and from the external
-  configuration (TRALConfig: file, environment, command line), read again when the
-  file changes; the routes listed in a flag answer 404 while it is off for the
-  request, and the code asks IsEnabled. }
+{ Feature flags: a feature on or off for everyone, for a share of the users, for
+  listed users or roles, or between two dates. The flags come from the Object
+  Inspector and from TRALConfig; routes of an off flag answer 404. }
 unit RALFeatureFlags;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -125,12 +122,9 @@ type
   TRALFeatureEvaluateEvent = procedure(Sender: TObject; const AFlag, AUser: string;
     ARequest: TRALRequest; var AEnabled: Boolean) of object;
 
-  { The feature flags of a server (a plugin: link it to the server) or of any program
-    (IsEnabled works without a server). With Config, the keys <ConfigPrefix>.<flag>.
-    Enabled, Percentage, Users, Roles, StartDate, EndDate and Paths (lists separated
-    by commas, dates as yyyy-mm-dd or yyyy-mm-ddThh:nn:ss) add flags or change those
-    of Flags, and a change in the configuration file applies at the next question,
-    at most every ReloadInterval milliseconds, without a restart. }
+  { The feature flags of a server (a plugin) or of any program (IsEnabled works
+    without a server). Keys of Config named ConfigPrefix.flag.property add flags
+    or change those of Flags; file changes apply without a restart. }
   TRALFeatureFlags = class(TRALPlugin)
   private
     FConfig: TRALConfig;

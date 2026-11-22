@@ -428,8 +428,7 @@ function RALStreamSlice(AParent: TStream; AStart, ASize: Int64RAL): TStream;
 procedure RALCopyStream(ASource, ADest: TStream; ACount: Int64RAL);
 { The size of a work buffer for reading AStream from its position to the end:
   what is left when that is below DEFAULTBUFFERSTREAMSIZE, else
-  DEFAULTBUFFERSTREAMSIZE (also when the size is unknown). A fixed 64 KB
-  buffer, allocated and zeroed for a body of 1 KB, cost ten times the copy }
+  DEFAULTBUFFERSTREAMSIZE (also when the size is unknown). }
 function RALWorkBufferSize(AStream: TStream): IntegerRAL;
 { Removes spooled bodies older than a day from RALSpoolFolder (a process
   killed in the middle of a request leaves them behind). }

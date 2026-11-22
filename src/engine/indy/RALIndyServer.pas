@@ -107,8 +107,7 @@ type
     function GetTLSCertificate(out ACertificate: TRALTLSCertificate): boolean; override;
     function SetTLSCertificate(const ACertificate: TRALTLSCertificate): TRALTLSApplyResult; override;
     class function SupportsLiveStream: boolean; override;
-    { True: an upgraded connection stays on the thread of its TIdContext until it
-      ends (one thread per WebSocket, from the scheduler's pool) }
+    /// True: a WebSocket keeps one thread of the scheduler's pool until it ends.
     class function SupportsWebSocket: boolean; override;
     function TLSProvisioning: TRALTLSProvisioning; override;
   published

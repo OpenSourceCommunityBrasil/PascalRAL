@@ -31,19 +31,9 @@ type
   TRALMailRestSendEvent = procedure(Sender: TObject; ARequest: TRALRequest;
     AMessage: TRALMailMessage; var AStatus: IntegerRAL; var AError: StringRAL) of object;
 
-  { Route POST <Domain>/send (Domain default '/mail'). The body is a JSON object
-    or form fields:
-    - from: "Name <a@@x>" (or an object with name and address); empty takes
-      DefaultFrom, and an address outside AllowedFrom is 403;
-    - to, cc, bcc, replyTo: a list as one text ("a@@x, B <b@@y>") or an array
-      of texts or objects;
-    - subject, text, html, priority (high, normal, low);
-    - headers: an object of X-* and List-* fields;
-    - attachments: an array of objects with fileName, contentType, content
-      (base64), inline and contentId; in a form every file is an attachment,
-      and a file field named cid:<id> is an inline part shown by cid:<id>.
-    Sent with Client: 200 and the result of each recipient; refused by the
-    SMTP server: 502. With Queue: 202 and the job id. }
+  { Route POST <Domain>/send (Domain default '/mail') taking a JSON object or form
+    fields (from, to, cc, bcc, replyTo, subject, text, html, attachments...). Answers
+    200 when sent with Client, 202 with the job id when queued. }
   TRALMailRestModule = class(TRALModuleRoutes)
   private
     FAllowedFrom: TStrings;

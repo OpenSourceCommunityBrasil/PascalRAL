@@ -115,9 +115,7 @@ type
   end;
 
   { The Telegram channel: webhook (verified by the secret header) or long polling,
-    text in MarkdownV2 or HTML, media by upload, file_id or URL, inline and reply
-    keyboards, edit, delete, typing, location, contact and polls. The token never
-    reaches a log or an error text. }
+    text in MarkdownV2 or HTML, media, keyboards, location, contact and polls. }
   TRALChatTelegram = class(TRALChatChannel)
   private
     FActive: Boolean;
@@ -270,10 +268,8 @@ type
     /// How updates arrive.
     property ReceiveMode: TRALChatReceiveMode read FReceiveMode write FReceiveMode
       default crmWebhook;
-    { The secret_token of the webhook: Telegram sends it in a header and the module
-      compares it in constant time; empty refuses every webhook. 1 to 256 letters,
-      digits, underscore or hyphen. Set it from the environment in the program rather
-      than in the form. }
+    { The secret_token of the webhook, sent by Telegram in a header; empty refuses every
+      webhook. 1 to 256 letters, digits, underscore or hyphen. }
     property SecretToken: StringRAL read FSecretToken write SetSecretToken;
     /// MarkdownV2 or HTML for the text that goes out.
     property TextMode: TRALChatTelegramTextMode read FTextMode write FTextMode

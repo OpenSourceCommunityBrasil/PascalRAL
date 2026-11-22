@@ -45,12 +45,9 @@ type
   TRALChatWhatsAppReactionEvent = procedure(Sender: TObject;
     const AFrom, AMessageId, AEmoji: StringRAL) of object;
 
-  { The WhatsApp channel of the Cloud API: the webhook (verify token, X-Hub-Signature-256)
-    with text, media, location, contacts, button and list answers and template quick
-    replies; sending text, media by link or upload, reply buttons (a list from 4 to 10
-    choices), lists, location, contacts, templates and reactions (TemplateMessage,
-    ReactionMessage), the typing indicator and read marks. An outgoing message whose Raw
-    is a Cloud API message object (a type and its member) goes as it is. }
+  { The WhatsApp channel of the Cloud API: receives text, media, location, contacts and
+    button and list answers; sends them, plus templates, reactions, typing and read
+    marks. An outgoing message whose Raw is a Cloud API message object goes as it is. }
   TRALChatWhatsApp = class(TRALChatGraphChannel)
   private
     FBusinessAccountId: StringRAL;

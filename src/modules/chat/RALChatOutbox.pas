@@ -1,7 +1,5 @@
-{ The outbound queue of a chat channel: messages wait in order per conversation,
-  a token-bucket limiter at three levels (all the channel, each conversation, each
-  pair) spaces them, a 429 with Retry-After holds the channel or the conversation,
-  and a transient failure is tried again with growing waits. }
+{ The outbound queue of a chat channel: ordered per conversation, spaced by a
+  three-level token-bucket limiter, held by a 429 and retried on transient failures. }
 unit RALChatOutbox;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -143,10 +141,8 @@ type
     destructor Destroy; override;
   end;
 
-  { The outbox of one channel. Delivery runs on one thread of its own, started with
-    the first item: items of a conversation go in the order they were queued, and
-    one that waits for a limit or a retry does not hold the others. OnDone runs on
-    that thread. }
+  { The outbox of one channel. Delivery runs on a thread of its own, in queue order
+    per conversation; OnDone runs on that thread. }
   TRALChatOutbox = class
   private
     FChannel: TRALChatChannel;

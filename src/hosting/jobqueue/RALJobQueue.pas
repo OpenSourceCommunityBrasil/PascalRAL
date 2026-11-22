@@ -55,13 +55,9 @@ type
     property Items[AIndex: IntegerRAL]: TRALJobHandler read GetItem; default;
   end;
 
-  { Runs jobs in the background with Workers threads, from a store that survives
-    a restart (Folder) or one linked in Store. A job runs at least once: a worker
-    that dies holding one loses its lease after LeaseTime and another worker runs
-    it again, so a handler that must not repeat an effect checks the job's Id.
-    A failed attempt is tried again after RetryDelay, doubled each time up to
-    RetryMaxDelay; after MaxAttempts the job goes to the dead jobs. Linked to a
-    server (Server) it starts and stops with it; alone, Active does it. }
+  { Runs jobs in the background with Workers threads, from a store that survives a
+    restart (Folder or Store). A job runs at least once, so a handler that must not
+    repeat an effect checks the job's Id. Linked to Server it starts and stops with it. }
   TRALJobQueue = class(TRALPlugin)
   private
     FActive: boolean;

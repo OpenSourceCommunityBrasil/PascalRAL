@@ -1,6 +1,5 @@
-{ uwsgi server engine (the binary protocol of the uWSGI project, written here,
-  the same on Delphi and FPC): nginx (uwsgi_pass) hands each request to it over
-  TCP, on a connection of its own. }
+{ uwsgi server engine: nginx (uwsgi_pass) hands each request to it over TCP, on a
+  connection of its own. }
 unit RALUwsgiServer;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -12,10 +11,8 @@ uses
   RALTypes, RALGatewayServer;
 
 type
-  { The uwsgi engine: a 4-byte head (modifier 0, block size little endian,
-    modifier 0), the CGI variables as length-prefixed names and values, the
-    body after them; the answer is an HTTP answer ("HTTP/1.1 200 OK") until the
-    connection closes. Port is the TCP port nginx's uwsgi_pass points at }
+  { The uwsgi engine: nginx (uwsgi_pass) sends each request on its own connection and
+    Port is the TCP port it points at. }
   TRALUwsgiServer = class(TRALGatewayServer)
   protected
     function ReadEnvironment(AConnection: TRALGatewayConnection; AEnv: TStrings): boolean; override;

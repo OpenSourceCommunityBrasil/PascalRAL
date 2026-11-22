@@ -43,11 +43,9 @@ type
     Root: TRALJSONObject;
   end;
 
-  { The base of the channels on Meta's Graph API: the calls with the access token, the
-    X-Hub-Signature-256 check with the app secret over the raw body, the verify token
-    handshake of the webhook, media taken only from Meta hosts and the Graph errors read
-    into delivery results (throttling waits, the WhatsApp pair rule, the 24 hour window,
-    a refused token). Secrets never reach a log or an error text. }
+  { The base of the channels on Meta's Graph API: calls with the access token, the
+    X-Hub-Signature-256 check, the verify token handshake, media from Meta hosts only
+    and Graph errors read into delivery results. }
   TRALChatGraphChannel = class(TRALChatChannel)
   private
     FApiBase: StringRAL;

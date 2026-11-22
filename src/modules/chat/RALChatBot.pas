@@ -1,8 +1,5 @@
-{ The center of the chat integration: the bot knows its channels and its commands,
-  receives every message the channels hand it (Receive), runs the matching command
-  or OnMessage/OnCallback, and sends through each channel's outbox with the
-  fallback for what a channel cannot show. It also keeps the state of each
-  conversation (sessions, with expiry) in a store. }
+{ The chat bot: channels, commands, per-conversation sessions, and sending through
+  each channel's outbox with a fallback for what a channel cannot show. }
 unit RALChatBot;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -179,11 +176,9 @@ type
       virtual; abstract;
   end;
 
-  { The chat bot component. Drop the channels of the platforms on the form, list
-    them in Channels, write the commands in Commands (each with its own event), and
-    link the bot to a TRALChatWebhookModule (or let a channel's polling call
-    Receive). The events OnCallback, OnSent and OnSendFailed run on other threads
-    than the main one; the handlers must be thread-safe. }
+  { The chat bot component: list the channels in Channels, the commands in Commands,
+    and link it to a webhook module or let a channel poll. OnCallback, OnSent and
+    OnSendFailed run on other threads than the main one. }
   TRALChatBot = class(TRALComponent)
   private
     FChannels: TRALChatChannels;

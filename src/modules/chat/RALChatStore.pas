@@ -1,8 +1,5 @@
-{ The store of the chat bot: keys and values with a time to live, in memory, with
-  an optional journal file. Every change is written to the journal and flushed to
-  the disk before it returns, the journal is read when the store starts and rewritten
-  compactly from time to time, so a power cut in the middle of a conversation does not
-  lose the step it was at. }
+{ The store of the chat bot: keys and values with a time to live, in memory, with an
+  optional journal file flushed on every change. }
 unit RALChatStore;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -26,9 +23,8 @@ uses
 
 type
   { A memory store (every operation atomic under one lock) that can keep a journal:
-    set PersistFile and what was stored comes back after a restart, with the time
-    to live that was left. Times in the journal are the time of day (UTC), so the
-    store's own clock may be anything. }
+    set PersistFile and what was stored comes back after a restart, with the time to
+    live that was left. }
   TRALChatStore = class(TRALKeyValueStore)
   private
     FCompactEvery: Integer;

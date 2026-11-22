@@ -1,20 +1,7 @@
-{ Object Pascal binding for nghttp2, the HTTP/2 framing library (nghttp2.org).
-
-  Translated against lib/includes/nghttp2/nghttp2.h of nghttp2 1.59 (the oldest
-  release accepted: NGHTTP2Load refuses an older library) and checked against
-  1.68: the API is stable from 1.0 on and the records only grow at their end.
-  Only the parts a server and a client over memory buffers need are here:
-  sessions fed with nghttp2_session_mem_recv/mem_send, the callbacks, HEADERS,
-  DATA with a data provider (deferred and NO_COPY), trailers, SETTINGS, RST,
-  GOAWAY, PING, the HPACK coder (for the RFC 7541 vectors) and the options
-  against the known floods.
-
-  1. Calling convention is cdecl on every platform.
-  2. Records follow the C layout with natural alignment ($PACKRECORDS C /
-     $ALIGN 8); size_t is NativeUInt and ssize_t NativeInt.
-  3. The library is loaded at run time by NGHTTP2Load; a symbol that only
-     newer releases export (the flood options) is left nil when missing, and
-     its caller tests it. }
+{ Object Pascal binding for nghttp2, the HTTP/2 framing library (nghttp2.org), for
+  a server and a client over memory buffers. Needs nghttp2 1.59 or newer, loaded at
+  run time by NGHTTP2Load; a symbol only newer releases export is nil when missing.
+  Calling convention is cdecl; records follow the C layout; size_t is NativeUInt. }
 unit nghttp2;
 
 {$IFDEF FPC}

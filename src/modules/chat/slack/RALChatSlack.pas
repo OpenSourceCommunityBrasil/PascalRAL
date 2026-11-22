@@ -51,10 +51,9 @@ type
     constructor Create(AOwner: TRALChatSlack);
   end;
 
-  { The Slack channel: Events API and interactivity with the v0 signature (5 minute
-    window), url_verification, slash commands, chat.postMessage/update/delete, Block Kit
-    buttons and menus, mrkdwn, files by the upload URL flow and Socket Mode as the polling
-    mode. Tokens and the signing secret never reach a log or an error text. }
+  { The Slack channel: Events API and interactivity (v0 signature), slash commands,
+    Block Kit buttons and menus, mrkdwn, file upload and Socket Mode as the polling
+    mode. }
   TRALChatSlack = class(TRALChatChannel)
   private
     FActive: Boolean;

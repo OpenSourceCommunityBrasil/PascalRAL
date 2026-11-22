@@ -1,9 +1,6 @@
 { The HTTP/2 client of RAL's own sockets: h2 over TLS (ALPN) and h2c with prior
-  knowledge, framed by nghttp2. Connections are kept per scheme://host:port and
-  certificate policy and, with ShareConnection, shared by every TRALClient of the
-  process: many calls from many threads go as streams of one connection. A poll
-  thread owns each connection and its session; a call waits on its own thread
-  and reads its answer there, piece by piece when a stream handler wants it. }
+  knowledge, framed by nghttp2. With ShareConnection, calls of every TRALClient of
+  the process go as streams of one connection per scheme://host:port. }
 unit RALNgHttp2Client;
 
 {$I ..\..\core\PascalRAL.inc}

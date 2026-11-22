@@ -43,9 +43,8 @@ type
     class function Info(ARequest: TRALRequest): TRALHtmxRequest;
     /// Whether ARequest was made by HTMX (HX-Request: true).
     class function IsHtmx(ARequest: TRALRequest): Boolean;
-    { HX-Location: a client-side redirect without a full reload, to AURL, or
-      to the JSON object AJSON (path, target, swap...) when AURL starts with an
-      opening brace. }
+    { HX-Location: a client-side redirect without a full reload, to AURL; AURL may
+      be a JSON object (path, target, swap...) instead of a URL. }
     class procedure Location(AResponse: TRALResponse; const AURL: StringRAL);
     /// HX-Push-Url: pushes AURL into the browser history; 'false' prevents it.
     class procedure PushUrl(AResponse: TRALResponse; const AURL: StringRAL);

@@ -1,8 +1,6 @@
-{ The module that receives the webhooks of the chat channels: one route per
-  channel on any server and engine. A request is verified on its raw body before
-  anything else (401 otherwise), checked against the replay window, answered 200
-  at once, and its messages go, deduplicated, to a pool of threads that keeps the
-  order of each conversation and hands them to the bot. }
+{ The module that receives the webhooks of the chat channels, one route per channel:
+  a request is verified (401 otherwise), answered 200 and its messages go,
+  deduplicated, to worker threads that hand them to the bot in order. }
 unit RALChatWebhook;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -70,10 +68,8 @@ type
     procedure Handle(ARequest: TRALRequest; AResponse: TRALResponse);
   end;
 
-  { Receives the webhooks of the channels of a TRALChatBot: Bot links it. The routes
-    are made when the server starts (one per channel, named by ChannelName, under
-    Domain); the plugins of the server (address lists, flood) apply to them like to
-    any route. }
+  { Receives the webhooks of the channels of the linked Bot. The routes are made when
+    the server starts, one per channel, named by ChannelName, under Domain. }
   TRALChatWebhookModule = class(TRALModuleRoutes)
   private
     FBot: TRALChatBot;

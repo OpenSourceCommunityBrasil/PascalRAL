@@ -1,8 +1,5 @@
-{ Hypermedia for the JSON a route answers: by the Accept header, the same answer goes out
-  as HAL (application/hal+json, with _links), as JSON:API (application/vnd.api+json,
-  data and links) or as an HTML page (a template, or a page made from the data), with
-  the links of the resource listed in the Object Inspector. The handlers keep answering
-  plain JSON; the plugin rewrites it when the answer goes out. }
+{ Hypermedia plugin: by the Accept header, a route's JSON goes out as HAL, JSON:API
+  or an HTML page. }
 unit RALHypermedia;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -156,7 +153,7 @@ type
     /// The formats offered.
     property Formats: TRALHypermediaFormats read FFormats write FFormats
       default [hfHAL, hfJSONAPI, hfHTML];
-    /// The resources.
+    /// The resources whose JSON answers are rewritten, with their links.
     property Resources: TRALHypermediaResources read FResources write SetResources;
     /// The templates of the HTML pages (Template of a resource).
     property Templates: TRALTemplateEngine read FTemplates write SetTemplates;

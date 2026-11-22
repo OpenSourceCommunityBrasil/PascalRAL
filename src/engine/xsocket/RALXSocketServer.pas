@@ -168,7 +168,7 @@ type
     /// Live writers now.
     FLiveStreams: IntegerRAL;
     FPoolCount: IntegerRAL;
-    /// The pieces written and not yet pulled.
+    /// The requests waiting for a worker.
     FQueue: TThreadedQueue<TRALXSocketWork>;
     /// The worker threads.
     FWorkers: TList;
@@ -209,11 +209,10 @@ type
     function TLSProvisioning: TRALTLSProvisioning; override;
   published
     { Runs the requests on the IO threads instead of the workers: faster for short
-      handlers (about 20% on a 2-processor machine), but a handler that blocks
-      (a database, a call to another server) or streams holds an IO thread and
-      every connection on it waits. }
+      handlers, but a handler that blocks or streams holds an IO thread and every
+      connection on it waits. }
     property ExecuteInIOThread: boolean read FExecuteInIOThread write FExecuteInIOThread default False;
-    { IO threads of the library; 0 = twice the processors plus one. A live
+    { IO threads of the library; 0 = the library's default. A live
       stream keeps one of them waiting, so at most IoThreads - 1 streams are live
       at once; the others are answered whole. }
     property IoThreads: IntegerRAL read FIoThreads write FIoThreads default 0;

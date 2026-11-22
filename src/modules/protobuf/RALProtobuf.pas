@@ -427,15 +427,15 @@ function RALProtoJSONString(const AValue: StringRAL): TRALJSON;
 /// The JSON member name of a field under AOptions.
 function RALProtoKey(AOptions: TRALProtoJSONOptions;
   const AJSONName, AOriginalName: StringRAL): StringRAL;
-/// A map key read from its JSON member name.
+/// A map key, the JSON member name, read as a bool.
 function RALProtoKeyToBool(const AKey: StringRAL): Boolean;
-/// A map key read from its JSON member name.
+/// A map key, the JSON member name, read as an int32.
 function RALProtoKeyToInt32(const AKey: StringRAL): Integer;
-/// A map key read from its JSON member name.
+/// A map key, the JSON member name, read as an int64.
 function RALProtoKeyToInt64(const AKey: StringRAL): Int64;
-/// A map key read from its JSON member name.
+/// A map key, the JSON member name, read as a uint32.
 function RALProtoKeyToUInt32(const AKey: StringRAL): Cardinal;
-/// A map key read from its JSON member name.
+/// A map key, the JSON member name, read as a uint64.
 function RALProtoKeyToUInt64(const AKey: StringRAL): UInt64RAL;
 /// Uint32 as JSON: a number.
 function RALProtoJSONUInt32(AValue: Cardinal): TRALJSON;

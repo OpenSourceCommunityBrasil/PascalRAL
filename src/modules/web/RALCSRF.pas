@@ -21,14 +21,10 @@ const
   cRALCSRFHeader = 'X-CSRF-Token';
 
 type
-  { Refuses, with 403, a request that changes state (any method but GET, HEAD,
-    OPTIONS, TRACE and QUERY) unless it carries the token of its own cookie:
-    the double-submit pattern, the token signed with an HMAC of Secret and, with
-    WebModule linked, bound to the browser's session. A page puts the token in
-    its forms (FieldHTML, or csrf_field in a TRALViewModule template) or in the
-    header HeaderName (HTMX: hx-headers). An Origin or Referer of another site
-    not in AllowedOrigins is refused too. IncludePaths and ExcludePaths limit the
-    plugin to the pages that need it. }
+  { Refuses with 403 a request that changes state (not GET, HEAD, OPTIONS, TRACE or
+    QUERY) unless it carries the token of its own cookie (double submit, signed
+    with Secret). Pages send it in a form field (FieldHTML) or in HeaderName.
+    An Origin or Referer outside AllowedOrigins is refused too. }
   TRALCSRFPlugin = class(TRALPlugin)
   private
     FAllowedOrigins: TStrings;

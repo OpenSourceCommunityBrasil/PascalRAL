@@ -1,11 +1,7 @@
-(* The GraphQL executor: the schema built from its SDL text, the validation of a
-  document against it (a subset of the rules of the specification: fields,
-  arguments, fragments, variables, directives, leaf selections), the coercion of
-  variables and arguments, the execution (fragments, the skip and include directives,
-  aliases, non-null propagation, errors with path and locations), the introspection
-  (__schema, __type, __typename: GraphiQL works) and the depth and cost limits.
-  Values are TRALJSON: a resolver answers a JSON value, and the fields under it
-  are read from that value unless a resolver of their own is set. *)
+(* The GraphQL executor: the schema built from SDL text, validation of a document
+  (a subset of the specification rules), execution, introspection and the depth
+  and cost limits. A resolver answers a TRALJSON value; the fields under it are
+  read from that value unless they have a resolver of their own. *)
 unit RALGraphQLExecutor;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -22,7 +18,7 @@ type
 
   { What a resolver gets and answers: the field, its arguments, the value of the
     parent object, the request. Answer with one of the Return methods (nothing
-    is null) or Fail }
+    is null) or Fail. }
   TRALGraphQLResolve = class
   private
     FArgs: TRALJSONObject;
@@ -88,13 +84,13 @@ type
   /// Resolves a field.
   TRALGraphQLOnResolve = procedure(AInfo: TRALGraphQLResolve) of object;
   { Says which object type an interface or union value is (ATypeName); without
-    it the value's "__typename" decides }
+    it the "__typename" of the value decides. }
   TRALGraphQLOnResolveType = procedure(const AAbstractType: StringRAL; AValue: TRALJSON;
     var ATypeName: StringRAL) of object;
 
   { A schema: its SDL parsed and checked (every type a field names exists, every
     interface is an interface...), with the built-in scalars and the
-    introspection types added. Resolvers are set by "Type.field" }
+    introspection types added. Resolvers are set by "Type.field". }
   TRALGraphQLSchema = class
   private
     FDocument: TRALGQLDocument;
@@ -110,7 +106,7 @@ type
     procedure Check;
   public
     { Parses and checks ASDL; raises ERALGraphQLSyntax or an exception that says
-      what is wrong }
+      what is wrong. }
     constructor Create(const ASDL: StringRAL);
     destructor Destroy; override;
 
@@ -120,7 +116,7 @@ type
     function FindType(const AName: StringRAL): TRALGQLTypeDef;
     /// Whether the object type AObject is (or implements, or is a member of) AType.
     function IsPossible(const AType, AObject: StringRAL): boolean;
-    /// The resolver of AType.AField; Code nil when none.
+    /// The resolver of AType.AField; nil when none.
     function Resolver(const AType, AField: StringRAL): TRALGraphQLOnResolve;
     /// Sets the resolver of AType.AField (an empty AField: every field of AType).
     procedure SetResolver(const AType, AField: StringRAL; AResolver: TRALGraphQLOnResolve);

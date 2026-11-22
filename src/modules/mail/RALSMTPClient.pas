@@ -85,12 +85,8 @@ type
   /// Asks for a fresh OAuth2 access token (XOAUTH2, OAUTHBEARER).
   TRALSMTPTokenEvent = procedure(Sender: TObject; var AToken: StringRAL) of object;
 
-  { Sends messages over SMTP (RFC 5321) on the calling thread. The connection is
-    kept between messages (KeepConnection) and reopened when the server closed
-    it; MAIL, every RCPT and DATA go in one write when the server offers
-    PIPELINING (RFC 2920); BDAT replaces DATA when it offers CHUNKING (RFC
-    3030); 8BITMIME and SMTPUTF8 avoid encoding text; SIZE is declared. One
-    client per thread: create one per sending thread. }
+  { Sends messages over SMTP (RFC 5321) on the calling thread; the connection is kept
+    between messages (KeepConnection). One client per thread. }
   TRALSMTPClient = class(TRALComponent)
   private
     FAccessToken: StringRAL;
@@ -206,7 +202,7 @@ type
     property DKIM: TRALDKIMSigner read FDKIM write SetDKIM;
     /// The name given in EHLO; empty takes the machine's.
     property HeloName: StringRAL read FHeloName write FHeloName;
-    /// The server.
+    /// Host name or address of the server.
     property Host: StringRAL read FHost write FHost;
     /// Keeps the connection between messages (closed by Disconnect or when freed).
     property KeepConnection: Boolean read FKeepConnection write FKeepConnection default True;

@@ -1,7 +1,6 @@
-{ Redis pub/sub: TRALRedisSubscriber holds a connection of its own (a
-  subscribed connection takes no other command), in a thread that reads the
-  messages, keeps the subscriptions across reconnections and pings the server
-  when nothing arrives. Publishing is TRALRedisClient.Publish. }
+{ Redis pub/sub: TRALRedisSubscriber reads messages on its own connection and
+  thread and keeps its subscriptions across reconnections. Publishing is
+  TRALRedisClient.Publish. }
 unit RALRedisSubscriber;
 
 {$I ..\..\core\PascalRAL.inc}

@@ -186,11 +186,8 @@ type
     /// Stops the timer.
     procedure StopTimer;
 
-    { Pins each poll thread to one processor (thread N to processor N, round
-      robin), for a machine that runs mostly this server: it helps kept-alive
-      connections with a thread per processor, not a connection per request.
-      Set before StartThreads. Does nothing where the system has no way to pin
-      a thread (macOS) }
+    { Pins poll thread N to processor N (round robin); helps kept-alive connections with
+      a thread per processor. Set before StartThreads; no effect on macOS. }
     property CPUAffinity: boolean read FCPUAffinity write FCPUAffinity;
     /// A connection was accepted, on the accepting thread.
     property OnAccept: TRALSocketLoopAccept read FOnAccept write FOnAccept;

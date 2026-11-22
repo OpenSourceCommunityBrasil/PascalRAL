@@ -11,9 +11,8 @@ uses
   RALParams, RALTemplate;
 
 type
-  { The data of one view render, searched before what the module adds on its
-    own (params, htmx, csrf_token, csrf_field, status, message). Objects bound
-    with Add must outlive the render; AddOwned hands one over to be freed after it. }
+  { The data of one view render, searched before what the module adds on its own.
+    Objects bound with Add must outlive the render; AddOwned frees them after it. }
   TRALViewContext = class(TRALTemplateMap)
   private
     /// Objects freed with the context.
@@ -62,11 +61,9 @@ type
     property UseLayout: boolean read FUseLayout write FUseLayout default True;
   end;
 
-  { A module of views (TRALViewRoute): each route renders a template of Engine.
-    Every view answers with Vary: HX-Request, and an HTMX request (not boosted,
-    not a history restore) gets the page without the layout. With a
-    TRALCSRFPlugin on the server, csrf_token and csrf_field are in every
-    context. An exception in a view answers ErrorTemplate when there is one. }
+  { A module of views (TRALViewRoute): each route renders a template of Engine,
+    without the layout for an HTMX fragment request. An exception in a view answers
+    ErrorTemplate when there is one. }
   TRALViewModule = class(TRALModuleRoutes)
   private
     FEngine: TRALTemplateEngine;

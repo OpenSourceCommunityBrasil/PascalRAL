@@ -92,10 +92,9 @@ type
     procedure Quit;
   end;
 
-  { The Discord channel: interactions endpoint (Ed25519 verified, PONG and deferred
-    answers), messages through REST with the bot token, buttons and select menus,
-    embeds, attachments, edit, delete, typing and the gateway as the polling mode.
-    The token never reaches a log or an error text. }
+  { The Discord channel: interactions endpoint (Ed25519 verified), messages through
+    REST with the bot token, buttons, select menus, embeds and attachments, and the
+    gateway as the polling mode. }
   TRALChatDiscord = class(TRALChatChannel)
   private
     FActive: Boolean;
@@ -219,7 +218,7 @@ type
     { The address of the REST API, without the final slash; another points the channel at
       a test server. }
     property ApiBase: StringRAL read FApiBase write FApiBase;
-    { The id of the application: the interactions follow-ups go to it; filled by
+    { The id of the application, used by the follow-ups of interactions; filled by
       TestToken and by the first interaction when empty. }
     property ApplicationId: StringRAL read FApplicationId write FApplicationId;
     /// The bot that receives what the gateway brings.

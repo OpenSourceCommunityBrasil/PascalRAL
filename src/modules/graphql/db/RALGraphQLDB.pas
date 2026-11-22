@@ -1,8 +1,6 @@
-(* Tables of a TRALDBModule as GraphQL types: TRALGraphQLDBBinding reads the
-  catalog of each table it lists and adds to a TRALGraphQLModule a type (a
-  column, a field) and two Query fields: the list (filters by column, orderBy,
-  limit and offset) and one row by its key. The SQL is generated with params,
-  every name is checked against the catalog. *)
+(* Tables of a TRALDBModule as GraphQL types: TRALGraphQLDBBinding adds to a
+  TRALGraphQLModule a type per table and two Query fields: a list and one row
+  by key. The SQL uses params and every name is checked against the catalog. *)
 unit RALGraphQLDB;
 
 {$I ..\..\..\core\PascalRAL.inc}
@@ -19,11 +17,9 @@ const
   RALGraphQLDBDefaultMaxRows = 100;
 
 type
-  { Puts the tables of Tables ("orders", or "orders=Order" to name the type) of
-    DBModule in the schema of Module: a type Order with the columns, and in Query
-    orders(limit, offset, orderBy, a filter per column): [Order!]! and
-    order(key: ID!): Order. The catalog is read when the schema is built (the
-    server starting, or the first request). }
+  { Puts the tables of Tables of DBModule in the schema of Module: a type with the
+    columns, and in Query a list field (limit, offset, orderBy, a filter per column)
+    and a field by key. The catalog is read when the schema is built. }
   TRALGraphQLDBBinding = class(TRALGraphQLContributor)
   private
     FDBModule: TRALDBModule;

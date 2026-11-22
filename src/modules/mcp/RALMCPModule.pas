@@ -17,11 +17,9 @@ const
   cRALMCPPath = '/mcp';
 
 type
-  { Serves Server over HTTP on Path (POST only; GET and DELETE answer 405).
-    A request whose _meta asks for progress or logs, and every
-    subscriptions/listen, is answered as an event stream on engines that
-    stream live. With AuthorizationServers set, the module also serves the
-    protected resource metadata under /.well-known. }
+  { Serves Server over HTTP on Path (POST only; GET and DELETE answer 405). Calls that
+    ask for progress or logs, and subscriptions/listen, stream as events on engines that
+    stream live. With AuthorizationServers set it serves the resource metadata. }
   TRALMCPModule = class(TRALModuleRoutes)
   private
     FAllowedOrigins: TStrings;

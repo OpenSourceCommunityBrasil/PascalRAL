@@ -165,11 +165,9 @@ type
     function Retry(AJob: TRALJob): boolean; override;
   end;
 
-  { The jobs in a spool folder: data/ holds each job's data, and an empty marker
-    file in ready/, leased/ or dead/ says where it is, its time and attempts in
-    its name. Every change of state is one rename, so a process killed at any
-    point loses no job, and several processes on one machine may share the
-    folder. }
+  { The jobs in a spool folder: a data file per job and an empty marker in ready/,
+    leased/ or dead/ for its state. Each state change is one rename; several
+    processes on one machine may share the folder. }
   TRALJobFileStore = class(TRALJobStore)
   private
     /// The ready markers known, sorted by due time.

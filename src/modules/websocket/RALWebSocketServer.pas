@@ -1,9 +1,6 @@
-{ WebSocket routes (RFC 6455): TRALWebSocketModule holds routes whose GET
-  answers the handshake after the whole pipeline ran (plugins, authentication),
-  and TRALWebSocketConnection is each connection the engine handed over. Every
-  route has a TRALWebSocketHub: its connections, broadcast, users and groups.
-  The engine only moves bytes (RALUpgrade); the frames are RAL's (TRALWSCodec),
-  permessage-deflate included. }
+{ WebSocket routes (RFC 6455): TRALWebSocketModule holds routes whose GET answers the
+  handshake after the whole pipeline ran, TRALWebSocketConnection is each connection,
+  and each route has a TRALWebSocketHub. The engine only moves bytes (RALUpgrade). }
 unit RALWebSocketServer;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -49,10 +46,9 @@ type
   TRALWebSocketOnHandshake = procedure(ARequest: TRALRequest; AResponse: TRALResponse;
     var AAccept: boolean) of object;
 
-  { One WebSocket connection of a route. Send, SendBinary, Ping and Close may be
-    called from any thread; the events of the route run on the engine's thread
-    of the connection, one at a time. Counted by reference (the engine and the
-    hub hold it): keep it past its OnClose only with AddRef and Release }
+  { One WebSocket connection of a route. Send, SendBinary, Ping and Close work from any
+    thread; route events run on the engine's thread of the connection. Reference
+    counted: keep it past OnClose only with AddRef and Release. }
   TRALWebSocketConnection = class(TRALUpgradeHandler)
   private
     FCloseCode: Word;
@@ -104,8 +100,8 @@ type
     { Checks keep-alive and the close handshake against the clock: pings an idle
       connection, ends one that did not answer. Called by the hub's clock }
     procedure Tick(ANow: Int64RAL);
-    { Writes AData through the transport, waiting up to SendTimeout while more
-      than MaxQueued bytes wait to go out (then closes with 1008, D3) }
+    { Writes AData through the transport, waiting up to SendTimeout while more than
+      MaxQueued bytes wait to go out (then closes with 1008). }
     function WriteBytes(const AData: TBytes): boolean;
   public
     /// A connection of ARoute.
@@ -244,11 +240,9 @@ type
     property Route: TRALWebSocketRoute read FRoute;
   end;
 
-  { A route that answers the WebSocket handshake (GET only). The whole pipeline runs
-    first, so a plugin or an authenticator that refuses the GET refuses the
-    connection. Then the route checks the handshake (426 for a plain GET, 400 for a
-    bad one), AllowedOrigins (403), picks a subprotocol of Protocols, agrees on
-    permessage-deflate when Deflate, asks OnHandshake and answers 101. }
+  { A route that answers the WebSocket handshake (GET only) after the whole pipeline
+    ran. It checks the handshake (426, 400) and AllowedOrigins (403), picks a
+    subprotocol, agrees on deflate, asks OnHandshake and answers 101. }
   TRALWebSocketRoute = class(TRALRoute)
   private
     FAllowedOrigins: StringRAL;
@@ -326,10 +320,9 @@ type
       default RALWSDefaultSendTimeout;
   end;
 
-  { A module of WebSocket routes (TRALWebSocketRoute). The server's engine must
-    serve them (TRALServer.SupportsWebSocket: Indy, fpHTTP, mORMot2 smThreads and
-    smAsync); otherwise the server refuses to start. Stopping the server closes
-    every connection with 1001 }
+  { A module of WebSocket routes (TRALWebSocketRoute). The engine must serve them
+    (TRALServer.SupportsWebSocket: Indy, fpHTTP, mORMot2 smThreads and smAsync) or the
+    server refuses to start. Stopping the server closes every connection with 1001. }
   TRALWebSocketModule = class(TRALModuleRoutes)
   protected
     class function RouteClass: TRALRouteClass; override;

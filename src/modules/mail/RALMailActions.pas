@@ -36,11 +36,8 @@ type
   /// Fires when a send fails; with it assigned, the exception is not raised.
   TRALSendMailFailedEvent = procedure(Sender: TObject; AError: Exception) of object;
 
-  { Sends a copy of Message through Client, or hands it to Queue when one is
-    linked (Queue wins). OnPrepare changes the copy first (a recipient typed in
-    a form, a body built from data). Send does the same from code, a route
-    handler included: the action keeps one copy of Client per thread. With an
-    OnExecute of its own, the handler runs instead }
+  { Sends a copy of Message through Client, or queues it in Queue when one is linked.
+    OnPrepare changes the copy first; Send does the same from code. }
   TRALSendMail = class(TRALMailActionBase)
   private
     FClient: TRALSMTPClient;

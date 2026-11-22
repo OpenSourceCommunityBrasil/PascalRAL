@@ -14,12 +14,9 @@ uses
   RALTypes, RALConsts, RALExceptions, RALTools, RALKeyValueStore, RALDBBase, RALDBModule;
 
 type
-  { Keys and values with a time to live in a table of the database of DBModule
-    (created on first use when missing), so that the bot's conversations survive a
-    restart and several processes or machines share them. Times are Unix
-    milliseconds of the system clock, the same on every machine that shares the
-    table; values are kept in base64. Increment runs in a transaction that locks
-    the row, so two processes that add at once both see their own result. }
+  { Keys and values with a time to live in a table of the database of DBModule, shared
+    by processes and machines and kept through a restart. Times are Unix milliseconds
+    of the system clock; values are kept in base64. }
   TRALChatDBStore = class(TRALKeyValueStore)
   private
     FAutoCreate: Boolean;

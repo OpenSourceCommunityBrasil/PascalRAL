@@ -1,7 +1,5 @@
-{ The one message model every chat channel speaks: who wrote, where, what kind,
-  the text with simple formatting, media on demand, buttons and the rest, plus
-  the capabilities of a channel and the fallback that turns what a channel
-  cannot show into plain text. }
+{ The one message model every chat channel speaks, the capabilities of a channel and
+  the fallback that turns what a channel cannot show into plain text. }
 unit RALChatMessage;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -293,10 +291,9 @@ type
     function HasMedia: Boolean;
     /// Whether ReplyTo is set, without creating it.
     function HasReplyTo: Boolean;
-    { Turns what ACaps cannot show into text, or raises (AFallback = cfRaise): buttons
-      past AMaxButtons and the items of a list (not a poll) past AMaxListItems become
-      numbered lines too (0 = no limit). The ids the numbers stand for come back in
-      ADegraded, in order; empty when nothing was degraded. }
+    { Turns what ACaps cannot show, and buttons or list items past AMaxButtons and
+      AMaxListItems (0 = no limit), into numbered text, or raises with cfRaise. The
+      ids the numbers stand for come back in ADegraded, empty when none. }
     procedure Prepare(ACaps: TRALChatCapabilitySet; AMaxButtons, AMaxListItems: Integer;
       AFallback: TRALChatFallback; const AChannel: StringRAL;
       out ADegraded: TStringList); overload;

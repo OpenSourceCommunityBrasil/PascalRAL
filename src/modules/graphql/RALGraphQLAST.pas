@@ -1,8 +1,6 @@
-(* The GraphQL language (specification of October 2021): the lexer, the syntax
-  tree and the parser of executable documents (operations and fragments) and of
-  the type system language (SDL: schema, scalar, type, interface, union, enum,
-  input, and their extend forms; directive definitions are read and ignored).
-  Text is UTF-8 (StringRAL); positions are 1-based line and column. *)
+(* The GraphQL language (October 2021 specification): lexer, syntax tree and parser
+  of executable documents and of the SDL; directive definitions are read and
+  ignored. Positions are 1-based line and column. *)
 unit RALGraphQLAST;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -49,8 +47,7 @@ type
     Items: TObjectList;
     /// What it is.
     Kind: TRALGQLValueKind;
-    { The text: the number as written, the string decoded, 'true'/'false', the
-      enum name, the variable name (without $) }
+    /// The number as written, the decoded string, true/false, or the enum/variable name.
     Text: StringRAL;
 
     /// Creates a value of the given kind.
@@ -243,8 +240,7 @@ type
     function Field(const AName: StringRAL): TRALGQLFieldDef;
   end;
 
-  { A parsed document: the executable definitions and the type system
-    definitions it had }
+  /// A parsed document: its executable definitions and its type system definitions.
   TRALGQLDocument = class
   public
     /// Operations and fragments (TRALGQLExecutable).
@@ -262,7 +258,7 @@ type
   end;
 
 { Parses ASource. AExecutable accepts operations and fragments, ASchema type
-  system definitions; the other kind raises. Raises ERALGraphQLSyntax }
+  system definitions; the other kind raises ERALGraphQLSyntax. }
 function RALGraphQLParse(const ASource: StringRAL; AExecutable, ASchema: boolean): TRALGQLDocument;
 /// A string as a GraphQL (and JSON) string literal, with its quotes.
 function RALGraphQLQuote(const AText: StringRAL): StringRAL;

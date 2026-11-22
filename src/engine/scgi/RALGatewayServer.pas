@@ -1,9 +1,5 @@
-{ The base of the engines behind a web server that speaks a simple gateway
-  protocol (SCGI, uwsgi): one request per connection, the CGI variables in a
-  block at the start, the body after it, and the answer written as it is until
-  the connection closes. A descendant only reads its block and writes its
-  status line; the rest (listener, a thread per connection, the request built
-  from the CGI variables, live streams) is here. }
+{ Base of the engines behind a web server that speaks a simple gateway protocol (SCGI,
+  uwsgi): one request per connection, answered as it is written until it closes. }
 unit RALGatewayServer;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -73,8 +69,6 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    { The head of an answer: the status line, the headers, the cookies and a
-      blank line; Content-Length when ALength is 0 or more }
     { The reason phrase of AStatusCode for a status line ('OK', 'Not Found'),
       'Unknown' for a code it does not know }
     class function ReasonPhrase(AStatusCode: IntegerRAL): string;

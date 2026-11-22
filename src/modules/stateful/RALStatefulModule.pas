@@ -1,8 +1,6 @@
 { Resources with state: routes written as methods of a class (TRALStatefulResource)
-  whose instance lives for the whole server, for one user session, or for one request,
-  as the module's Lifetime says. The fields of the class then keep what the user is
-  doing (a cart, a wizard's step) with no lock to write: the calls to one instance
-  run one at a time. }
+  whose instance lives for the server, one user session or one request (Lifetime).
+  Calls to one instance run one at a time, so its fields need no lock. }
 unit RALStatefulModule;
 
 {$I ..\..\core\PascalRAL.inc}

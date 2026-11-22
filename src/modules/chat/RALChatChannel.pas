@@ -1,7 +1,5 @@
-{ The base of every chat channel: what a platform package (Telegram, WhatsApp...)
-  implements - verify the webhook, read its body, deliver a message - plus what
-  they all share: the token (property, environment or file, never in a log), the
-  capabilities, the outbound limits and the retry rules. }
+{ The base of every chat channel: webhook verification and parsing, delivery, the
+  token, capabilities, outbound limits and retry rules. }
 unit RALChatChannel;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -140,10 +138,9 @@ type
       thread, so it must be quick. }
     function Acknowledge(const ABody: StringRAL; AMessages: TRALChatMessageList;
       out AStatus: Integer; out AContentType, AText: StringRAL): Boolean; virtual;
-    { Delivers AMessage (for typing, edit and delete AMessage only names the
-      conversation, and ATargetId is the message acted on) and says how it went; it
-      should not raise for a platform answer (an exception is taken as a transient
-      failure). Runs on the outbox's thread. }
+    { Delivers AMessage (for typing, edit and delete it only names the conversation
+      and ATargetId is the message acted on); an exception counts as a transient
+      failure. Runs on the outbox's thread. }
     procedure Deliver(AKind: TRALChatOutKind; AMessage: TRALChatMessage;
       const ATargetId: StringRAL; out AResult: TRALChatSendResult); virtual; abstract;
     { The dialect of the channel's text; the bot converts the text of a message

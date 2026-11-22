@@ -1,10 +1,6 @@
-{ WebSocket (RFC 6455) in two shapes. TRALWebSocketChannel is a channel over
-  another one (MQTT over WebSocket): the handshake with an optional subprotocol,
-  binary frames as one byte stream, ping/pong and closing with a status code.
-  TRALWSCodec is the frames alone, with no I/O, fed the bytes as they arrive
-  (WebSocket routes and TRALWebSocketClient): text and binary messages put back
-  together from their fragments, UTF-8 checked, control frames between fragments,
-  close codes, and permessage-deflate (RFC 7692) without context takeover. }
+{ WebSocket (RFC 6455): TRALWebSocketChannel, a channel over another one (MQTT
+  over WebSocket), and TRALWSCodec, the frames with no I/O (routes and client),
+  with permessage-deflate (RFC 7692) without context takeover. }
 unit RALWebSocket;
 
 {$I ..\core\PascalRAL.inc}
@@ -183,11 +179,9 @@ type
   TRALWSOnClose = procedure(ASender: TRALWSCodec; ACode: Word;
     const AReason: StringRAL) of object;
 
-  { The frames of RFC 6455 with no I/O: Feed takes the bytes as they arrive, in
-    pieces of any size, and fires an event per message, ping, pong and close;
-    the Encode functions give the bytes to send. A breach of the protocol raises
-    ERALWebSocketError with the close code it calls for. One thread at a time
-    feeds it; the Encode functions keep no state and may run on any thread }
+  { The frames of RFC 6455 with no I/O: Feed takes the bytes as they arrive and
+    fires an event per message, ping, pong and close; the Encode functions give the
+    bytes to send. One thread at a time feeds it; Encode may run on any thread. }
   TRALWSCodec = class
   private
     FCloseReceived: boolean;
@@ -289,8 +283,7 @@ type
 function RALWSAccept(const AKey: StringRAL): StringRAL;
 { Server side of permessage-deflate: True when one of the offers in AOffers (the
   Sec-WebSocket-Extensions of the request) can be taken, with the answer to send
-  in AAnswer. RAL compresses each message alone, so the answer always asks both
-  sides for no context takeover }
+  in AAnswer; the answer always asks both sides for no context takeover. }
 function RALWSAcceptDeflate(const AOffers: StringRAL; out AAnswer: StringRAL): boolean;
 { Client side of permessage-deflate: True when AAnswer (the
   Sec-WebSocket-Extensions of the 101) agreed to RALWSDeflateOffer, False when it

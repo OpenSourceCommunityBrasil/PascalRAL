@@ -215,7 +215,7 @@ type
     /// The template AName rendered with AData, without the layout.
     function RenderText(const AName: StringRAL; const AData: array of TObject): StringRAL;
   published
-    /// Reads filters in variable tags (a value, a bar, a filter, a colon, its argument).
+    /// Reads filters in variable tags, written name|filter:argument.
     property AllowFilters: Boolean read FAllowFilters write FAllowFilters default False;
     /// Added to a template name without an extension to find its file.
     property Extension: StringRAL read FExtension write FExtension;

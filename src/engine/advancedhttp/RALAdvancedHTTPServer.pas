@@ -118,18 +118,14 @@ type
   published
     /// Seconds a kept connection may stay idle before it is closed.
     property ConnectionTimeout: IntegerRAL read FConnectionTimeout write FConnectionTimeout default 30;
-    { Largest request body in bytes; a bigger one is answered 413 by the library.
-      The library's own default is 32 MB. }
+    /// Largest request body in bytes; a bigger one is answered 413.
     property MaxBodySize: Int64RAL read FMaxBodySize write FMaxBodySize default 33554432;
     { Threads of the library's event loop and of its handler pool (the pool has at
       least two); 0 = one per processor. }
     property PoolCount: IntegerRAL read FPoolCount write FPoolCount default 0;
     /// TLS settings (PEM files).
     property SSL: TRALAdvancedHTTPSSL read GetSSL write SetSSL;
-    { The library never sets TCP_NODELAY and answers with two sends (head, then
-      body), which Nagle plus the client's delayed acknowledgement stall for ~40 ms.
-      On: it is set on the accepted socket, found through the library's own
-      structures (checked to be a stream socket first). }
+    /// Sets TCP_NODELAY on the accepted sockets, so a small answer is not delayed.
     property TcpNoDelay: boolean read FTcpNoDelay write FTcpNoDelay default True;
   end;
 

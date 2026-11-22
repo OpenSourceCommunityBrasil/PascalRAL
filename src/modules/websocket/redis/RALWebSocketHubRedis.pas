@@ -16,10 +16,9 @@ const
   RALHubRedisDefaultPrefix = 'ralhub:';
 
 type
-  { A hub backplane over a Redis server (Client, set up with its address and
-    password). The Redis channel is ChannelPrefix + Channel (the hub's Name
-    when Channel is empty). When the hub's server starts the backplane
-    subscribes on a connection of its own; when it stops it leaves }
+  { A hub backplane over a Redis server (Client, set up with its address and password).
+    The channel is ChannelPrefix + Channel (the hub's Name when Channel is empty); it
+    subscribes when the hub's server starts and leaves when it stops. }
   TRALHubRedisBackplane = class(TRALHubBackplane)
   private
     FChannelPrefix: StringRAL;

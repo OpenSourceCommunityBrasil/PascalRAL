@@ -1,7 +1,5 @@
-{ The verifiers of a chat webhook: what proves a request comes from the platform.
-  Every channel has one - a shared secret in a header, an HMAC of the raw body, or
-  a signature check of its own (Ed25519, JWT) through an event - and a request
-  that fails it is refused before anything else reads the body. }
+{ The verifiers of a chat webhook (shared secret, HMAC of the raw body or an event);
+  a request that fails is refused before anything else reads the body. }
 unit RALChatVerify;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -25,10 +23,9 @@ type
   /// Reads a header (or query param) of the request by name; empty when absent.
   TRALChatHeaderReader = function(const AName: StringRAL): StringRAL of object;
 
-  { Decides whether a webhook request is genuine. ABody is the raw body exactly as
-    received (never re-serialized: the platforms sign it with their own escaping);
-    ATimestamp comes back as Unix seconds when the request carries one the channel
-    wants checked against the replay window, else 0. }
+  { Decides whether a webhook request is genuine. ABody is the raw body as received;
+    ATimestamp comes back in Unix seconds when the request carries one to check
+    against the replay window, else 0. }
   TRALChatVerifier = class(TPersistent)
   public
     { True for a verifier that checks nothing (a platform that signs nothing): the

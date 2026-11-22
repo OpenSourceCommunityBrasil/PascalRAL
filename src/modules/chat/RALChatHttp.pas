@@ -1,7 +1,6 @@
-{ What the platform channels share to talk HTTP: a client (the one linked to the
-  channel or one made from an engine name), one request at a time on it, the
-  Retry-After of the answer, a download capped in size, and the small JSON, URL and
-  hex helpers every platform's answers and bodies need. }
+{ What the platform channels share to talk HTTP: one request at a time on a client,
+  the Retry-After of the answer, a size-capped download and small JSON, URL and hex
+  helpers. }
 unit RALChatHttp;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -83,9 +82,9 @@ function RALChatJText(AValue: TRALJSON): StringRAL;
 function RALChatJStr(AParent: TRALJSON; const AName: StringRAL): StringRAL;
 /// The member AName of AParent as an integer; ADefault when missing.
 function RALChatJInt(AParent: TRALJSON; const AName: StringRAL; ADefault: Int64): Int64;
-/// Parses AText; nil when it is not JSON.
+/// Parses AText; nil when it is not JSON. The caller frees it.
 function RALChatTryParse(const AText: StringRAL): TRALJSON;
-/// A JSON object of AText (a JSON object), or nil.
+/// Parses AText as a JSON object; nil when it is not one. The caller frees it.
 function RALChatParseObject(const AText: StringRAL): TRALJSONObject;
 /// Percent-encodes AText (UTF-8 bytes) for a URL or a form.
 function RALChatUrlEncode(const AText: StringRAL): StringRAL;
@@ -93,7 +92,7 @@ function RALChatUrlEncode(const AText: StringRAL): StringRAL;
 function RALChatUrlDecode(const AText: StringRAL): StringRAL;
 /// The bytes of a hexadecimal text; empty when it is not hexadecimal of even length.
 function RALChatHexToBytes(const AText: StringRAL): TBytes;
-/// The text of AMs milliseconds of a Retry-After in seconds (a number, maybe fractional).
+/// A Retry-After in seconds (maybe fractional) as milliseconds; 0 when not a number.
 function RALChatSecondsToMs(const AText: StringRAL): Int64RAL;
 { The host of AUrl in lower case, without the port; empty when the address carries
   credentials (user:password@@host) or a backslash, which hide the real host from a

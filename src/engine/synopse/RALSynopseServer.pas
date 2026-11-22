@@ -132,9 +132,7 @@ type
     { tpPFXFile in the socket modes (one file that SChannel and OpenSSL both
       read), tpWindowsStore in smHttpSys. }
     function TLSProvisioning: TRALTLSProvisioning; override;
-    { False in smHttpSys: http.sys keeps the socket, and its own WebSocket API
-      (another URL registration, outside the request pipeline, no deflate) is not
-      used }
+    /// False in smHttpSys, where http.sys keeps the socket.
     function WebSocketAvailable: boolean; override;
   published
     { smHttpSys only: the host part of the URL ('*', '+' or 'localhost'), the same

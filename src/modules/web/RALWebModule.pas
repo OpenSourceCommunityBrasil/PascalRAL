@@ -32,11 +32,9 @@ type
 
   { What the WebModule keeps for one browser between its requests. A browser
     opens several connections at once, so its requests run in parallel: every
-    access to the values and objects is locked. The lock covers the lists, not
-    the objects in them - an object taken out is the caller's to synchronise.
-    With TRALWebModule.SessionStorage other than wssMemory the object lives for
-    one request: it is read from the store or the cookie when asked for, every
-    change of Values goes back there, and it is freed when the request ends. }
+    access to the values and objects is locked, but not the objects themselves.
+    Unless SessionStorage is wssMemory, the object lives for one request and
+    Values changes go back to the store or cookie. }
   TRALWebSession = class(TRALThreadSafe)
   private
     /// When the cookie of a wssCookie session was issued, in Unix seconds (UTC).

@@ -1,8 +1,6 @@
-{ The WebSocket client (RFC 6455) over RAL's own sockets (RALNetPackage), on every
-  platform and with no HTTP engine: ws:// and wss://, the certificate rule of
-  TRALClient (pins, Verify, OnValidateServerCert), HTTP CONNECT and SOCKS5
-  proxies, an authenticator of TRALClient for the handshake, subprotocols,
-  permessage-deflate, keep-alive pings and reconnection with backoff. }
+{ The WebSocket client (RFC 6455) over RAL's own sockets, on every platform with no
+  HTTP engine: ws:// and wss:// (the certificate rules of TRALClient), proxies,
+  subprotocols, permessage-deflate, keep-alive pings and reconnection with backoff. }
 unit RALWebSocketClient;
 
 {$I ..\..\core\PascalRAL.inc}
@@ -35,13 +33,9 @@ type
   TRALWebSocketClientOnError = procedure(ASender: TRALWebSocketClient;
     AError: Exception) of object;
 
-  { A WebSocket client. Connect opens the connection on the calling thread (the
-    handshake included: it raises when refused); a thread of the client then
-    reads, answers pings, pings an idle server and, with AutoReconnect, opens
-    the connection again after a drop, waiting ReconnectDelay, then twice as
-    long each time up to ReconnectMaxDelay. Send, SendBinary, Ping and
-    Disconnect may be called from any thread. The events run on the reading
-    thread, or on the main thread with SyncEvents }
+  { A WebSocket client. Connect opens the connection (raises when refused) and starts
+    a reading thread; Send, SendBinary, Ping and Disconnect work from any thread.
+    Events run on the reading thread, or on the main thread with SyncEvents. }
   TRALWebSocketClient = class(TRALComponent)
   private
     FAuthentication: TRALAuthClient;

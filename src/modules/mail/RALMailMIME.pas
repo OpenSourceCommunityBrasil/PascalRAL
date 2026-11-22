@@ -59,7 +59,7 @@ type
     /// The list as a header value (folded by the writer).
     function HeaderText(AUTF8: Boolean = False): StringRAL;
 
-    /// The mailboxes.
+    /// The address at AIndex (from 0).
     property Items[AIndex: IntegerRAL]: TRALMailAddress read GetItem; default;
   end;
 
@@ -122,16 +122,12 @@ type
     /// Adds an inline part of the file APath shown by cid:AContentID; returns it.
     function AddInline(const APath: string; const AContentID: StringRAL): TRALMailAttachment;
 
-    /// The attachments.
+    /// The attachment at AIndex (from 0).
     property Items[AIndex: IntegerRAL]: TRALMailAttachment read GetItem; default;
   end;
 
-  { A message: the envelope-free part SMTP carries (RFC 5322 headers and a
-    MIME body). Written in one pass: text alone is text/plain, text and HTML a
-    multipart/alternative, inline parts a multipart/related around the HTML,
-    attachments a multipart/mixed around all of it. Read in one pass too: the
-    first text/plain and text/html go to Text and HTML, the other parts to
-    Attachments (large ones in temporary files). }
+  { A message: the RFC 5322 headers and MIME body SMTP carries, without the envelope.
+    Text and HTML go to Text and HTML, the other parts to Attachments. }
   TRALMailMessage = class(TPersistent)
   private
     FAttachments: TRALMailAttachments;
@@ -201,7 +197,7 @@ type
     property InReplyTo: StringRAL read FInReplyTo write FInReplyTo;
     /// The Message-ID (without angle brackets); empty makes one when written.
     property MessageID: StringRAL read FMessageID write FMessageID;
-    /// The priority.
+    /// The X-Priority and Importance of the message; mpNormal writes none.
     property Priority: TRALMailPriority read FPriority write FPriority default mpNormal;
     /// Where a read receipt goes (Disposition-Notification-To).
     property ReadReceiptTo: StringRAL read FReadReceiptTo write FReadReceiptTo;

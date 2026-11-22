@@ -1,8 +1,6 @@
-{ A client of Redis and Valkey on RAL's own sockets: RESP2 and RESP3, a user and
-  password (ACL), the database, TLS with the certificate rule of TRALClient, a
-  pool of connections any thread may share, pipelines and MULTI/EXEC, and
-  helpers for the commands most used. Pub/sub has its own component
-  (TRALRedisSubscriber), on a connection of its own. }
+{ A client of Redis and Valkey (RESP2 and RESP3, ACL users, TLS) with a connection
+  pool any thread may share, pipelines, MULTI/EXEC and helpers for common
+  commands. Pub/sub is TRALRedisSubscriber. }
 unit RALRedisClient;
 
 {$I ..\..\core\PascalRAL.inc}

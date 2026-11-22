@@ -25,11 +25,9 @@ type
     mpInstagram
   );
 
-  { The Messenger and Instagram channel: the webhook (verify token, X-Hub-Signature-256)
-    with text, attachments, quick replies and postbacks (echoes, reads and deliveries are
-    ignored); sending text, quick replies (buttons and list items, up to 13),
-    attachments by address, id or upload, typing_on and mark_seen through the Send API
-    of the Page. Outside the 24 hour window HumanAgent sends with the HUMAN_AGENT tag. }
+  { The Messenger and Instagram channel: receives text, attachments, quick replies and
+    postbacks; sends text, quick replies (up to 13), attachments, typing_on and
+    mark_seen through the Send API of the Page. }
   TRALChatMeta = class(TRALChatGraphChannel)
   private
     FDetected: TRALChatMetaPlatform;

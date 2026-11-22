@@ -343,7 +343,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.Empty'.
+    /// The full .proto name, google.protobuf.Empty.
     class function ProtoName: StringRAL; override;
   end;
 
@@ -369,7 +369,7 @@ type
     function AsDateTime: TDateTime;
     /// Sets the time from a UTC TDateTime.
     procedure FromDateTime(AValue: TDateTime);
-    /// 'google.protobuf.Timestamp'.
+    /// The full .proto name, google.protobuf.Timestamp.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -404,7 +404,7 @@ type
     function AsMilliseconds: Int64;
     /// Sets the span from milliseconds.
     procedure FromMilliseconds(AValue: Int64);
-    /// 'google.protobuf.Duration'.
+    /// The full .proto name, google.protobuf.Duration.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -434,7 +434,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.FieldMask'.
+    /// The full .proto name, google.protobuf.FieldMask.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -462,7 +462,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.DoubleValue'.
+    /// The full .proto name, google.protobuf.DoubleValue.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -490,7 +490,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.FloatValue'.
+    /// The full .proto name, google.protobuf.FloatValue.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -518,7 +518,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.Int64Value'.
+    /// The full .proto name, google.protobuf.Int64Value.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -546,7 +546,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.UInt64Value'.
+    /// The full .proto name, google.protobuf.UInt64Value.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -574,7 +574,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.Int32Value'.
+    /// The full .proto name, google.protobuf.Int32Value.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -602,7 +602,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.UInt32Value'.
+    /// The full .proto name, google.protobuf.UInt32Value.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -630,7 +630,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.BoolValue'.
+    /// The full .proto name, google.protobuf.BoolValue.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -658,7 +658,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.StringValue'.
+    /// The full .proto name, google.protobuf.StringValue.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -686,7 +686,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.BytesValue'.
+    /// The full .proto name, google.protobuf.BytesValue.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -714,7 +714,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.Struct'.
+    /// The full .proto name, google.protobuf.Struct.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -745,7 +745,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.Struct.FieldsEntry'.
+    /// The full .proto name, google.protobuf.Struct.FieldsEntry.
     class function ProtoName: StringRAL; override;
 
     /// Field 1, key.
@@ -786,7 +786,7 @@ type
 
     /// Clears whichever field of the oneof kind is set.
     procedure ClearKind;
-    /// 'google.protobuf.Value'.
+    /// The full .proto name, google.protobuf.Value.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -826,7 +826,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
-    /// 'google.protobuf.ListValue'.
+    /// The full .proto name, google.protobuf.ListValue.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -857,7 +857,7 @@ type
 
     /// Packs AMessage: its type URL and its bytes.
     procedure Pack(AMessage: TRALProtoMessage);
-    /// 'google.protobuf.Any'.
+    /// The full .proto name, google.protobuf.Any.
     class function ProtoName: StringRAL; override;
     /// Reads the JSON form of the type.
     procedure ReadJSONValue(AValue: TRALJSON; AOptions: TRALProtoJSONOptions = []); override;
@@ -878,7 +878,8 @@ type
 function ProtoNullValueToName(AValue: Integer): StringRAL;
 /// The value of a NullValue name; False when there is none.
 function ProtoNullValueFromName(const AName: StringRAL; out AValue: Integer): Boolean;
-/// A NullValue from JSON (name or number); False for a name the options let pass.
+{ A NullValue from JSON (name or number). An unknown name raises, or returns False
+  with rpjIgnoreUnknown. }
 function ProtoNullValueFromJSON(AValue: TRALJSON; AOptions: TRALProtoJSONOptions;
   out AResult: Integer): Boolean;
 

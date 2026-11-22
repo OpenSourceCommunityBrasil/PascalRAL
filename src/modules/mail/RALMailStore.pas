@@ -89,14 +89,9 @@ type
     Unseen: IntegerRAL;
   end;
 
-  { Mailboxes of users kept in Folder: one directory per user, one per mailbox,
-    one file per message and a small index per mailbox (UIDVALIDITY, the next
-    UID and the UID, flags, date and size of each message). The index is
-    written to a temporary name and renamed, so a crash in the middle of an
-    operation leaves the old index; at the next start the index is checked
-    against the files. A mailbox name is UTF-8, its levels are separated by '/'
-    and INBOX (any case) always exists. Every operation is thread safe; the
-    folder must not be shared by two processes. }
+  { Mailboxes of users kept in Folder, one directory per user. Mailbox names are UTF-8
+    with levels separated by '/'; INBOX always exists. Thread safe; one process only
+    may use the folder. }
   TRALMailStore = class(TRALComponent)
   private
     FFolder: StringRAL;

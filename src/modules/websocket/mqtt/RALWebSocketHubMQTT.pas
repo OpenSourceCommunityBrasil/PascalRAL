@@ -27,11 +27,9 @@ type
     procedure MessageArrived(AClient: TRALMQTTCustomClient; AMessage: TRALMQTTMessage); override;
   end;
 
-  { A hub backplane over an MQTT client (Client, set up with the broker's
-    address). The topic is TopicPrefix/Channel (the hub's Name when Channel is
-    empty). When the hub's server starts the client connects, if it was not,
-    and subscribes; when it stops the client leaves the topic and, if the
-    backplane connected it, disconnects }
+  { A hub backplane over an MQTT client (Client, set up with the broker's address). The
+    topic is TopicPrefix/Channel (the hub's Name when Channel is empty). It connects the
+    client and subscribes when the hub's server starts, and leaves when it stops. }
   TRALHubMQTTBackplane = class(TRALHubBackplane)
   private
     FClient: TRALMQTTClient;

@@ -212,14 +212,9 @@ type
     function HasOutput: boolean; override;
   end;
 
-  { An IMAP server over the socket event loop: Port (143) with STARTTLS and
-    TLSPort (993) with implicit TLS. It answers IMAP4rev1 (RFC 3501) clients
-    and IMAP4rev2 (RFC 9051) ones, with SASL-IR, LITERAL+, UIDPLUS, MOVE, IDLE,
-    UNSELECT, ENABLE, ID, NAMESPACE, CHILDREN and UTF8=ACCEPT. The mailboxes are
-    those of Store; a message a TRALSMTPServer delivers there (Store.Deliver)
-    reaches the clients of that mailbox as an EXISTS response, at once when they
-    are in IDLE. The login goes through the server's plugins as the other mail
-    servers' does. }
+  { An IMAP server (IMAP4rev1, RFC 3501, and IMAP4rev2, RFC 9051): Port (143) with
+    STARTTLS and TLSPort (993) with implicit TLS. The mailboxes are those of Store;
+    login goes through the server's plugins. }
   TRALIMAPServer = class(TRALMailServer)
   private
     FMaxMessageSize: Int64;

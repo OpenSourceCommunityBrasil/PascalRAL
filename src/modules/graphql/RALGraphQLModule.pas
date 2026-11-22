@@ -28,7 +28,7 @@ type
 
   { Something that adds to a module's schema (types, fields by extend type, and
     their resolvers) every time it is built: TRALGraphQLDBBinding. It joins with
-    TRALGraphQLModule.AddContributor and leaves with RemoveContributor }
+    TRALGraphQLModule.AddContributor and leaves with RemoveContributor. }
   TRALGraphQLContributor = class(TRALComponent)
   public
     /// Sets the resolvers of what it added.
@@ -75,7 +75,7 @@ type
   { A GraphQL endpoint: GET and POST at Path. The schema is the SDL of Schema,
     built (and checked) when the server starts or on the first request; the
     fields read the value their parent resolved unless Resolvers has one for
-    them. A GET from a browser without a query gets GraphiQL }
+    them. A GET from a browser without a query gets GraphiQL. }
   TRALGraphQLModule = class(TRALModuleRoutes)
   private
     /// Error text of the last failed schema build; empty when it succeeded.
@@ -116,7 +116,7 @@ type
     procedure AddContributor(AContributor: TRALGraphQLContributor);
     { Runs AQuery (with AVariables, a JSON object as text or empty, and
       AOperationName) and gives the answer as JSON text; ARequest goes to the
-      resolvers (nil outside HTTP) }
+      resolvers (nil outside HTTP). }
     function Execute(const AQuery: StringRAL; const AVariables: StringRAL = '';
       const AOperationName: StringRAL = ''; ARequest: TRALRequest = nil;
       AAllowMutation: boolean = True): StringRAL;
@@ -133,7 +133,7 @@ type
     /// Serves GraphiQL to a browser's GET without a query.
     property GraphiQL: boolean read FGraphiQL write FGraphiQL default True;
     { Most fields an operation may select (introspection left out); 0 is no
-      limit. Over it, the operation is refused before it runs }
+      limit. Over it, the operation is refused before it runs. }
     property MaxComplexity: IntegerRAL read FMaxComplexity write FMaxComplexity
       default RALGraphQLDefaultMaxComplexity;
     /// Deepest nesting of fields an operation may have; 0 is no limit.

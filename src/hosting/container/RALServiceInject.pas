@@ -1,9 +1,6 @@
-{ The [Inject] attribute of the service container: a field of a service (or of any
-  object the container makes) marked [Inject] is filled with the service of its
-  interface, or with the one named in the attribute, right after the instance is
-  made - so it is ready in the methods, not yet in the constructor. Only where the
-  compiler has attributes and extended RTTI; elsewhere the unit is empty and the
-  constructor asks the container itself. }
+{ The [Inject] attribute of the service container: a field marked [Inject] is
+  filled right after the instance is made (not yet in the constructor). Only where
+  the compiler has extended RTTI; elsewhere the unit is empty. }
 unit RALServiceInject;
 
 {$I ..\..\core\PascalRAL.inc}
