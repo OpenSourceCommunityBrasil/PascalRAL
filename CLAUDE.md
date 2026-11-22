@@ -429,7 +429,8 @@ client verifies no certificate (`SupportsCertPin` False: `svAlways`, a pin or th
 raise `rteCertificate` before sending), follows no redirect and has no response streaming.
 
 **AdvancedHTTP** (`src/engine/advancedhttp`, Lazarus package `advancedhttpral`, FPC 3.3+
-only: the unit is empty unless `RALHasAnonMethods`), **experimental**: on Windows the
+only: the unit is empty unless `RALHasAnonMethods`; the library's folder is the build macro
+`$(AdvancedHTTPServer)`, else the `ADVANCEDHTTPSERVER` environment variable), **experimental**: on Windows the
 library stalls a request that arrives right after an answer on a kept connection, loses
 TLS bodies, and crashes on chunked request bodies; one instance per process (its stop flag
 is a global); it installs its own SIGINT/SIGTERM handlers and writes to the console.

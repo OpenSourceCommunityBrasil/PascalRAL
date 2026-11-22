@@ -198,7 +198,7 @@ bcrypt core), `RALSalsa20` (the Salsa20 core), `RALOTP` (HOTP/TOTP, base32, otpa
   through its OpenSSL); the library's units come from the project's search path, not the package.
 - `advancedhttp/` - `RALAdvancedHTTPServer`, `RALAdvancedHTTPReg` (`advancedhttpral`, Lazarus
   only, FPC 3.3+; experimental): server on AdvancedHTTPServer; the library's units come from
-  the package's `OtherUnitFiles`
+  the build macro `$(AdvancedHTTPServer)` (unset: the `ADVANCEDHTTPSERVER` environment variable)
 - `fastcgi/` - `RALFastCGIServer`, `RALFastCGIReg` (`FastCGIRAL`, requires
   `RALNetPackage`): FastCGI 1.0 responder of its own on `RALSocket`, both compilers,
   kept connections and live streams, behind nginx or Apache (IIS's FastCGI only

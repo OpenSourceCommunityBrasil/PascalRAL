@@ -10,7 +10,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="..\..\..\src\engine\advancedhttp;..\..\..\..\..\..\_Components\AdvancedHTTPServer\src"/>
+        <OtherUnitFiles Value="..\..\..\src\engine\advancedhttp;$(AdvancedHTTPServer)\src"/>
         <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\advancedhttpral"/>
       </SearchPaths>
       <Linking>
@@ -23,6 +23,13 @@
           <ShowLineNum Value="True"/>
         </Verbosity>
       </Other>
+      <BuildMacros>
+        <Count Value="1"/>
+        <Item1>
+          <Identifier Value="AdvancedHTTPServer"/>
+          <Description Value="Folder of the AdvancedHTTPServer library (the one that holds src); without a value, the ADVANCEDHTTPSERVER environment variable"/>
+        </Item1>
+      </BuildMacros>
     </CompilerOptions>
     <Description Value="PascalRAL | AdvancedHTTPServer engine (FPC 3.3+)"/>
     <Version Major="2"/>
