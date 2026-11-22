@@ -13,7 +13,7 @@
       <Title Value="ralcli"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
-      <Resources Count="18">
+      <Resources Count="19">
         <Resource_0 FileName="../receitas/mormot2.json" Type="RCDATA" ResourceName="RECEITA_MORMOT2"/>
         <Resource_1 FileName="../receitas/zeos.json" Type="RCDATA" ResourceName="RECEITA_ZEOS"/>
         <Resource_2 FileName="../receitas/indy.json" Type="RCDATA" ResourceName="RECEITA_INDY"/>
@@ -32,6 +32,7 @@
         <Resource_15 FileName="../modelos/dados_cliente_form.txt" Type="RCDATA" ResourceName="MODELO_DADOS_CLIENTE_FORM"/>
         <Resource_16 FileName="../modelos/projeto_lpi.txt" Type="RCDATA" ResourceName="MODELO_PROJETO_LPI"/>
         <Resource_17 FileName="../modelos/projeto_dproj.txt" Type="RCDATA" ResourceName="MODELO_PROJETO_DPROJ"/>
+        <Resource_18 FileName="../receitas/crosssocket.json" Type="RCDATA" ResourceName="RECEITA_CROSSSOCKET"/>
       </Resources>
     </General>
     <VersionInfo>

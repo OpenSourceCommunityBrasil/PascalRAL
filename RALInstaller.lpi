@@ -13,7 +13,7 @@
         <DpiAware Value="True"/>
       </XPManifest>
       <Icon Value="0"/>
-      <Resources Count="19">
+      <Resources Count="20">
         <Resource_0 FileName="Assets/images/Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
         <Resource_1 FileName="Assets/images/Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
         <Resource_2 FileName="Assets/images/Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
@@ -33,6 +33,7 @@
         <Resource_16 FileName="receitas/libsagui.json" Type="RCDATA" ResourceName="RECEITA_LIBSAGUI"/>
         <Resource_17 FileName="receitas/brotli.json" Type="RCDATA" ResourceName="RECEITA_BROTLI"/>
         <Resource_18 FileName="receitas/zstd.json" Type="RCDATA" ResourceName="RECEITA_ZSTD"/>
+        <Resource_19 FileName="receitas/crosssocket.json" Type="RCDATA" ResourceName="RECEITA_CROSSSOCKET"/>
       </Resources>
     </General>
     <i18n>

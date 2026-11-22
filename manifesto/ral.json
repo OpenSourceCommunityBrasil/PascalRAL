@@ -5,7 +5,13 @@
     { "pacote": "SynopseRAL", "delphi-min": "2009",
       "motivo": "wiki: compatibilidade dos motores" },
     { "pacote": "SaguiRAL", "delphi-min": "2009",
-      "motivo": "wiki: compatibilidade dos motores" }
+      "motivo": "wiki: compatibilidade dos motores" },
+    { "pacote": "XSocketRAL", "delphi-min": "11",
+      "motivo": "o Delphi-Cross-Socket não compila no Delphi 10.2 a 10.4" },
+    { "pacote": "advancedhttpral", "fpc-min": "3.3.1",
+      "motivo": "o AdvancedHTTPServer usa métodos anônimos, que só o FPC 3.3 tem" },
+    { "pacote": "RALClientLiveBindingsPackage", "delphi-min": "XE3",
+      "motivo": "o TBindSourceAdapter do LiveBindings existe a partir do Delphi XE3" }
   ],
   "bloqueios": [
     { "delphi-max": "2010",

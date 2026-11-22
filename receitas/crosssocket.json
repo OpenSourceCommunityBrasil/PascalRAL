@@ -1,0 +1,17 @@
+{
+  "nome": "Delphi-Cross-Socket",
+  "descricao": "Delphi-Cross-Socket: a biblioteca de sockets (IOCP, epoll, kqueue) do motor XSocketRAL, do Delphi 11 em diante",
+  "site": "https://github.com/winddriver/Delphi-Cross-Socket",
+  "fonte": { "github": "winddriver/Delphi-Cross-Socket", "versao": "master",
+             "comentario": "o projeto nao publica releases nem tags: a versao e o branch master" },
+  "pacotes-ral": ["XSocketRAL"],
+  "delphi": {
+    "comentario": "o XSocketRAL.dproj declara $(crosssocket) no caminho de busca e nao leva as units da biblioteca: o programa do usuario as acha pelo library path",
+    "fornece": { "variaveis": ["crosssocket"] },
+    "deteccao": [ { "variavel": "crosssocket" }, { "unidade": "Net.CrossSocket.pas" } ],
+    "acoes": [
+      { "acao": "variavel", "nome": "crosssocket", "valor": "{raiz}" },
+      { "acao": "libpath", "caminhos": [ "$(crosssocket)", "$(crosssocket)/Net", "$(crosssocket)/Utils" ] }
+    ]
+  }
+}
