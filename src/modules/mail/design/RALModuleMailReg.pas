@@ -12,12 +12,13 @@ uses
   {$ELSE}
   DesignEditors, DesignIntf,
   {$IFDEF DELPHIXE2UP}Vcl.Dialogs,{$ELSE}Dialogs,{$ENDIF}
-  {$IFDEF DELPHIXE3UP}System.Actions,{$ELSE}ActnList,{$ENDIF}
+  {$IFDEF DELPHIXE3UP}System.Actions,{$ENDIF}
   {$ENDIF}
   Classes, SysUtils,
   RALTypes, RALConsts, RALDKIM, RALSMTPClient, RALMailQueue, RALSMTPServer, RALDNS,
   RALMailVerifier, RALIMAPClient, RALPOP3Client, RALSMIME, RALMailStore, RALMailServerBase,
-  RALPOP3Server, RALIMAPServer, RALOpenPGP, RALMailRestModule, RALMailActions;
+  RALPOP3Server, RALIMAPServer, RALOpenPGP, RALMailRestModule
+  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}, RALMailActions{$IFEND};
 
 type
   /// Verb of TRALSMTPClient: tests a copy of its settings; lists what the server offers.
@@ -57,7 +58,9 @@ begin
   RegisterComponents('RAL - Server', [TRALSMTPServer, TRALDKIMVerifier, TRALMailVerifier,
     TRALMailStore, TRALPOP3Server, TRALIMAPServer]);
   RegisterComponents('RAL - Modules', [TRALMailRestModule]);
+  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   RegisterActions('RAL', [TRALSendMail], nil);
+  {$IFEND}
   RegisterComponentEditor(TRALSMTPClient, TRALSMTPClientEditor);
   RegisterComponentEditor(TRALSMTPServer, TRALSMTPServerEditor);
   RegisterComponentEditor(TRALPOP3Server, TRALMailServerEditor);

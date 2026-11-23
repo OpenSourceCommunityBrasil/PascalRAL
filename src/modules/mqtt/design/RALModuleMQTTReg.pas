@@ -12,11 +12,12 @@ uses
   {$ELSE}
   DesignEditors, DesignIntf,
   {$IFDEF DELPHIXE2UP}Vcl.Dialogs,{$ELSE}Dialogs,{$ENDIF}
-  {$IFDEF DELPHIXE3UP}System.Actions,{$ELSE}ActnList,{$ENDIF}
+  {$IFDEF DELPHIXE3UP}System.Actions,{$ENDIF}
   {$ENDIF}
   Classes, SysUtils,
   RALTypes, RALConsts, RALMQTTAuth, RALMQTTClient, RALMQTTSNClient, RALMQTTBroker,
-  RALMQTTSNGateway, RALMQTTRestModule, RALMQTTActions;
+  RALMQTTSNGateway, RALMQTTRestModule
+  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}, RALMQTTActions{$IFEND};
 
 type
   /// Verb of TRALMQTTClient: connects a copy of its settings and says what happened.
@@ -35,12 +36,14 @@ type
     function GetVerbCount: Integer; override;
   end;
 
+  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   /// Property editor of TRALMQTTPublish.Publication: the publications of its client.
   TRALMQTTPublicationProperty = class(TStringProperty)
   public
     function GetAttributes: TPropertyAttributes; override;
     procedure GetValues(Proc: TGetStrProc); override;
   end;
+  {$IFEND}
 
 /// Registers the components, the actions and the editors.
 procedure Register;
@@ -54,11 +57,15 @@ begin
     TRALMQTTCustomAuth]);
   RegisterComponents('RAL - Server', [TRALMQTTBroker, TRALMQTTSNGateway]);
   RegisterComponents('RAL - Modules', [TRALMQTTRestModule]);
+  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   RegisterActions('RAL', [TRALMQTTConnect, TRALMQTTDisconnect, TRALMQTTPublish], nil);
+  {$IFEND}
   RegisterComponentEditor(TRALMQTTClient, TRALMQTTClientEditor);
   RegisterComponentEditor(TRALMQTTBroker, TRALMQTTBrokerEditor);
+  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   RegisterPropertyEditor(TypeInfo(StringRAL), TRALMQTTPublish, 'Publication',
     TRALMQTTPublicationProperty);
+  {$IFEND}
 end;
 
 { TRALMQTTClientEditor }
@@ -105,6 +112,7 @@ begin
   Result := 1;
 end;
 
+{$IF Defined(FPC) or Defined(DELPHIXE3UP)}
 { TRALMQTTPublicationProperty }
 
 function TRALMQTTPublicationProperty.GetAttributes: TPropertyAttributes;
@@ -124,6 +132,7 @@ begin
     if vAction.Client.Publications[vInt].Name <> '' then
       Proc(string(vAction.Client.Publications[vInt].Name));
 end;
+{$IFEND}
 
 {$IFDEF FPC}
 initialization

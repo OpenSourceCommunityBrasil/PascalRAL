@@ -11,11 +11,11 @@ uses
   {$ELSE}
   DesignEditors, DesignIntf,
   {$IFDEF DELPHIXE2UP}Vcl.Dialogs,{$ELSE}Dialogs,{$ENDIF}
-  {$IFDEF DELPHIXE3UP}System.Actions,{$ELSE}ActnList,{$ENDIF}
+  {$IFDEF DELPHIXE3UP}System.Actions,{$ENDIF}
   {$ENDIF}
   Classes, SysUtils,
   RALTypes, RALConsts, RALServer, RALSOAPModule, RALWSDLExporter, RALSOAPClient,
-  RALSOAPActions, RALWSSecurityAuth;
+  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}RALSOAPActions,{$IFEND} RALWSSecurityAuth;
 
 type
   /// Verb of TRALSOAPModule: saves its WSDL to a file.
@@ -34,12 +34,14 @@ type
     function GetVerbCount: Integer; override;
   end;
 
+  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   /// Property editor of TRALSOAPExecute.Operation: the operations of its client.
   TRALSOAPOperationProperty = class(TStringProperty)
   public
     function GetAttributes: TPropertyAttributes; override;
     procedure GetValues(Proc: TGetStrProc); override;
   end;
+  {$IFEND}
 
 /// Registers the components, the action and the editors.
 procedure Register;
@@ -51,11 +53,15 @@ begin
   RegisterComponents('RAL - Modules', [TRALSOAPModule]);
   RegisterComponents('RAL - Client', [TRALSOAPClient]);
   RegisterComponents('RAL - Server', [TRALServerWSSecurityAuth]);
+  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   RegisterActions('RAL', [TRALSOAPExecute], nil);
+  {$IFEND}
   RegisterComponentEditor(TRALSOAPModule, TRALSOAPModuleEditor);
   RegisterComponentEditor(TRALSOAPClient, TRALSOAPClientEditor);
+  {$IF Defined(FPC) or Defined(DELPHIXE3UP)}
   RegisterPropertyEditor(TypeInfo(StringRAL), TRALSOAPExecute, 'Operation',
     TRALSOAPOperationProperty);
+  {$IFEND}
 end;
 
 { TRALSOAPModuleEditor }
@@ -141,6 +147,7 @@ begin
   Result := 1;
 end;
 
+{$IF Defined(FPC) or Defined(DELPHIXE3UP)}
 { TRALSOAPOperationProperty }
 
 function TRALSOAPOperationProperty.GetAttributes: TPropertyAttributes;
@@ -159,6 +166,7 @@ begin
   for vInt := 0 to vAction.Client.Operations.Count - 1 do
     Proc(string(TRALSOAPClientOperation(vAction.Client.Operations.Items[vInt]).Name));
 end;
+{$IFEND}
 
 {$IFDEF FPC}
 initialization

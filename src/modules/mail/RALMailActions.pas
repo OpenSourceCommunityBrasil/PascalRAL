@@ -10,6 +10,8 @@ unit RALMailActions;
 
 interface
 
+{$IF Defined(FPC) or Defined(DELPHIXE3UP)}
+
 uses
   Classes, SysUtils, SyncObjs,
   {$IFDEF FPC}
@@ -96,7 +98,11 @@ type
     property Visible;
   end;
 
+{$IFEND}
+
 implementation
+
+{$IF Defined(FPC) or Defined(DELPHIXE3UP)}
 
 { TRALSendMail }
 
@@ -260,5 +266,7 @@ begin
     Result := True;
   end;
 end;
+
+{$IFEND}
 
 end.

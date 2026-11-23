@@ -10,6 +10,8 @@ unit RALMQTTActions;
 
 interface
 
+{$IF Defined(FPC) or Defined(DELPHIXE3UP)}
+
 uses
   Classes, SysUtils,
   {$IFDEF FPC}
@@ -88,7 +90,11 @@ type
     property Publication: StringRAL read FPublication write FPublication;
   end;
 
+{$IFEND}
+
 implementation
+
+{$IF Defined(FPC) or Defined(DELPHIXE3UP)}
 
 { TRALMQTTClientAction }
 
@@ -184,5 +190,7 @@ begin
   Result := (Client <> nil) and Client.Active and (FPublication <> '') and
     (Client.Publications.Find(FPublication) <> nil);
 end;
+
+{$IFEND}
 
 end.

@@ -9,6 +9,8 @@ unit RALSOAPActions;
 
 interface
 
+{$IF Defined(FPC) or Defined(DELPHIXE3UP)}
+
 uses
   Classes, SysUtils,
   {$IFDEF FPC}
@@ -63,7 +65,11 @@ type
     property Visible;
   end;
 
+{$IFEND}
+
 implementation
+
+{$IF Defined(FPC) or Defined(DELPHIXE3UP)}
 
 { TRALSOAPExecute }
 
@@ -114,5 +120,7 @@ begin
     Result := True;
   end;
 end;
+
+{$IFEND}
 
 end.
