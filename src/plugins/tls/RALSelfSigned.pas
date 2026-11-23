@@ -922,7 +922,7 @@ begin
   vWatcher.Stop;
   { from the watcher itself - the engine stopped the server while the watcher
     was renewing: it cannot wait for itself, so it frees itself }
-  if GetCurrentThreadId = vWatcher.ThreadID then
+  if TThread.CurrentThread.ThreadID = vWatcher.ThreadID then
     vWatcher.FreeOnTerminate := True
   else
   begin

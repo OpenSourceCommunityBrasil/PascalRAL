@@ -118,16 +118,15 @@ type
 
 implementation
 
+{$IFDEF FPC}
 uses
-  {$IFDEF FPC}
   Process;
-  {$ELSE}
-  {$IFDEF MSWINDOWS}
+{$ELSE}
+{$IFDEF MSWINDOWS}
+uses
   Windows;
-  {$ELSE}
-  RALConsts;
-  {$ENDIF}
-  {$ENDIF}
+{$ENDIF}
+{$ENDIF}
 
 type
   /// The child process of the stdio transport, with its pipes.

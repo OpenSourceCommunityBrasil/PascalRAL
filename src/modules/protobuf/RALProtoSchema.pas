@@ -779,8 +779,8 @@ end;
 
 procedure TRALProtoParser.Next;
 var
-  vChar: CharRAL;
-  vQuote: CharRAL;
+  vChar: AnsiChar;
+  vQuote: AnsiChar;
   vValue: IntegerRAL;
   vDigits: IntegerRAL;
 begin
