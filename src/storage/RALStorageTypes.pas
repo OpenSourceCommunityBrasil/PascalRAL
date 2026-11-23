@@ -766,7 +766,8 @@ begin
 end;
 
 { JSON of the wrong shape raises emInvalidJSONFormat; text that is not JSON
-  leaves the description empty, and a missing member reads as empty. }
+  raises the parser's error (with its byte position), and a missing member
+  reads as empty. }
 procedure TRALDBInfoField.SetAsJSON(AValue: StringRAL);
 var
   vJSON : TRALJSONValue;

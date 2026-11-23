@@ -85,7 +85,8 @@ type
       MaxTokenSize: Integer = 0;
       MaxDepth: Integer = 0
     ): TRALJSON; overload; static;
-    /// Parses the rest of a stream; the caller frees the result.
+    { Parses the whole stream, from its start whatever its position (the 1.x
+      contract); LoadFromStream parses only the rest. The caller frees the result. }
     class function ParseJSON(Stream: TStream;
       MaxDocumentSize: Int64 = 0;
       MaxTokenSize: Integer = 0;
@@ -749,6 +750,8 @@ class function TRALJSON.ParseJSON(Stream: TStream;
   MaxDepth: Integer
 ): TRALJSON;
 begin
+  if Stream <> nil then
+    Stream.Position := 0;
   Result := LoadFromStream(Stream, MaxDocumentSize, MaxTokenSize, MaxDepth);
 end;
 
