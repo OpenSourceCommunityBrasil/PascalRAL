@@ -173,6 +173,21 @@ function RALStorageXMLIsRoot(const AName: StringRAL): boolean;
 implementation
 
 const
+  {$IF DECLARED(ftShortint)}
+  /// Field type of a signed 8-bit value; ftSmallint where FPC 3.2.2 lacks one.
+  cFtInt8 = ftShortint;
+  /// Field type of an unsigned 8-bit value; ftSmallint where FPC 3.2.2 lacks one.
+  cFtUInt8 = ftByte;
+  /// Field type of an unsigned 32-bit value; ftLargeint where FPC 3.2.2 lacks one.
+  cFtUInt32 = ftLongWord;
+  {$ELSE}
+  /// Field type of a signed 8-bit value; ftSmallint where FPC 3.2.2 lacks one.
+  cFtInt8 = ftSmallint;
+  /// Field type of an unsigned 8-bit value; ftSmallint where FPC 3.2.2 lacks one.
+  cFtUInt8 = ftSmallint;
+  /// Field type of an unsigned 32-bit value; ftLargeint where FPC 3.2.2 lacks one.
+  cFtUInt32 = ftLargeint;
+  {$IFEND}
   /// Root element of the DBWare format.
   cRootDBWare = 'ralstorage';
   /// Root element of the datapacket format.
@@ -970,12 +985,15 @@ begin
         ASubType := 'Autoinc';
       end;
     ftLargeint: AType := 'i8';
+    {$IF DECLARED(ftShortint)}
     ftShortint: AType := 'i1';
     ftByte: AType := 'ui1';
     ftLongWord: AType := 'ui4';
-    ftBoolean: AType := 'boolean';
-    ftFloat, ftExtended: AType := 'r8';
+    ftExtended: AType := 'r8';
     ftSingle: AType := 'r4';
+    {$IFEND}
+    ftBoolean: AType := 'boolean';
+    ftFloat: AType := 'r8';
     ftCurrency:
       begin
         AType := 'r8';
@@ -1121,12 +1139,15 @@ begin
     ftInteger, ftAutoInc: AType := 'int';
     ftWord: AType := 'ui2';
     ftLargeint: AType := 'i8';
+    {$IF DECLARED(ftShortint)}
     ftShortint: AType := 'i1';
     ftByte: AType := 'ui1';
     ftLongWord: AType := 'ui4';
-    ftBoolean: AType := 'boolean';
-    ftFloat, ftExtended: AType := 'float';
+    ftExtended: AType := 'float';
     ftSingle: AType := 'r4';
+    {$IFEND}
+    ftBoolean: AType := 'boolean';
+    ftFloat: AType := 'float';
     ftCurrency:
       begin
         AType := 'number';
@@ -1632,9 +1653,9 @@ begin
   else if vType = 'string.uni' then
     Result := ftWideString
   else if vType = 'i1' then
-    Result := ftShortint
+    Result := cFtInt8
   else if vType = 'ui1' then
-    Result := ftByte
+    Result := cFtUInt8
   else if vType = 'i2' then
     Result := ftSmallint
   else if vType = 'ui2' then
@@ -1644,7 +1665,7 @@ begin
   else if vType = 'i4' then
     Result := ftInteger
   else if vType = 'ui4' then
-    Result := ftLongWord
+    Result := cFtUInt32
   else if (vType = 'i8') or (vType = 'ui8') then
     Result := ftLargeint
   else if vType = 'boolean' then
@@ -1828,13 +1849,13 @@ begin
   else if AType = 'i2' then
     Result := ftSmallint
   else if AType = 'i1' then
-    Result := ftShortint
+    Result := cFtInt8
   else if AType = 'ui1' then
-    Result := ftByte
+    Result := cFtUInt8
   else if AType = 'ui2' then
     Result := ftWord
   else if AType = 'ui4' then
-    Result := ftLongWord
+    Result := cFtUInt32
   else if (AType = 'i8') or (AType = 'ui8') then
     Result := ftLargeint
   else if AType = 'boolean' then

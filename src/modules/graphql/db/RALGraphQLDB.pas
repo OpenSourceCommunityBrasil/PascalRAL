@@ -106,10 +106,16 @@ begin
     Result := 'ID'
   else
     case AColumn.DataType of
-      ftSmallint, ftInteger, ftWord, ftAutoInc, ftShortint, ftByte:
+      ftSmallint, ftInteger, ftWord, ftAutoInc:
         Result := 'Int';
-      ftFloat, ftCurrency, ftBCD, ftFMTBcd, ftExtended, ftSingle, ftLargeint, ftLongWord:
+      ftFloat, ftCurrency, ftBCD, ftFMTBcd, ftLargeint:
         Result := 'Float';
+      {$IF DECLARED(ftShortint)}
+      ftShortint, ftByte:
+        Result := 'Int';
+      ftExtended, ftSingle, ftLongWord:
+        Result := 'Float';
+      {$IFEND}
       ftBoolean:
         Result := 'Boolean';
     else
@@ -150,9 +156,10 @@ begin
         vRow.Add(StringRAL(vField.FieldName))
       else
         case vField.DataType of
-          ftSmallint, ftInteger, ftWord, ftAutoInc, ftShortint, ftByte, ftLargeint, ftLongWord:
+          ftSmallint, ftInteger, ftWord, ftAutoInc, ftLargeint{$IF DECLARED(ftShortint)}, ftShortint, ftByte,
+          ftLongWord{$IFEND}:
             vRow.Add(StringRAL(vField.FieldName), TRALJSONNumber.Create(StringRAL(vField.AsString)));
-          ftFloat, ftCurrency, ftBCD, ftFMTBcd, ftExtended, ftSingle:
+          ftFloat, ftCurrency, ftBCD, ftFMTBcd{$IF DECLARED(ftShortint)}, ftExtended, ftSingle{$IFEND}:
             vRow.Add(StringRAL(vField.FieldName),
               TRALJSONNumber.Create(StringRAL(FloatToStr(vField.AsFloat, RALInvariantFormat))));
           ftBoolean:
