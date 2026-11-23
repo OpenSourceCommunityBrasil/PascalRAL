@@ -1,0 +1,86 @@
+inherited TelaVersoes: TTelaVersoes
+  object lbDe: TLabel[9]
+    Left = 48
+    Height = 16
+    Top = 166
+    Width = 280
+    AutoSize = False
+    ParentColor = False
+  end
+  object cbDe: TComboBox[10]
+    Left = 48
+    Height = 23
+    Top = 184
+    Width = 220
+    ItemHeight = 15
+    Style = csDropDownList
+    TabOrder = 1
+    OnChange = cbDeChange
+  end
+  object lbPara: TLabel[11]
+    Left = 340
+    Height = 16
+    Top = 166
+    Width = 280
+    AutoSize = False
+    ParentColor = False
+  end
+  object cbPara: TComboBox[12]
+    Left = 340
+    Height = 23
+    Top = 184
+    Width = 220
+    ItemHeight = 15
+    Style = csDropDownList
+    TabOrder = 2
+    OnChange = cbDeChange
+  end
+  object lbDetectada: TLabel[13]
+    Left = 48
+    Height = 18
+    Top = 224
+    Width = 604
+    AutoSize = False
+    Font.Style = [fsBold]
+    ParentColor = False
+    ParentFont = False
+  end
+  object lbEvidencias: TLabel[14]
+    Left = 48
+    Height = 16
+    Top = 248
+    Width = 604
+    AutoSize = False
+    ParentColor = False
+  end
+  object mmEvidencias: TMemo[15]
+    Left = 48
+    Height = 190
+    Top = 266
+    Width = 604
+    ReadOnly = True
+    ScrollBars = ssAutoBoth
+    TabOrder = 3
+    WordWrap = False
+  end
+  object ckForcar: TCheckBox[16]
+    Left = 48
+    Height = 19
+    Top = 467
+    Width = 20
+    TabOrder = 4
+    OnClick = ckForcarClick
+  end
+  object lbForcar: TLabel[17]
+    Cursor = crHandPoint
+    Left = 70
+    Height = 36
+    Top = 468
+    Width = 582
+    AutoSize = False
+    FocusControl = ckForcar
+    ParentColor = False
+    WordWrap = True
+    OnClick = RotuloDaCaixaClick
+  end
+end

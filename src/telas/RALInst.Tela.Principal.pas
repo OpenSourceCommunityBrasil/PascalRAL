@@ -15,7 +15,7 @@ uses
 
 type
   /// The installer window.
-  TTelaPrincipal = class(TForm)
+  TTelaPrincipal = class(TForm, IJanelaModelo)
     bTranslate: TButton;
     ntPages: TNotebook;
     procedure bTranslateClick(Sender: TObject);
@@ -35,6 +35,9 @@ type
     FTheme: TThemes;
     /// Translates every text into the language and tells the pages
     procedure AplicarLanguage(AValue: TLanguages);
+    /// --capturar=<folder>: every page in both themes and the three languages,
+    /// into PNG files, then closes
+    procedure Capturar(AData: PtrInt);
     /// Main thread: the update check finished; offers the new version
     procedure AtualizacaoConsultada(Sender: TObject);
     /// Background thread: asks GitHub for a newer installer
@@ -61,6 +64,8 @@ type
     function InstalacoesExistentes: string;
     /// Checked IDEs whose last plan found one of these changes
     function ContarMudancas(AMudancas: TMudancasRAL): integer;
+    /// Hint of the theme button while ATema is on
+    function DicaTema(ATema: TThemes): string;
     /// Downloads and installs in every checked IDE
     function InstallRAL(ALog: TMemo): boolean;
     /// No feature chosen: the run uninstalls
@@ -81,6 +86,8 @@ type
     /// The next run compiles and registers everything even where nothing
     /// changed
     procedure Reinstalar(AValor: boolean);
+    /// The line under the banner
+    function TextoVersao: string;
 
   published
     /// 0 - Delphi, 1 - Lazarus, 2 - both
@@ -98,7 +105,7 @@ implementation
 {$R *.lfm}
 
 uses
-  RALInst.Processo, RALInst.Recibos, RALInst.Traducao,
+  RALInst.Processo, RALInst.Recibos, RALInst.Tela.Captura, RALInst.Traducao,
   RALInst.Versao, RALInst.Tela.GeradorPO, RALInst.Tela.Instalacao,
   RALInst.Tela.Mensagens, RALInst.Tela.Traducao;
 
@@ -130,6 +137,13 @@ begin
   IDE := -1;
   // o idioma do sistema ja vem escolhido; a primeira tela deixa trocar
   AplicarLanguage(IdiomaDoCodigo(IdiomaDoSistema));
+
+  // so as capturas de tela: nada de rede nem de limpeza
+  if PastaCaptura <> '' then
+  begin
+    Application.QueueAsyncCall(@Capturar, 0);
+    Exit;
+  end;
 
   // o .old de uma atualizacao anterior sai; a consulta ao GitHub so depois
   // que a janela aparece
@@ -208,6 +222,34 @@ begin
     Application.Terminate
   else
     ShowMessage(Format(cmAbraDeNovo, [FAtualizacao.VersaoNova, FAtualizacao.Erro]));
+end;
+
+procedure TTelaPrincipal.Capturar(AData: PtrInt);
+var
+  vTema: TThemes;
+  vIdioma: TLanguages;
+  vInt: integer;
+  vPasta: string;
+begin
+  vPasta := PastaCaptura;
+  try
+    for vTema := Low(TThemes) to High(TThemes) do
+    begin
+      Theme := vTema;
+      for vIdioma := Low(TLanguages) to High(TLanguages) do
+      begin
+        AplicarLanguage(vIdioma);
+        // so a troca de pagina: o AoMostrar iria a rede e as IDEs
+        for vInt := 0 to Pred(ntPages.PageCount) do
+        begin
+          ntPages.PageIndex := vInt;
+          SalvarCaptura(Self, vPasta + NomeCaptura('instalador', vInt, vTema, vIdioma));
+        end;
+      end;
+    end;
+  finally
+    Application.Terminate;
+  end;
 end;
 
 procedure TTelaPrincipal.ConsultarAtualizacao;
@@ -367,6 +409,14 @@ begin
   Result := FPgIDEVersions.ContarMudancas(AMudancas);
 end;
 
+function TTelaPrincipal.DicaTema(ATema: TThemes): string;
+begin
+  if ATema = tDark then
+    Result := cmTemaClaro
+  else
+    Result := cmTemaEscuro;
+end;
+
 function TTelaPrincipal.Mudancas: string;
 begin
   Result := FPgIDEVersions.Mudancas;
@@ -440,6 +490,11 @@ begin
   finally
     vPaginas.Free;
   end;
+end;
+
+function TTelaPrincipal.TextoVersao: string;
+begin
+  Result := Format(cmVersaoInstalador, [VersaoInstalador]);
 end;
 
 procedure TTelaPrincipal.VerificarAtualizacao(AData: PtrInt);

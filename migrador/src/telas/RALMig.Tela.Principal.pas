@@ -1,8 +1,11 @@
-/// The migrator window: banner, theme and language, the pages in order (language,
-/// project, versions, binary forms, preview, apply, report, compile to check)
-/// and the Previous/Next buttons that skip the pages with nothing to ask. Built
-/// in code, in the look of the installer. The self-test (--autotest) walks the
-/// pages without interaction; --gerar-po writes the translation files.
+/// The migrator window, in the installer's frame (the same TNotebook, size,
+/// banner, image buttons, theme switch and DPI scaling): the pages in order
+/// (language, project, versions, binary forms, preview, apply, report, compile
+/// to check), each on the installer's page base, and the Next/Previous walk
+/// that skips the pages with nothing to ask. The language page is the
+/// installer's. The self-test (--autotest) walks the pages without interaction;
+/// --gerar-po writes the translation files; --capturar=<folder> saves every
+/// page in PNG.
 unit RALMig.Tela.Principal;
 
 {$mode ObjFPC}{$H+}
@@ -10,79 +13,68 @@ unit RALMig.Tela.Principal;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, ExtCtrls, StdCtrls, Graphics,
-  RALInst.Tela.Temas,
-  RALMig.Tela.Estado, RALMig.Tela.Modelo, RALMig.Tela.Idioma, RALMig.Tela.Projeto,
-  RALMig.Tela.Versoes, RALMig.Tela.Previa, RALMig.Tela.Aplicar, RALMig.Tela.Conferir;
+  Classes, SysUtils, Forms, Controls, ExtCtrls, Graphics,
+  RALInst.Tela.Idioma, RALInst.Tela.Modelo, RALInst.Tela.Temas,
+  RALMig.Tela.Aplicar, RALMig.Tela.Binarios, RALMig.Tela.Conferir,
+  RALMig.Tela.Estado, RALMig.Tela.Pagina, RALMig.Tela.Previa, RALMig.Tela.Projeto,
+  RALMig.Tela.Relatorio, RALMig.Tela.Versoes;
 
 type
-  { TTelaMigPrincipal }
-
   /// The migrator window.
-  TTelaMigPrincipal = class(TForm)
+  TTelaMigPrincipal = class(TForm, IJanelaModelo)
+    ntPages: TNotebook;
+    procedure FormCreate(Sender: TObject);
   private
     FArgs: TArgumentosMig;
-    FBanner: TPanel;
-    FBotaoBack: TBotaoMig;
-    FBotaoNext: TBotaoMig;
-    FBotaoPic: TImage;
     FEstado: TEstadoMig;
-    FFundoPic: TImage;
-    FImBanner: TImage;
-    FImClose: TImage;
-    FImTema: TImage;
-    FLbMotivo: TLabel;
-    FLbVersao: TLabel;
-    FMovendo: boolean;
+    FIdioma: TLanguages;
     FPagina: integer;
     FPaginas: TList;
-    FPgAplicar: TPaginaAplicar;
-    FPgBinarios: TPaginaBinarios;
-    FPgConferir: TPaginaConferir;
-    FPgIdioma: TPaginaIdioma;
-    FPgPrevia: TPaginaPrevia;
-    FPgProjeto: TPaginaProjeto;
-    FPgRelatorio: TPaginaRelatorio;
-    FPgVersoes: TPaginaVersoes;
-    FPonto: TPoint;
+    FPgAplicar: TTelaAplicar;
+    FPgBinarios: TTelaBinarios;
+    FPgConferir: TTelaConferir;
+    FPgIdioma: TTelaIdioma;
+    FPgPrevia: TTelaPrevia;
+    FPgProjeto: TTelaProjeto;
+    FPgRelatorio: TTelaRelatorio;
+    FPgVersoes: TTelaVersoes;
     FTema: TThemes;
     procedure AutoTeste(AData: PtrInt);
-    procedure AvancarClick(Sender: TObject);
-    procedure BannerMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
-      X, Y: Integer);
-    procedure BannerMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure BannerMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
-      X, Y: Integer);
-    procedure CriarBanner;
-    procedure CriarPaginas;
-    procedure EscolherIdioma(Sender: TObject);
-    procedure FecharClick(Sender: TObject);
-    function Pagina(AIndice: integer): TPaginaMig;
-    function ProximaVisivel(AAPartirDe, ADirecao: integer): integer;
+    /// --capturar=<folder>: every page in both themes and the three languages,
+    /// into PNG files, then closes
+    procedure Capturar(AData: PtrInt);
+    /// Creates a page inside the notebook
+    function CriarPagina(AClasse: TTelaModeloClass): TTelaModelo;
     procedure Mostrar(AIndice: integer);
+    function Pagina(AIndice: integer): TTelaModelo;
     procedure PaginaMudou(Sender: TObject);
-    procedure TemaClick(Sender: TObject);
+    function ProximaVisivel(AAPartirDe, ADirecao: integer): integer;
+    procedure SetLanguage(AValue: TLanguages);
+    procedure SetTheme(AValue: TThemes);
     procedure TratarExcecao(Sender: TObject; E: Exception);
-    procedure VoltarClick(Sender: TObject);
-    procedure SetTema(AValue: TThemes);
   public
-    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    /// Moves to the next page (the one that skips nothing)
-    procedure Avancar;
-    /// Applies a language to every text of the window and of the core
-    procedure AplicarIdioma(const AIdioma: string);
-    /// Updates the Previous/Next buttons and the reason for a blocked Next
+    /// Updates the Previous/Next buttons of the page and the reason for a
+    /// blocked Next
     procedure AtualizarNavegacao;
+    /// Hint of the theme button while ATema is on
+    function DicaTema(ATema: TThemes): string;
     /// Developer tool: writes languages/ralmigrador.<lang>.po
     procedure GerarPO(const ALang: string);
     /// After creating: applies the command line and shows the first page
     procedure Iniciar(const AArgs: TArgumentosMig);
-    /// Moves to the previous page
-    procedure Voltar;
+    /// The page said Next: moves to the next page that skips nothing, or closes
+    /// after the last
+    procedure NextPage;
+    /// Moves to the previous page that skips nothing
+    procedure PriorPage;
+    /// The line under the banner
+    function TextoVersao: string;
+    /// Applies a language to every text of the window and of the core
+    procedure TrocarIdioma(const AIdioma: string);
 
     property Estado: TEstadoMig read FEstado;
-    property Tema: TThemes read FTema write SetTema;
+    property Tema: TThemes read FTema write SetTheme;
   end;
 
 var
@@ -90,9 +82,11 @@ var
 
 implementation
 
+{$R *.lfm}
+
 uses
-  RALInst.Traducao, RALInst.Versao, RALMig.Regras, RALMig.Tela.GeradorPO,
-  RALMig.Tela.Mensagens;
+  RALInst.Traducao, RALInst.Versao, RALInst.Tela.Captura, RALInst.Tela.Traducao,
+  RALMig.Regras, RALMig.Tela.GeradorPO, RALMig.Tela.Mensagens;
 
 const
   // a ordem das paginas
@@ -107,91 +101,40 @@ const
 
 { TTelaMigPrincipal }
 
-constructor TTelaMigPrincipal.Create(AOwner: TComponent);
+procedure TTelaMigPrincipal.FormCreate(Sender: TObject);
 begin
-  inherited Create(AOwner);
-  BorderStyle := bsNone;
-  Position := poScreenCenter;
-  ClientWidth := Esc(LARGURA_JANELA);
-  ClientHeight := Esc(ALTURA_JANELA);
   FEstado := TEstadoMig.Create;
   FPaginas := TList.Create;
   FPagina := -1;
-  FFundoPic := TImage.Create(Self);
-  FBotaoPic := TImage.Create(Self);
-  CriarPaginas;
-  CriarBanner;
+  FPgIdioma := TTelaIdioma(CriarPagina(TTelaIdioma));
+  FPgProjeto := TTelaProjeto(CriarPagina(TTelaProjeto));
+  FPgVersoes := TTelaVersoes(CriarPagina(TTelaVersoes));
+  FPgBinarios := TTelaBinarios(CriarPagina(TTelaBinarios));
+  FPgPrevia := TTelaPrevia(CriarPagina(TTelaPrevia));
+  FPgAplicar := TTelaAplicar(CriarPagina(TTelaAplicar));
+  FPgRelatorio := TTelaRelatorio(CriarPagina(TTelaRelatorio));
+  FPgConferir := TTelaConferir(CriarPagina(TTelaConferir));
   FTema := tLight;
-  SetTema(tDark);
+  SetTheme(tDark);
 end;
 
 destructor TTelaMigPrincipal.Destroy;
 begin
+  inherited Destroy;
+  // as paginas (do formulario) ja se foram: o estado que elas usavam vai depois
   FPaginas.Free;
   FEstado.Free;
-  inherited Destroy;
-end;
-
-procedure TTelaMigPrincipal.AplicarIdioma(const AIdioma: string);
-var
-  vInt: integer;
-begin
-  TraduzirMensagens(AIdioma);
-  FEstado.Idioma := AIdioma;
-  Caption := cmTituloJanela;
-  FLbVersao.Caption := Format(cmVersaoMigrador, [VersaoInstalador]);
-  if FTema = tDark then
-    FImTema.Hint := cmTemaClaro
-  else
-    FImTema.Hint := cmTemaEscuro;
-  for vInt := 0 to FPaginas.Count - 1 do
-    Pagina(vInt).AtualizarTextos;
-  if FPagina >= 0 then
-    AtualizarNavegacao;
 end;
 
 procedure TTelaMigPrincipal.AtualizarNavegacao;
 var
-  vPagina: TPaginaMig;
-  vMotivo: string;
-  vVoltar: integer;
+  vPagina: TTelaModelo;
 begin
   if FPagina < 0 then
     Exit;
   vPagina := Pagina(FPagina);
-  FBotaoNext.Texto := vPagina.RotuloAvancar;
-  FBotaoNext.Habilitar(vPagina.PodeAvancar(vMotivo));
-  FLbMotivo.Caption := vMotivo;
-  FLbMotivo.Visible := vMotivo <> '';
-  vVoltar := ProximaVisivel(FPagina - 1, -1);
-  FBotaoBack.Visible := (vVoltar >= 0) and vPagina.PodeVoltar;
-  FBotaoBack.Texto := cmVoltar;
-end;
-
-procedure TTelaMigPrincipal.Avancar;
-var
-  vPagina: TPaginaMig;
-  vMotivo: string;
-  vProxima: integer;
-begin
-  if FPagina < 0 then
-    Exit;
-  vPagina := Pagina(FPagina);
-  if not vPagina.PodeAvancar(vMotivo) then
-    Exit;
-  if not vPagina.AoAvancar then
-    Exit;
-  vProxima := ProximaVisivel(FPagina + 1, 1);
-  if vProxima < 0 then
-    Close
-  else
-    Mostrar(vProxima);
-end;
-
-procedure TTelaMigPrincipal.AvancarClick(Sender: TObject);
-begin
-  if FBotaoNext.Enabled then
-    Avancar;
+  if vPagina is TTelaMig then
+    TTelaMig(vPagina).AtualizarNavegacao(ProximaVisivel(FPagina - 1, -1) >= 0);
 end;
 
 procedure TTelaMigPrincipal.AutoTeste(AData: PtrInt);
@@ -221,7 +164,7 @@ begin
       // as paginas ate a previa, como o usuario as veria; nada e gravado
       for vInt := PG_PROJETO to PG_APLICAR do
       begin
-        if Pagina(vInt).Pular then
+        if (Pagina(vInt) is TTelaMig) and TTelaMig(Pagina(vInt)).Pular then
           Continue;
         Mostrar(vInt);
         Application.ProcessMessages;
@@ -258,115 +201,70 @@ begin
   Application.Terminate;
 end;
 
-procedure TTelaMigPrincipal.BannerMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+procedure TTelaMigPrincipal.Capturar(AData: PtrInt);
+var
+  vTema: TThemes;
+  vIdioma: TLanguages;
+  vInt: integer;
+  vPasta: string;
+  vErros: TStringList;
 begin
-  FPonto.X := X;
-  FPonto.Y := Y;
-  FMovendo := True;
-end;
-
-procedure TTelaMigPrincipal.BannerMouseMove(Sender: TObject; Shift: TShiftState;
-  X, Y: Integer);
-begin
-  if FMovendo then
-  begin
-    Left := Left + X - FPonto.X;
-    Top := Top + Y - FPonto.Y;
+  vPasta := PastaCaptura;
+  vErros := TStringList.Create;
+  try
+    for vTema := Low(TThemes) to High(TThemes) do
+    begin
+      SetTheme(vTema);
+      for vIdioma := Low(TLanguages) to High(TLanguages) do
+      begin
+        TrocarIdioma(CodigoIdioma(vIdioma));
+        // todas as paginas, ate as que a rodada pularia; nada e gravado (o
+        // Aplicar so grava ao avancar)
+        for vInt := 0 to FPaginas.Count - 1 do
+        begin
+          try
+            Mostrar(vInt);
+          except
+            on E: Exception do
+              vErros.Add(NomeCaptura('migrador', vInt, vTema, vIdioma) + ': ' +
+                E.Message);
+          end;
+          SalvarCaptura(Self, vPasta + NomeCaptura('migrador', vInt, vTema, vIdioma));
+        end;
+      end;
+    end;
+    if vErros.Count > 0 then
+      vErros.SaveToFile(vPasta + 'migrador-erros.txt');
+  finally
+    vErros.Free;
+    Application.Terminate;
   end;
 end;
 
-procedure TTelaMigPrincipal.BannerMouseUp(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+function TTelaMigPrincipal.CriarPagina(AClasse: TTelaModeloClass): TTelaModelo;
+var
+  vPage: TPage;
 begin
-  FMovendo := False;
-end;
+  vPage := TPage.Create(Self);
+  vPage.Parent := ntPages;
 
-procedure TTelaMigPrincipal.CriarBanner;
-begin
-  FBanner := TPanel.Create(Self);
-  FBanner.Parent := Self;
-  FBanner.BevelOuter := bvNone;
-  FBanner.ParentBackground := False;
-  FBanner.SetBounds(0, 0, ClientWidth, Esc(110));
-  FImBanner := TImage.Create(Self);
-  FImBanner.Parent := FBanner;
-  FImBanner.Align := alClient;
-  FImBanner.Center := True;
-  FImBanner.OnMouseDown := @BannerMouseDown;
-  FImBanner.OnMouseMove := @BannerMouseMove;
-  FImBanner.OnMouseUp := @BannerMouseUp;
-  GetResourceImage('BANNER', FImBanner);
-  FImClose := TImage.Create(Self);
-  FImClose.Parent := FBanner;
-  FImClose.Stretch := True;
-  FImClose.Cursor := crHandPoint;
-  FImClose.SetBounds(FBanner.Width - Esc(20), 0, Esc(20), Esc(20));
-  FImClose.Anchors := [akTop, akRight];
-  FImClose.OnClick := @FecharClick;
-  GetResourceImage('CLOSEICON', FImClose);
-  FImTema := TImage.Create(Self);
-  FImTema.Parent := FBanner;
-  FImTema.Stretch := True;
-  FImTema.Cursor := crHandPoint;
-  FImTema.ShowHint := True;
-  FImTema.SetBounds(Esc(10), Esc(8), Esc(30), Esc(28));
-  FImTema.OnClick := @TemaClick;
-  FLbVersao := TLabel.Create(Self);
-  FLbVersao.Parent := FBanner;
-  FLbVersao.AutoSize := False;
-  FLbVersao.Alignment := taCenter;
-  FLbVersao.SetBounds(0, Esc(88), FBanner.Width, Esc(18));
-  FBotaoNext := TBotaoMig.Create(Self);
-  FBotaoNext.Parent := Self;
-  FBotaoNext.SetBounds(ClientWidth - Esc(131), ClientHeight - Esc(47), Esc(121), Esc(37));
-  FBotaoNext.OnClick := @AvancarClick;
-  FBotaoBack := TBotaoMig.Create(Self);
-  FBotaoBack.Parent := Self;
-  FBotaoBack.SetBounds(Esc(10), ClientHeight - Esc(47), Esc(121), Esc(37));
-  FBotaoBack.OnClick := @VoltarClick;
-  FLbMotivo := TLabel.Create(Self);
-  FLbMotivo.Parent := Self;
-  FLbMotivo.AutoSize := False;
-  FLbMotivo.WordWrap := True;
-  FLbMotivo.Alignment := taCenter;
-  FLbMotivo.Layout := tlCenter;
-  FLbMotivo.Tag := -1;
-  FLbMotivo.Font.Color := RGBToColor(255, 170, 0);
-  FLbMotivo.SetBounds(Esc(150), ClientHeight - Esc(50), ClientWidth - Esc(300), Esc(44));
-  FLbMotivo.Visible := False;
-end;
-
-procedure TTelaMigPrincipal.CriarPaginas;
-
-  function Nova(AClasse: TPaginaMigClasse): TPaginaMig;
+  Result := AClasse.Create(Self);
+  Result.Parent := vPage;
+  Result.Align := alClient;
+  if Result is TTelaMig then
   begin
-    Result := AClasse.Criar(Self, FEstado);
-    Result.Parent := Self;
-    Result.OnMudou := @PaginaMudou;
-    FPaginas.Add(Result);
+    TTelaMig(Result).Estado := FEstado;
+    TTelaMig(Result).OnMudou := @PaginaMudou;
   end;
-
-begin
-  FPgIdioma := TPaginaIdioma(Nova(TPaginaIdioma));
-  FPgIdioma.OnEscolher := @EscolherIdioma;
-  FPgProjeto := TPaginaProjeto(Nova(TPaginaProjeto));
-  FPgVersoes := TPaginaVersoes(Nova(TPaginaVersoes));
-  FPgBinarios := TPaginaBinarios(Nova(TPaginaBinarios));
-  FPgPrevia := TPaginaPrevia(Nova(TPaginaPrevia));
-  FPgAplicar := TPaginaAplicar(Nova(TPaginaAplicar));
-  FPgRelatorio := TPaginaRelatorio(Nova(TPaginaRelatorio));
-  FPgConferir := TPaginaConferir(Nova(TPaginaConferir));
+  FPaginas.Add(Result);
 end;
 
-procedure TTelaMigPrincipal.EscolherIdioma(Sender: TObject);
+function TTelaMigPrincipal.DicaTema(ATema: TThemes): string;
 begin
-  AplicarIdioma(CodigoIdioma(FPgIdioma.Idioma));
-end;
-
-procedure TTelaMigPrincipal.FecharClick(Sender: TObject);
-begin
-  Close;
+  if ATema = tDark then
+    Result := cmTemaClaro
+  else
+    Result := cmTemaEscuro;
 end;
 
 procedure TTelaMigPrincipal.GerarPO(const ALang: string);
@@ -395,11 +293,16 @@ begin
   vIdioma := NormalizarIdioma(AArgs.Idioma);
   if vIdioma = '' then
     vIdioma := IdiomaDoSistema;
-  FPgIdioma.Idioma := IdiomaDoCodigo(vIdioma);
-  AplicarIdioma(vIdioma);
+  TrocarIdioma(vIdioma);
   if AArgs.Pasta <> '' then
     FPgProjeto.DefinirCaminho(AArgs.Pasta);
-  if AArgs.AutoTeste then
+  if PastaCaptura <> '' then
+  begin
+    // so as capturas: a primeira pagina mostrada e a que elas escolherem
+    Application.OnException := @TratarExcecao;
+    Application.QueueAsyncCall(@Capturar, 0);
+  end
+  else if AArgs.AutoTeste then
   begin
     Application.OnException := @TratarExcecao;
     Application.QueueAsyncCall(@AutoTeste, 0);
@@ -412,24 +315,45 @@ begin
 end;
 
 procedure TTelaMigPrincipal.Mostrar(AIndice: integer);
-var
-  vInt: integer;
 begin
-  for vInt := 0 to FPaginas.Count - 1 do
-    Pagina(vInt).Visible := vInt = AIndice;
   FPagina := AIndice;
+  ntPages.PageIndex := AIndice;
   Pagina(AIndice).AoMostrar;
   AtualizarNavegacao;
 end;
 
-function TTelaMigPrincipal.Pagina(AIndice: integer): TPaginaMig;
+procedure TTelaMigPrincipal.NextPage;
+var
+  vProxima: integer;
 begin
-  Result := TPaginaMig(FPaginas[AIndice]);
+  if FPagina < 0 then
+    Exit;
+  vProxima := ProximaVisivel(FPagina + 1, 1);
+  if vProxima < 0 then
+    Close
+  else
+    Mostrar(vProxima);
+end;
+
+function TTelaMigPrincipal.Pagina(AIndice: integer): TTelaModelo;
+begin
+  Result := TTelaModelo(FPaginas[AIndice]);
 end;
 
 procedure TTelaMigPrincipal.PaginaMudou(Sender: TObject);
 begin
   AtualizarNavegacao;
+end;
+
+procedure TTelaMigPrincipal.PriorPage;
+var
+  vAnterior: integer;
+begin
+  if FPagina <= 0 then
+    Exit;
+  vAnterior := ProximaVisivel(FPagina - 1, -1);
+  if vAnterior >= 0 then
+    Mostrar(vAnterior);
 end;
 
 function TTelaMigPrincipal.ProximaVisivel(AAPartirDe, ADirecao: integer): integer;
@@ -443,42 +367,31 @@ begin
     // a primeira pagina so entra quando o idioma nao veio da linha de comando
     if (vInt = PG_IDIOMA) and (NormalizarIdioma(FArgs.Idioma) <> '') then
       Exit;
-    if not Pagina(vInt).Pular then
+    if not ((Pagina(vInt) is TTelaMig) and TTelaMig(Pagina(vInt)).Pular) then
       Exit(vInt);
     Inc(vInt, ADirecao);
   end;
 end;
 
-procedure TTelaMigPrincipal.SetTema(AValue: TThemes);
+procedure TTelaMigPrincipal.SetLanguage(AValue: TLanguages);
+begin
+  TrocarIdioma(CodigoIdioma(AValue));
+end;
+
+procedure TTelaMigPrincipal.SetTheme(AValue: TThemes);
 var
   vInt: integer;
 begin
   if FTema = AValue then
     Exit;
   FTema := AValue;
-  GetResourceImage(Themes[AValue].Background, FFundoPic);
-  GetResourceImage(Themes[AValue].Button, FBotaoPic);
-  GetResourceImage(Themes[AValue].Theme, FImTema);
-  FBanner.Color := Themes[AValue].CorBanner;
-  FLbVersao.Font.Color := Themes[AValue].FontColor;
   for vInt := 0 to FPaginas.Count - 1 do
-    Pagina(vInt).DefinirTema(AValue, FFundoPic.Picture, FBotaoPic.Picture);
-  FBotaoNext.Picture.Assign(FBotaoPic.Picture);
-  FBotaoNext.CorTexto := Themes[AValue].FontColor;
-  FBotaoBack.Picture.Assign(FBotaoPic.Picture);
-  FBotaoBack.CorTexto := Themes[AValue].FontColor;
-  if FTema = tDark then
-    FImTema.Hint := cmTemaClaro
-  else
-    FImTema.Hint := cmTemaEscuro;
+    Pagina(vInt).Theme := AValue;
 end;
 
-procedure TTelaMigPrincipal.TemaClick(Sender: TObject);
+function TTelaMigPrincipal.TextoVersao: string;
 begin
-  if FTema = tDark then
-    Tema := tLight
-  else
-    Tema := tDark;
+  Result := Format(cmVersaoMigrador, [VersaoInstalador]);
 end;
 
 procedure TTelaMigPrincipal.TratarExcecao(Sender: TObject; E: Exception);
@@ -498,22 +411,22 @@ begin
   Application.Terminate;
 end;
 
-procedure TTelaMigPrincipal.Voltar;
+procedure TTelaMigPrincipal.TrocarIdioma(const AIdioma: string);
 var
-  vAnterior: integer;
+  vInt: integer;
 begin
-  if FPagina <= 0 then
-    Exit;
-  if not Pagina(FPagina).PodeVoltar then
-    Exit;
-  vAnterior := ProximaVisivel(FPagina - 1, -1);
-  if vAnterior >= 0 then
-    Mostrar(vAnterior);
-end;
-
-procedure TTelaMigPrincipal.VoltarClick(Sender: TObject);
-begin
-  Voltar;
+  FIdioma := IdiomaDoCodigo(AIdioma);
+  // as resourcestring e os textos dos .lfm; cada pagina reescreve os seus
+  AplicarIdioma(AIdioma);
+  FEstado.Idioma := AIdioma;
+  Caption := cmTituloJanela;
+  for vInt := 0 to FPaginas.Count - 1 do
+  begin
+    Pagina(vInt).Language := FIdioma;
+    Pagina(vInt).AtualizarTextos;
+  end;
+  if FPagina >= 0 then
+    AtualizarNavegacao;
 end;
 
 end.

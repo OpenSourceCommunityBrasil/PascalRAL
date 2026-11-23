@@ -9,31 +9,31 @@ interface
 
 uses
   Classes, SysUtils, Controls, StdCtrls, Forms, Dialogs, Graphics,
-  RALMig.Conferir, RALMig.Tela.Estado, RALMig.Tela.Modelo;
+  RALMig.Conferir, RALMig.Tela.Pagina;
 
 type
   /// Compile-to-check page.
-  TPaginaConferir = class(TPaginaMig)
+  TTelaConferir = class(TTelaMig)
+    cbProjeto: TComboBox;
+    lbCompilar: TLabel;
+    lbDica: TLabel;
+    lbIDEs: TLabel;
+    lbOutra: TLabel;
+    lbProjeto: TLabel;
+    lbxIDEs: TListBox;
+    mmSaida: TMemo;
+    procedure lbCompilarClick(Sender: TObject);
+    procedure lbOutraClick(Sender: TObject);
+    procedure lbxIDEsSelectionChange(Sender: TObject; User: boolean);
   private
-    FBtnCompilar: TBotaoMig;
-    FBtnOutra: TBotaoMig;
     FCompilando: boolean;
-    FComboProjeto: TComboBox;
-    FDica: TLabel;
     FIDEs: TIDEsConferencia;
-    FLbIDEs: TLabel;
-    FLbProjeto: TLabel;
-    FListaIDEs: TListBox;
-    FSaida: TMemo;
-    procedure CompilarClick(Sender: TObject);
-    procedure IDESelecionada(Sender: TObject; AUsuario: boolean);
     procedure LogarLinha(const ALinha: string);
-    procedure OutraClick(Sender: TObject);
     procedure PreencherIDEs;
     procedure PreencherProjetos;
     function ProjetoAbsoluto: string;
   public
-    constructor Criar(AOwner: TComponent; AEstado: TEstadoMig); override;
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure AoMostrar; override;
     procedure AtualizarTextos; override;
@@ -41,6 +41,8 @@ type
   end;
 
 implementation
+
+{$R *.lfm}
 
 uses
   RALInst.IDE, RALInst.Processo, RALMig.Regras, RALMig.Tela.Mensagens;
@@ -50,36 +52,21 @@ begin
   Application.ProcessMessages;
 end;
 
-{ TPaginaConferir }
+{ TTelaConferir }
 
-constructor TPaginaConferir.Criar(AOwner: TComponent; AEstado: TEstadoMig);
+constructor TTelaConferir.Create(AOwner: TComponent);
 begin
-  inherited Criar(AOwner, AEstado);
+  inherited Create(AOwner);
   FIDEs := TIDEsConferencia.Create(True);
-  FDica := NovoRotulo(MARGEM, 186, LARGURA_UTIL);
-  Colocar(FDica, MARGEM, 186, LARGURA_UTIL, 44);
-  FLbIDEs := NovoRotulo(MARGEM, 236, LARGURA_UTIL);
-  FListaIDEs := NovaLista(MARGEM, 258, LARGURA_UTIL, 96);
-  FListaIDEs.OnSelectionChange := @IDESelecionada;
-  FBtnOutra := NovoBotao(MARGEM, 362, 220, 32);
-  FBtnOutra.OnClick := @OutraClick;
-  FLbProjeto := NovoRotulo(MARGEM, 404, 300);
-  FComboProjeto := TComboBox.Create(Self);
-  FComboProjeto.Parent := Self;
-  Colocar(FComboProjeto, MARGEM, 426, 540, 28);
-  FComboProjeto.Style := csDropDownList;
-  FBtnCompilar := NovoBotao(MARGEM + 560, 424, 180, 32);
-  FBtnCompilar.OnClick := @CompilarClick;
-  FSaida := NovoMemo(Self, MARGEM, 464, LARGURA_UTIL, 112);
 end;
 
-destructor TPaginaConferir.Destroy;
+destructor TTelaConferir.Destroy;
 begin
   FIDEs.Free;
   inherited Destroy;
 end;
 
-procedure TPaginaConferir.AoMostrar;
+procedure TTelaConferir.AoMostrar;
 begin
   Screen.Cursor := crHourGlass;
   try
@@ -92,75 +79,65 @@ begin
   PreencherIDEs;
 end;
 
-procedure TPaginaConferir.AtualizarTextos;
+procedure TTelaConferir.AtualizarTextos;
 begin
+  inherited AtualizarTextos;
   Titular(cmConfTitulo, cmConfSub);
-  FLbIDEs.Caption := Format(cmConfIDEs, [Estado.Para]);
-  FBtnOutra.Texto := cmConfOutraIDE;
-  FLbProjeto.Caption := cmConfProjeto;
-  FBtnCompilar.Texto := cmCompilar;
+  lbIDEs.Caption := Format(cmConfIDEs, [Estado.Para]);
+  lbOutra.Caption := cmConfOutraIDE;
+  lbProjeto.Caption := cmConfProjeto;
+  lbCompilar.Caption := cmCompilar;
   if FIDEs.Count = 0 then
-    FDica.Caption := Format(cmConfNenhuma, [Estado.Para])
+    lbDica.Caption := Format(cmConfNenhuma, [Estado.Para])
   else
-    FDica.Caption := cmConfDica;
+    lbDica.Caption := cmConfDica;
 end;
 
-procedure TPaginaConferir.CompilarClick(Sender: TObject);
+procedure TTelaConferir.lbCompilarClick(Sender: TObject);
 var
   vIDE: TIDEConferencia;
   vErro: string;
   vOk: boolean;
 begin
-  if FCompilando or not FBtnCompilar.Enabled then
+  if FCompilando or not lbCompilar.Enabled then
     Exit;
-  if FListaIDEs.ItemIndex < 0 then
+  if lbxIDEs.ItemIndex < 0 then
   begin
-    FSaida.Lines.Add(emConfSemIDE);
+    mmSaida.Lines.Add(emConfSemIDE);
     Exit;
   end;
   if ProjetoAbsoluto = '' then
   begin
-    FSaida.Lines.Add(emConfSemProjeto);
+    mmSaida.Lines.Add(emConfSemProjeto);
     Exit;
   end;
-  vIDE := FIDEs[FListaIDEs.ItemIndex];
+  vIDE := FIDEs[lbxIDEs.ItemIndex];
   FCompilando := True;
   AoEsperarProcesso := @ProcessarMensagens;
   Screen.Cursor := crHourGlass;
-  FBtnCompilar.Habilitar(False);
+  HabilitarLink(lbCompilar, False);
   try
-    FSaida.Clear;
-    FSaida.Lines.Add(cmCompilando);
+    mmSaida.Clear;
+    mmSaida.Lines.Add(cmCompilando);
     vOk := CompilarProjeto(vIDE.IDE, ProjetoAbsoluto, vIDE.RaizRAL, vErro,
       @LogarLinha);
-    FSaida.Lines.Add('');
+    mmSaida.Lines.Add('');
     if vOk then
-      FSaida.Lines.Add(cmCompilou)
+      mmSaida.Lines.Add(cmCompilou)
     else
     begin
-      FSaida.Lines.Add(cmNaoCompilou);
-      FSaida.Lines.Add(vErro);
+      mmSaida.Lines.Add(cmNaoCompilou);
+      mmSaida.Lines.Add(vErro);
     end;
   finally
     Screen.Cursor := crDefault;
     AoEsperarProcesso := nil;
-    FBtnCompilar.Habilitar(True);
+    HabilitarLink(lbCompilar, True);
     FCompilando := False;
   end;
 end;
 
-procedure TPaginaConferir.IDESelecionada(Sender: TObject; AUsuario: boolean);
-begin
-  PreencherProjetos;
-end;
-
-procedure TPaginaConferir.LogarLinha(const ALinha: string);
-begin
-  FSaida.Lines.Add(ALinha);
-  Application.ProcessMessages;
-end;
-
-procedure TPaginaConferir.OutraClick(Sender: TObject);
+procedure TTelaConferir.lbOutraClick(Sender: TObject);
 var
   vIDE, vRAL: TSelectDirectoryDialog;
   vNova: TIDEConferencia;
@@ -182,7 +159,7 @@ begin
       Exit;
     end;
     PreencherIDEs;
-    FListaIDEs.ItemIndex := FListaIDEs.Items.Count - 1;
+    lbxIDEs.ItemIndex := lbxIDEs.Items.Count - 1;
     PreencherProjetos;
   finally
     vRAL.Free;
@@ -190,53 +167,64 @@ begin
   end;
 end;
 
-procedure TPaginaConferir.PreencherIDEs;
+procedure TTelaConferir.lbxIDEsSelectionChange(Sender: TObject; User: boolean);
+begin
+  PreencherProjetos;
+end;
+
+procedure TTelaConferir.LogarLinha(const ALinha: string);
+begin
+  mmSaida.Lines.Add(ALinha);
+  Application.ProcessMessages;
+end;
+
+procedure TTelaConferir.PreencherIDEs;
 var
   vInt: integer;
 begin
-  FListaIDEs.Items.Clear;
+  lbxIDEs.Items.Clear;
   for vInt := 0 to FIDEs.Count - 1 do
-    FListaIDEs.Items.Add(FIDEs[vInt].Descricao);
-  if FListaIDEs.Items.Count > 0 then
-    FListaIDEs.ItemIndex := 0;
+    lbxIDEs.Items.Add(FIDEs[vInt].Descricao);
+  if lbxIDEs.Items.Count > 0 then
+    lbxIDEs.ItemIndex := 0;
   PreencherProjetos;
   AtualizarTextos;
 end;
 
-procedure TPaginaConferir.PreencherProjetos;
+procedure TTelaConferir.PreencherProjetos;
 var
   vInt: integer;
   vExt: string;
   vDelphi: boolean;
 begin
-  FComboProjeto.Items.Clear;
-  if FListaIDEs.ItemIndex >= 0 then
+  cbProjeto.Items.Clear;
+  if lbxIDEs.ItemIndex >= 0 then
   begin
-    vDelphi := FIDEs[FListaIDEs.ItemIndex].IDE.Tipo = tiDelphi;
+    vDelphi := FIDEs[lbxIDEs.ItemIndex].IDE.Tipo = tiDelphi;
     for vInt := 0 to Estado.Projetos.Count - 1 do
     begin
       vExt := LowerCase(ExtractFileExt(Estado.Projetos[vInt]));
       // o .dproj e o .dpr sao o mesmo projeto: fica o que a IDE abre
       if (vDelphi and ((vExt = '.dproj') or (vExt = '.dpr'))) or
          ((not vDelphi) and (vExt = '.lpi')) then
-        FComboProjeto.Items.Add(Estado.Projetos[vInt]);
+        cbProjeto.Items.Add(Estado.Projetos[vInt]);
     end;
   end;
-  if FComboProjeto.Items.Count > 0 then
-    FComboProjeto.ItemIndex := 0;
-  FBtnCompilar.Habilitar(FComboProjeto.Items.Count > 0);
+  if cbProjeto.Items.Count > 0 then
+    cbProjeto.ItemIndex := 0;
+  HabilitarLink(lbCompilar, cbProjeto.Items.Count > 0);
 end;
 
-function TPaginaConferir.ProjetoAbsoluto: string;
+function TTelaConferir.ProjetoAbsoluto: string;
 begin
   Result := '';
-  if FComboProjeto.ItemIndex < 0 then
+  if cbProjeto.ItemIndex < 0 then
     Exit;
   Result := Estado.PastaProjeto + StringReplace(
-    FComboProjeto.Items[FComboProjeto.ItemIndex], '/', PathDelim, [rfReplaceAll]);
+    cbProjeto.Items[cbProjeto.ItemIndex], '/', PathDelim, [rfReplaceAll]);
 end;
 
-function TPaginaConferir.RotuloAvancar: string;
+function TTelaConferir.RotuloAvancar: string;
 begin
   Result := cmConcluir;
 end;

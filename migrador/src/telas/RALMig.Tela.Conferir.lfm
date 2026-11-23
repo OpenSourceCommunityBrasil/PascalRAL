@@ -1,0 +1,80 @@
+inherited TelaConferir: TTelaConferir
+  object lbDica: TLabel[9]
+    Left = 48
+    Height = 36
+    Top = 164
+    Width = 604
+    AutoSize = False
+    ParentColor = False
+    WordWrap = True
+  end
+  object lbIDEs: TLabel[10]
+    Left = 48
+    Height = 16
+    Top = 204
+    Width = 604
+    AutoSize = False
+    ParentColor = False
+  end
+  object lbxIDEs: TListBox[11]
+    Left = 48
+    Height = 90
+    Top = 222
+    Width = 604
+    ItemHeight = 0
+    TabOrder = 1
+    OnSelectionChange = lbxIDEsSelectionChange
+  end
+  object lbOutra: TLabel[12]
+    Cursor = crHandPoint
+    Left = 48
+    Height = 18
+    Top = 318
+    Width = 260
+    AutoSize = False
+    Font.Style = [fsUnderline]
+    ParentColor = False
+    ParentFont = False
+    OnClick = lbOutraClick
+  end
+  object lbProjeto: TLabel[13]
+    Left = 48
+    Height = 16
+    Top = 344
+    Width = 460
+    AutoSize = False
+    ParentColor = False
+  end
+  object cbProjeto: TComboBox[14]
+    Left = 48
+    Height = 23
+    Top = 362
+    Width = 470
+    ItemHeight = 15
+    Style = csDropDownList
+    TabOrder = 2
+  end
+  object lbCompilar: TLabel[15]
+    Cursor = crHandPoint
+    Left = 530
+    Height = 18
+    Top = 367
+    Width = 122
+    Alignment = taRightJustify
+    AutoSize = False
+    Font.Style = [fsBold, fsUnderline]
+    ParentColor = False
+    ParentFont = False
+    OnClick = lbCompilarClick
+  end
+  object mmSaida: TMemo[16]
+    Left = 48
+    Height = 134
+    Top = 400
+    Width = 604
+    ReadOnly = True
+    ScrollBars = ssAutoBoth
+    TabOrder = 3
+    WordWrap = False
+  end
+end

@@ -1,0 +1,20 @@
+object TelaMigPrincipal: TTelaMigPrincipal
+  Left = 379
+  Height = 600
+  Top = 250
+  Width = 700
+  BorderStyle = bsNone
+  Caption = ''
+  ClientHeight = 600
+  ClientWidth = 700
+  OnCreate = FormCreate
+  Position = poScreenCenter
+  object ntPages: TNotebook
+    Left = 0
+    Height = 600
+    Top = 0
+    Width = 700
+    Align = alClient
+    TabOrder = 0
+  end
+end

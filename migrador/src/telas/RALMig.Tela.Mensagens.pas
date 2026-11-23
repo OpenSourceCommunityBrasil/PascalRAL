@@ -23,13 +23,9 @@ resourcestring
   cmConferir = 'Conferir >';
   cmConcluir = 'Concluir';
 
-  // RALMig.Tela.Modelo
+  // RALMig.Tela.Pagina
   cmSim = 'Sim';
   cmNao = 'Não';
-
-  // RALMig.Tela.Idioma
-  cmIdiomaTitulo = 'Idioma';
-  cmIdiomaSub = 'Escolha o idioma do migrador.';
 
   // RALMig.Tela.Projeto
   cmProjetoTitulo = 'Projeto';
@@ -70,7 +66,7 @@ resourcestring
     'migrador não volta versões.';
   emMesmaVersao = 'A origem e o destino são a mesma versão: não há o que migrar.';
 
-  // RALMig.Tela.Versoes (formulários binários)
+  // RALMig.Tela.Binarios
   cmBinTitulo = 'Formulários binários';
   cmBinSub = 'Alguns formulários estão salvos no formato binário.';
   cmBinExplicacao = 'O migrador só edita formulários em texto. Estes formulários podem ' +
@@ -110,7 +106,7 @@ resourcestring
     'desfazer.';
   emTelaGravar = 'Não foi possível gravar: %s';
 
-  // RALMig.Tela.Aplicar (relatório)
+  // RALMig.Tela.Relatorio
   cmRelTitulo = 'Relatório';
   cmRelSub = 'O que foi feito e o que ainda precisa de você.';
   cmRelNaoAplicada = 'A migração não está aplicada.';

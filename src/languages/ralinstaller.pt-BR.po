@@ -1962,6 +1962,11 @@ msgctxt "TTelaRecursos.lbWin64.Caption"
 msgid "Também Win64 (pacotes de runtime e library path)"
 msgstr ""
 
+#: TTelaRecursos.lbSoRuntime.Caption
+msgctxt "TTelaRecursos.lbSoRuntime.Caption"
+msgid "Instalar sem componentes na IDE (só runtime: compila os pacotes para os projetos)"
+msgstr ""
+
 #: TTelaRecursos.lbMarcarTodos.Caption
 msgctxt "TTelaRecursos.lbMarcarTodos.Caption"
 msgid "Selecionar todos"

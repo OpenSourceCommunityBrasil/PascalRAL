@@ -6,6 +6,171 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: RAL Migrator\n"
 
+#: TTelaIdioma.lbNext.Caption
+msgctxt "TTelaIdioma.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: TTelaIdioma.lbBack.Caption
+msgctxt "TTelaIdioma.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: TTelaIdioma.lVersion.Caption
+msgctxt "TTelaIdioma.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Instalador Versión 1.0"
+
+#: TTelaIdioma.imTheme.Hint
+msgctxt "TTelaIdioma.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: TTelaIdioma.lbSubTitle.Caption
+msgctxt "TTelaIdioma.lbSubTitle.Caption"
+msgid "Escolha o Idioma"
+msgstr "Elija el idioma"
+
+#: TTelaProjeto.lbNext.Caption
+msgctxt "TTelaProjeto.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: TTelaProjeto.lbBack.Caption
+msgctxt "TTelaProjeto.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: TTelaProjeto.lVersion.Caption
+msgctxt "TTelaProjeto.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Instalador Versión 1.0"
+
+#: TTelaProjeto.imTheme.Hint
+msgctxt "TTelaProjeto.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: TTelaVersoes.lbNext.Caption
+msgctxt "TTelaVersoes.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: TTelaVersoes.lbBack.Caption
+msgctxt "TTelaVersoes.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: TTelaVersoes.lVersion.Caption
+msgctxt "TTelaVersoes.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Instalador Versión 1.0"
+
+#: TTelaVersoes.imTheme.Hint
+msgctxt "TTelaVersoes.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: TTelaBinarios.lbNext.Caption
+msgctxt "TTelaBinarios.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: TTelaBinarios.lbBack.Caption
+msgctxt "TTelaBinarios.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: TTelaBinarios.lVersion.Caption
+msgctxt "TTelaBinarios.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Instalador Versión 1.0"
+
+#: TTelaBinarios.imTheme.Hint
+msgctxt "TTelaBinarios.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: TTelaPrevia.lbNext.Caption
+msgctxt "TTelaPrevia.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: TTelaPrevia.lbBack.Caption
+msgctxt "TTelaPrevia.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: TTelaPrevia.lVersion.Caption
+msgctxt "TTelaPrevia.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Instalador Versión 1.0"
+
+#: TTelaPrevia.imTheme.Hint
+msgctxt "TTelaPrevia.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: TTelaAplicar.lbNext.Caption
+msgctxt "TTelaAplicar.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: TTelaAplicar.lbBack.Caption
+msgctxt "TTelaAplicar.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: TTelaAplicar.lVersion.Caption
+msgctxt "TTelaAplicar.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Instalador Versión 1.0"
+
+#: TTelaAplicar.imTheme.Hint
+msgctxt "TTelaAplicar.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: TTelaRelatorio.lbNext.Caption
+msgctxt "TTelaRelatorio.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: TTelaRelatorio.lbBack.Caption
+msgctxt "TTelaRelatorio.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: TTelaRelatorio.lVersion.Caption
+msgctxt "TTelaRelatorio.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Instalador Versión 1.0"
+
+#: TTelaRelatorio.imTheme.Hint
+msgctxt "TTelaRelatorio.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
+#: TTelaConferir.lbNext.Caption
+msgctxt "TTelaConferir.lbNext.Caption"
+msgid "Próximo >"
+msgstr "Siguiente >"
+
+#: TTelaConferir.lbBack.Caption
+msgctxt "TTelaConferir.lbBack.Caption"
+msgid "< Anterior"
+msgstr "< Anterior"
+
+#: TTelaConferir.lVersion.Caption
+msgctxt "TTelaConferir.lVersion.Caption"
+msgid "Instalador Versão 1.0"
+msgstr "Instalador Versión 1.0"
+
+#: TTelaConferir.imTheme.Hint
+msgctxt "TTelaConferir.imTheme.Hint"
+msgid "Claro"
+msgstr "Claro"
+
 #: ralmig.console.mensagens.emcliuso
 msgid "Uso: ralmigra detectar|previa|aplicar|desfazer|conferir|inventario <pasta> [opções]. Use ralmigra --ajuda para ver tudo."
 msgstr "Uso: ralmigra detectar|previa|aplicar|desfazer|conferir|inventario <carpeta> [opciones]. Use ralmigra --ajuda para verlo todo."
@@ -346,6 +511,10 @@ msgstr "En %arquivo%, línea %linha%: %nome% ya no existe en el servidor; borre 
 msgid "In %arquivo%, line %linha%: rename %de% to %para% if %variavel% is a %classe%."
 msgstr "En %arquivo%, línea %linha%: renombre %de% a %para% si %variavel% es un %classe%."
 
+#: ralmig.acoes.codigo.rscodescrito
+msgid "Written right after the object is created: %trecho%"
+msgstr "Escrito justo después de crear el objeto: %trecho%"
+
 #: ralmig.acoes.codigo.rscodsemtexto
 msgid "See the migration notes of the RAL."
 msgstr "Vea las notas de migración de RAL."
@@ -384,7 +553,7 @@ msgstr "Aplicar"
 
 #: ralmig.tela.mensagens.cmconferir
 msgid "Conferir >"
-msgstr "Comprobar >"
+msgstr "Verificar >"
 
 #: ralmig.tela.mensagens.cmconcluir
 msgid "Concluir"
@@ -397,14 +566,6 @@ msgstr "Sí"
 #: ralmig.tela.mensagens.cmnao
 msgid "Não"
 msgstr "No"
-
-#: ralmig.tela.mensagens.cmidiomatitulo
-msgid "Idioma"
-msgstr "Idioma"
-
-#: ralmig.tela.mensagens.cmidiomasub
-msgid "Escolha o idioma do migrador."
-msgstr "Elija el idioma del migrador."
 
 #: ralmig.tela.mensagens.cmprojetotitulo
 msgid "Projeto"
@@ -2513,10 +2674,10 @@ msgstr "El archivo %s no se migró: %s"
 #: ralmig.motor.cmmotorignoradofazer
 msgid "Converta o formulário para texto e rode o migrador de novo."
 msgstr "Convierta el formulario a texto y ejecute el migrador de nuevo."
+
 #: ralmig.motor.cmmotorignoradocorrigir
 msgid "Abra %s na IDE ou num editor, corrija o que o motivo aponta (linha %d) e rode o migrador de novo."
 msgstr "Abra %s en el IDE o en un editor, corrija lo que indica el motivo (línea %d) y ejecute el migrador de nuevo."
-
 
 #: ralmig.deteccao.cmdetclasse
 msgid "classe %s"
@@ -2533,62 +2694,6 @@ msgstr " (+%d)"
 #: ralmig.deteccao.cmdetsemfaixa
 msgid "nenhuma"
 msgstr "ninguna"
-
-#: ralmig.mensagens.emcopiasempasta
-msgid "A pasta do projeto não existe: %s"
-msgstr "La carpeta del proyecto no existe: %s"
-
-#: ralmig.mensagens.emcopiasemarquivos
-msgid "Não há arquivos para guardar na cópia de segurança."
-msgstr "No hay archivos que guardar en la copia de seguridad."
-
-#: ralmig.mensagens.emcopiacaminhoinvalido
-msgid "Caminho fora da pasta do projeto, recusado: %s"
-msgstr "Ruta fuera de la carpeta del proyecto, rechazada: %s"
-
-#: ralmig.mensagens.emcopianaocriada
-msgid "Não foi possível criar a cópia de segurança %s: %s"
-msgstr "No fue posible crear la copia de seguridad %s: %s"
-
-#: ralmig.mensagens.emcopianaoexiste
-msgid "A cópia de segurança não existe: %s"
-msgstr "La copia de seguridad no existe: %s"
-
-#: ralmig.mensagens.emcopiailegivel
-msgid "A cópia de segurança %s não pôde ser lida: %s"
-msgstr "No se pudo leer la copia de seguridad %s: %s"
-
-#: ralmig.mensagens.emcopiasemmanifesto
-msgid "A cópia de segurança %s não tem a lista de arquivos (_manifesto.txt): não foi criada pelo migrador."
-msgstr "La copia de seguridad %s no tiene la lista de archivos (_manifesto.txt): no fue creada por el migrador."
-
-#: ralmig.mensagens.emcopianaorestaurada
-msgid "Não foi possível restaurar %s: %s"
-msgstr "No fue posible restaurar %s: %s"
-
-#: ralmig.mensagens.emcopiadiferente
-msgid "Depois de restaurar, %s não ficou igual ao original."
-msgstr "Después de restaurar, %s no quedó igual al original."
-
-#: ralmig.mensagens.emcopiasemregistro
-msgid "Não foi possível registrar o estado dos arquivos depois da migração: %s"
-msgstr "No fue posible registrar el estado de los archivos después de la migración: %s"
-
-#: ralmig.mensagens.wmcopiamudadodepois
-msgid "Este arquivo foi alterado depois da migração e a restauração o sobrescreveu: %s"
-msgstr "Este archivo fue modificado después de la migración y la restauración lo sobrescribió: %s"
-
-#: ralmig.mensagens.wmgitcommudancas
-msgid "A pasta está num repositório git com mudanças ainda não commitadas (%s). Faça o commit antes de migrar para poder comparar e desfazer pelo git."
-msgstr "La carpeta está en un repositorio git con cambios aún sin commit (%s). Haga el commit antes de migrar para poder comparar y deshacer con git."
-
-#: ralmig.mensagens.cmpreviasemmudanca
-msgid "Sem mudanças."
-msgstr "Sin cambios."
-
-#: ralmig.mensagens.cmpreviaresumo
-msgid "+%d linha(s) acrescentada(s), -%d linha(s) tirada(s)"
-msgstr "+%d línea(s) agregada(s), -%d línea(s) quitada(s)"
 
 #: ralmig.relatorio.rmtitulo
 msgid "Migração do RAL %s para %s"
@@ -2714,6 +2819,62 @@ msgstr "Wiki"
 msgid "Este relatório foi gravado depois da migração e não faz parte do desfazer: ele continua aqui depois de desfazer; apague-o à mão se quiser."
 msgstr "Este informe se grabó después de la migración y no forma parte del deshacer: sigue aquí después de deshacer; bórrelo a mano si quiere."
 
+#: ralmig.mensagens.emcopiasempasta
+msgid "A pasta do projeto não existe: %s"
+msgstr "La carpeta del proyecto no existe: %s"
+
+#: ralmig.mensagens.emcopiasemarquivos
+msgid "Não há arquivos para guardar na cópia de segurança."
+msgstr "No hay archivos que guardar en la copia de seguridad."
+
+#: ralmig.mensagens.emcopiacaminhoinvalido
+msgid "Caminho fora da pasta do projeto, recusado: %s"
+msgstr "Ruta fuera de la carpeta del proyecto, rechazada: %s"
+
+#: ralmig.mensagens.emcopianaocriada
+msgid "Não foi possível criar a cópia de segurança %s: %s"
+msgstr "No fue posible crear la copia de seguridad %s: %s"
+
+#: ralmig.mensagens.emcopianaoexiste
+msgid "A cópia de segurança não existe: %s"
+msgstr "La copia de seguridad no existe: %s"
+
+#: ralmig.mensagens.emcopiailegivel
+msgid "A cópia de segurança %s não pôde ser lida: %s"
+msgstr "No se pudo leer la copia de seguridad %s: %s"
+
+#: ralmig.mensagens.emcopiasemmanifesto
+msgid "A cópia de segurança %s não tem a lista de arquivos (_manifesto.txt): não foi criada pelo migrador."
+msgstr "La copia de seguridad %s no tiene la lista de archivos (_manifesto.txt): no fue creada por el migrador."
+
+#: ralmig.mensagens.emcopianaorestaurada
+msgid "Não foi possível restaurar %s: %s"
+msgstr "No fue posible restaurar %s: %s"
+
+#: ralmig.mensagens.emcopiadiferente
+msgid "Depois de restaurar, %s não ficou igual ao original."
+msgstr "Después de restaurar, %s no quedó igual al original."
+
+#: ralmig.mensagens.emcopiasemregistro
+msgid "Não foi possível registrar o estado dos arquivos depois da migração: %s"
+msgstr "No fue posible registrar el estado de los archivos después de la migración: %s"
+
+#: ralmig.mensagens.wmcopiamudadodepois
+msgid "Este arquivo foi alterado depois da migração e a restauração o sobrescreveu: %s"
+msgstr "Este archivo fue modificado después de la migración y la restauración lo sobrescribió: %s"
+
+#: ralmig.mensagens.wmgitcommudancas
+msgid "A pasta está num repositório git com mudanças ainda não commitadas (%s). Faça o commit antes de migrar para poder comparar e desfazer pelo git."
+msgstr "La carpeta está en un repositorio git con cambios aún sin commit (%s). Haga el commit antes de migrar para poder comparar y deshacer con git."
+
+#: ralmig.mensagens.cmpreviasemmudanca
+msgid "Sem mudanças."
+msgstr "Sin cambios."
+
+#: ralmig.mensagens.cmpreviaresumo
+msgid "+%d linha(s) acrescentada(s), -%d linha(s) tirada(s)"
+msgstr "+%d línea(s) agregada(s), -%d línea(s) quitada(s)"
+
 #: ralmig.validacao.cmvalclasse
 msgid "Class %s not found: a classe %s do objeto %s não existe no RAL %s."
 msgstr "Class %s not found: la clase %s del objeto %s no existe en RAL %s."
@@ -2785,8 +2946,4 @@ msgstr "recibo %s"
 #: ralmig.conferir.cmconfdescricao
 msgid "%s, RAL em %s"
 msgstr "%s, RAL en %s"
-
-#: ralmig.acoes.codigo.rscodescrito
-msgid "Written right after the object is created: %trecho%"
-msgstr "Escrito justo después de crear el objeto: %trecho%"
 

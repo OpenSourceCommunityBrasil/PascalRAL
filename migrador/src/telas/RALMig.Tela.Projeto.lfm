@@ -1,0 +1,104 @@
+inherited TelaProjeto: TTelaProjeto
+  object lbCaminho: TLabel[9]
+    Left = 48
+    Height = 16
+    Top = 166
+    Width = 604
+    AutoSize = False
+    ParentColor = False
+  end
+  object edCaminho: TEdit[10]
+    Left = 48
+    Height = 23
+    Top = 184
+    Width = 460
+    TabOrder = 1
+    OnEditingDone = edCaminhoEditingDone
+  end
+  object lbPasta: TLabel[11]
+    Cursor = crHandPoint
+    Left = 516
+    Height = 18
+    Top = 189
+    Width = 64
+    Alignment = taCenter
+    AutoSize = False
+    Font.Style = [fsUnderline]
+    ParentColor = False
+    ParentFont = False
+    OnClick = lbPastaClick
+  end
+  object lbArquivo: TLabel[12]
+    Cursor = crHandPoint
+    Left = 584
+    Height = 18
+    Top = 189
+    Width = 68
+    Alignment = taCenter
+    AutoSize = False
+    Font.Style = [fsUnderline]
+    ParentColor = False
+    ParentFont = False
+    OnClick = lbArquivoClick
+  end
+  object lbAchados: TLabel[13]
+    Left = 48
+    Height = 16
+    Top = 222
+    Width = 604
+    AutoSize = False
+    ParentColor = False
+  end
+  object lbxProjetos: TListBox[14]
+    Left = 48
+    Height = 110
+    Top = 240
+    Width = 604
+    ItemHeight = 0
+    TabOrder = 2
+  end
+  object lbForaTitulo: TLabel[15]
+    Left = 48
+    Height = 16
+    Top = 358
+    Width = 604
+    AutoSize = False
+    ParentColor = False
+  end
+  object clbFora: TCheckListBox[16]
+    Left = 48
+    Height = 80
+    Top = 376
+    Width = 604
+    ItemHeight = 0
+    TabOrder = 3
+    OnClickCheck = clbForaClickCheck
+  end
+  object lbCopias: TLabel[17]
+    Tag = -1
+    Left = 48
+    Height = 36
+    Top = 466
+    Width = 390
+    AutoSize = False
+    Font.Color = 43775
+    ParentColor = False
+    ParentFont = False
+    Visible = False
+    WordWrap = True
+  end
+  object lbDesfazer: TLabel[18]
+    Cursor = crHandPoint
+    Left = 442
+    Height = 18
+    Top = 468
+    Width = 210
+    Alignment = taRightJustify
+    AutoSize = False
+    Font.Style = [fsUnderline]
+    ParentColor = False
+    ParentFont = False
+    Visible = False
+    OnClick = lbDesfazerClick
+  end
+end

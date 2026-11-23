@@ -17,6 +17,7 @@ uses
   {$IFDEF MSWINDOWS}
   RALInst.Tela.Delphi,
   {$ENDIF}
+  RALInst.Tela.Captura,
   RALInst.Tela.GeradorPO,
   RALInst.Tela.IDE,
   RALInst.Tela.Idioma,

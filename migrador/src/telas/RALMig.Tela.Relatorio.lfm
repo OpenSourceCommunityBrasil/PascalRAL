@@ -1,0 +1,77 @@
+inherited TelaRelatorio: TTelaRelatorio
+  object lbResumo: TLabel[9]
+    Left = 48
+    Height = 56
+    Top = 170
+    Width = 604
+    AutoSize = False
+    Font.Height = -15
+    Font.Style = [fsBold]
+    ParentColor = False
+    ParentFont = False
+    WordWrap = True
+  end
+  object lbMd: TLabel[10]
+    Left = 48
+    Height = 34
+    Top = 232
+    Width = 604
+    AutoSize = False
+    ParentColor = False
+    WordWrap = True
+  end
+  object lbHtml: TLabel[11]
+    Left = 48
+    Height = 34
+    Top = 270
+    Width = 604
+    AutoSize = False
+    ParentColor = False
+    WordWrap = True
+  end
+  object lbCopia: TLabel[12]
+    Left = 48
+    Height = 34
+    Top = 308
+    Width = 604
+    AutoSize = False
+    ParentColor = False
+    WordWrap = True
+  end
+  object lbAbrir: TLabel[13]
+    Cursor = crHandPoint
+    Left = 48
+    Height = 18
+    Top = 354
+    Width = 290
+    AutoSize = False
+    Font.Style = [fsUnderline]
+    ParentColor = False
+    ParentFont = False
+    Visible = False
+    OnClick = lbAbrirClick
+  end
+  object lbDesfazer: TLabel[14]
+    Cursor = crHandPoint
+    Left = 362
+    Height = 18
+    Top = 354
+    Width = 290
+    Alignment = taRightJustify
+    AutoSize = False
+    Font.Style = [fsUnderline]
+    ParentColor = False
+    ParentFont = False
+    Visible = False
+    OnClick = lbDesfazerClick
+  end
+  object lbNota: TLabel[15]
+    Left = 48
+    Height = 48
+    Top = 392
+    Width = 604
+    AutoSize = False
+    ParentColor = False
+    WordWrap = True
+  end
+end

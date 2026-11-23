@@ -1,0 +1,43 @@
+inherited TelaMig: TTelaMig
+  object lbTitulo: TLabel[6]
+    AnchorSideLeft.Control = Panel1
+    AnchorSideTop.Control = Panel1
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = Panel1
+    AnchorSideRight.Side = asrBottom
+    Left = 0
+    Height = 30
+    Top = 110
+    Width = 700
+    Alignment = taCenter
+    Anchors = [akTop, akLeft, akRight]
+    AutoSize = False
+    Font.Height = -21
+    ParentColor = False
+    ParentFont = False
+  end
+  object lbDescricao: TLabel[7]
+    Left = 48
+    Height = 18
+    Top = 142
+    Width = 604
+    Alignment = taCenter
+    AutoSize = False
+    ParentColor = False
+  end
+  object lbMotivo: TLabel[8]
+    Tag = -1
+    Left = 140
+    Height = 50
+    Top = 547
+    Width = 420
+    Alignment = taCenter
+    AutoSize = False
+    Font.Color = 43775
+    Layout = tlCenter
+    ParentColor = False
+    ParentFont = False
+    Visible = False
+    WordWrap = True
+  end
+end

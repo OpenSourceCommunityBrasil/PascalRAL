@@ -635,3 +635,17 @@ testes de `migrador/tests` passam com `--testes` (o `traducao` sem argumento).
     `WinHTTP`) e do Indy que vem com o XE2 (ver o `PLANO_REFORMA_2_0.md`).
 - Falta: a janela pelo instalador e as capturas en-US/es-ES (M8), e o
   "compilar para conferir" pela tela (M6).
+
+**22-23/11/2026 (B12i do PLANO_EXECUCAO).**
+- API da 1.2 lançada e da 2.0 final, cadeia `v1.0 > 1.1 > 1.2 > 2.0`, regra `2.0/bibliotecas-dinamicas`,
+  0 pendentes (`13c695ef`); as quatro pequenas de 24/10 (`c85bf69c`).
+- Janela nos modelos do instalador: frames `.lfm` sobre o `TTelaModelo` (`RALMig.Tela.Pagina` e as
+  páginas `Projeto`, `Versoes`, `Binarios`, `Previa`, `Aplicar`, `Relatorio`, `Conferir`), janela
+  700x600 com `TNotebook`, idioma pela `RALInst.Tela.Idioma`; saíram `RALMig.Tela.Modelo` e
+  `RALMig.Tela.Idioma`. Os `.po` regerados, sem português no en-US e no es-ES (es "Comprobar >" virou
+  "Verificar >", que cabe no botão). Capturas `--capturar=` dos dois programas, dois temas e três
+  idiomas conferidas: mesma moldura, botões e tamanho. Os 14 testes, o `--autoteste` da janela e o
+  `tests/traducao` do instalador passam; `ralmigrador`, `ralmigra`, `RALInstaller` e `ralcli`
+  compilam com `lazbuild -B` no Linux, e as duas GUIs também cruzadas para Win64.
+- Falta: o fluxo pela tela da VM (instalar a 2.0 e abrir o migrador no fim), que pede a tela da VM
+  liberada; a página de relatório só foi capturada no estado "não aplicado".

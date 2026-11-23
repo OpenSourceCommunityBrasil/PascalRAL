@@ -11,7 +11,12 @@ program ralmigrador;
 //   --autoteste                    percorre as telas sem interacao e sai com 0 se
 //                                  tudo correu bem (log em ralmigrador-autoteste.log
 //                                  na pasta temporaria); nada e gravado no projeto
+//   --capturar=<pasta>             grava cada tela em PNG, nos dois temas e nos tres
+//                                  idiomas, e sai (para conferir o visual); nada e
+//                                  gravado no projeto
 //
+// As telas sao frames (.lfm) sobre a pagina do instalador (RALInst.Tela.Modelo), e a
+// de idioma e a do instalador (RALInst.Tela.Idioma).
 // Recursos embutidos (RCDATA) no .lpi: REGRAS_*, API_*, PO_* e as imagens do tema.
 
 uses
@@ -31,10 +36,11 @@ uses
   // delas: um .po serve aos dois executaveis
   RALMig.Console.Mensagens,
   RALMig.Acoes.Projeto, RALMig.Acoes.Formulario, RALMig.Acoes.Codigo,
-  RALMig.Tela.Aplicar, RALMig.Tela.Conferir, RALMig.Tela.Estado,
-  RALMig.Tela.GeradorPO, RALMig.Tela.Idioma, RALMig.Tela.Mensagens,
-  RALMig.Tela.Modelo, RALMig.Tela.Previa, RALMig.Tela.Principal,
-  RALMig.Tela.Projeto, RALMig.Tela.Versoes;
+  RALInst.Tela.Captura, RALInst.Tela.Idioma, RALInst.Tela.Modelo,
+  RALMig.Tela.Aplicar, RALMig.Tela.Binarios, RALMig.Tela.Conferir,
+  RALMig.Tela.Estado, RALMig.Tela.GeradorPO, RALMig.Tela.Mensagens,
+  RALMig.Tela.Pagina, RALMig.Tela.Previa, RALMig.Tela.Principal,
+  RALMig.Tela.Projeto, RALMig.Tela.Relatorio, RALMig.Tela.Versoes;
 
 {$R *.res}
 
@@ -45,10 +51,10 @@ var
 begin
   DefaultSystemCodePage := CP_UTF8;
   PrefixoPO := 'ralmigrador';
-  RequireDerivedFormResource := False;
+  RequireDerivedFormResource := True;
   GArgumentos := LerArgumentosMig;
   Application.Title := 'RAL Migrator';
-  Application.Scaled := False;
+  Application.Scaled := True;
   Application.Initialize;
   Application.CreateForm(TTelaMigPrincipal, TelaMigPrincipal);
   if GArgumentos.GerarPO then

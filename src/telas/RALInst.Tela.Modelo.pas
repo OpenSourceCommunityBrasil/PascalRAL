@@ -1,5 +1,7 @@
 /// Base of every installer page: banner, theme switch, Next and Previous
-/// buttons, and the language, theme and IDE kind each page follows.
+/// buttons, and the language, theme and IDE kind each page follows. The
+/// migrator window (migrador/) builds its pages on it too: a page talks to its
+/// window only through IJanelaModelo.
 unit RALInst.Tela.Modelo;
 
 {$mode ObjFPC}{$H+}
@@ -11,6 +13,20 @@ uses
   RALInst.Tela.Temas;
 
 type
+  /// What a page asks of the window it lives in (the installer's and the
+  /// migrator's).
+  IJanelaModelo = interface
+    ['{AA077F63-2B52-40E9-BE4F-8A7A3F899D81}']
+    /// Hint of the theme button while ATema is on: the theme it leads to
+    function DicaTema(ATema: TThemes): string;
+    procedure NextPage;
+    procedure PriorPage;
+    procedure SetLanguage(AValue: TLanguages);
+    procedure SetTheme(AValue: TThemes);
+    /// The line under the banner (program and version)
+    function TextoVersao: string;
+  end;
+
   /// Base frame of the installer pages.
   TTelaModelo = class(TFrame)
     imBack: TImage;
@@ -54,6 +70,8 @@ type
     procedure PermitirAvancar(APermitido: boolean);
     /// Puts AAnel (a ring picture) centered around AAlvo
     procedure EnvolverImagem(AAnel, AAlvo: TImage);
+    /// The window the page lives in; nil while it has none
+    function Janela: IJanelaModelo;
     /// Keeps a text exactly over its button picture, at any screen scale
     procedure SobreporRotulo(ARotulo: TLabel; AImagem: TImage);
     procedure SetIDE(AValue: integer); virtual;
@@ -86,9 +104,6 @@ implementation
 
 {$R *.lfm}
 
-uses
-  RALInst.Tela.Mensagens, RALInst.Tela.Principal, RALInst.Versao;
-
 { TTelaModelo }
 
 constructor TTelaModelo.Create(AOwner: TComponent);
@@ -106,7 +121,8 @@ end;
 
 procedure TTelaModelo.imCloseClick(Sender: TObject);
 begin
-  TelaPrincipal.Close;
+  if GetParentForm(Self) <> nil then
+    GetParentForm(Self).Close;
 end;
 
 procedure TTelaModelo.imBannerMouseDown(Sender: TObject; Button: TMouseButton;
@@ -119,11 +135,14 @@ end;
 
 procedure TTelaModelo.imBannerMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
+var
+  vJanela: TCustomForm;
 begin
-  if FMouseDown then
+  vJanela := GetParentForm(Self);
+  if FMouseDown and (vJanela <> nil) then
   begin
-    TelaPrincipal.Left := TelaPrincipal.Left + X - FPointMove.X;
-    TelaPrincipal.Top := TelaPrincipal.Top + Y - FPointMove.Y;
+    vJanela.Left := vJanela.Left + X - FPointMove.X;
+    vJanela.Top := vJanela.Top + Y - FPointMove.Y;
   end;
 end;
 
@@ -135,24 +154,26 @@ end;
 
 procedure TTelaModelo.imThemeClick(Sender: TObject);
 begin
+  if Janela = nil then
+    Exit;
   if FTheme = tDark then
-    TelaPrincipal.Theme := tLight
+    Janela.SetTheme(tLight)
   else
-    TelaPrincipal.Theme := tDark;
+    Janela.SetTheme(tDark);
 end;
 
 procedure TTelaModelo.lbBackClick(Sender: TObject);
 begin
-  if ValidatePagePrior then
-    TelaPrincipal.PriorPage;
+  if (Janela <> nil) and ValidatePagePrior then
+    Janela.PriorPage;
 end;
 
 procedure TTelaModelo.lbNextClick(Sender: TObject);
 begin
   if not lbNext.Enabled then
     Exit;
-  if ValidatePageNext then
-    TelaPrincipal.NextPage;
+  if (Janela <> nil) and ValidatePageNext then
+    Janela.NextPage;
 end;
 
 procedure TTelaModelo.PermitirAvancar(APermitido: boolean);
@@ -204,16 +225,25 @@ end;
 
 procedure TTelaModelo.DicaDoTema;
 begin
-  if FTheme = tDark then
-    imTheme.Hint := cmTemaClaro
-  else
-    imTheme.Hint := cmTemaEscuro;
+  if Janela <> nil then
+    imTheme.Hint := Janela.DicaTema(FTheme);
 end;
 
 procedure TTelaModelo.EnvolverImagem(AAnel, AAlvo: TImage);
 begin
   AAnel.Left := AAlvo.Left + (AAlvo.Width - AAnel.Width) div 2;
   AAnel.Top := AAlvo.Top + (AAlvo.Height - AAnel.Height) div 2;
+end;
+
+function TTelaModelo.Janela: IJanelaModelo;
+var
+  vForm: TCustomForm;
+begin
+  Result := nil;
+  // a pagina fica num TPage do TNotebook da janela
+  vForm := GetParentForm(Self);
+  if vForm <> nil then
+    Supports(vForm, IJanelaModelo, Result);
 end;
 
 procedure TTelaModelo.SobreporRotulo(ARotulo: TLabel; AImagem: TImage);
@@ -241,7 +271,8 @@ end;
 procedure TTelaModelo.AtualizarTextos;
 begin
   DicaDoTema;
-  lVersion.Caption := Format(cmVersaoInstalador, [VersaoInstalador]);
+  if Janela <> nil then
+    lVersion.Caption := Janela.TextoVersao;
 end;
 
 procedure TTelaModelo.SetIDE(AValue: integer);

@@ -1,0 +1,70 @@
+inherited TelaAplicar: TTelaAplicar
+  object lbResumo: TLabel[9]
+    Left = 48
+    Height = 68
+    Top = 164
+    Width = 604
+    AutoSize = False
+    Font.Height = -15
+    Font.Style = [fsBold]
+    ParentColor = False
+    ParentFont = False
+    WordWrap = True
+  end
+  object ckCopia: TCheckBox[10]
+    Left = 48
+    Height = 19
+    Top = 239
+    Width = 20
+    Checked = True
+    State = cbChecked
+    TabOrder = 1
+    OnClick = ckCopiaClick
+  end
+  object lbCopia: TLabel[11]
+    Cursor = crHandPoint
+    Left = 70
+    Height = 18
+    Top = 240
+    Width = 582
+    AutoSize = False
+    FocusControl = ckCopia
+    ParentColor = False
+    OnClick = RotuloDaCaixaClick
+  end
+  object lbInfoCopia: TLabel[12]
+    Left = 70
+    Height = 64
+    Top = 262
+    Width = 582
+    AutoSize = False
+    ParentColor = False
+    WordWrap = True
+  end
+  object lbAvisoGit: TLabel[13]
+    Tag = -1
+    Left = 48
+    Height = 84
+    Top = 334
+    Width = 604
+    AutoSize = False
+    Font.Color = 43775
+    ParentColor = False
+    ParentFont = False
+    Visible = False
+    WordWrap = True
+  end
+  object lbAvisoSemCopia: TLabel[14]
+    Tag = -1
+    Left = 48
+    Height = 40
+    Top = 426
+    Width = 604
+    AutoSize = False
+    Font.Color = 43775
+    ParentColor = False
+    ParentFont = False
+    Visible = False
+    WordWrap = True
+  end
+end

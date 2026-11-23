@@ -12,28 +12,23 @@
         <DpiAware Value="True"/>
       </XPManifest>
       <Icon Value="0"/>
-      <Resources Count="21">
+      <Resources Count="16">
         <Resource_0 FileName="../Assets/images/Background - Dark.png" Type="RCDATA" ResourceName="DARKBG"/>
         <Resource_1 FileName="../Assets/images/Background - Light.png" Type="RCDATA" ResourceName="LIGHTBG"/>
         <Resource_2 FileName="../Assets/images/Botão Verde.png" Type="RCDATA" ResourceName="LIGHTBTN"/>
         <Resource_3 FileName="../Assets/images/Botão Azul.png" Type="RCDATA" ResourceName="DARKBTN"/>
         <Resource_4 FileName="../Assets/images/Moon Symbol.png" Type="RCDATA" ResourceName="LIGHTICON"/>
         <Resource_5 FileName="../Assets/images/Summer_White.png" Type="RCDATA" ResourceName="DARKICON"/>
-        <Resource_6 FileName="../Assets/images/Banner.png" Type="RCDATA" ResourceName="BANNER"/>
-        <Resource_7 FileName="../Assets/images/close_certo.png" Type="RCDATA" ResourceName="CLOSEICON"/>
-        <Resource_8 FileName="../Assets/images/united-states_90.png" Type="RCDATA" ResourceName="FLAG_US"/>
-        <Resource_9 FileName="../Assets/images/255-brazil_90.png" Type="RCDATA" ResourceName="FLAG_BR"/>
-        <Resource_10 FileName="../Assets/images/128-spain_90.png" Type="RCDATA" ResourceName="FLAG_ES"/>
-        <Resource_11 FileName="regras/v1.0-1.1.json" Type="RCDATA" ResourceName="REGRAS_1_0__1_1"/>
-        <Resource_12 FileName="regras/1.1-1.2.json" Type="RCDATA" ResourceName="REGRAS_1_1__1_2"/>
-        <Resource_13 FileName="regras/1.2-2.0.json" Type="RCDATA" ResourceName="REGRAS_1_2__2_0"/>
-        <Resource_14 FileName="api/api-v1.0.json" Type="RCDATA" ResourceName="API_V1_0"/>
-        <Resource_15 FileName="api/api-1.1.json" Type="RCDATA" ResourceName="API_1_1"/>
-        <Resource_16 FileName="api/api-1.2.json" Type="RCDATA" ResourceName="API_1_2"/>
-        <Resource_17 FileName="api/api-2.0.json" Type="RCDATA" ResourceName="API_2_0"/>
-        <Resource_18 FileName="languages/ralmigrador.pt-BR.po" Type="RCDATA" ResourceName="PO_PT_BR"/>
-        <Resource_19 FileName="languages/ralmigrador.en-US.po" Type="RCDATA" ResourceName="PO_EN_US"/>
-        <Resource_20 FileName="languages/ralmigrador.es-ES.po" Type="RCDATA" ResourceName="PO_ES_ES"/>
+        <Resource_6 FileName="regras/v1.0-1.1.json" Type="RCDATA" ResourceName="REGRAS_1_0__1_1"/>
+        <Resource_7 FileName="regras/1.1-1.2.json" Type="RCDATA" ResourceName="REGRAS_1_1__1_2"/>
+        <Resource_8 FileName="regras/1.2-2.0.json" Type="RCDATA" ResourceName="REGRAS_1_2__2_0"/>
+        <Resource_9 FileName="api/api-v1.0.json" Type="RCDATA" ResourceName="API_V1_0"/>
+        <Resource_10 FileName="api/api-1.1.json" Type="RCDATA" ResourceName="API_1_1"/>
+        <Resource_11 FileName="api/api-1.2.json" Type="RCDATA" ResourceName="API_1_2"/>
+        <Resource_12 FileName="api/api-2.0.json" Type="RCDATA" ResourceName="API_2_0"/>
+        <Resource_13 FileName="languages/ralmigrador.pt-BR.po" Type="RCDATA" ResourceName="PO_PT_BR"/>
+        <Resource_14 FileName="languages/ralmigrador.en-US.po" Type="RCDATA" ResourceName="PO_EN_US"/>
+        <Resource_15 FileName="languages/ralmigrador.es-ES.po" Type="RCDATA" ResourceName="PO_ES_ES"/>
       </Resources>
     </General>
     <VersionInfo>
@@ -52,7 +47,7 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+            <OtherUnitFiles Value="src;src\telas;..\src\classes;..\src\telas"/>
             <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
@@ -85,7 +80,7 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+            <OtherUnitFiles Value="src;src\telas;..\src\classes;..\src\telas"/>
             <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
@@ -114,7 +109,7 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+            <OtherUnitFiles Value="src;src\telas;..\src\classes;..\src\telas"/>
             <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
@@ -146,7 +141,7 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+            <OtherUnitFiles Value="src;src\telas;..\src\classes;..\src\telas"/>
             <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
@@ -177,7 +172,7 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+            <OtherUnitFiles Value="src;src\telas;..\src\classes;..\src\telas"/>
             <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <CodeGeneration>
@@ -227,7 +222,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="src;src\telas;..\src\classes"/>
+      <OtherUnitFiles Value="src;src\telas;..\src\classes;..\src\telas"/>
       <UnitOutputDirectory Value="lib\gui\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <CodeGeneration>

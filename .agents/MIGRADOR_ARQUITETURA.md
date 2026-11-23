@@ -27,6 +27,11 @@ de→para das regras): `.agents/MIGRADOR_QUEBRAS.md`. Inventário (M0):
 - Reusar do instalador (`src/classes`): `RALInst.Zip` (zip), `RALInst.Traducao`
   (`.po`), `RALInst.Processo`, `RALInst.Catalogo`, `RALInst.IDE*`,
   `RALInst.Build.Delphi`, `RALInst.Instalar.Lazarus`, `RALInst.Tela.Temas`.
+- As telas são as do instalador (B12i, 23/11/2026): cada página do migrador é um frame `.lfm`
+  sobre o `TTelaModelo` (`src/telas/RALInst.Tela.Modelo`), por `TTelaMig` (`RALMig.Tela.Pagina`);
+  a janela fala com as páginas pela interface `IJanelaModelo`, a página de idioma é a
+  `RALInst.Tela.Idioma`, e a tradução é a `RALInst.Tela.Traducao`. `--capturar=<pasta>` grava
+  cada página nos dois temas e nos três idiomas (`RALInst.Tela.Captura`), nos dois programas.
 - Testes sobre os samples trabalham em **cópias** (no `%TEMP%` ou na pasta de
   rascunho): `git -C <repo> archive <commit> | tar -x -C <cópia>`. Nunca gravar
   em `PascalRAL-Samples*` nem em `ral_restdw`.

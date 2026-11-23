@@ -1,4 +1,5 @@
-/// First page: the installer language.
+/// First page: the language of the installer (and of the migrator window, which
+/// shows this same page).
 unit RALInst.Tela.Idioma;
 
 {$mode ObjFPC}{$H+}
@@ -32,9 +33,6 @@ implementation
 
 {$R *.lfm}
 
-uses
-  RALInst.Tela.Principal;
-
 { TTelaIdioma }
 
 constructor TTelaIdioma.Create(AOwner: TComponent);
@@ -49,7 +47,8 @@ end;
 procedure TTelaIdioma.imUSAClick(Sender: TObject);
 begin
   // o Tag de cada bandeira e o TLanguages dela
-  TelaPrincipal.Language := TLanguages(TImage(Sender).Tag);
+  if Janela <> nil then
+    Janela.SetLanguage(TLanguages(TImage(Sender).Tag));
 end;
 
 procedure TTelaIdioma.Posicionar;

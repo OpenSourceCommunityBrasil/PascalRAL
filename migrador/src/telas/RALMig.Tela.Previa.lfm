@@ -1,0 +1,103 @@
+inherited TelaPrevia: TTelaPrevia
+  object lbResumo: TLabel[9]
+    Left = 48
+    Height = 34
+    Top = 162
+    Width = 604
+    AutoSize = False
+    Font.Style = [fsBold]
+    ParentColor = False
+    ParentFont = False
+    WordWrap = True
+  end
+  object pcAbas: TPageControl[10]
+    Left = 48
+    Height = 314
+    Top = 198
+    Width = 604
+    ActivePage = tsArquivos
+    TabIndex = 0
+    TabOrder = 1
+    object tsArquivos: TTabSheet
+      object lbxArquivos: TListBox
+        Left = 0
+        Height = 286
+        Top = 0
+        Width = 220
+        Align = alLeft
+        ItemHeight = 0
+        TabOrder = 0
+        OnSelectionChange = lbxArquivosSelectionChange
+      end
+      object mmDiff: TMemo
+        Left = 226
+        Height = 286
+        Top = 0
+        Width = 370
+        Align = alClient
+        BorderSpacing.Left = 6
+        ReadOnly = True
+        ScrollBars = ssAutoBoth
+        TabOrder = 1
+        WordWrap = False
+      end
+    end
+    object tsManual: TTabSheet
+      object mmManual: TMemo
+        Left = 0
+        Height = 286
+        Top = 0
+        Width = 596
+        Align = alClient
+        ReadOnly = True
+        ScrollBars = ssAutoBoth
+        TabOrder = 0
+      end
+    end
+    object tsComportamento: TTabSheet
+      object mmComportamento: TMemo
+        Left = 0
+        Height = 286
+        Top = 0
+        Width = 596
+        Align = alClient
+        ReadOnly = True
+        ScrollBars = ssAutoBoth
+        TabOrder = 0
+      end
+    end
+    object tsErros: TTabSheet
+      object mmErros: TMemo
+        Left = 0
+        Height = 286
+        Top = 0
+        Width = 596
+        Align = alClient
+        ReadOnly = True
+        ScrollBars = ssAutoBoth
+        TabOrder = 0
+      end
+    end
+  end
+  object ckIgnorar: TCheckBox[11]
+    Left = 48
+    Height = 19
+    Top = 519
+    Width = 20
+    TabOrder = 2
+    Visible = False
+    OnClick = ckIgnorarClick
+  end
+  object lbIgnorar: TLabel[12]
+    Cursor = crHandPoint
+    Left = 70
+    Height = 18
+    Top = 520
+    Width = 582
+    AutoSize = False
+    FocusControl = ckIgnorar
+    ParentColor = False
+    Visible = False
+    OnClick = RotuloDaCaixaClick
+  end
+end
