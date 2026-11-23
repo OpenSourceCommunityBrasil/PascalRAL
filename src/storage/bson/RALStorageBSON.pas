@@ -448,6 +448,7 @@ end;
 
 initialization
   RegisterClass(TRALStorageBSONLink);
+  RegisterStorageLink(rsfBSON, TRALStorageBSONLink);
 
 finalization
   UnregisterStorageLink(TRALStorageBSONLink);
