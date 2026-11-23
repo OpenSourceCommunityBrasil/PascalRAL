@@ -177,8 +177,10 @@ type
   { A group of servers behind a proxy. Choose picks one for a request (by
     Policy, Backup only when no other is available, Sticky first) and counts
     it in flight; Done gives it back with the result. MaxFails failures within
-    FailTimeout ms take a server out for FailTimeout ms (passive check);
-    HealthCheck checks them on a thread (active check) }
+    FailTimeout ms take a server out for FailTimeout ms (passive check) - never
+    the only server of the group, as in nginx: out, it would only turn one
+    failure into FailTimeout ms of failures; HealthCheck checks them on a thread
+    (active check) }
   TRALUpstream = class(TRALComponent)
   private
     FConnectTimeout: IntegerRAL;
@@ -273,7 +275,7 @@ type
     property HashName: StringRAL read FHashName write FHashName;
     /// The active health check.
     property HealthCheck: TRALUpstreamHealthCheck read FHealthCheck write SetHealthCheck;
-    /// Failures (no answer) that take a server out; 0 never does.
+    /// Failures (no answer) that take a server out; 0 never does, nor a single server.
     property MaxFails: IntegerRAL read FMaxFails write FMaxFails default 1;
     /// A server left or came back.
     property OnServerChange: TRALUpstreamServerEvent read FOnServerChange write FOnServerChange;
@@ -883,7 +885,8 @@ begin
     if AFailed then
     begin
       Inc(AServer.FFails);
-      if (FMaxFails > 0) and (AServer.FFails >= FMaxFails) then
+      // the only server stays: out, every request would fail for FailTimeout
+      if (FMaxFails > 0) and (FServers.Count > 1) and (AServer.FFails >= FMaxFails) then
       begin
         // out for FailTimeout, then given another chance
         AServer.FFailedUntil := RALTickMicro div 1000 + FFailTimeout;
