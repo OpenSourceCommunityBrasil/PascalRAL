@@ -32,12 +32,25 @@ type
   { Containers own their children. Free only the root returned by ParseJSON.
     StringRAL text is UTF-8 on all supported compilers. }
   TRALJSON = class abstract
+  private
+    /// AsBoolean of a value that may be nil, which reads as null.
+    function ReadBoolean: Boolean;
+    /// AsInt64 of a value that may be nil, which reads as null.
+    function ReadInt64: Int64;
+    /// AsNumber of a value that may be nil, which reads as null.
+    function ReadNumber: Double;
+    /// AsString of a value that may be nil, which reads as null.
+    function ReadString: StringRAL;
   protected
     function GetAsArray: TRALJSONArray;
+    /// The value as a boolean, for a value that is not nil.
     function GetAsBoolean: Boolean; virtual;
+    /// The value as an integer, for a value that is not nil.
     function GetAsInt64: Int64; virtual;
+    /// The value as a number, for a value that is not nil.
     function GetAsNumber: Double; virtual;
     function GetAsObject: TRALJSONObject;
+    /// The value as text, for a value that is not nil.
     function GetAsString: StringRAL; virtual;
     function GetIsNull: Boolean;
     function GetKind: TRALJSONKind; virtual; abstract;
@@ -84,15 +97,16 @@ type
     /// The value as an array; raises for any other kind.
     property AsArray: TRALJSONArray read GetAsArray;
     /// The value as a boolean; raises when it cannot be read as one.
-    property AsBoolean: Boolean read GetAsBoolean;
+    property AsBoolean: Boolean read ReadBoolean;
     /// The value as an integer; raises when it cannot be read as one.
-    property AsInt64: Int64 read GetAsInt64;
+    property AsInt64: Int64 read ReadInt64;
     /// The value as a number; raises when it cannot be read as one.
-    property AsNumber: Double read GetAsNumber;
+    property AsNumber: Double read ReadNumber;
     /// The value as an object; raises for any other kind.
     property AsObject: TRALJSONObject read GetAsObject;
-    /// The value as text: a string as it is, null empty, anything else its JSON.
-    property AsString: StringRAL read GetAsString;
+    { The value as text: a string as it is, null (or a nil value, such as a member
+      Get did not find) empty, anything else its JSON. }
+    property AsString: StringRAL read ReadString;
     /// Whether the value is null or nil.
     property IsNull: Boolean read GetIsNull;
     /// The kind of the value.
@@ -819,6 +833,35 @@ begin
     if (Text[I] >= '1') and (Text[I] <= '9') then
       Exit(True);
   end;
+end;
+
+function TRALJSON.ReadBoolean: Boolean;
+begin
+  if Self = nil then
+    raise ERALException.Create(ecJSONValueToBoolean);
+  Result := GetAsBoolean;
+end;
+
+function TRALJSON.ReadInt64: Int64;
+begin
+  if Self = nil then
+    raise ERALException.Create(ecJSONValueToInt64);
+  Result := GetAsInt64;
+end;
+
+function TRALJSON.ReadNumber: Double;
+begin
+  if Self = nil then
+    raise ERALException.Create(ecJSONValueToNumber);
+  Result := GetAsNumber;
+end;
+
+function TRALJSON.ReadString: StringRAL;
+begin
+  if Self = nil then
+    Result := ''
+  else
+    Result := GetAsString;
 end;
 
 function TRALJSON.GetAsString: StringRAL;
