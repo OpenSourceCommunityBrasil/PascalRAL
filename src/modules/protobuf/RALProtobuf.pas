@@ -829,7 +829,7 @@ var
 begin
   SetLength(Result, Length(AHex) div 2);
   for vInt := 1 to Length(Result) do
-    Result[vInt] := CharRAL(StrToInt('$' + string(Copy(AHex, vInt * 2 - 1, 2))));
+    Result[vInt] := AnsiChar(StrToInt('$' + string(Copy(AHex, vInt * 2 - 1, 2))));
 end;
 
 function RALProtoUInt64Text(AValue: UInt64RAL): StringRAL;

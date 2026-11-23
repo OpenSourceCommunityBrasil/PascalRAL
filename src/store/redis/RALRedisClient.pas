@@ -681,8 +681,13 @@ begin
     if vType = '|' then
     begin
       vCount := StrToInt64(string(vLine));
-      for vInt := 1 to vCount * 2 do
+      // a while, not a for: Delphi before XE3 takes no Int64 for-loop variable
+      vInt := 1;
+      while vInt <= vCount * 2 do
+      begin
         ReadValue().Free; // () : FPC reads the bare name as the result
+        Inc(vInt);
+      end;
     end;
   until vType <> '|';
   case vType of
@@ -759,8 +764,12 @@ begin
         if vType = '%' then
           vItems := vCount * 2;
         try
-          for vInt := 1 to vItems do
+          vInt := 1;
+          while vInt <= vItems do
+          begin
             Result.Add(ReadValue());
+            Inc(vInt);
+          end;
         except
           Result.Free;
           raise;

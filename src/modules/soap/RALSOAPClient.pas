@@ -1162,7 +1162,7 @@ begin
   end;
 
   // OnTerminate is delivered through Synchronize: the main thread pumps it here
-  vMainThread := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND} = MainThreadID;
+  vMainThread := TThread.CurrentThread.ThreadID = MainThreadID;
   vRemaining := ConnectTimeout + RequestTimeout + 1000;
   while (vPending > 0) and (vRemaining > 0) do
   begin

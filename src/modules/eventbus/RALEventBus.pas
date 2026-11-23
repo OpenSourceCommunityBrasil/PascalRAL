@@ -321,7 +321,7 @@ end;
 /// The id of the calling thread.
 function CurrentThreadId: TThreadID;
 begin
-  Result := {$IF (DEFINED(FPC)) OR (NOT DEFINED(DELPHIXE3UP))}TThread.CurrentThread.ThreadID{$ELSE}TThread.Current.ThreadID{$IFEND};
+  Result := TThread.CurrentThread.ThreadID;
 end;
 
 { TRALEvent }
