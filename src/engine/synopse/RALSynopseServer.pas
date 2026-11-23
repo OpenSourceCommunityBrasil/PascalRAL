@@ -107,6 +107,10 @@ type
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
     /// Called when the mORMot2 server terminates: marks the RAL server stopped.
     procedure OnHttpTerminate(ASender: TObject);
+    { Called first in each worker thread: does nothing, but mORMot2 only calls
+      the end-of-thread event (OnThreadEnded) for a thread whose start it
+      notified. }
+    procedure OnHttpThreadStart(ASender: TThread);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -581,6 +585,7 @@ var
   vAddr: StringRAL;
   vOptions: THttpServerOptions;
   vActive: boolean;
+  vOnStart, vOnStop: TOnNotifyThread;
   {$IFDEF RALWindows}
   vError: IntegerRAL;
   {$ENDIF}
@@ -625,23 +630,31 @@ begin
     if SSL.Enabled then
       vOptions := vOptions + [hsoEnableTls];
 
+    { every worker thread hands back, when it ends, the number and the name
+      mormot.core.log keeps for it in a process-wide table; without this each
+      start of the server left its pool there for good (TRestHttpServer does
+      the same through TRest.EndCurrentThread); a thread gets it only when its
+      start was notified, hence the empty OnStart }
+    vOnStart := {$IFDEF FPC}@{$ENDIF}OnHttpThreadStart;
+    vOnStop := {$IFDEF FPC}@{$ENDIF}TSynLogFamily.OnThreadEnded;
+
     {$IFDEF RALWindows}
     if FMode = smHttpSys then
       { The queue belongs to the kernel, there is no address to hand over and
         no thread per connection: the only number left is how many requests are
         processed at once. The URL comes later, in the TLS block below, because
         that is where http or https is known. }
-      FHttp := THttpApiServer.Create('', nil, nil, '', vOptions, nil, FPoolCount)
+      FHttp := THttpApiServer.Create('', vOnStart, vOnStop, '', vOptions, nil, FPoolCount)
     else
     {$ENDIF}
     { both socket servers descend from THttpServerSocketGeneric and share its
       constructor }
     if FMode = smAsync then
       { mORMot2's, with what it does not do yet - see TRALAsyncHttpServer }
-      FHttp := TRALAsyncHttpServer.Create(vAddr, nil, nil, '', FPoolCount,
+      FHttp := TRALAsyncHttpServer.Create(vAddr, vOnStart, vOnStop, '', FPoolCount,
                                           SessionTimeout, vOptions)
     else
-      FHttp := TRALThreadHttpServer.Create(vAddr, nil, nil, '', FPoolCount,
+      FHttp := TRALThreadHttpServer.Create(vAddr, vOnStart, vOnStop, '', FPoolCount,
                                   SessionTimeout, vOptions);
     if FHttp is TRALAsyncHttpServer then
       TRALAsyncHttpServer(FHttp).RALServer := Self;
@@ -1374,6 +1387,11 @@ end;
 procedure TRALSynopseServer.OnHttpTerminate(ASender: TObject);
 begin
   Active := False;
+end;
+
+procedure TRALSynopseServer.OnHttpThreadStart(ASender: TThread);
+begin
+  // see the declaration: only its presence matters
 end;
 
 constructor TRALSynopseServer.Create(AOwner: TComponent);
