@@ -961,17 +961,38 @@ type
   private
     /// Largest size; 0 is no limit.
     FLimit: Int64RAL;
+
+    /// Raises the 1009 when ACount more bytes would pass FLimit.
+    procedure CheckLimit(ACount: Int64RAL);
   public
     function Write(const ABuffer; ACount: Longint): Longint; override;
+    {$IF (not Defined(FPC)) and Defined(DELPHI12UP) and (SizeOf(LongInt) <> SizeOf(NativeInt))}
+    { Delphi 12 and later on Win64: TMemoryStream overrides this overload too,
+      and WriteBuffer calls it, so the one above alone would let a bomb through }
+    function Write(const ABuffer; ACount: NativeInt): NativeInt; override;
+    {$IFEND}
   end;
 
-function TRALWSCappedStream.Write(const ABuffer; ACount: Longint): Longint;
+procedure TRALWSCappedStream.CheckLimit(ACount: Int64RAL);
 begin
   if (FLimit > 0) and (Position + ACount > FLimit) then
     raise ERALWebSocketError.CreateClose(RALWSCloseTooBig,
       Format(emWSBadFrame, ['size']));
+end;
+
+function TRALWSCappedStream.Write(const ABuffer; ACount: Longint): Longint;
+begin
+  CheckLimit(ACount);
   Result := inherited Write(ABuffer, ACount);
 end;
+
+{$IF (not Defined(FPC)) and Defined(DELPHI12UP) and (SizeOf(LongInt) <> SizeOf(NativeInt))}
+function TRALWSCappedStream.Write(const ABuffer; ACount: NativeInt): NativeInt;
+begin
+  CheckLimit(ACount);
+  Result := inherited Write(ABuffer, ACount);
+end;
+{$IFEND}
 
 /// Raises ERALWebSocketError for a frame that breaks the protocol.
 procedure CodecError(ACode: Word; const AReason: string);
