@@ -1988,3 +1988,19 @@ só aceita uma pasta por BDS, e o Indy reparte os pacotes em três).
 - O migrador está fechado no que esta máquina prova (ver o `PLANO_MIGRADOR.md`, 24/10).
 - O resto da "Falta" de 19/10 continua: varredura no ambiente do dono, instalação real
   numa máquina limpa e o Indy no Delphi.
+
+**22-23/11/2026 (B12i do PLANO_EXECUCAO, na 2.0 final).**
+- Receita `crosssocket` (variável `$(crosssocket)` + library path, embutida no instalador e no
+  `ralcli`) e, no manifesto, os pisos XSocketRAL (Delphi 11), advancedhttpral (FPC 3.3.1) e
+  RALClientLiveBindingsPackage (XE3) (`5bc9d398`). `manifesto/verificadas.json` passou a ser
+  versionado: o `.lpi` o embutia e um clone limpo não compilava (`56b14228`).
+- Conferido contra a 2.0 real: `catalogo` lê 85 pacotes Lazarus e 89 Delphi, sem ciclo; a tabela de
+  `RALInst.Heranca` bate com os nomes finais; os modelos do `ralcli novo` compilam no Lazarus 5.0L e
+  no Delphi 13, e o servidor gerado responde às rotas (ping, health, metrics, CRUD).
+- A janela do instalador ganhou a interface `IJanelaModelo`, que o migrador usa para rodar sobre o
+  mesmo `TTelaModelo`, e o `--capturar=<pasta>` (`RALInst.Tela.Captura`); a caixa "só runtime" estava
+  em português no en-US e no es-ES (`2f8edd45`).
+- Falta: receita `nghttp2` (binários da A6 do `PLANO_AMBIENTE`); `advancedhttp` fica sem receita (o
+  pacote é experimental e fora do grupo; a biblioteca vem pela macro `$(AdvancedHTTPServer)` ou pela
+  variável `ADVANCEDHTTPSERVER`, RAL `5887442`); `tests/fechamento` contra a 2.0 final; o fluxo pela
+  tela da VM.
