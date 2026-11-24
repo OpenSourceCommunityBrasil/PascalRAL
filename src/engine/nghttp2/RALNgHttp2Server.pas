@@ -162,6 +162,10 @@ type
     FClientIP: StringRAL;
     /// The client port.
     FClientPort: IntegerRAL;
+    /// When a closing connection stops waiting (ms, RALSocketNow).
+    FCloseBy: Int64RAL;
+    /// The connection is closing: its output is flushed, then the input dropped.
+    FClosing: boolean;
     /// The TLS handshake is done (or there is no TLS).
     FHandshaken: boolean;
     /// When the connection must have its preface or answer by (ms, RALSocketNow).
@@ -177,8 +181,13 @@ type
     /// The TLS channel, nil for h2c.
     FTLS: TRALTLSChannel;
 
+    { Starts a lingering close: the GOAWAY nghttp2 queued must reach the client, and
+      closing with unread input sends RST, which can drop it on the way. }
+    procedure BeginClose(ANow: Int64RAL);
     /// Hands the streams the workers made ready to nghttp2.
     procedure DrainReady;
+    /// One pass of a closing connection: flush, stop sending, drop the input.
+    procedure Linger(ANow: Int64RAL);
     /// Asks nghttp2 for its output and writes it; False when the link broke.
     function PumpOutput: boolean;
     /// A stream's request is complete: hand it to a worker.
@@ -1047,6 +1056,54 @@ begin
   FChannel.Flush;
 end;
 
+procedure TRALNgHttp2Connection.BeginClose(ANow: Int64RAL);
+begin
+  if not FClosing then
+  begin
+    FClosing := True;
+    FCloseBy := ANow + 2000;
+  end;
+  Linger(ANow);
+end;
+
+procedure TRALNgHttp2Connection.Linger(ANow: Int64RAL);
+var
+  vBuffer: array[0..4095] of Byte;
+  vRead: IntegerRAL;
+begin
+  if IsClosed then
+    Exit;
+  if not PumpOutput or (ANow >= FCloseBy) then
+  begin
+    Close;
+    Exit;
+  end;
+  // the output first: the GOAWAY, and what the streams still had
+  if FBacklog.Size > FBacklogPos then
+    Exit;
+  // TLS has no half close here: once the output is out, the connection goes
+  if FTLS <> nil then
+  begin
+    Close;
+    Exit;
+  end;
+  try
+    Socket.ShutdownSend;
+  except
+    Close;
+    Exit;
+  end;
+  repeat
+    vRead := FChannel.Read(vBuffer, SizeOf(vBuffer));
+    if vRead = 0 then
+    begin
+      // the client closed too
+      Close;
+      Exit;
+    end;
+  until vRead < 0;
+end;
+
 procedure TRALNgHttp2Connection.Serve(ANow: Int64RAL);
 var
   vBuffer: array[0..32767] of Byte;
@@ -1056,6 +1113,11 @@ begin
   if (Returned and RALPollErr) <> 0 then
   begin
     Close;
+    Exit;
+  end;
+  if FClosing then
+  begin
+    Linger(ANow);
     Exit;
   end;
   if not FHandshaken then
@@ -1093,8 +1155,7 @@ begin
       if vRes < 0 then
       begin
         // a protocol error: nghttp2 queued GOAWAY; send it and close
-        PumpOutput;
-        Close;
+        BeginClose(ANow);
         Exit;
       end;
       FIdleSince := ANow;
@@ -1106,18 +1167,18 @@ begin
     Close;
     Exit;
   end;
+  // nghttp2 is done with the session (after its GOAWAY): close without a reset
   if (nghttp2_session_want_read(FSession) = 0) and (nghttp2_session_want_write(FSession) = 0) and
      (FBacklog.Size = FBacklogPos) then
   begin
-    Close;
+    BeginClose(ANow);
     Exit;
   end;
   if (FServer.IdleTimeout > 0) and (FStreams.Count = 0) and
      (ANow - FIdleSince > FServer.IdleTimeout) then
   begin
     nghttp2_session_terminate_session(FSession, NGHTTP2_NO_ERROR);
-    PumpOutput;
-    Close;
+    BeginClose(ANow);
   end;
 end;
 
