@@ -8,8 +8,15 @@ one pull request. Until it is merged, RAL compiles against a stock mORMot2 too:
 `{$IF DECLARED(THttpServerChunkedState)}`, and without it a stream is buffered
 and sent when the handler returns.
 
-Base: mORMot2 `32064e245` (2026-07-16). Files: `mormot.net.http.pas` and
-`mormot.net.server.pas`, in mORMot2's `net` folder.
+Base: mORMot2 `542d96d42` (2.4.18232, November 2026; first written on `32064e245`,
+2026-07-16, and checked again on the newer code, where it applies unchanged). Files:
+`mormot.net.http.pas` and `mormot.net.server.pas`, in mORMot2's `net` folder. The
+change is one commit on the branch `server-chunked-response` of the owner's fork.
+
+One point for the maintainer: `rfChunkedResponse` is the ninth member of
+`THttpRequestResponseFlags`, so the set grows from one byte to two, against the note
+above its declaration. Nothing casts it to a byte; if a byte matters, the flag can
+move to a field of its own.
 
 ## The problem
 

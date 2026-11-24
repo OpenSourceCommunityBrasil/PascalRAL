@@ -21,6 +21,15 @@ uses
   RALParams, RALTools, RALBase64, RALRSA, RALX509, RALNetwork, RALStream,
   RALResponseStream, RALCustomObjects, RALUpgrade, RALRoutes;
 
+{ mORMot2 2.4.16714 (03/09/2026) made every thread of its own hand back, when it
+  ends, the number and name mormot.core.log keeps for it, and its thread events
+  now take a TThreadAbstract; before it, the engine did that itself }
+{$IF DECLARED(SYNOPSE_FRAMEWORK_COMMIT)}
+  {$IF SYNOPSE_FRAMEWORK_COMMIT >= 16714}
+    {$DEFINE RALMormotThreadEnds}
+  {$IFEND}
+{$IFEND}
+
 type
 
   /// TLS settings of the mORMot2 server.
@@ -107,10 +116,12 @@ type
     function OnCommandProcess(AContext: THttpServerRequestAbstract): Cardinal;
     /// Called when the mORMot2 server terminates: marks the RAL server stopped.
     procedure OnHttpTerminate(ASender: TObject);
+    {$IFNDEF RALMormotThreadEnds}
     { Called first in each worker thread: does nothing, but mORMot2 only calls
       the end-of-thread event (OnThreadEnded) for a thread whose start it
       notified. }
     procedure OnHttpThreadStart(ASender: TThread);
+    {$ENDIF}
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -174,9 +185,30 @@ type
 implementation
 
 uses
+  {$IFDEF RALWindows}
+  { mORMot2 2.4.17934 (09/11/2026) moved the http.sys server out of
+    mormot.net.server, which declares it in the older ones }
+  {$IF NOT DECLARED(THttpApiServer)}
+  {$DEFINE RALMormotServerWin}
+  mormot.net.server.win,
+  {$IFEND}
+  {$ENDIF}
   mormot.core.log, mormot.core.threads;
 
 type
+  {$IFDEF RALMormotServerWin}
+  { MORMOT2: since 2.4.17934 a request of http.sys is a THttpApiServerRequest,
+    declared in the implementation of mormot.net.server.win, and
+    THttpServerRequest.HttpApiRequest is gone. Its first two fields are api and
+    req (the PHTTP_REQUEST): this class has the same layout, and is only cast to
+    an object of that class name. }
+  TRALHttpApiRequestView = class(THttpServerRequest)
+  public
+    Api: TObject;
+    Req: PHTTP_REQUEST;
+  end;
+  {$ENDIF}
+
   { THttpAsyncServer - the smAsync mode - with what this engine needs of it
     that mORMot2 does not do yet, each marked MORMOT2 where it is done. Kept
     here, and only here, so that the day mORMot2 does them the classes go and
@@ -634,9 +666,15 @@ begin
       mormot.core.log keeps for it in a process-wide table; without this each
       start of the server left its pool there for good (TRestHttpServer does
       the same through TRest.EndCurrentThread); a thread gets it only when its
-      start was notified, hence the empty OnStart }
+      start was notified, hence the empty OnStart; a newer mORMot2 does it itself
+      (RALMormotThreadEnds) }
+    {$IFDEF RALMormotThreadEnds}
+    vOnStart := nil;
+    vOnStop := nil;
+    {$ELSE}
     vOnStart := {$IFDEF FPC}@{$ENDIF}OnHttpThreadStart;
     vOnStop := {$IFDEF FPC}@{$ENDIF}TSynLogFamily.OnThreadEnded;
+    {$ENDIF}
 
     {$IFDEF RALWindows}
     if FMode = smHttpSys then
@@ -1226,9 +1264,15 @@ begin
       {$IFDEF RALWindows}
       { http.sys: the HTTP2 flag, not the Version field (which says 1.1 for
         HTTP/2 too) }
+      {$IFDEF RALMormotServerWin}
+      if AContext.ClassNameIs('THttpApiServerRequest') then
+      begin
+        vApiReq := TRALHttpApiRequestView(AContext).Req;
+      {$ELSE}
       if AContext is THttpServerRequest then
       begin
         vApiReq := THttpServerRequest(AContext).HttpApiRequest;
+      {$ENDIF}
         if (vApiReq <> nil) and
            ((vApiReq^.Flags and HTTP_REQUEST_FLAG_HTTP2) <> 0) then
           vRequest.ProtocolVersion := rhv2;
@@ -1389,10 +1433,12 @@ begin
   Active := False;
 end;
 
+{$IFNDEF RALMormotThreadEnds}
 procedure TRALSynopseServer.OnHttpThreadStart(ASender: TThread);
 begin
   // see the declaration: only its presence matters
 end;
+{$ENDIF}
 
 constructor TRALSynopseServer.Create(AOwner: TComponent);
 begin
