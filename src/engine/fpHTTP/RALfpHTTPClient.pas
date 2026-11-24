@@ -58,8 +58,10 @@ type
 
     /// Stops a redirect that would leave TLS where TLS is required.
     procedure DoRedirect(Sender: TObject; const ASrc: String; var ADest: String);
+    {$IFDEF RALHasFPCertVerify}
     /// Judges the server certificate by the client's rule.
     procedure VerifyCert(Sender: TObject; var Allow: boolean);
+    {$ENDIF}
   protected
     /// The head fphttpclient read, which it has before the first piece of the body.
     procedure ReadStreamHead(AResponse: TRALResponse); override;
@@ -88,7 +90,9 @@ uses
   // cint, in the signature of CheckSocketConnectTimeout
   {$IFDEF RALWindows}ctypes,{$ENDIF}
   // ParseURI, the parse fphttpclient itself connects by
-  URIParser;
+  URIParser,
+  // ERALException, for FPC 3.2.0 (OnGetSocketHandler)
+  RALExceptions;
 
 /// Where fphttpclient connects for this URL, read the way it reads it.
 function FPAuthority(const AURL: String): String;
@@ -365,9 +369,11 @@ end;
 
 class function TRALfpHttpClientHTTP.SupportsCertPin: boolean;
 begin
-  Result := True;
+  // FPC 3.2.0: the certificate event cannot refuse (see OnGetSocketHandler)
+  Result := {$IFDEF RALHasFPCertVerify}True{$ELSE}False{$ENDIF};
 end;
 
+{$IFDEF RALHasFPCertVerify}
 { WARNING about what this engine does when nobody asks for certificate control:
   nothing. TOpenSSLSocketHandler.Connect has the chain check commented out in
   FPC 3.2.2, and TSSLSocketHandler.DoVerifyCert returns True when no handler is
@@ -422,6 +428,7 @@ begin
     difference, so it records it for SendUrl to classify. }
   FCertRefused := not Allow;
 end;
+{$ENDIF}
 
 procedure TRALfpHttpClientHTTP.OnGetSocketHandler(Sender: TObject;
   const UseSSL: Boolean; out AHandler: TSocketHandler);
@@ -438,11 +445,21 @@ begin
   AHandler := TRALfpNoDelaySSLHandler.Create;
   TRALfpNoDelaySSLHandler(AHandler).Engine := Self;
 
+  {$IFDEF RALHasFPCertVerify}
   if CertCheckWanted or (Parent.SSL.Verify = svAlways) then
     { only the callback, never VerifyPeerCert, which aborts the handshake on an
       unknown CA before a pin can be judged; OpenSSL's verdict stays in
       VerifyResult for the callback }
     TSSLSocketHandler(AHandler).OnVerifyCertificate := @VerifyCert;
+  {$ELSE}
+  { FPC 3.2.0: the certificate event cannot refuse a certificate, so
+    OnValidateServerCert cannot be honoured (a pin was refused before connecting);
+    svAlways is OpenSSL's own check }
+  if CertCheckWanted then
+    raise ERALException.CreateFmt(ecCertPinUnsupported, [EngineName]);
+  if Parent.SSL.Verify = svAlways then
+    TSSLSocketHandler(AHandler).VerifyPeerCert := True;
+  {$ENDIF}
 end;
 
 constructor TRALfpHttpClientHTTP.Create(AOwner: TRALClient);

@@ -492,6 +492,17 @@
 
 {$DEFINE RALHasGenerics}
 {$IFDEF FPC}
+  // TThread.TerminatedSet: FPC 3.2.2 on
+  {$IF Defined(VER2) or Defined(VER3_0) or Defined(VER3_2_0)}
+  {$ELSE}
+    {$DEFINE RALHasThreadTerminatedSet}
+  {$IFEND}
+  { sslsockets' OnVerifyCertificate can refuse (var Allow) and the OpenSSL handler
+    shows its TSSL: FPC 3.2.2 on }
+  {$IF Defined(VER2) or Defined(VER3_0) or Defined(VER3_2_0)}
+  {$ELSE}
+    {$DEFINE RALHasFPCertVerify}
+  {$IFEND}
   // FPC 3.3.1 on (VERx_y, not FPC_FULLVERSION: Delphi XE2 parses an if directive
   // even in skipped blocks)
   {$IF Defined(VER2) or Defined(VER3_0) or Defined(VER3_2)}

@@ -22,13 +22,54 @@ program capabilities;
 {$ENDIF}
 
 uses
+  {$IFDEF FPC}{$IFDEF UNIX}cthreads,{$ENDIF}{$ENDIF}
   Classes, SysUtils, TypInfo
   {$IF Defined(RALHasAttributes) or Defined(RALHasExtRTTI) or Defined(RALHasVirtualInterface)}
   , Rtti
   {$IFEND}
   {$IFDEF RALHasGenerics}
   , Generics.Collections
+  {$ENDIF}
+  {$IFDEF RALHasFPCertVerify}
+  , sslsockets
   {$ENDIF};
+
+{$IFDEF RALHasThreadTerminatedSet}
+type
+  /// A thread that sees its own Terminate.
+  TProbeThread = class(TThread)
+  protected
+    procedure Execute; override;
+    procedure TerminatedSet; override;
+  public
+    /// TerminatedSet ran.
+    Hit: Boolean;
+  end;
+
+procedure TProbeThread.Execute;
+begin
+end;
+
+procedure TProbeThread.TerminatedSet;
+begin
+  Hit := True;
+  inherited TerminatedSet;
+end;
+{$ENDIF}
+
+{$IFDEF RALHasFPCertVerify}
+type
+  /// A certificate handler that may refuse.
+  TProbeCert = class
+  public
+    procedure Verify(Sender: TObject; var Allow: Boolean);
+  end;
+
+procedure TProbeCert.Verify(Sender: TObject; var Allow: Boolean);
+begin
+  Allow := False;
+end;
+{$ENDIF}
 
 {$IFDEF RALHasAnonMethods}
 type
@@ -124,6 +165,14 @@ end;
 var
   vFailed: Boolean;
   vFound: Boolean;
+{$IFDEF RALHasThreadTerminatedSet}
+  vThread: TProbeThread;
+{$ENDIF}
+{$IFDEF RALHasFPCertVerify}
+  vCert: TProbeCert;
+  vEvent: TVerifyCertificateEvent;
+  vAllow: Boolean;
+{$ENDIF}
 {$IFDEF RALHasAnonMethods}
   vRef: TProbeRef;
   vSum: Integer;
@@ -224,6 +273,38 @@ begin
   vFailed := vFailed or (not vFound);
   {$ELSE}
   WriteLn('RALHasGenerics: no');
+  {$ENDIF}
+
+  {$IFDEF RALHasThreadTerminatedSet}
+  vThread := TProbeThread.Create(True);
+  try
+    vThread.Terminate;
+    vFound := vThread.Hit;
+    vThread.Start;
+    vThread.WaitFor;
+  finally
+    vThread.Free;
+  end;
+  Report('RALHasThreadTerminatedSet', vFound);
+  vFailed := vFailed or (not vFound);
+  {$ELSE}
+  WriteLn('RALHasThreadTerminatedSet: no');
+  {$ENDIF}
+
+  {$IFDEF RALHasFPCertVerify}
+  vCert := TProbeCert.Create;
+  try
+    vEvent := vCert.Verify;
+    vAllow := True;
+    vEvent(nil, vAllow);
+    vFound := not vAllow;
+  finally
+    vCert.Free;
+  end;
+  Report('RALHasFPCertVerify', vFound);
+  vFailed := vFailed or (not vFound);
+  {$ELSE}
+  WriteLn('RALHasFPCertVerify: no');
   {$ENDIF}
 
   if vFailed then

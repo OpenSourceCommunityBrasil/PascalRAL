@@ -185,7 +185,9 @@ type
     procedure SetPort(AValue: IntegerRAL);
     procedure SetQueueSize(const AValue: Word);
     procedure SetSessionTimeout(const AValue: IntegerRAL);
+    {$IFDEF RALHasThreadTerminatedSet}
     procedure TerminatedSet; override;
+    {$ENDIF}
     { one bounded GET to the server itself: fcl-web's accept loop only
       notices it was stopped when a connection arrives }
     procedure WakeUpAccept;
@@ -1340,6 +1342,8 @@ begin
   end;
 end;
 
+{$IFDEF RALHasThreadTerminatedSet}
+{ without it (FPC 3.2.0) Destroy wakes accept() up itself, in its wait loop }
 procedure TRALfpHttpServerThread.TerminatedSet;
 begin
   { still listening: stop it and wake accept() up so Execute can end }
@@ -1349,6 +1353,7 @@ begin
   end;
   inherited TerminatedSet;
 end;
+{$ENDIF}
 
 procedure TRALfpHttpServerThread.ListenConfirmed(Sender: TObject);
 begin

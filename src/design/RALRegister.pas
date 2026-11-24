@@ -26,6 +26,16 @@ uses
   // client
   RALClient;
 
+{ Lazarus 2.0 has no TSelectionEditor: there the Object Inspector shows every
+  property, relevant or not }
+{$IFDEF FPC}
+  {$IF DECLARED(TSelectionEditor)}
+    {$DEFINE RALSelectionEditor}
+  {$IFEND}
+{$ELSE}
+  {$DEFINE RALSelectionEditor}
+{$ENDIF}
+
 type
   /// Property editor of TRALClient.BaseURL: one URL per line, in a dialog.
   TRALBaseURLEditor = class(TClassProperty)
@@ -43,6 +53,7 @@ type
     procedure GetValues(Proc: TGetStrProc); override;
   end;
 
+  {$IFDEF RALSelectionEditor}
   { Hides from the Object Inspector the properties a component calls irrelevant
     (TRALComponent.IsPropertyRelevant); a hidden value is kept and ignored. }
   TRALSelectionEditor = class(TSelectionEditor{$IFNDEF FPC}, ISelectionPropertyFilter{$ENDIF})
@@ -74,6 +85,7 @@ type
       procedure RequiresUnits(Proc: TGetStrProc); override;
     {$ENDIF}
   end;
+  {$ENDIF}
 
   /// Passes on only the sub-properties some selected component calls relevant.
   TRALNestedSieve = class
@@ -152,8 +164,10 @@ begin
   RegisterComponents('RAL - Plugins', [TRALMemoryStore, TRALFileStore]);
 
   // registered for the base classes: the IDE also applies them to every descendant
+  {$IFDEF RALSelectionEditor}
   RegisterSelectionEditor(TRALServer, TRALServerSelectionEditor);
   RegisterSelectionEditor(TRALClient, TRALClientSelectionEditor);
+  {$ENDIF}
 
   // property registration process
   RegisterPropertyEditor(TypeInfo(TStrings), TRALClient, 'BaseURL', TRALBaseURLEditor);
@@ -382,6 +396,7 @@ begin
   end;
 end;
 
+{$IFDEF RALSelectionEditor}
 { TRALSelectionEditor }
 
 
@@ -496,6 +511,7 @@ end;
       end;
     end;
   end;
+{$ENDIF}
 {$ENDIF}
 
 {$IFDEF FPC}
