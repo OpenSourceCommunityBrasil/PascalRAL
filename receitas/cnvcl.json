@@ -1,0 +1,17 @@
+{
+  "nome": "CnPack (CnVcl)",
+  "descricao": "CnPack: as units de criptografia (CnMD5, CnSHA1, CnSHA2, CnSM3, CnPemUtils) que a Delphi-Cross-Socket usa desde 10/2026, para o motor XSocketRAL",
+  "site": "https://github.com/cnpack/cnvcl",
+  "fonte": { "github": "cnpack/cnvcl", "versao": "master",
+             "comentario": "so as pastas Source/Crypto e Source/Common sao usadas; o projeto nao publica releases da biblioteca" },
+  "pacotes-ral": ["XSocketRAL"],
+  "delphi": {
+    "comentario": "o Utils.Hash da Delphi-Cross-Socket usa as units do CnPack pelo library path; o XSocketRAL nao as declara",
+    "fornece": { "variaveis": ["cnpack"] },
+    "deteccao": [ { "variavel": "cnpack" }, { "unidade": "CnMD5.pas" } ],
+    "acoes": [
+      { "acao": "variavel", "nome": "cnpack", "valor": "{raiz}/Source" },
+      { "acao": "libpath", "caminhos": [ "$(cnpack)/Crypto", "$(cnpack)/Common" ] }
+    ]
+  }
+}
