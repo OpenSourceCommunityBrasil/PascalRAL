@@ -8,7 +8,7 @@ interface
 uses
   Classes, SysUtils, DB,
   SQLDB, SQLDBLib, PQConnection, SQLite3Conn, IBConnection, mysql51conn, BufDataset,
-  XMLDatapacketReader, ibase60dyn, sqlite3dyn, SyncObjs,
+  XMLDatapacketReader, ibase60dyn, sqlite3dyn, postgres3dyn, FmtBCD, SyncObjs,
   RALDBBase, RALTypes, RALMIMETypes;
 
 type
@@ -52,6 +52,8 @@ type
     function IsConnected: boolean; override;
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; override;
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; override;
+    /// PostgreSQL: the call through libpq in text (sqldb misreads its row).
+    function OpenProcCall(ASQL: StringRAL; AParams: TParams): TDataset; override;
     class function PackageDependency: StringRAL; override;
     procedure ResetSession; override;
     procedure Rollback; override;
@@ -65,6 +67,17 @@ type
   end;
 
 implementation
+
+{ the connection of a sqldb transaction: TPQTransactionHandle from FPC 3.2.3 on,
+  the protected field of TPQTrans in 3.2.2 }
+{$IF DECLARED(TPQTransactionHandle)}
+  {$DEFINE RALPQTEXTCALL}
+{$ELSEIF DECLARED(TPQTrans)}
+  {$DEFINE RALPQTEXTCALL}
+  {$DEFINE RALPQTRANSFIELD}
+type
+  TRALPQTransAccess = class(TPQTrans);
+{$IFEND}
 
 var
   { one reference to the Firebird client library, kept for the life of the
@@ -97,8 +110,13 @@ begin
   FConnector.HostName      := Hostname;
   FConnector.UserName      := Username;
   FConnector.Password      := Password;
+  { each connector reads its own name: PQConnection passes every param to
+    libpq as it is, and libpq knows only 'port'; MySQL and Firebird read 'Port' }
   if Port <> 0 then
-    FConnector.Params.Add('Port=' + IntToStr(Port));
+    if DatabaseType = dtPostgreSQL then
+      FConnector.Params.Values['port'] := IntToStr(Port)
+    else
+      FConnector.Params.Values['Port'] := IntToStr(Port);
   FConnector.ConnectorType := FindProtocol;
   FConnector.LoginPrompt   := False;
 
@@ -352,6 +370,115 @@ begin
       raise;
     end;
   end;
+end;
+
+function TRALDBSQLDB.OpenProcCall(ASQL: StringRAL; AParams: TParams): TDataset;
+{$IFDEF RALPQTEXTCALL}
+var
+  vConn: PPGconn;
+  vRes: PPGresult;
+  vSQL: AnsiString;
+  vText: array of AnsiString;
+  vValues: array of PAnsiChar;
+  vInt, vCol, vSize: IntegerRAL;
+  vParam: TParam;
+  vFormat: TFormatSettings;
+  vSet: TBufDataset;
+{$ENDIF}
+begin
+  {$IFDEF RALPQTEXTCALL}
+  if DatabaseType <> dtPostgreSQL then
+    Exit(inherited OpenProcCall(ASQL, AParams));
+
+  { PostgreSQL answers the row of a CALL in text whatever format was asked, and
+    sqldb reads every row as binary: an integer 42 arrived as 875692032 (FPC 3.3
+    refuses it instead). The call goes through libpq asking text, on the
+    connection of the transaction, and the outputs come back as text fields,
+    which RowToOutputs gives to params of the catalog's types. }
+  Conectar;
+  if not FTransaction.Active then
+    FTransaction.StartTransaction;
+  {$IFDEF RALPQTRANSFIELD}
+  vConn := TRALPQTransAccess(FTransaction.Handle).PGConn;
+  {$ELSE}
+  vConn := TPQTransactionHandle(FTransaction.Handle).Handle.NativeConn;
+  {$ENDIF}
+
+  vFormat := DefaultFormatSettings;
+  vFormat.DecimalSeparator := '.';
+  vFormat.ThousandSeparator := #0;
+  vSQL := AnsiString(ASQL);
+  SetLength(vText, AParams.Count);
+  SetLength(vValues, AParams.Count);
+  // from the last: :ralp1 would also match the start of :ralp10
+  for vInt := Pred(AParams.Count) downto 0 do
+  begin
+    vParam := AParams.Items[vInt];
+    vSQL := StringReplace(vSQL, ':' + vParam.Name, '$' + IntToStr(vInt + 1), [rfReplaceAll]);
+    if vParam.IsNull then
+    begin
+      vValues[vInt] := nil;
+      Continue;
+    end;
+    case vParam.DataType of
+      ftBoolean:
+        if vParam.AsBoolean then
+          vText[vInt] := 'true'
+        else
+          vText[vInt] := 'false';
+      ftDate:
+        vText[vInt] := FormatDateTime('yyyy"-"mm"-"dd', vParam.AsDateTime);
+      ftTime:
+        vText[vInt] := FormatDateTime('hh":"nn":"ss.zzz', vParam.AsDateTime, vFormat);
+      ftDateTime, ftTimeStamp:
+        vText[vInt] := FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss.zzz', vParam.AsDateTime, vFormat);
+      ftFloat, ftCurrency:
+        vText[vInt] := FloatToStr(vParam.AsFloat, vFormat);
+      ftBCD, ftFMTBcd:
+        vText[vInt] := BCDToStr(vParam.AsFMTBCD, vFormat);
+    else
+      vText[vInt] := AnsiString(vParam.AsString);
+    end;
+    vValues[vInt] := PAnsiChar(vText[vInt]);
+  end;
+
+  if Length(vValues) > 0 then
+    vRes := PQexecParams(vConn, PAnsiChar(vSQL), Length(vValues), nil, @vValues[0], nil, nil, 0)
+  else
+    vRes := PQexecParams(vConn, PAnsiChar(vSQL), 0, nil, nil, nil, nil, 0);
+  try
+    if not (PQresultStatus(vRes) in [PGRES_TUPLES_OK, PGRES_COMMAND_OK]) then
+      DatabaseError(string(PQresultErrorMessage(vRes)));
+    vSet := TBufDataset.Create(nil);
+    try
+      for vCol := 0 to Pred(PQnfields(vRes)) do
+      begin
+        vSize := 1;
+        if (PQntuples(vRes) > 0) and (PQgetlength(vRes, 0, vCol) > vSize) then
+          vSize := PQgetlength(vRes, 0, vCol);
+        vSet.FieldDefs.Add(string(PQfname(vRes, vCol)), ftString, vSize);
+      end;
+      vSet.CreateDataset;
+      if PQntuples(vRes) > 0 then
+      begin
+        vSet.Append;
+        for vCol := 0 to Pred(PQnfields(vRes)) do
+          if PQgetisnull(vRes, 0, vCol) = 0 then
+            vSet.Fields[vCol].AsString := string(PQgetvalue(vRes, 0, vCol));
+        vSet.Post;
+        vSet.First;
+      end;
+      Result := vSet;
+    except
+      vSet.Free;
+      raise;
+    end;
+  finally
+    PQclear(vRes);
+  end;
+  {$ELSE}
+  Result := inherited OpenProcCall(ASQL, AParams);
+  {$ENDIF}
 end;
 
 procedure TRALDBSQLDB.SaveToStream(ADataset: TDataSet; AStream: TStream;

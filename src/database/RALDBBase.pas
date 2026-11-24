@@ -168,6 +168,10 @@ type
     function OpenCompatible(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
     /// Opens ASQL in the library's own dataset; the caller frees it.
     function OpenNative(ASQL: StringRAL; AParams: TParams): TDataset; virtual; abstract;
+    { Opens the call of a procedure that answers its outputs as one row (a
+      PostgreSQL CALL, a Firebird EXECUTE PROCEDURE); OpenNative, unless the
+      library cannot read that row. The caller frees it. }
+    function OpenProcCall(ASQL: StringRAL; AParams: TParams): TDataset; virtual;
     { The output params of AParams as a dataset of one row, a field each, which
       every storage writes; nil when there is none or the driver has no
       in-memory dataset. Freed by the caller }
@@ -249,7 +253,7 @@ type
 implementation
 
 uses
-  RALConsts;
+  FmtBCD, RALConsts;
 
 var
   /// The registered drivers.
@@ -823,8 +827,11 @@ begin
           vMode := 'i';
           if vInt < vModes.Count then
             vMode := vModes[vInt];
-          // i in, o out, b inout, v variadic, t a column of RETURNS TABLE
-          if (vMode = 'o') or (vMode = 't') then
+          { i in, o out, b inout, v variadic, t a column of RETURNS TABLE; the
+            columns of a set are its rows, not outputs }
+          if (vMode = 't') or ((vMode = 'o') and vProc.ReturnsSet) then
+            Continue;
+          if vMode = 'o' then
             vParamType := ptOutput
           else if vMode = 'b' then
             vParamType := ptInputOutput
@@ -994,6 +1001,56 @@ begin
   end;
 end;
 
+{ Gives AParam the text of a value, read as SQL writes it (ISO dates and times,
+  '.' for decimals) and not by the machine's settings: a driver that answers a
+  row as text (the sqldb PostgreSQL CALL) hands over '2026-11-24' or '12.5' }
+procedure TextToParam(AParam: TParam; const AText: string);
+var
+  vFormat: TFormatSettings;
+  vDate, vTime: TDateTime;
+  vPos: IntegerRAL;
+begin
+  {$IFDEF FPC}
+  vFormat := DefaultFormatSettings;
+  {$ELSE}
+  vFormat := TFormatSettings.Create;
+  {$ENDIF}
+  vFormat.DecimalSeparator := '.';
+  vFormat.DateSeparator := '-';
+  vFormat.TimeSeparator := ':';
+  vFormat.ShortDateFormat := 'yyyy-mm-dd';
+  vFormat.LongTimeFormat := 'hh:nn:ss.zzz';
+  case AParam.DataType of
+    ftSmallint, ftInteger, ftWord, ftAutoInc:
+      AParam.AsInteger := StrToInt(AText);
+    ftLargeint:
+      AParam.AsLargeInt := StrToInt64(AText);
+    ftFloat, ftCurrency:
+      AParam.AsFloat := StrToFloat(AText, vFormat);
+    ftBCD, ftFMTBcd:
+      AParam.AsFMTBCD := StrToBCD(AText, vFormat);
+    ftBoolean:
+      AParam.AsBoolean := (AText = 't') or SameText(AText, 'true') or (AText = '1');
+    ftDate:
+      AParam.AsDate := StrToDate(Copy(AText, 1, 10), vFormat);
+    ftTime:
+      AParam.AsTime := StrToTime(Copy(AText, 1, 12), vFormat);
+    ftDateTime, ftTimeStamp:
+      begin
+        vDate := StrToDate(Copy(AText, 1, 10), vFormat);
+        vTime := 0;
+        vPos := Pos(' ', AText);
+        if vPos = 0 then
+          vPos := Pos('T', AText);
+        if vPos > 0 then
+          vTime := StrToTime(Copy(AText, vPos + 1, 12), vFormat);
+        AParam.AsDateTime := vDate + vTime;
+      end;
+  else
+    AParam.AsString := AText;
+  end;
+end;
+
 /// Copies the fields of the current record of ARow to the output params of AParams
 procedure RowToOutputs(ARow: TDataSet; AParams: TParams);
 var
@@ -1013,6 +1070,10 @@ begin
       Continue;
     if vField.IsNull then
       vParam.Clear
+    else if (vField.DataType in [ftString, ftWideString, ftFixedChar, ftFixedWideChar]) and
+            not (vParam.DataType in [ftUnknown, ftString, ftWideString, ftFixedChar,
+              ftFixedWideChar, ftMemo, ftWideMemo]) then
+      TextToParam(vParam, vField.AsString)
     else
       vParam.Value := vField.Value;
   end;
@@ -1160,7 +1221,7 @@ begin
       // Firebird and PostgreSQL answer the outputs of a call as one row
       if AProc.HasOutput then
       begin
-        vRow := OpenNative(vSQL, vBind);
+        vRow := OpenProcCall(vSQL, vBind);
         try
           RowToOutputs(vRow, AParams);
         finally
@@ -1170,6 +1231,16 @@ begin
       else
         ExecSQL(vSQL, vBind, ARowsAffected, vLastId);
     end
+    else if (DatabaseType = dtPostgreSQL) and AProc.HasOutput and not AProc.ReturnsSet then
+    begin
+      // a function with OUT params answers them as its one row
+      vRow := OpenNative(vSQL, vBind);
+      try
+        RowToOutputs(vRow, AParams);
+      finally
+        vRow.Free;
+      end;
+    end
     else
       Result := OpenNative(vSQL, vBind);
   finally
@@ -1178,6 +1249,11 @@ begin
     vSetters.Free;
     vBind.Free;
   end;
+end;
+
+function TRALDBBase.OpenProcCall(ASQL: StringRAL; AParams: TParams): TDataset;
+begin
+  Result := OpenNative(ASQL, AParams);
 end;
 
 function TRALDBBase.GetNativeConnection: TComponent;
