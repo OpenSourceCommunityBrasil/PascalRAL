@@ -752,6 +752,20 @@
   cmChatMeWebhookSettings = 'Webhook settings...';
   cmChatMeAskUrl = 'Public address of the webhook module (https://host/domain):';
   // end of Chat Meta
+  // Chat WhatsApp Web (no official API, linked device)
+  emChatWawNoBot = 'The WhatsApp Web channel %s has no Bot to deliver to.';
+  emChatWawOffline = 'The WhatsApp Web channel %s is not logged in.';
+  emChatWawNotPairing = 'A pairing code can only be asked while the channel is pairing.';
+  emChatWawBadPairing = 'The pairing of the WhatsApp Web channel %s did not verify.';
+  emChatWawNoMedia = 'The media of the message has no key or address to download.';
+  emChatWawNoHello = 'The handshake of the WhatsApp Web channel had no ServerHello.';
+  emChatWawLoginTimeout = 'The WhatsApp Web channel %s did not log in within the time.';
+  emChatWawPreKeyTimeout = 'The WhatsApp Web channel did not get the device prekeys in time.';
+  emChatWawUpload = 'The WhatsApp Web channel could not upload the media file.';
+  cmChatWawTestSession = 'Test session';
+  cmChatWawLoggedIn = 'Logged in as %s';
+  cmChatWawWaitingPair = 'Waiting for pairing (scan the QR or enter the pairing code).';
+  // end of Chat WhatsApp Web
   // Service container (RALHostingContainerPackage)
   emContainerUnknown = 'There is no service named %s.';
   emContainerUnknownClass = 'The class %s of the service %s is not registered (RALRegisterService).';

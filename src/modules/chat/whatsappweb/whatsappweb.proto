@@ -1,0 +1,383 @@
+// The protobuf messages of the WhatsApp Web channel: the subset of the protocol it
+// speaks (the field numbers are the protocol's; the message names are this file's
+// own) and the records it keeps in its store (WAStored*, numbered here).
+// RALWhatsAppProto.pas is generated from this file:
+//   ralprotoc -unit=RALWhatsAppProto -nogrpc whatsappweb.proto
+syntax = "proto2";
+
+package ralwhatsapp;
+
+// ---- connection (Noise handshake and login) ----
+
+message WAHandshakeMessage {
+  message ClientHello {
+    optional bytes ephemeral = 1;
+    optional bytes staticKey = 2;
+    optional bytes payload = 3;
+  }
+  message ServerHello {
+    optional bytes ephemeral = 1;
+    optional bytes staticKey = 2;
+    optional bytes payload = 3;
+  }
+  message ClientFinish {
+    optional bytes staticKey = 1;
+    optional bytes payload = 2;
+  }
+  optional ClientHello clientHello = 2;
+  optional ServerHello serverHello = 3;
+  optional ClientFinish clientFinish = 4;
+}
+
+message WAAppVersion {
+  optional uint32 primary = 1;
+  optional uint32 secondary = 2;
+  optional uint32 tertiary = 3;
+  optional uint32 quaternary = 4;
+  optional uint32 quinary = 5;
+}
+
+message WAUserAgent {
+  optional int32 platform = 1;
+  optional WAAppVersion appVersion = 2;
+  optional string mcc = 3;
+  optional string mnc = 4;
+  optional string osVersion = 5;
+  optional string manufacturer = 6;
+  optional string device = 7;
+  optional string osBuildNumber = 8;
+  optional string phoneId = 9;
+  optional int32 releaseChannel = 10;
+  optional string localeLanguageIso6391 = 11;
+  optional string localeCountryIso31661Alpha2 = 12;
+  optional string deviceBoard = 13;
+}
+
+message WAWebInfo {
+  optional string refToken = 1;
+  optional string version = 2;
+  optional int32 webSubPlatform = 4;
+}
+
+message WADevicePairingData {
+  optional bytes eRegid = 1;
+  optional bytes eKeytype = 2;
+  optional bytes eIdent = 3;
+  optional bytes eSkeyId = 4;
+  optional bytes eSkeyVal = 5;
+  optional bytes eSkeySig = 6;
+  optional bytes buildHash = 7;
+  optional bytes deviceProps = 8;
+}
+
+message WADeviceProps {
+  optional string os = 1;
+  optional WAAppVersion version = 2;
+  optional int32 platformType = 3;
+  optional bool requireFullSync = 4;
+}
+
+message WAClientPayload {
+  optional uint64 username = 1;
+  optional bool passive = 3;
+  optional WAUserAgent userAgent = 5;
+  optional WAWebInfo webInfo = 6;
+  optional string pushName = 7;
+  optional bool shortConnect = 10;
+  optional int32 connectType = 12;
+  optional int32 connectReason = 13;
+  optional uint32 device = 18;
+  optional WADevicePairingData devicePairingData = 19;
+  optional bool pull = 33;
+}
+
+// ---- pairing (account device identity) ----
+
+message WAADVSignedDeviceIdentityHMAC {
+  optional bytes details = 1;
+  optional bytes hmac = 2;
+  optional int32 accountType = 3;
+}
+
+message WAADVSignedDeviceIdentity {
+  optional bytes details = 1;
+  optional bytes accountSignatureKey = 2;
+  optional bytes accountSignature = 3;
+  optional bytes deviceSignature = 4;
+}
+
+message WAADVDeviceIdentity {
+  optional uint32 rawId = 1;
+  optional uint64 timestamp = 2;
+  optional uint32 keyIndex = 3;
+  optional int32 accountType = 4;
+  optional int32 deviceType = 5;
+}
+
+// ---- messages ----
+
+message WAMessageKey {
+  optional string remoteJid = 1;
+  optional bool fromMe = 2;
+  optional string id = 3;
+  optional string participant = 4;
+}
+
+message WAContextInfo {
+  optional string stanzaId = 1;
+  optional string participant = 2;
+  optional WAMessage quotedMessage = 3;
+  optional string remoteJid = 4;
+  repeated string mentionedJid = 15;
+}
+
+message WAExtendedTextMessage {
+  optional string text = 1;
+  optional string matchedText = 2;
+  optional string canonicalUrl = 4;
+  optional string description = 5;
+  optional string title = 6;
+  optional WAContextInfo contextInfo = 17;
+}
+
+message WAImageMessage {
+  optional string url = 1;
+  optional string mimetype = 2;
+  optional string caption = 3;
+  optional bytes fileSha256 = 4;
+  optional uint64 fileLength = 5;
+  optional uint32 height = 6;
+  optional uint32 width = 7;
+  optional bytes mediaKey = 8;
+  optional bytes fileEncSha256 = 9;
+  optional string directPath = 11;
+  optional int64 mediaKeyTimestamp = 12;
+  optional bytes jpegThumbnail = 16;
+  optional WAContextInfo contextInfo = 17;
+}
+
+message WADocumentMessage {
+  optional string url = 1;
+  optional string mimetype = 2;
+  optional string title = 3;
+  optional bytes fileSha256 = 4;
+  optional uint64 fileLength = 5;
+  optional uint32 pageCount = 6;
+  optional bytes mediaKey = 7;
+  optional string fileName = 8;
+  optional bytes fileEncSha256 = 9;
+  optional string directPath = 10;
+  optional int64 mediaKeyTimestamp = 11;
+  optional bytes jpegThumbnail = 16;
+  optional WAContextInfo contextInfo = 17;
+  optional string caption = 20;
+}
+
+message WAAudioMessage {
+  optional string url = 1;
+  optional string mimetype = 2;
+  optional bytes fileSha256 = 3;
+  optional uint64 fileLength = 4;
+  optional uint32 seconds = 5;
+  optional bool ptt = 6;
+  optional bytes mediaKey = 7;
+  optional bytes fileEncSha256 = 8;
+  optional string directPath = 9;
+  optional int64 mediaKeyTimestamp = 10;
+  optional WAContextInfo contextInfo = 17;
+}
+
+message WAVideoMessage {
+  optional string url = 1;
+  optional string mimetype = 2;
+  optional bytes fileSha256 = 3;
+  optional uint64 fileLength = 4;
+  optional uint32 seconds = 5;
+  optional bytes mediaKey = 6;
+  optional string caption = 7;
+  optional bool gifPlayback = 8;
+  optional uint32 height = 9;
+  optional uint32 width = 10;
+  optional bytes fileEncSha256 = 11;
+  optional string directPath = 13;
+  optional int64 mediaKeyTimestamp = 14;
+  optional bytes jpegThumbnail = 16;
+  optional WAContextInfo contextInfo = 17;
+}
+
+message WAStickerMessage {
+  optional string url = 1;
+  optional bytes fileSha256 = 2;
+  optional bytes fileEncSha256 = 3;
+  optional bytes mediaKey = 4;
+  optional string mimetype = 5;
+  optional uint32 height = 6;
+  optional uint32 width = 7;
+  optional string directPath = 8;
+  optional uint64 fileLength = 9;
+  optional int64 mediaKeyTimestamp = 10;
+  optional WAContextInfo contextInfo = 17;
+}
+
+message WALocationMessage {
+  optional double degreesLatitude = 1;
+  optional double degreesLongitude = 2;
+  optional string name = 3;
+  optional string address = 4;
+  optional string url = 5;
+  optional bytes jpegThumbnail = 16;
+  optional WAContextInfo contextInfo = 17;
+}
+
+message WAContactMessage {
+  optional string displayName = 1;
+  optional string vcard = 16;
+  optional WAContextInfo contextInfo = 17;
+}
+
+message WAReactionMessage {
+  optional WAMessageKey key = 1;
+  optional string text = 2;
+  optional string groupingKey = 3;
+  optional int64 senderTimestampMs = 4;
+}
+
+message WAProtocolMessage {
+  optional WAMessageKey key = 1;
+  optional int32 type = 2;
+  optional WAMessage editedMessage = 14;
+  optional int64 timestampMs = 15;
+}
+
+message WASenderKeyDistributionMessage {
+  optional string groupId = 1;
+  optional bytes axolotlSenderKeyDistributionMessage = 2;
+}
+
+message WADeviceSentMessage {
+  optional string destinationJid = 1;
+  optional WAMessage message = 2;
+  optional string phash = 3;
+}
+
+message WAFutureProofMessage {
+  optional WAMessage message = 1;
+}
+
+message WAMessage {
+  optional string conversation = 1;
+  optional WASenderKeyDistributionMessage senderKeyDistributionMessage = 2;
+  optional WAImageMessage imageMessage = 3;
+  optional WAContactMessage contactMessage = 4;
+  optional WALocationMessage locationMessage = 5;
+  optional WAExtendedTextMessage extendedTextMessage = 6;
+  optional WADocumentMessage documentMessage = 7;
+  optional WAAudioMessage audioMessage = 8;
+  optional WAVideoMessage videoMessage = 9;
+  optional WAProtocolMessage protocolMessage = 12;
+  optional WAStickerMessage stickerMessage = 26;
+  optional WADeviceSentMessage deviceSentMessage = 31;
+  optional WAFutureProofMessage viewOnceMessage = 37;
+  optional WAFutureProofMessage ephemeralMessage = 40;
+  optional WAReactionMessage reactionMessage = 46;
+  optional WAFutureProofMessage documentWithCaptionMessage = 53;
+  optional WAFutureProofMessage viewOnceMessageV2 = 55;
+}
+
+// ---- Signal protocol (WhisperTextProtocol) ----
+
+message WASignalMessage {
+  optional bytes ratchetKey = 1;
+  optional uint32 counter = 2;
+  optional uint32 previousCounter = 3;
+  optional bytes ciphertext = 4;
+}
+
+message WAPreKeySignalMessage {
+  optional uint32 registrationId = 5;
+  optional uint32 preKeyId = 1;
+  optional uint32 signedPreKeyId = 6;
+  optional bytes baseKey = 2;
+  optional bytes identityKey = 3;
+  optional bytes message = 4;
+}
+
+message WASenderKeyMessage {
+  optional uint32 id = 1;
+  optional uint32 iteration = 2;
+  optional bytes ciphertext = 3;
+}
+
+message WASenderKeyDistribution {
+  optional uint32 id = 1;
+  optional uint32 iteration = 2;
+  optional bytes chainKey = 3;
+  optional bytes signingKey = 4;
+}
+
+// ---- records kept in the store ----
+
+message WAStoredMessageKey {
+  optional uint32 index = 1;
+  optional bytes seed = 2;
+}
+
+message WAStoredChain {
+  optional bytes ratchetPub = 1;
+  optional bytes ratchetPriv = 2;
+  optional bytes chainKey = 3;
+  optional uint32 index = 4;
+  repeated WAStoredMessageKey skipped = 5;
+}
+
+message WAStoredSession {
+  optional bytes remoteIdentity = 1;
+  optional bytes localIdentity = 2;
+  optional bytes rootKey = 3;
+  optional WAStoredChain senderChain = 4;
+  repeated WAStoredChain receiverChains = 5;
+  optional uint32 previousCounter = 6;
+  optional uint32 remoteRegistrationId = 7;
+  optional uint32 localRegistrationId = 8;
+  optional bytes aliceBaseKey = 9;
+  optional bool pending = 10;
+  optional uint32 pendingPreKeyId = 11;
+  optional bool pendingHasPreKey = 12;
+  optional uint32 pendingSignedPreKeyId = 13;
+  optional bytes pendingBaseKey = 14;
+}
+
+message WAStoredSessionRecord {
+  optional WAStoredSession current = 1;
+  repeated WAStoredSession previous = 2;
+}
+
+message WAStoredSenderKeyState {
+  optional uint32 keyId = 1;
+  optional uint32 iteration = 2;
+  optional bytes chainKey = 3;
+  optional bytes signingPub = 4;
+  optional bytes signingPriv = 5;
+  repeated WAStoredMessageKey skipped = 6;
+}
+
+message WAStoredSenderKeyRecord {
+  repeated WAStoredSenderKeyState states = 1;
+}
+
+message WAStoredCredentials {
+  optional bytes noisePriv = 1;
+  optional bytes identityPriv = 2;
+  optional uint32 registrationId = 3;
+  optional bytes signedPreKeyPriv = 4;
+  optional uint32 signedPreKeyId = 5;
+  optional bytes signedPreKeySig = 6;
+  optional bytes advSecret = 7;
+  optional uint32 nextPreKeyId = 8;
+  optional uint32 firstUnuploadedPreKeyId = 9;
+  optional string jid = 10;
+  optional string lid = 11;
+  optional bytes account = 12;
+  optional string pushName = 13;
+  optional string platform = 14;
+}

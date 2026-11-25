@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <PathDelim Value="\"/>
+    <Name Value="RALModuleChatWhatsAppWebPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="OpenSourceCommunityBrasil"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="..\..\..\src\modules\chat\whatsappweb"/>
+        <UnitOutputDirectory Value="..\..\..\compiled\lazarus\$(TargetCPU)-$(TargetOS)\ralmodulechatwhatsappwebpackage"/>
+      </SearchPaths>
+      <Linking>
+        <Debugging>
+          <DebugInfoType Value="dsDwarf3"/>
+        </Debugging>
+      </Linking>
+      <Other>
+        <Verbosity>
+          <ShowLineNum Value="True"/>
+        </Verbosity>
+      </Other>
+    </CompilerOptions>
+    <Description Value="PascalRAL | Chat channel: WhatsApp Web (no official API)"/>
+    <Version Major="2"/>
+    <Files Count="7">
+      <Item1>
+        <Filename Value="..\..\..\src\modules\chat\whatsappweb\RALWhatsAppCrypto.pas"/>
+        <UnitName Value="RALWhatsAppCrypto"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\..\src\modules\chat\whatsappweb\RALWhatsAppProto.pas"/>
+        <UnitName Value="RALWhatsAppProto"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\..\..\src\modules\chat\whatsappweb\RALWhatsAppBinary.pas"/>
+        <UnitName Value="RALWhatsAppBinary"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\..\..\src\modules\chat\whatsappweb\RALWhatsAppMedia.pas"/>
+        <UnitName Value="RALWhatsAppMedia"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\..\..\src\modules\chat\whatsappweb\RALWhatsAppNoise.pas"/>
+        <UnitName Value="RALWhatsAppNoise"/>
+      </Item5>
+      <Item6>
+        <Filename Value="..\..\..\src\modules\chat\whatsappweb\RALWhatsAppSignal.pas"/>
+        <UnitName Value="RALWhatsAppSignal"/>
+      </Item6>
+      <Item7>
+        <Filename Value="..\..\..\src\modules\chat\whatsappweb\RALChatWhatsAppWeb.pas"/>
+        <UnitName Value="RALChatWhatsAppWeb"/>
+      </Item7>
+    </Files>
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="7">
+      <Item1>
+        <PackageName Value="PascalRAL"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="RALModuleChatPackage"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="RALNetPackage"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item3>
+      <Item4>
+        <PackageName Value="RALModuleWebSocketPackage"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item4>
+      <Item5>
+        <PackageName Value="RALCryptoCurvesPackage"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item5>
+      <Item6>
+        <PackageName Value="RALModuleProtobufPackage"/>
+        <MinVersion Major="2" Valid="True"/>
+      </Item6>
+      <Item7>
+        <PackageName Value="FCL"/>
+      </Item7>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

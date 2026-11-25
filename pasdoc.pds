@@ -67,7 +67,7 @@ Item_1=PascalRAL - <a href="https://github.com/OpenSourceCommunityBrasil/PascalR
 Count=0
 
 [IncludeDirectories]
-Count=93
+Count=95
 Item_0=src\core
 Item_1=src\common
 Item_2=src\compress
@@ -161,9 +161,11 @@ Item_89=src\client\livebindings
 Item_90=src\modules\chat\meta
 Item_91=src\store\redis
 Item_92=src\modules\websocket\redis
+Item_93=src\modules\chat\whatsappweb
+Item_94=src\modules\chat\whatsappweb\design
 
 [Files]
-Count=353
+Count=361
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -517,6 +519,14 @@ Item_349=src\store\redis\RALRedisClient.pas
 Item_350=src\store\redis\RALRedisSubscriber.pas
 Item_351=src\store\redis\RALRedisStore.pas
 Item_352=src\modules\websocket\redis\RALWebSocketHubRedis.pas
+Item_353=src\modules\chat\whatsappweb\RALWhatsAppCrypto.pas
+Item_354=src\modules\chat\whatsappweb\RALWhatsAppProto.pas
+Item_355=src\modules\chat\whatsappweb\RALWhatsAppBinary.pas
+Item_356=src\modules\chat\whatsappweb\RALWhatsAppMedia.pas
+Item_357=src\modules\chat\whatsappweb\RALWhatsAppNoise.pas
+Item_358=src\modules\chat\whatsappweb\RALWhatsAppSignal.pas
+Item_359=src\modules\chat\whatsappweb\RALChatWhatsAppWeb.pas
+Item_360=src\modules\chat\whatsappweb\design\RALModuleChatWhatsAppWebReg.pas
 [AdditionalFiles]
 Count=0
 
