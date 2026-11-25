@@ -16,6 +16,9 @@ type
   TRALJobDBStore = class(TRALJobStore)
   private
     FAutoCreate: boolean;
+    { Moves the row each Claim tries first, so that the workers do not all wait on
+      the lock of the same row and find it taken once the other one commits. }
+    FClaimTurn: IntegerRAL;
     FDBModule: TRALDBModule;
     FTableName: StringRAL;
 
@@ -62,7 +65,7 @@ type
 implementation
 
 uses
-  RALBase64, RALDBCatalog;
+  RALBase64, RALDBCatalog, RALTools;
 
 const
   /// Rows a claim looks at per query.
@@ -295,7 +298,7 @@ function TRALJobDBStore.Claim(const AOwner: StringRAL; ALease: Int64RAL;
 var
   vParams: TParams;
   vIds: TStringList;
-  vInt: IntegerRAL;
+  vInt, vStep, vFirst: IntegerRAL;
   vNow: Int64RAL;
   vToken, vSelect: StringRAL;
 begin
@@ -310,8 +313,14 @@ begin
       '(state = 1 and lease_until < :now2) order by due';
     vSelect := RALDBDialect(FDBModule.DatabaseType).Page(vSelect, cClaimBatch, 0);
     Query(vSelect, vParams, vIds, nil);
-    for vInt := 0 to vIds.Count - 1 do
+    { the workers read the same rows; starting each claim on another one keeps them
+      from queueing on one row lock, which costs a commit of the server each }
+    vFirst := 0;
+    if vIds.Count > 1 then
+      vFirst := (RALAtomicInc(FClaimTurn) and MaxInt) mod vIds.Count;
+    for vStep := 0 to vIds.Count - 1 do
     begin
+      vInt := (vFirst + vStep) mod vIds.Count;
       // the update is the claim: another worker that read the same row changes nothing
       vToken := AOwner + '.' + RALNewJobId;
       vParams.Clear;
