@@ -22,6 +22,11 @@ type
     FDBModule: TRALDBModule;
     FTableName: StringRAL;
 
+    { True for the error of a SQLite lock met by a statement: the busy timeout
+      does not cover every case (two connections upgrading to writers fail at
+      once rather than wait on each other), and the statement changed nothing,
+      so it is run again }
+    function IsLockError(E: Exception): boolean;
     /// Runs ASQL with AParams; the rows it changed.
     function Exec(const ASQL: StringRAL; AParams: TParams): Int64RAL;
     /// Fills AJob from the current row of ADataSet.
@@ -136,21 +141,50 @@ begin
   Result := TParams.Create(nil);
 end;
 
+function TRALJobDBStore.IsLockError(E: Exception): boolean;
+var
+  vText: string;
+begin
+  Result := (FDBModule <> nil) and (FDBModule.DatabaseType = dtSQLite);
+  if not Result then
+    Exit;
+  vText := LowerCase(E.Message);
+  Result := (Pos('is locked', vText) > 0) or (Pos('database is busy', vText) > 0);
+end;
+
+const
+  /// How long a statement that met a SQLite lock is tried again, in ms.
+  cLockRetryTime = 5000;
+
 function TRALJobDBStore.Exec(const ASQL: StringRAL; AParams: TParams): Int64RAL;
 var
   vDB: TRALDBBase;
-  vLast: Int64RAL;
+  vLast, vDeadline: Int64RAL;
+  vTry: IntegerRAL;
 begin
-  Result := 0;
-  vLast := 0;
   if FDBModule = nil then
     raise ERALException.Create(ecJobStoreNoDB);
-  vDB := FDBModule.AcquireDatabase(nil, nil);
-  try
-    vDB.ExecSQL(ASQL, AParams, Result, vLast);
-  finally
-    FDBModule.ReleaseDatabase(vDB);
-  end;
+  vDeadline := (RALTickMicro div 1000) + cLockRetryTime;
+  vTry := 0;
+  repeat
+    Result := 0;
+    vLast := 0;
+    vDB := FDBModule.AcquireDatabase(nil, nil);
+    try
+      try
+        vDB.ExecSQL(ASQL, AParams, Result, vLast);
+        Exit;
+      except
+        on E: Exception do
+          if (not IsLockError(E)) or ((RALTickMicro div 1000) > vDeadline) then
+            raise;
+      end;
+    finally
+      FDBModule.ReleaseDatabase(vDB);
+    end;
+    Inc(vTry);
+    Sleep(1 + (vTry mod 10) * 5);
+  until False;
 end;
 
 function TRALJobDBStore.Query(const ASQL: StringRAL; AParams: TParams; AIds: TStrings;
@@ -158,31 +192,56 @@ function TRALJobDBStore.Query(const ASQL: StringRAL; AParams: TParams; AIds: TSt
 var
   vDB: TRALDBBase;
   vData: TDataSet;
+  vDeadline: Int64RAL;
+  vTry, vFirst: IntegerRAL;
 begin
+  Result := False;
   if FDBModule = nil then
     raise ERALException.Create(ecJobStoreNoDB);
-  vDB := FDBModule.AcquireDatabase(nil, nil);
-  try
-    vData := vDB.OpenCompatible(ASQL, AParams);
+  vDeadline := (RALTickMicro div 1000) + cLockRetryTime;
+  vTry := 0;
+  vFirst := 0;
+  if AIds <> nil then
+    vFirst := AIds.Count;
+  repeat
+    vDB := FDBModule.AcquireDatabase(nil, nil);
     try
-      Result := not vData.IsEmpty;
-      if AJob <> nil then
-      begin
-        if Result then
-          LoadJob(vData, AJob);
-      end
-      else if AIds <> nil then
-        while not vData.Eof do
-        begin
-          AIds.Add(vData.Fields[0].AsString);
-          vData.Next;
+      try
+        vData := vDB.OpenCompatible(ASQL, AParams);
+        try
+          Result := not vData.IsEmpty;
+          if AJob <> nil then
+          begin
+            if Result then
+              LoadJob(vData, AJob);
+          end
+          else if AIds <> nil then
+            while not vData.Eof do
+            begin
+              AIds.Add(vData.Fields[0].AsString);
+              vData.Next;
+            end;
+        finally
+          vData.Free;
         end;
+        Exit;
+      except
+        on E: Exception do
+        begin
+          if (not IsLockError(E)) or ((RALTickMicro div 1000) > vDeadline) then
+            raise;
+          // what came before the lock is read again
+          if AIds <> nil then
+            while AIds.Count > vFirst do
+              AIds.Delete(AIds.Count - 1);
+        end;
+      end;
     finally
-      vData.Free;
+      FDBModule.ReleaseDatabase(vDB);
     end;
-  finally
-    FDBModule.ReleaseDatabase(vDB);
-  end;
+    Inc(vTry);
+    Sleep(1 + (vTry mod 10) * 5);
+  until False;
 end;
 
 procedure TRALJobDBStore.LoadJob(ADataSet: TDataSet; AJob: TRALJob);
