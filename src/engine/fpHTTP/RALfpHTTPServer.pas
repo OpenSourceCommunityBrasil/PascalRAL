@@ -92,6 +92,9 @@ type
     FPoolLock: TCriticalSection;
     /// Accepted connections waiting for a worker.
     FQueue: TList;
+    { workers created and not waiting yet: each will take a queued connection,
+      so they count as waiting when the queue decides to start another }
+    FStarting: Integer;
     /// The server stops: workers end.
     FStopping: Boolean;
     /// Wakes a waiting worker.
@@ -109,8 +112,9 @@ type
       none is waiting }
     procedure QueueConnection(AConnection: TFPHTTPConnection);
     { the next connection for a worker, or nil when it waited
-      WorkerIdleTimeout for nothing or the server is stopping }
-    function TakeConnection: TFPHTTPConnection;
+      WorkerIdleTimeout for nothing or the server is stopping. AFirst: the
+      worker's first call, when it stops counting as starting }
+    function TakeConnection(AFirst: Boolean): TFPHTTPConnection;
   protected
     /// Turns Nagle off on the accepted socket - see the implementation.
     function CreateConnection(Data: TSocketStream): TFPHTTPConnection; override;
@@ -619,11 +623,14 @@ procedure TRALfpHttpWorker.Execute;
 var
   vConnection: TFPHTTPConnection;
   vCore: TRALfpHttpServerCore;
+  vFirst: Boolean;
 begin
   vCore := FCore;
+  vFirst := True;
   try
     repeat
-      vConnection := vCore.TakeConnection;
+      vConnection := vCore.TakeConnection(vFirst);
+      vFirst := False;
       if vConnection = nil then
         Break;
       try
@@ -692,7 +699,7 @@ begin
   FreeAndNil(FPoolLock);
 end;
 
-function TRALfpHttpServerCore.TakeConnection: TFPHTTPConnection;
+function TRALfpHttpServerCore.TakeConnection(AFirst: Boolean): TFPHTTPConnection;
 var
   vDeadline, vNow: QWord;
   vWait: QWord;
@@ -701,6 +708,8 @@ begin
   vDeadline := GetTickCount64 + WorkerIdleTimeout;
   FPoolLock.Acquire;
   try
+    if AFirst then
+      Dec(FStarting);
     Inc(FIdle);
     repeat
       if FQueue.Count > 0 then
@@ -815,16 +824,34 @@ begin
     FQueue.Add(AConnection);
     { a new worker only when every one waiting already has a connection to
       take: a route that blocks never holds up the next connection, the same
-      as with a thread per connection }
-    vStart := FIdle < FQueue.Count;
+      as with a thread per connection. The workers still starting count as
+      waiting: with the CPU busy a new thread takes a while to run, and
+      counting only FIdle started one more per connection meanwhile - 4454
+      threads and 7 GB in one second of one-request connections on a two-core
+      Windows machine, until the heap failed }
+    vStart := FIdle + FStarting < FQueue.Count;
     if vStart then
+    begin
+      Inc(FStarting);
       InterLockedIncrement(FWorkers);
+    end;
     FWake.SetEvent;
   finally
     FPoolLock.Release;
   end;
   if vStart then
-    TRALfpHttpWorker.Create(Self);
+    try
+      TRALfpHttpWorker.Create(Self);
+    except
+      FPoolLock.Acquire;
+      try
+        Dec(FStarting);
+      finally
+        FPoolLock.Release;
+      end;
+      InterLockedDecrement(FWorkers);
+      raise;
+    end;
 end;
 
 function TRALfpHttpServerCore.PoolCount: Integer;
