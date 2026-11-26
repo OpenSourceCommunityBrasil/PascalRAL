@@ -112,17 +112,22 @@ type
   end;
 
   { The frames of the WhatsApp socket. Every frame is a 3-byte big-endian length and
-    the data; the first frame out carries the intro header in front. Feed takes what
-    the socket brings in any pieces; Next gives the frames whole. Thread-safe. }
+    the data; the first frame out of each connection carries the intro header in front.
+    Feed takes what the socket brings in any pieces; Next gives the frames whole.
+    Thread-safe. }
   TRALWhatsAppFramer = class
   private
-    /// Bytes received and not yet taken.
+    /// Bytes received; those before FRead are taken.
     FBuffer: TBytes;
+    /// Bytes of FBuffer in use.
+    FCount: IntegerRAL;
     /// Whether the intro header went out.
     FHeaderSent: Boolean;
     FIntro: TBytes;
     /// Guards the buffer and the header flag.
     FLock: TCriticalSection;
+    /// The first byte of FBuffer not taken yet.
+    FRead: IntegerRAL;
   public
     /// A framer whose first frame out starts with AIntro.
     constructor Create(const AIntro: TBytes);
@@ -134,6 +139,9 @@ type
     function Frame(const AData: TBytes): TBytes;
     /// Takes the next whole frame; False when none is complete yet.
     function Next(out AFrame: TBytes): Boolean;
+    { Starts over for a new connection: drops what was received and sends the intro
+      header again with the next frame. }
+    procedure Reset;
 
     /// The header written before the first frame.
     property Intro: TBytes read FIntro;
@@ -386,10 +394,30 @@ begin
 end;
 
 procedure TRALWhatsAppFramer.Feed(const AData: TBytes);
+var
+  vSize: IntegerRAL;
 begin
+  if Length(AData) = 0 then
+    Exit;
   FLock.Enter;
   try
-    FBuffer := RALWABytes(FBuffer, AData);
+    // move what is left to the front before growing, so the buffer never holds taken bytes
+    if FRead > 0 then
+    begin
+      if FCount > FRead then
+        Move(FBuffer[FRead], FBuffer[0], FCount - FRead);
+      Dec(FCount, FRead);
+      FRead := 0;
+    end;
+    if FCount + Length(AData) > Length(FBuffer) then
+    begin
+      vSize := Length(FBuffer) * 2;
+      if vSize < FCount + Length(AData) then
+        vSize := FCount + Length(AData);
+      SetLength(FBuffer, vSize);
+    end;
+    Move(AData[0], FBuffer[FCount], Length(AData));
+    Inc(FCount, Length(AData));
   finally
     FLock.Leave;
   end;
@@ -419,14 +447,27 @@ begin
   Result := False;
   FLock.Enter;
   try
-    if Length(FBuffer) < 3 then
+    if FCount - FRead < 3 then
       Exit;
-    vLen := (FBuffer[0] shl 16) or (FBuffer[1] shl 8) or FBuffer[2];
-    if Length(FBuffer) < 3 + vLen then
+    vLen := (FBuffer[FRead] shl 16) or (FBuffer[FRead + 1] shl 8) or FBuffer[FRead + 2];
+    if FCount - FRead < 3 + vLen then
       Exit;
-    AFrame := RALWACopy(FBuffer, 3, vLen);
-    FBuffer := RALWACopy(FBuffer, 3 + vLen, Length(FBuffer) - 3 - vLen);
+    AFrame := RALWACopy(FBuffer, FRead + 3, vLen);
+    Inc(FRead, 3 + vLen);
     Result := True;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRALWhatsAppFramer.Reset;
+begin
+  FLock.Enter;
+  try
+    FBuffer := nil;
+    FCount := 0;
+    FRead := 0;
+    FHeaderSent := False;
   finally
     FLock.Leave;
   end;

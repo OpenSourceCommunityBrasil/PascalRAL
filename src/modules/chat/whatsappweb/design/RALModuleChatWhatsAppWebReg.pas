@@ -16,7 +16,8 @@ uses
   RALTypes, RALConsts, RALChatWhatsAppWeb;
 
 type
-  /// The editor of TRALChatWhatsAppWeb, with the session verb.
+  { The editor of TRALChatWhatsAppWeb, with the session verb: it says whether a session is
+    saved in the bot's store, and for which number, without connecting. }
   TRALChatWhatsAppWebEditor = class(TComponentEditor)
   public
     procedure ExecuteVerb(AIndex: Integer); override;
@@ -43,8 +44,9 @@ var
 begin
   if AIndex = 0 then
   begin
+    // the store only: connecting from inside the IDE would hold it while it waits
     try
-      TRALChatWhatsAppWeb(Component).TestSession(vReport);
+      TRALChatWhatsAppWeb(Component).SessionInfo(vReport);
     except
       on E: Exception do
         vReport := StringRAL(E.Message);

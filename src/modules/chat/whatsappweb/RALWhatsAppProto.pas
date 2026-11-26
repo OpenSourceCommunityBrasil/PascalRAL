@@ -27,6 +27,9 @@ type
   TWADevicePairingData = class;
   TWADeviceProps = class;
   TWAClientPayload = class;
+  TWACertChain = class;
+  TWACertChain_NoiseCertificate = class;
+  TWACertChain_NoiseCertificate_Details = class;
   TWAADVSignedDeviceIdentityHMAC = class;
   TWAADVSignedDeviceIdentity = class;
   TWAADVDeviceIdentity = class;
@@ -186,6 +189,45 @@ type
     function Add: TWAClientPayload;
     /// The items.
     property Items[AIndex: IntegerRAL]: TWAClientPayload read GetItem; default;
+  end;
+
+  /// A repeated WACertChain field.
+  TWACertChainList = class(TRALProtoMessageList)
+  private
+    function GetItem(AIndex: IntegerRAL): TWACertChain;
+  public
+    /// Creates an empty list.
+    constructor Create;
+    /// Adds a new empty item and returns it.
+    function Add: TWACertChain;
+    /// The items.
+    property Items[AIndex: IntegerRAL]: TWACertChain read GetItem; default;
+  end;
+
+  /// A repeated NoiseCertificate field.
+  TWACertChain_NoiseCertificateList = class(TRALProtoMessageList)
+  private
+    function GetItem(AIndex: IntegerRAL): TWACertChain_NoiseCertificate;
+  public
+    /// Creates an empty list.
+    constructor Create;
+    /// Adds a new empty item and returns it.
+    function Add: TWACertChain_NoiseCertificate;
+    /// The items.
+    property Items[AIndex: IntegerRAL]: TWACertChain_NoiseCertificate read GetItem; default;
+  end;
+
+  /// A repeated Details field.
+  TWACertChain_NoiseCertificate_DetailsList = class(TRALProtoMessageList)
+  private
+    function GetItem(AIndex: IntegerRAL): TWACertChain_NoiseCertificate_Details;
+  public
+    /// Creates an empty list.
+    constructor Create;
+    /// Adds a new empty item and returns it.
+    function Add: TWACertChain_NoiseCertificate_Details;
+    /// The items.
+    property Items[AIndex: IntegerRAL]: TWACertChain_NoiseCertificate_Details read GetItem; default;
   end;
 
   /// A repeated WAADVSignedDeviceIdentityHMAC field.
@@ -1221,6 +1263,135 @@ type
     property Pull: Boolean read FPull write SetPull;
     /// Whether Pull was set.
     property HasPull: Boolean read FHasPull;
+  end;
+
+  /// The certificate chain the server sends in its ServerHello: the intermediate signed by
+  /// WhatsApp's root key, the leaf (the server's static Noise key) by the intermediate.
+  TWACertChain = class(TRALProtoMessage)
+  private
+    FLeaf: TWACertChain_NoiseCertificate;
+    FIntermediate: TWACertChain_NoiseCertificate;
+    procedure SetLeaf(AValue: TWACertChain_NoiseCertificate);
+    procedure SetIntermediate(AValue: TWACertChain_NoiseCertificate);
+  protected
+    function DecodeField(AReader: TRALProtoReader; AField: IntegerRAL;
+      AWire: TRALProtoWireType): Boolean; override;
+    procedure EncodeFields(AWriter: TRALProtoWriter); override;
+    function ReadJSONField(const AName: StringRAL; AValue: TRALJSON;
+      AOptions: TRALProtoJSONOptions): Boolean; override;
+    procedure ResetFields; override;
+    procedure WriteJSONFields(AObject: TRALJSONObject;
+      AOptions: TRALProtoJSONOptions); override;
+  public
+    constructor Create; override;
+    destructor Destroy; override;
+    /// 'ralwhatsapp.WACertChain'.
+    class function ProtoName: StringRAL; override;
+    /// Field 1, leaf.
+    property Leaf: TWACertChain_NoiseCertificate read FLeaf write SetLeaf;
+    /// Field 2, intermediate.
+    property Intermediate: TWACertChain_NoiseCertificate read FIntermediate write SetIntermediate;
+  end;
+
+  /// The .proto message ralwhatsapp.WACertChain.NoiseCertificate.
+  TWACertChain_NoiseCertificate = class(TRALProtoMessage)
+  private
+    FDetails: TBytes;
+    FHasDetails: Boolean;
+    FSignature: TBytes;
+    FHasSignature: Boolean;
+    procedure SetDetails(const AValue: TBytes);
+    procedure SetSignature(const AValue: TBytes);
+  protected
+    function DecodeField(AReader: TRALProtoReader; AField: IntegerRAL;
+      AWire: TRALProtoWireType): Boolean; override;
+    procedure EncodeFields(AWriter: TRALProtoWriter); override;
+    function ReadJSONField(const AName: StringRAL; AValue: TRALJSON;
+      AOptions: TRALProtoJSONOptions): Boolean; override;
+    procedure ResetFields; override;
+    procedure WriteJSONFields(AObject: TRALJSONObject;
+      AOptions: TRALProtoJSONOptions); override;
+  public
+    constructor Create; override;
+    destructor Destroy; override;
+    /// 'ralwhatsapp.WACertChain.NoiseCertificate'.
+    class function ProtoName: StringRAL; override;
+    /// Makes Details absent again.
+    procedure ClearDetails;
+    /// Makes Signature absent again.
+    procedure ClearSignature;
+    /// Field 1, details.
+    property Details: TBytes read FDetails write SetDetails;
+    /// Whether Details was set.
+    property HasDetails: Boolean read FHasDetails;
+    /// Field 2, signature.
+    property Signature: TBytes read FSignature write SetSignature;
+    /// Whether Signature was set.
+    property HasSignature: Boolean read FHasSignature;
+  end;
+
+  /// The .proto message ralwhatsapp.WACertChain.NoiseCertificate.Details.
+  TWACertChain_NoiseCertificate_Details = class(TRALProtoMessage)
+  private
+    FSerial: Cardinal;
+    FHasSerial: Boolean;
+    FIssuerSerial: Cardinal;
+    FHasIssuerSerial: Boolean;
+    FKey: TBytes;
+    FHasKey: Boolean;
+    FNotBefore: UInt64RAL;
+    FHasNotBefore: Boolean;
+    FNotAfter: UInt64RAL;
+    FHasNotAfter: Boolean;
+    procedure SetSerial(AValue: Cardinal);
+    procedure SetIssuerSerial(AValue: Cardinal);
+    procedure SetKey(const AValue: TBytes);
+    procedure SetNotBefore(AValue: UInt64RAL);
+    procedure SetNotAfter(AValue: UInt64RAL);
+  protected
+    function DecodeField(AReader: TRALProtoReader; AField: IntegerRAL;
+      AWire: TRALProtoWireType): Boolean; override;
+    procedure EncodeFields(AWriter: TRALProtoWriter); override;
+    function ReadJSONField(const AName: StringRAL; AValue: TRALJSON;
+      AOptions: TRALProtoJSONOptions): Boolean; override;
+    procedure ResetFields; override;
+    procedure WriteJSONFields(AObject: TRALJSONObject;
+      AOptions: TRALProtoJSONOptions); override;
+  public
+    constructor Create; override;
+    destructor Destroy; override;
+    /// 'ralwhatsapp.WACertChain.NoiseCertificate.Details'.
+    class function ProtoName: StringRAL; override;
+    /// Makes Serial absent again.
+    procedure ClearSerial;
+    /// Makes IssuerSerial absent again.
+    procedure ClearIssuerSerial;
+    /// Makes Key absent again.
+    procedure ClearKey;
+    /// Makes NotBefore absent again.
+    procedure ClearNotBefore;
+    /// Makes NotAfter absent again.
+    procedure ClearNotAfter;
+    /// Field 1, serial.
+    property Serial: Cardinal read FSerial write SetSerial;
+    /// Whether Serial was set.
+    property HasSerial: Boolean read FHasSerial;
+    /// Field 2, issuerSerial.
+    property IssuerSerial: Cardinal read FIssuerSerial write SetIssuerSerial;
+    /// Whether IssuerSerial was set.
+    property HasIssuerSerial: Boolean read FHasIssuerSerial;
+    /// Field 3, key.
+    property Key: TBytes read FKey write SetKey;
+    /// Whether Key was set.
+    property HasKey: Boolean read FHasKey;
+    /// Field 4, notBefore.
+    property NotBefore: UInt64RAL read FNotBefore write SetNotBefore;
+    /// Whether NotBefore was set.
+    property HasNotBefore: Boolean read FHasNotBefore;
+    /// Field 5, notAfter.
+    property NotAfter: UInt64RAL read FNotAfter write SetNotAfter;
+    /// Whether NotAfter was set.
+    property HasNotAfter: Boolean read FHasNotAfter;
   end;
 
   /// ---- pairing (account device identity) ----
@@ -2545,6 +2716,7 @@ type
     FReactionMessage: TWAReactionMessage;
     FDocumentWithCaptionMessage: TWAFutureProofMessage;
     FViewOnceMessageV2: TWAFutureProofMessage;
+    FEditedMessage: TWAFutureProofMessage;
     procedure SetConversation(const AValue: StringRAL);
     procedure SetSenderKeyDistributionMessage(AValue: TWASenderKeyDistributionMessage);
     procedure SetImageMessage(AValue: TWAImageMessage);
@@ -2562,6 +2734,7 @@ type
     procedure SetReactionMessage(AValue: TWAReactionMessage);
     procedure SetDocumentWithCaptionMessage(AValue: TWAFutureProofMessage);
     procedure SetViewOnceMessageV2(AValue: TWAFutureProofMessage);
+    procedure SetEditedMessage(AValue: TWAFutureProofMessage);
   protected
     function DecodeField(AReader: TRALProtoReader; AField: IntegerRAL;
       AWire: TRALProtoWireType): Boolean; override;
@@ -2614,6 +2787,8 @@ type
     property DocumentWithCaptionMessage: TWAFutureProofMessage read FDocumentWithCaptionMessage write SetDocumentWithCaptionMessage;
     /// Field 55, viewOnceMessageV2.
     property ViewOnceMessageV2: TWAFutureProofMessage read FViewOnceMessageV2 write SetViewOnceMessageV2;
+    /// Field 58, editedMessage.
+    property EditedMessage: TWAFutureProofMessage read FEditedMessage write SetEditedMessage;
   end;
 
   /// ---- Signal protocol (WhisperTextProtocol) ----
@@ -5770,6 +5945,496 @@ begin
     AObject.Add(RALProtoKey(AOptions, 'devicePairingData', 'devicePairingData'), FDevicePairingData.ToJSONValue(AOptions));
   if FHasPull then
     AObject.Add(RALProtoKey(AOptions, 'pull', 'pull'), RALProtoJSONBool(FPull));
+end;
+
+{ TWACertChainList }
+
+constructor TWACertChainList.Create;
+begin
+  inherited Create(TWACertChain);
+end;
+
+function TWACertChainList.Add: TWACertChain;
+begin
+  Result := TWACertChain(AddNew);
+end;
+
+function TWACertChainList.GetItem(AIndex: IntegerRAL): TWACertChain;
+begin
+  Result := TWACertChain(Messages[AIndex]);
+end;
+
+{ TWACertChain }
+
+constructor TWACertChain.Create;
+begin
+  inherited Create;
+  ResetFields;
+end;
+
+class function TWACertChain.ProtoName: StringRAL;
+begin
+  Result := 'ralwhatsapp.WACertChain';
+end;
+
+destructor TWACertChain.Destroy;
+begin
+  FLeaf.Free;
+  FIntermediate.Free;
+  inherited Destroy;
+end;
+
+function TWACertChain.DecodeField(AReader: TRALProtoReader; AField: IntegerRAL;
+  AWire: TRALProtoWireType): Boolean;
+begin
+  Result := True;
+  case AField of
+    1:
+      if AWire = rpwLengthDelimited then
+      begin
+        if FLeaf = nil then
+          FLeaf := TWACertChain_NoiseCertificate.Create;
+        AReader.ReadMessage(FLeaf);
+      end
+      else
+        Result := False;
+    2:
+      if AWire = rpwLengthDelimited then
+      begin
+        if FIntermediate = nil then
+          FIntermediate := TWACertChain_NoiseCertificate.Create;
+        AReader.ReadMessage(FIntermediate);
+      end
+      else
+        Result := False;
+  else
+    Result := False;
+  end;
+end;
+
+procedure TWACertChain.EncodeFields(AWriter: TRALProtoWriter);
+begin
+  if FLeaf <> nil then
+  begin
+    AWriter.WriteTag(1, rpwLengthDelimited);
+    AWriter.WriteMessage(FLeaf);
+  end;
+  if FIntermediate <> nil then
+  begin
+    AWriter.WriteTag(2, rpwLengthDelimited);
+    AWriter.WriteMessage(FIntermediate);
+  end;
+end;
+
+function TWACertChain.ReadJSONField(const AName: StringRAL; AValue: TRALJSON;
+  AOptions: TRALProtoJSONOptions): Boolean;
+begin
+  Result := True;
+  if AName = 'leaf' then
+  begin
+    if AValue.Kind = rjkNull then
+      Exit;
+    if FLeaf = nil then
+      SetLeaf(TWACertChain_NoiseCertificate.Create);
+    FLeaf.ReadJSONValue(AValue, AOptions);
+  end
+  else if AName = 'intermediate' then
+  begin
+    if AValue.Kind = rjkNull then
+      Exit;
+    if FIntermediate = nil then
+      SetIntermediate(TWACertChain_NoiseCertificate.Create);
+    FIntermediate.ReadJSONValue(AValue, AOptions);
+  end
+  else
+    Result := False;
+end;
+
+procedure TWACertChain.ResetFields;
+begin
+  FreeAndNil(FLeaf);
+  FreeAndNil(FIntermediate);
+end;
+
+procedure TWACertChain.SetLeaf(AValue: TWACertChain_NoiseCertificate);
+begin
+  if AValue = FLeaf then
+    Exit;
+  FLeaf.Free;
+  FLeaf := AValue;
+end;
+
+procedure TWACertChain.SetIntermediate(AValue: TWACertChain_NoiseCertificate);
+begin
+  if AValue = FIntermediate then
+    Exit;
+  FIntermediate.Free;
+  FIntermediate := AValue;
+end;
+
+procedure TWACertChain.WriteJSONFields(AObject: TRALJSONObject;
+  AOptions: TRALProtoJSONOptions);
+begin
+  if FLeaf <> nil then
+    AObject.Add(RALProtoKey(AOptions, 'leaf', 'leaf'), FLeaf.ToJSONValue(AOptions));
+  if FIntermediate <> nil then
+    AObject.Add(RALProtoKey(AOptions, 'intermediate', 'intermediate'), FIntermediate.ToJSONValue(AOptions));
+end;
+
+{ TWACertChain_NoiseCertificateList }
+
+constructor TWACertChain_NoiseCertificateList.Create;
+begin
+  inherited Create(TWACertChain_NoiseCertificate);
+end;
+
+function TWACertChain_NoiseCertificateList.Add: TWACertChain_NoiseCertificate;
+begin
+  Result := TWACertChain_NoiseCertificate(AddNew);
+end;
+
+function TWACertChain_NoiseCertificateList.GetItem(AIndex: IntegerRAL): TWACertChain_NoiseCertificate;
+begin
+  Result := TWACertChain_NoiseCertificate(Messages[AIndex]);
+end;
+
+{ TWACertChain_NoiseCertificate }
+
+constructor TWACertChain_NoiseCertificate.Create;
+begin
+  inherited Create;
+  ResetFields;
+end;
+
+class function TWACertChain_NoiseCertificate.ProtoName: StringRAL;
+begin
+  Result := 'ralwhatsapp.WACertChain.NoiseCertificate';
+end;
+
+destructor TWACertChain_NoiseCertificate.Destroy;
+begin
+  inherited Destroy;
+end;
+
+procedure TWACertChain_NoiseCertificate.ClearDetails;
+begin
+  FDetails := nil;
+  FHasDetails := False;
+end;
+
+procedure TWACertChain_NoiseCertificate.ClearSignature;
+begin
+  FSignature := nil;
+  FHasSignature := False;
+end;
+
+function TWACertChain_NoiseCertificate.DecodeField(AReader: TRALProtoReader; AField: IntegerRAL;
+  AWire: TRALProtoWireType): Boolean;
+begin
+  Result := True;
+  case AField of
+    1:
+      if AWire = rpwLengthDelimited then
+        SetDetails(AReader.ReadBytes)
+      else
+        Result := False;
+    2:
+      if AWire = rpwLengthDelimited then
+        SetSignature(AReader.ReadBytes)
+      else
+        Result := False;
+  else
+    Result := False;
+  end;
+end;
+
+procedure TWACertChain_NoiseCertificate.EncodeFields(AWriter: TRALProtoWriter);
+begin
+  if FHasDetails then
+  begin
+    AWriter.WriteTag(1, rpwLengthDelimited);
+    AWriter.WriteBytes(FDetails);
+  end;
+  if FHasSignature then
+  begin
+    AWriter.WriteTag(2, rpwLengthDelimited);
+    AWriter.WriteBytes(FSignature);
+  end;
+end;
+
+function TWACertChain_NoiseCertificate.ReadJSONField(const AName: StringRAL; AValue: TRALJSON;
+  AOptions: TRALProtoJSONOptions): Boolean;
+begin
+  Result := True;
+  if AName = 'details' then
+  begin
+    if AValue.Kind = rjkNull then
+      Exit;
+    SetDetails(RALProtoReadBytes(AValue));
+  end
+  else if AName = 'signature' then
+  begin
+    if AValue.Kind = rjkNull then
+      Exit;
+    SetSignature(RALProtoReadBytes(AValue));
+  end
+  else
+    Result := False;
+end;
+
+procedure TWACertChain_NoiseCertificate.ResetFields;
+begin
+  FDetails := nil;
+  FHasDetails := False;
+  FSignature := nil;
+  FHasSignature := False;
+end;
+
+procedure TWACertChain_NoiseCertificate.SetDetails(const AValue: TBytes);
+begin
+  FDetails := AValue;
+  FHasDetails := True;
+end;
+
+procedure TWACertChain_NoiseCertificate.SetSignature(const AValue: TBytes);
+begin
+  FSignature := AValue;
+  FHasSignature := True;
+end;
+
+procedure TWACertChain_NoiseCertificate.WriteJSONFields(AObject: TRALJSONObject;
+  AOptions: TRALProtoJSONOptions);
+begin
+  if FHasDetails then
+    AObject.Add(RALProtoKey(AOptions, 'details', 'details'), RALProtoJSONBytes(FDetails));
+  if FHasSignature then
+    AObject.Add(RALProtoKey(AOptions, 'signature', 'signature'), RALProtoJSONBytes(FSignature));
+end;
+
+{ TWACertChain_NoiseCertificate_DetailsList }
+
+constructor TWACertChain_NoiseCertificate_DetailsList.Create;
+begin
+  inherited Create(TWACertChain_NoiseCertificate_Details);
+end;
+
+function TWACertChain_NoiseCertificate_DetailsList.Add: TWACertChain_NoiseCertificate_Details;
+begin
+  Result := TWACertChain_NoiseCertificate_Details(AddNew);
+end;
+
+function TWACertChain_NoiseCertificate_DetailsList.GetItem(AIndex: IntegerRAL): TWACertChain_NoiseCertificate_Details;
+begin
+  Result := TWACertChain_NoiseCertificate_Details(Messages[AIndex]);
+end;
+
+{ TWACertChain_NoiseCertificate_Details }
+
+constructor TWACertChain_NoiseCertificate_Details.Create;
+begin
+  inherited Create;
+  ResetFields;
+end;
+
+class function TWACertChain_NoiseCertificate_Details.ProtoName: StringRAL;
+begin
+  Result := 'ralwhatsapp.WACertChain.NoiseCertificate.Details';
+end;
+
+destructor TWACertChain_NoiseCertificate_Details.Destroy;
+begin
+  inherited Destroy;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.ClearSerial;
+begin
+  FSerial := 0;
+  FHasSerial := False;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.ClearIssuerSerial;
+begin
+  FIssuerSerial := 0;
+  FHasIssuerSerial := False;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.ClearKey;
+begin
+  FKey := nil;
+  FHasKey := False;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.ClearNotBefore;
+begin
+  FNotBefore := 0;
+  FHasNotBefore := False;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.ClearNotAfter;
+begin
+  FNotAfter := 0;
+  FHasNotAfter := False;
+end;
+
+function TWACertChain_NoiseCertificate_Details.DecodeField(AReader: TRALProtoReader; AField: IntegerRAL;
+  AWire: TRALProtoWireType): Boolean;
+begin
+  Result := True;
+  case AField of
+    1:
+      if AWire = rpwVarint then
+        SetSerial(AReader.ReadUInt32)
+      else
+        Result := False;
+    2:
+      if AWire = rpwVarint then
+        SetIssuerSerial(AReader.ReadUInt32)
+      else
+        Result := False;
+    3:
+      if AWire = rpwLengthDelimited then
+        SetKey(AReader.ReadBytes)
+      else
+        Result := False;
+    4:
+      if AWire = rpwVarint then
+        SetNotBefore(AReader.ReadUInt64)
+      else
+        Result := False;
+    5:
+      if AWire = rpwVarint then
+        SetNotAfter(AReader.ReadUInt64)
+      else
+        Result := False;
+  else
+    Result := False;
+  end;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.EncodeFields(AWriter: TRALProtoWriter);
+begin
+  if FHasSerial then
+  begin
+    AWriter.WriteTag(1, rpwVarint);
+    AWriter.WriteUInt32(FSerial);
+  end;
+  if FHasIssuerSerial then
+  begin
+    AWriter.WriteTag(2, rpwVarint);
+    AWriter.WriteUInt32(FIssuerSerial);
+  end;
+  if FHasKey then
+  begin
+    AWriter.WriteTag(3, rpwLengthDelimited);
+    AWriter.WriteBytes(FKey);
+  end;
+  if FHasNotBefore then
+  begin
+    AWriter.WriteTag(4, rpwVarint);
+    AWriter.WriteUInt64(FNotBefore);
+  end;
+  if FHasNotAfter then
+  begin
+    AWriter.WriteTag(5, rpwVarint);
+    AWriter.WriteUInt64(FNotAfter);
+  end;
+end;
+
+function TWACertChain_NoiseCertificate_Details.ReadJSONField(const AName: StringRAL; AValue: TRALJSON;
+  AOptions: TRALProtoJSONOptions): Boolean;
+begin
+  Result := True;
+  if AName = 'serial' then
+  begin
+    if AValue.Kind = rjkNull then
+      Exit;
+    SetSerial(RALProtoReadUInt32(AValue));
+  end
+  else if AName = 'issuerSerial' then
+  begin
+    if AValue.Kind = rjkNull then
+      Exit;
+    SetIssuerSerial(RALProtoReadUInt32(AValue));
+  end
+  else if AName = 'key' then
+  begin
+    if AValue.Kind = rjkNull then
+      Exit;
+    SetKey(RALProtoReadBytes(AValue));
+  end
+  else if AName = 'notBefore' then
+  begin
+    if AValue.Kind = rjkNull then
+      Exit;
+    SetNotBefore(RALProtoReadUInt64(AValue));
+  end
+  else if AName = 'notAfter' then
+  begin
+    if AValue.Kind = rjkNull then
+      Exit;
+    SetNotAfter(RALProtoReadUInt64(AValue));
+  end
+  else
+    Result := False;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.ResetFields;
+begin
+  FSerial := 0;
+  FHasSerial := False;
+  FIssuerSerial := 0;
+  FHasIssuerSerial := False;
+  FKey := nil;
+  FHasKey := False;
+  FNotBefore := 0;
+  FHasNotBefore := False;
+  FNotAfter := 0;
+  FHasNotAfter := False;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.SetSerial(AValue: Cardinal);
+begin
+  FSerial := AValue;
+  FHasSerial := True;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.SetIssuerSerial(AValue: Cardinal);
+begin
+  FIssuerSerial := AValue;
+  FHasIssuerSerial := True;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.SetKey(const AValue: TBytes);
+begin
+  FKey := AValue;
+  FHasKey := True;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.SetNotBefore(AValue: UInt64RAL);
+begin
+  FNotBefore := AValue;
+  FHasNotBefore := True;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.SetNotAfter(AValue: UInt64RAL);
+begin
+  FNotAfter := AValue;
+  FHasNotAfter := True;
+end;
+
+procedure TWACertChain_NoiseCertificate_Details.WriteJSONFields(AObject: TRALJSONObject;
+  AOptions: TRALProtoJSONOptions);
+begin
+  if FHasSerial then
+    AObject.Add(RALProtoKey(AOptions, 'serial', 'serial'), RALProtoJSONUInt32(FSerial));
+  if FHasIssuerSerial then
+    AObject.Add(RALProtoKey(AOptions, 'issuerSerial', 'issuerSerial'), RALProtoJSONUInt32(FIssuerSerial));
+  if FHasKey then
+    AObject.Add(RALProtoKey(AOptions, 'key', 'key'), RALProtoJSONBytes(FKey));
+  if FHasNotBefore then
+    AObject.Add(RALProtoKey(AOptions, 'notBefore', 'notBefore'), RALProtoJSONUInt64(FNotBefore));
+  if FHasNotAfter then
+    AObject.Add(RALProtoKey(AOptions, 'notAfter', 'notAfter'), RALProtoJSONUInt64(FNotAfter));
 end;
 
 { TWAADVSignedDeviceIdentityHMACList }
@@ -10712,6 +11377,7 @@ begin
   FReactionMessage.Free;
   FDocumentWithCaptionMessage.Free;
   FViewOnceMessageV2.Free;
+  FEditedMessage.Free;
   inherited Destroy;
 end;
 
@@ -10875,6 +11541,15 @@ begin
       end
       else
         Result := False;
+    58:
+      if AWire = rpwLengthDelimited then
+      begin
+        if FEditedMessage = nil then
+          FEditedMessage := TWAFutureProofMessage.Create;
+        AReader.ReadMessage(FEditedMessage);
+      end
+      else
+        Result := False;
   else
     Result := False;
   end;
@@ -10966,6 +11641,11 @@ begin
   begin
     AWriter.WriteTag(55, rpwLengthDelimited);
     AWriter.WriteMessage(FViewOnceMessageV2);
+  end;
+  if FEditedMessage <> nil then
+  begin
+    AWriter.WriteTag(58, rpwLengthDelimited);
+    AWriter.WriteMessage(FEditedMessage);
   end;
 end;
 
@@ -11107,6 +11787,14 @@ begin
       SetViewOnceMessageV2(TWAFutureProofMessage.Create);
     FViewOnceMessageV2.ReadJSONValue(AValue, AOptions);
   end
+  else if AName = 'editedMessage' then
+  begin
+    if AValue.Kind = rjkNull then
+      Exit;
+    if FEditedMessage = nil then
+      SetEditedMessage(TWAFutureProofMessage.Create);
+    FEditedMessage.ReadJSONValue(AValue, AOptions);
+  end
   else
     Result := False;
 end;
@@ -11131,6 +11819,7 @@ begin
   FreeAndNil(FReactionMessage);
   FreeAndNil(FDocumentWithCaptionMessage);
   FreeAndNil(FViewOnceMessageV2);
+  FreeAndNil(FEditedMessage);
 end;
 
 procedure TWAMessage.SetConversation(const AValue: StringRAL);
@@ -11267,6 +11956,14 @@ begin
   FViewOnceMessageV2 := AValue;
 end;
 
+procedure TWAMessage.SetEditedMessage(AValue: TWAFutureProofMessage);
+begin
+  if AValue = FEditedMessage then
+    Exit;
+  FEditedMessage.Free;
+  FEditedMessage := AValue;
+end;
+
 procedure TWAMessage.WriteJSONFields(AObject: TRALJSONObject;
   AOptions: TRALProtoJSONOptions);
 begin
@@ -11304,6 +12001,8 @@ begin
     AObject.Add(RALProtoKey(AOptions, 'documentWithCaptionMessage', 'documentWithCaptionMessage'), FDocumentWithCaptionMessage.ToJSONValue(AOptions));
   if FViewOnceMessageV2 <> nil then
     AObject.Add(RALProtoKey(AOptions, 'viewOnceMessageV2', 'viewOnceMessageV2'), FViewOnceMessageV2.ToJSONValue(AOptions));
+  if FEditedMessage <> nil then
+    AObject.Add(RALProtoKey(AOptions, 'editedMessage', 'editedMessage'), FEditedMessage.ToJSONValue(AOptions));
 end;
 
 { TWASignalMessageList }
@@ -13924,6 +14623,9 @@ initialization
   RALProtoRegisterMessage(TWADevicePairingData);
   RALProtoRegisterMessage(TWADeviceProps);
   RALProtoRegisterMessage(TWAClientPayload);
+  RALProtoRegisterMessage(TWACertChain);
+  RALProtoRegisterMessage(TWACertChain_NoiseCertificate);
+  RALProtoRegisterMessage(TWACertChain_NoiseCertificate_Details);
   RALProtoRegisterMessage(TWAADVSignedDeviceIdentityHMAC);
   RALProtoRegisterMessage(TWAADVSignedDeviceIdentity);
   RALProtoRegisterMessage(TWAADVDeviceIdentity);
@@ -13966,6 +14668,9 @@ finalization
   RALProtoUnregisterMessage(TWADevicePairingData);
   RALProtoUnregisterMessage(TWADeviceProps);
   RALProtoUnregisterMessage(TWAClientPayload);
+  RALProtoUnregisterMessage(TWACertChain);
+  RALProtoUnregisterMessage(TWACertChain_NoiseCertificate);
+  RALProtoUnregisterMessage(TWACertChain_NoiseCertificate_Details);
   RALProtoUnregisterMessage(TWAADVSignedDeviceIdentityHMAC);
   RALProtoUnregisterMessage(TWAADVSignedDeviceIdentity);
   RALProtoUnregisterMessage(TWAADVDeviceIdentity);

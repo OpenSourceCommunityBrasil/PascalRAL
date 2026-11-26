@@ -28,6 +28,28 @@ type
     Pub: TBytes;
   end;
 
+  /// The round keys of AES-256.
+  TRALWAWordKeys = array of Cardinal;
+
+  { AES-256-CBC fed piece by piece, each piece a multiple of 16 bytes, the IV carried
+    from one piece to the next: a large file is ciphered without being held whole. }
+  TRALWAAESCBC = class
+  private
+    FDecrypt: Boolean;
+    /// The IV of the next piece (the last cipher block of the previous one).
+    FIV: TBytes;
+    FKeys: TRALWAWordKeys;
+    /// A copy of the piece being processed (the cipher reads and writes apart).
+    FWork: TBytes;
+  public
+    /// A cipher of the 32-byte AKey and the 16-byte AIV; ADecrypt picks the direction.
+    constructor Create(const AKey, AIV: TBytes; ADecrypt: Boolean);
+
+    { Encrypts or decrypts the first ACount bytes of AData in place; ACount is a
+      multiple of 16 and no padding is added or removed. }
+    procedure Process(var AData: TBytes; ACount: IntegerRAL);
+  end;
+
 /// The bytes of A followed by those of B.
 function RALWABytes(const A, B: TBytes): TBytes; overload;
 /// The bytes of A, B and C one after the other.
@@ -115,8 +137,6 @@ resourcestring
 type
   /// An Edwards point in extended coordinates X, Y, Z, T.
   TRALWAPoint = array[0..3] of TRALGF;
-  /// The round keys of AES-256.
-  TRALWAWordKeys = array of Cardinal;
 
   /// Expands an AES key with the routines and tables of RALCriptoAES.
   TRALWAAESKeys = class(TRALCriptoAES)
@@ -182,16 +202,13 @@ begin
   end;
 end;
 
-/// Runs CBC over AData (a multiple of 16 bytes) in place.
-procedure RunCBC(const AKeys: TRALWAWordKeys; const AIV: TBytes; var AData: TBytes;
-  ADecrypt: Boolean);
+{ Runs CBC over ACount bytes (a multiple of 16) from AInput into AOutput; the two must
+  not overlap. }
+procedure RunCBCRange(const AKeys: TRALWAWordKeys; const AIV: TBytes; AInput,
+  AOutput: PByte; ACount: IntegerRAL; ADecrypt: Boolean);
 var
   vCipher: TRALCriptoAESCipher;
-  vIn: TBytes;
 begin
-  if Length(AData) = 0 then
-    Exit;
-  vIn := Copy(AData, 0, Length(AData));
   vCipher := TRALCriptoAESCipher.Create;
   try
     if ADecrypt then
@@ -200,9 +217,9 @@ begin
       vCipher.WordKeys := @AKeys[0];
     vCipher.WordKeysLen := 56;
     vCipher.SetIV(AIV);
-    vCipher.Input := @vIn[0];
-    vCipher.InputLen := Length(vIn);
-    vCipher.Output := @AData[0];
+    vCipher.Input := AInput;
+    vCipher.InputLen := ACount;
+    vCipher.Output := AOutput;
     if ADecrypt then
       vCipher.DecryptAES
     else
@@ -210,6 +227,51 @@ begin
   finally
     vCipher.Free;
   end;
+end;
+
+/// Runs CBC over AData (a multiple of 16 bytes) in place.
+procedure RunCBC(const AKeys: TRALWAWordKeys; const AIV: TBytes; var AData: TBytes;
+  ADecrypt: Boolean);
+var
+  vIn: TBytes;
+begin
+  if Length(AData) = 0 then
+    Exit;
+  vIn := Copy(AData, 0, Length(AData));
+  RunCBCRange(AKeys, AIV, @vIn[0], @AData[0], Length(AData), ADecrypt);
+end;
+
+{ TRALWAAESCBC }
+
+constructor TRALWAAESCBC.Create(const AKey, AIV: TBytes; ADecrypt: Boolean);
+begin
+  inherited Create;
+  if Length(AIV) <> 16 then
+    raise ERALWhatsAppError.Create(rsWAIVSize);
+  FKeys := ExpandKey(AKey);
+  FIV := Copy(AIV, 0, 16);
+  FDecrypt := ADecrypt;
+end;
+
+procedure TRALWAAESCBC.Process(var AData: TBytes; ACount: IntegerRAL);
+var
+  vNext: TBytes;
+begin
+  if ACount <= 0 then
+    Exit;
+  if (ACount mod 16 <> 0) or (ACount > Length(AData)) then
+    raise ERALWhatsAppError.Create(rsWABadCipher);
+  // the next IV is the last cipher block: taken from the input before decrypting (the
+  // cipher may use its input as work space), from the output after encrypting
+  if FDecrypt then
+    vNext := RALWACopy(AData, ACount - 16, 16);
+  if Length(FWork) < ACount then
+    SetLength(FWork, ACount);
+  Move(AData[0], FWork[0], ACount);
+  RunCBCRange(FKeys, FIV, @FWork[0], @AData[0], ACount, FDecrypt);
+  if not FDecrypt then
+    vNext := RALWACopy(AData, ACount - 16, 16);
+  FIV := vNext;
 end;
 
 function RALWABytes(const A, B: TBytes): TBytes;

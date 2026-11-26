@@ -765,6 +765,27 @@
   cmChatWawTestSession = 'Probar sesión';
   cmChatWawLoggedIn = 'Conectado como %s';
   cmChatWawWaitingPair = 'Esperando vinculación (escanee el QR o escriba el código).';
+  emChatWawEmpty = 'El mensaje para %s no tiene nada que enviar.';
+  emChatWawNoTarget = 'Editar o borrar un mensaje de WhatsApp necesita el id del mensaje.';
+  emChatWawCannotSend = 'El canal WhatsApp Web no puede enviar a %s.';
+  emChatWawBadPhone = 'El teléfono del código de vinculación necesita el código de país y más de 6 dígitos, sin 0 delante.';
+  emChatWawBadCert = 'El certificado del servidor de WhatsApp Web no verificó (%s).';
+  emChatWawMediaHost = 'La dirección multimedia %s no es un host de WhatsApp.';
+  emChatWawDevices = 'El canal WhatsApp Web no recibió los dispositivos de %s.';
+  emChatWawStopped = 'El canal WhatsApp Web %s se detuvo: %s (código %d).';
+  emChatWawUnsealed = 'El canal WhatsApp Web %s guarda sus claves sin cifrar en el store: defina Token (o TokenName) para cifrarlas.';
+  emChatWawMemoryStore = 'El canal WhatsApp Web %s guarda la sesión solo en memoria: vincule un Store o defina el PersistFile del bot, o cada inicio pedirá una nueva vinculación.';
+  cmChatWawSessionSaved = 'Hay una sesión guardada para %s.';
+  cmChatWawSessionSealed = 'Hay una sesión guardada (cifrada con el Token).';
+  cmChatWawNoSession = 'No hay sesión guardada: inicie el canal y vincúlelo.';
+  cmChatWawLoggedOut = 'sesión cerrada';
+  cmChatWawBanned = 'suspendido temporalmente';
+  cmChatWawOutdated = 'versión del cliente rechazada';
+  cmChatWawReplaced = 'otra conexión tomó la sesión';
+  cmChatWawPairingExpired = 'la vinculación expiró';
+  cmChatWawRefused = 'inicio de sesión rechazado';
+  cmChatWawReconnectLimit = 'demasiadas conexiones en la ventana';
+  emChatWawPaused = 'El canal WhatsApp Web %s espera %d s antes de conectar de nuevo: %s.';
   // end of Chat WhatsApp Web
   // Service container (RALHostingContainerPackage)
   emContainerUnknown = 'No hay un servicio llamado %s.';

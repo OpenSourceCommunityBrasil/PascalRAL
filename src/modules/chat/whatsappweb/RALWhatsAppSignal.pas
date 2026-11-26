@@ -13,8 +13,9 @@ unit RALWhatsAppSignal;
 interface
 
 uses
-  Classes, SysUtils,
-  RALTypes, RALTools, RALKeyValueStore, RALHKDF, RALWhatsAppCrypto, RALWhatsAppProto;
+  Classes, SysUtils, SyncObjs,
+  RALTypes, RALTools, RALKeyValueStore, RALHKDF, RALAESGCM, RALWhatsAppCrypto,
+  RALWhatsAppProto;
 
 const
   /// The version byte of the Signal messages (version 3 written and understood).
@@ -65,19 +66,55 @@ type
     PreKey: TBytes;
   end;
 
-  { Where the Signal state lives: the keys of a TRALKeyValueStore under a prefix, the
-    values in base64. }
+  { Where the Signal state lives: the keys of a TRALKeyValueStore under a prefix. The
+    values go in base64, sealed with AES-256-GCM (bound to their key) once a key is
+    set; values written before are still read. The keys written through the view are
+    listed in the store (one-time prekeys apart, which are counted), so Clear removes
+    them all. Thread-safe. }
   TRALSignalStore = class
   private
+    /// The keys written through the view, sorted; loaded on first use.
+    FIndex: TStringList;
+    /// Guards the index.
+    FLock: TCriticalSection;
     FPrefix: StringRAL;
+    /// The AES-256-GCM key of the values; empty keeps them in plain base64.
+    FSealKey: TBytes;
     FStore: TRALKeyValueStore;
+
+    /// The key set by SetSealKey, read under the lock.
+    function CurrentKey: TBytes;
+    /// Loads the index from the store the first time; the caller holds FLock.
+    procedure LoadIndex;
+    { The stored form of AValue under AKey: base64, or with ASealKey the sealed marker
+      and the base64 of nonce and ciphertext. }
+    function Seal(const AKey: StringRAL; const AValue, ASealKey: TBytes): RawByteString;
+    { Adds AKey to the index and writes the index when it is new; one-time prekeys and
+      the view's own entries are not listed. }
+    procedure Track(const AKey: StringRAL);
+    /// Removes AKey from the index and writes it when it was there.
+    procedure Untrack(const AKey: StringRAL);
+    { The value of a stored form; raises ERALWhatsAppError when a sealed value does not
+      open with ASealKey (another key, or none). }
+    function Unseal(const AKey: StringRAL; const ARaw: RawByteString;
+      const ASealKey: TBytes): TBytes;
+    /// Writes the index; the caller holds FLock.
+    procedure WriteIndex;
   public
     /// A view of AStore whose keys start with APrefix.
     constructor Create(AStore: TRALKeyValueStore; const APrefix: StringRAL);
+    destructor Destroy; override;
 
+    { Removes every key written through the view, the one-time prekeys 1 to
+      ALastPreKeyId and the index itself. }
+    procedure Clear(ALastPreKeyId: Cardinal);
     /// Removes the key AKey (a name without the prefix).
     procedure Delete(const AKey: StringRAL);
-    /// The bytes kept under AKey; False when there are none.
+    { Removes every listed key that starts with APrefix (a name without the view's
+      prefix), such as all the sessions of one user. }
+    procedure DeletePrefix(const APrefix: StringRAL);
+    { The bytes kept under AKey; False when there are none. Raises ERALWhatsAppError
+      when the value is sealed and does not open with the key set. }
     function GetBytes(const AKey: StringRAL; out AValue: TBytes): Boolean;
     /// The text kept under AKey; empty when there is none.
     function GetText(const AKey: StringRAL): StringRAL;
@@ -85,6 +122,9 @@ type
     procedure PutBytes(const AKey: StringRAL; const AValue: TBytes);
     /// Keeps a text under AKey.
     procedure PutText(const AKey, AValue: StringRAL);
+    { Sets the 32-byte AES-256-GCM key that seals what is written from now on (empty
+      writes plain base64 again). }
+    procedure SetSealKey(const AKey: TBytes);
 
     /// The prefix of every key.
     property Prefix: StringRAL read FPrefix;
@@ -93,11 +133,14 @@ type
   end;
 
   { The Signal sessions of this device with the others, and the sender keys of its
-    groups. Not thread-safe: the caller serializes the calls. Addresses are opaque
-    texts (one per device), groups their JIDs. }
+    groups. Thread-safe: every call holds the protocol's lock, so a decrypt on the
+    receiving thread and an encrypt on the sending one never work on the same session at
+    once. Addresses are opaque texts (one per device), groups their JIDs. }
   TRALSignalProtocol = class
   private
     FIdentity: TRALSignalIdentity;
+    /// Serializes the calls: a session is read, changed and written back whole.
+    FLock: TCriticalSection;
     FStore: TRALSignalStore;
 
     /// Decrypts a SignalMessage with ASession (changed only when it works).
@@ -115,6 +158,7 @@ type
   public
     /// Works over AStore (not owned) as AIdentity.
     constructor Create(AStore: TRALSignalStore; const AIdentity: TRALSignalIdentity);
+    destructor Destroy; override;
 
     { Decrypts a message from AAddress: a PreKeySignalMessage sets the session up first.
       Raises ERALWhatsAppError when it cannot be read; nothing changes then. }
@@ -199,6 +243,8 @@ resourcestring
   rsSignalNoSenderKey = 'There is no sender key of %s in the group %s.';
   /// A group message with a bad signature.
   rsSignalGroupSignature = 'The group message has a bad signature.';
+  /// A sealed value that does not open with the key set.
+  rsSignalSealed = 'The value %s of the store does not open with the key set (another Token?).';
 
 const
   /// The receiver chains kept per session.
@@ -355,16 +401,88 @@ end;
 
 { TRALSignalStore }
 
+const
+  /// The key of the index, under the prefix ('#' starts no key of the protocol).
+  cStoreIndex = '#index';
+  /// The first character of a sealed value (outside the base64 alphabet).
+  cStoreSealed = '~';
+  /// The key prefix of the one-time prekeys, counted instead of listed.
+  cStorePreKey = 'pk:';
+
 constructor TRALSignalStore.Create(AStore: TRALKeyValueStore; const APrefix: StringRAL);
 begin
   inherited Create;
   FStore := AStore;
   FPrefix := APrefix;
+  FLock := TCriticalSection.Create;
+end;
+
+destructor TRALSignalStore.Destroy;
+begin
+  FIndex.Free;
+  FLock.Free;
+  inherited Destroy;
+end;
+
+procedure TRALSignalStore.Clear(ALastPreKeyId: Cardinal);
+var
+  vInt: IntegerRAL;
+  vId: Cardinal;
+begin
+  FLock.Enter;
+  try
+    LoadIndex;
+    for vInt := 0 to FIndex.Count - 1 do
+      FStore.Delete(FPrefix + StringRAL(FIndex[vInt]));
+    FIndex.Clear;
+    FStore.Delete(FPrefix + cStoreIndex);
+  finally
+    FLock.Leave;
+  end;
+  for vId := 1 to ALastPreKeyId do
+    FStore.Delete(FPrefix + cStorePreKey + StringRAL(IntToStr(vId)));
 end;
 
 procedure TRALSignalStore.Delete(const AKey: StringRAL);
 begin
   FStore.Delete(FPrefix + AKey);
+  Untrack(AKey);
+end;
+
+procedure TRALSignalStore.DeletePrefix(const APrefix: StringRAL);
+var
+  vIdx: Integer;
+  vChanged: Boolean;
+begin
+  if APrefix = '' then
+    Exit;
+  FLock.Enter;
+  try
+    LoadIndex;
+    // the whole list: its locale order does not promise a prefix sits together
+    vChanged := False;
+    for vIdx := FIndex.Count - 1 downto 0 do
+      if Pos(string(APrefix), FIndex[vIdx]) = 1 then
+      begin
+        FStore.Delete(FPrefix + StringRAL(FIndex[vIdx]));
+        FIndex.Delete(vIdx);
+        vChanged := True;
+      end;
+    if vChanged then
+      WriteIndex;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRALSignalStore.CurrentKey: TBytes;
+begin
+  FLock.Enter;
+  try
+    Result := FSealKey;
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TRALSignalStore.GetBytes(const AKey: StringRAL; out AValue: TBytes): Boolean;
@@ -373,29 +491,138 @@ var
 begin
   Result := FStore.Get(FPrefix + AKey, vRaw) and (vRaw <> '');
   if Result then
-    AValue := RALWAUnbase64(StringRAL(vRaw))
+    AValue := Unseal(AKey, vRaw, CurrentKey)
   else
     SetLength(AValue, 0);
 end;
 
 function TRALSignalStore.GetText(const AKey: StringRAL): StringRAL;
 var
-  vRaw: RawByteString;
+  vData: TBytes;
 begin
-  if FStore.Get(FPrefix + AKey, vRaw) then
-    Result := StringRAL(vRaw)
-  else
-    Result := '';
+  Result := '';
+  if GetBytes(AKey, vData) and (Length(vData) > 0) then
+  begin
+    SetLength(Result, Length(vData));
+    Move(vData[0], Pointer(Result)^, Length(vData));
+  end;
+end;
+
+procedure TRALSignalStore.LoadIndex;
+var
+  vRaw: RawByteString;
+  vData: TBytes;
+  vText: StringRAL;
+begin
+  if FIndex <> nil then
+    Exit;
+  FIndex := TStringList.Create;
+  FIndex.Sorted := True;
+  FIndex.Duplicates := dupIgnore;
+  FIndex.CaseSensitive := True;
+  if FStore.Get(FPrefix + cStoreIndex, vRaw) and (vRaw <> '') then
+  begin
+    vData := Unseal(cStoreIndex, vRaw, FSealKey);
+    SetLength(vText, Length(vData));
+    if Length(vData) > 0 then
+      Move(vData[0], Pointer(vText)^, Length(vData));
+    FIndex.Text := string(vText);
+  end;
 end;
 
 procedure TRALSignalStore.PutBytes(const AKey: StringRAL; const AValue: TBytes);
 begin
-  FStore.Put(FPrefix + AKey, RawByteString(RALWABase64(AValue)));
+  FStore.Put(FPrefix + AKey, Seal(AKey, AValue, CurrentKey));
+  Track(AKey);
 end;
 
 procedure TRALSignalStore.PutText(const AKey, AValue: StringRAL);
 begin
-  FStore.Put(FPrefix + AKey, RawByteString(AValue));
+  PutBytes(AKey, RALWAText(AValue));
+end;
+
+function TRALSignalStore.Seal(const AKey: StringRAL; const AValue, ASealKey: TBytes): RawByteString;
+var
+  vNonce: TBytes;
+begin
+  if Length(ASealKey) = 0 then
+    Result := RawByteString(RALWABase64(AValue))
+  else
+  begin
+    // the key name is the additional data: a value moved to another key does not open
+    vNonce := RandomBytes(12);
+    Result := RawByteString(cStoreSealed + RALWABase64(RALWABytes(vNonce,
+      RALAESGCMEncrypt(ASealKey, vNonce, RALWAText(AKey), AValue))));
+  end;
+end;
+
+procedure TRALSignalStore.SetSealKey(const AKey: TBytes);
+begin
+  FLock.Enter;
+  try
+    FSealKey := Copy(AKey, 0, Length(AKey));
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRALSignalStore.Track(const AKey: StringRAL);
+begin
+  if (AKey = cStoreIndex) or (Pos(StringRAL(cStorePreKey), AKey) = 1) then
+    Exit;
+  FLock.Enter;
+  try
+    LoadIndex;
+    if FIndex.IndexOf(string(AKey)) >= 0 then
+      Exit;
+    FIndex.Add(string(AKey));
+    WriteIndex;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TRALSignalStore.Unseal(const AKey: StringRAL; const ARaw: RawByteString;
+  const ASealKey: TBytes): TBytes;
+var
+  vData: TBytes;
+begin
+  if PAnsiChar(Pointer(ARaw))^ <> cStoreSealed then
+  begin
+    Result := RALWAUnbase64(StringRAL(ARaw));
+    Exit;
+  end;
+  vData := RALWAUnbase64(StringRAL(Copy(ARaw, 2, Length(ARaw) - 1)));
+  if (Length(ASealKey) = 0) or (Length(vData) < 12 + 16) or
+     not RALAESGCMDecrypt(ASealKey, RALWACopy(vData, 0, 12), RALWAText(AKey),
+       RALWACopy(vData, 12, Length(vData) - 12), Result) then
+    raise ERALWhatsAppError.CreateFmt(rsSignalSealed, [string(FPrefix + AKey)]);
+end;
+
+procedure TRALSignalStore.Untrack(const AKey: StringRAL);
+var
+  vIdx: Integer;
+begin
+  if (AKey = cStoreIndex) or (Pos(StringRAL(cStorePreKey), AKey) = 1) then
+    Exit;
+  FLock.Enter;
+  try
+    LoadIndex;
+    vIdx := FIndex.IndexOf(string(AKey));
+    if vIdx < 0 then
+      Exit;
+    FIndex.Delete(vIdx);
+    WriteIndex;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TRALSignalStore.WriteIndex;
+begin
+  // the index names the contacts: it is sealed like any other value
+  FStore.Put(FPrefix + cStoreIndex, Seal(cStoreIndex, RALWAText(StringRAL(FIndex.Text)),
+    FSealKey));
 end;
 
 { TRALSignalProtocol }
@@ -406,6 +633,13 @@ begin
   inherited Create;
   FStore := AStore;
   FIdentity := AIdentity;
+  FLock := TCriticalSection.Create;
+end;
+
+destructor TRALSignalProtocol.Destroy;
+begin
+  FLock.Free;
+  inherited Destroy;
 end;
 
 function TRALSignalProtocol.Decrypt(const AAddress: StringRAL;
@@ -419,117 +653,122 @@ var
   vIdx: IntegerRAL;
   vDone, vUsedPreKey: Boolean;
 begin
-  vRecord := LoadRecord(AAddress);
-  if vRecord = nil then
-    vRecord := TWAStoredSessionRecord.Create;
+  FLock.Enter;
   try
-    vUsedPreKey := False;
-    vPre := nil;
+    vRecord := LoadRecord(AAddress);
+    if vRecord = nil then
+      vRecord := TWAStoredSessionRecord.Create;
     try
-      if AType = smtPreKey then
-      begin
-        vPre := TWAPreKeySignalMessage.Create;
-        vPre.Decode(Unversion(AData, 0));
-        vBase := RALWAStripKey(vPre.BaseKey);
-        vTheirIdentity := RALWAStripKey(vPre.IdentityKey);
-        // a repeated pkmsg reuses the session it already made
-        vSession := nil;
-        if (vRecord.Current <> nil) and RALSameBytes(vRecord.Current.AliceBaseKey, vBase) then
-          vSession := vRecord.Current
-        else
-          for vIdx := 0 to vRecord.Previous.Count - 1 do
-            if RALSameBytes(vRecord.Previous[vIdx].AliceBaseKey, vBase) then
-            begin
-              vSession := TWAStoredSession(vRecord.Previous[vIdx].Clone);
-              vRecord.Previous.Delete(vIdx);
-              PromoteSession(vRecord, vSession);
-              Break;
-            end;
-        if vSession = nil then
+      vUsedPreKey := False;
+      vPre := nil;
+      try
+        if AType = smtPreKey then
         begin
-          if vPre.SignedPreKeyId <> FIdentity.SignedPreKeyId then
-            raise ERALWhatsAppError.CreateFmt(rsSignalSignedPreKey, [vPre.SignedPreKeyId]);
-          SetLength(vOneTime.Priv, 0);
-          SetLength(vOneTime.Pub, 0);
-          if vPre.HasPreKeyId then
+          vPre := TWAPreKeySignalMessage.Create;
+          vPre.Decode(Unversion(AData, 0));
+          vBase := RALWAStripKey(vPre.BaseKey);
+          vTheirIdentity := RALWAStripKey(vPre.IdentityKey);
+          // a repeated pkmsg reuses the session it already made
+          vSession := nil;
+          if (vRecord.Current <> nil) and RALSameBytes(vRecord.Current.AliceBaseKey, vBase) then
+            vSession := vRecord.Current
+          else
+            for vIdx := 0 to vRecord.Previous.Count - 1 do
+              if RALSameBytes(vRecord.Previous[vIdx].AliceBaseKey, vBase) then
+              begin
+                vSession := TWAStoredSession(vRecord.Previous[vIdx].Clone);
+                vRecord.Previous.Delete(vIdx);
+                PromoteSession(vRecord, vSession);
+                Break;
+              end;
+          if vSession = nil then
           begin
-            if not RALSignalLoadPreKey(FStore, vPre.PreKeyId, vOneTime) then
-              raise ERALWhatsAppError.CreateFmt(rsSignalNoPreKey, [vPre.PreKeyId]);
-            vUsedPreKey := True;
+            if vPre.SignedPreKeyId <> FIdentity.SignedPreKeyId then
+              raise ERALWhatsAppError.CreateFmt(rsSignalSignedPreKey, [vPre.SignedPreKeyId]);
+            SetLength(vOneTime.Priv, 0);
+            SetLength(vOneTime.Pub, 0);
+            if vPre.HasPreKeyId then
+            begin
+              if not RALSignalLoadPreKey(FStore, vPre.PreKeyId, vOneTime) then
+                raise ERALWhatsAppError.CreateFmt(rsSignalNoPreKey, [vPre.PreKeyId]);
+              vUsedPreKey := True;
+            end;
+            RALSignalX3DHBob(FIdentity.IdentityKey, FIdentity.SignedPreKey, vOneTime,
+              vTheirIdentity, vBase, vRoot, vChain);
+            vSession := TWAStoredSession.Create;
+            vSession.RemoteIdentity := vTheirIdentity;
+            vSession.LocalIdentity := FIdentity.IdentityKey.Pub;
+            vSession.RootKey := vRoot;
+            vSession.SenderChain := TWAStoredChain.Create;
+            vSession.SenderChain.RatchetPub := FIdentity.SignedPreKey.Pub;
+            vSession.SenderChain.RatchetPriv := FIdentity.SignedPreKey.Priv;
+            vSession.SenderChain.ChainKey := vChain;
+            vSession.SenderChain.Index := 0;
+            vSession.AliceBaseKey := vBase;
+            vSession.RemoteRegistrationId := vPre.RegistrationId;
+            vSession.LocalRegistrationId := FIdentity.RegistrationId;
+            PromoteSession(vRecord, vSession);
           end;
-          RALSignalX3DHBob(FIdentity.IdentityKey, FIdentity.SignedPreKey, vOneTime,
-            vTheirIdentity, vBase, vRoot, vChain);
-          vSession := TWAStoredSession.Create;
-          vSession.RemoteIdentity := vTheirIdentity;
-          vSession.LocalIdentity := FIdentity.IdentityKey.Pub;
-          vSession.RootKey := vRoot;
-          vSession.SenderChain := TWAStoredChain.Create;
-          vSession.SenderChain.RatchetPub := FIdentity.SignedPreKey.Pub;
-          vSession.SenderChain.RatchetPriv := FIdentity.SignedPreKey.Priv;
-          vSession.SenderChain.ChainKey := vChain;
-          vSession.SenderChain.Index := 0;
-          vSession.AliceBaseKey := vBase;
-          vSession.RemoteRegistrationId := vPre.RegistrationId;
-          vSession.LocalRegistrationId := FIdentity.RegistrationId;
-          PromoteSession(vRecord, vSession);
-        end;
-        vTry := TWAStoredSession(vRecord.Current.Clone);
-        try
-          Result := DecryptWithSession(vTry, vPre.Message);
-          vRecord.Current := vTry;
-          vTry := nil;
-        finally
-          vTry.Free;
-        end;
-      end
-      else
-      begin
-        vDone := False;
-        if vRecord.Current <> nil then
-        begin
           vTry := TWAStoredSession(vRecord.Current.Clone);
           try
-            Result := DecryptWithSession(vTry, AData);
+            Result := DecryptWithSession(vTry, vPre.Message);
             vRecord.Current := vTry;
             vTry := nil;
-            vDone := True;
-          except
-            on E: ERALWhatsAppError do
-              vTry.Free;
+          finally
+            vTry.Free;
+          end;
+        end
+        else
+        begin
+          vDone := False;
+          if vRecord.Current <> nil then
+          begin
+            vTry := TWAStoredSession(vRecord.Current.Clone);
+            try
+              Result := DecryptWithSession(vTry, AData);
+              vRecord.Current := vTry;
+              vTry := nil;
+              vDone := True;
+            except
+              on E: ERALWhatsAppError do
+                vTry.Free;
+            end;
+          end;
+          vIdx := 0;
+          while (not vDone) and (vIdx < vRecord.Previous.Count) do
+          begin
+            vTry := TWAStoredSession(vRecord.Previous[vIdx].Clone);
+            try
+              Result := DecryptWithSession(vTry, AData);
+              vRecord.Previous.Delete(vIdx);
+              PromoteSession(vRecord, vTry);
+              vTry := nil;
+              vDone := True;
+            except
+              on E: ERALWhatsAppError do
+                vTry.Free;
+            end;
+            Inc(vIdx);
+          end;
+          if not vDone then
+          begin
+            if (vRecord.Current = nil) and (vRecord.Previous.Count = 0) then
+              raise ERALWhatsAppError.CreateFmt(rsSignalNoSession, [AAddress]);
+            raise ERALWhatsAppError.Create(rsSignalMac);
           end;
         end;
-        vIdx := 0;
-        while (not vDone) and (vIdx < vRecord.Previous.Count) do
-        begin
-          vTry := TWAStoredSession(vRecord.Previous[vIdx].Clone);
-          try
-            Result := DecryptWithSession(vTry, AData);
-            vRecord.Previous.Delete(vIdx);
-            PromoteSession(vRecord, vTry);
-            vTry := nil;
-            vDone := True;
-          except
-            on E: ERALWhatsAppError do
-              vTry.Free;
-          end;
-          Inc(vIdx);
-        end;
-        if not vDone then
-        begin
-          if (vRecord.Current = nil) and (vRecord.Previous.Count = 0) then
-            raise ERALWhatsAppError.CreateFmt(rsSignalNoSession, [AAddress]);
-          raise ERALWhatsAppError.Create(rsSignalMac);
-        end;
+        StoreRecord(AAddress, vRecord);
+        if vUsedPreKey then
+          FStore.Delete('pk:' + StringRAL(IntToStr(vPre.PreKeyId)));
+        FStore.PutBytes('id:' + AAddress, vRecord.Current.RemoteIdentity);
+      finally
+        vPre.Free;
       end;
-      StoreRecord(AAddress, vRecord);
-      if vUsedPreKey then
-        FStore.Delete('pk:' + StringRAL(IntToStr(vPre.PreKeyId)));
-      FStore.PutBytes('id:' + AAddress, vRecord.Current.RemoteIdentity);
     finally
-      vPre.Free;
+      vRecord.Free;
     end;
   finally
-    vRecord.Free;
+    FLock.Leave;
   end;
 end;
 
@@ -632,7 +871,12 @@ end;
 
 procedure TRALSignalProtocol.DeleteSession(const AAddress: StringRAL);
 begin
-  FStore.Delete('ss:' + AAddress);
+  FLock.Enter;
+  try
+    FStore.Delete('ss:' + AAddress);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TRALSignalProtocol.Encrypt(const AAddress: StringRAL; const APlain: TBytes;
@@ -644,50 +888,55 @@ var
   vPre: TWAPreKeySignalMessage;
   vSeed, vCipherKey, vMacKey, vIV, vSerialized: TBytes;
 begin
-  vRecord := LoadRecord(AAddress);
+  FLock.Enter;
   try
-    if (vRecord = nil) or (vRecord.Current = nil) then
-      raise ERALWhatsAppError.CreateFmt(rsSignalNoSession, [AAddress]);
-    vSession := vRecord.Current;
-    vSeed := SeedOf(vSession.SenderChain.ChainKey);
-    MessageKeys(vSeed, vCipherKey, vMacKey, vIV);
-    vMsg := TWASignalMessage.Create;
+    vRecord := LoadRecord(AAddress);
     try
-      vMsg.RatchetKey := RALWASerializeKey(vSession.SenderChain.RatchetPub);
-      vMsg.Counter := vSession.SenderChain.Index;
-      vMsg.PreviousCounter := vSession.PreviousCounter;
-      vMsg.Ciphertext := RALWAAESCBCEncrypt(vCipherKey, vIV, APlain);
-      vSerialized := RALWABytes(OneByte(cRALSignalVersion), vMsg.Encode);
-    finally
-      vMsg.Free;
-    end;
-    Result := RALWABytes(vSerialized, RALWACopy(RALWAHmacSha256(vMacKey,
-      RALWABytes(RALWASerializeKey(vSession.LocalIdentity),
-      RALWASerializeKey(vSession.RemoteIdentity), vSerialized)), 0, 8));
-    if vSession.Pending then
-    begin
-      vPre := TWAPreKeySignalMessage.Create;
+      if (vRecord = nil) or (vRecord.Current = nil) then
+        raise ERALWhatsAppError.CreateFmt(rsSignalNoSession, [AAddress]);
+      vSession := vRecord.Current;
+      vSeed := SeedOf(vSession.SenderChain.ChainKey);
+      MessageKeys(vSeed, vCipherKey, vMacKey, vIV);
+      vMsg := TWASignalMessage.Create;
       try
-        vPre.RegistrationId := vSession.LocalRegistrationId;
-        if vSession.PendingHasPreKey then
-          vPre.PreKeyId := vSession.PendingPreKeyId;
-        vPre.SignedPreKeyId := vSession.PendingSignedPreKeyId;
-        vPre.BaseKey := RALWASerializeKey(vSession.PendingBaseKey);
-        vPre.IdentityKey := RALWASerializeKey(vSession.LocalIdentity);
-        vPre.Message := Result;
-        Result := RALWABytes(OneByte(cRALSignalVersion), vPre.Encode);
+        vMsg.RatchetKey := RALWASerializeKey(vSession.SenderChain.RatchetPub);
+        vMsg.Counter := vSession.SenderChain.Index;
+        vMsg.PreviousCounter := vSession.PreviousCounter;
+        vMsg.Ciphertext := RALWAAESCBCEncrypt(vCipherKey, vIV, APlain);
+        vSerialized := RALWABytes(OneByte(cRALSignalVersion), vMsg.Encode);
       finally
-        vPre.Free;
+        vMsg.Free;
       end;
-      AType := smtPreKey;
-    end
-    else
-      AType := smtSignal;
-    vSession.SenderChain.ChainKey := NextChain(vSession.SenderChain.ChainKey);
-    vSession.SenderChain.Index := vSession.SenderChain.Index + 1;
-    StoreRecord(AAddress, vRecord);
+      Result := RALWABytes(vSerialized, RALWACopy(RALWAHmacSha256(vMacKey,
+        RALWABytes(RALWASerializeKey(vSession.LocalIdentity),
+        RALWASerializeKey(vSession.RemoteIdentity), vSerialized)), 0, 8));
+      if vSession.Pending then
+      begin
+        vPre := TWAPreKeySignalMessage.Create;
+        try
+          vPre.RegistrationId := vSession.LocalRegistrationId;
+          if vSession.PendingHasPreKey then
+            vPre.PreKeyId := vSession.PendingPreKeyId;
+          vPre.SignedPreKeyId := vSession.PendingSignedPreKeyId;
+          vPre.BaseKey := RALWASerializeKey(vSession.PendingBaseKey);
+          vPre.IdentityKey := RALWASerializeKey(vSession.LocalIdentity);
+          vPre.Message := Result;
+          Result := RALWABytes(OneByte(cRALSignalVersion), vPre.Encode);
+        finally
+          vPre.Free;
+        end;
+        AType := smtPreKey;
+      end
+      else
+        AType := smtSignal;
+      vSession.SenderChain.ChainKey := NextChain(vSession.SenderChain.ChainKey);
+      vSession.SenderChain.Index := vSession.SenderChain.Index + 1;
+      StoreRecord(AAddress, vRecord);
+    finally
+      vRecord.Free;
+    end;
   finally
-    vRecord.Free;
+    FLock.Leave;
   end;
 end;
 
@@ -703,65 +952,70 @@ var
   vFound: Boolean;
   vSkipped: TWAStoredMessageKey;
 begin
-  if Length(AData) < 1 + 64 then
-    raise ERALWhatsAppError.Create(rsSignalBad);
-  vSerialized := RALWACopy(AData, 0, Length(AData) - 64);
-  vRecord := LoadSenderKeys(AGroup, ASender);
-  vMsg := TWASenderKeyMessage.Create;
+  FLock.Enter;
   try
-    vMsg.Decode(Unversion(vSerialized, 0));
-    vState := nil;
-    for vIdx := 0 to vRecord.States.Count - 1 do
-      if vRecord.States[vIdx].KeyId = vMsg.Id then
-      begin
-        vState := vRecord.States[vIdx];
-        Break;
-      end;
-    if vState = nil then
-      raise ERALWhatsAppError.CreateFmt(rsSignalNoSenderKey, [ASender, AGroup]);
-    if not RALWACurveVerify(vState.SigningPub, vSerialized,
-      RALWACopy(AData, Length(AData) - 64, 64)) then
-      raise ERALWhatsAppError.Create(rsSignalGroupSignature);
-    if vMsg.Iteration < vState.Iteration then
-    begin
-      vFound := False;
-      for vIdx := 0 to vState.Skipped.Count - 1 do
-        if vState.Skipped[vIdx].Index = vMsg.Iteration then
+    if Length(AData) < 1 + 64 then
+      raise ERALWhatsAppError.Create(rsSignalBad);
+    vSerialized := RALWACopy(AData, 0, Length(AData) - 64);
+    vRecord := LoadSenderKeys(AGroup, ASender);
+    vMsg := TWASenderKeyMessage.Create;
+    try
+      vMsg.Decode(Unversion(vSerialized, 0));
+      vState := nil;
+      for vIdx := 0 to vRecord.States.Count - 1 do
+        if vRecord.States[vIdx].KeyId = vMsg.Id then
         begin
-          vSeed := vState.Skipped[vIdx].Seed;
-          vState.Skipped.Delete(vIdx);
-          vFound := True;
+          vState := vRecord.States[vIdx];
           Break;
         end;
-      if not vFound then
-        raise ERALWhatsAppError.Create(rsSignalDuplicate);
-    end
-    else
-    begin
-      if Int64RAL(vMsg.Iteration) - vState.Iteration > cRALSignalMaxSkip then
-        raise ERALWhatsAppError.Create(rsSignalTooFar);
-      vChainKey := vState.ChainKey;
-      vIter := vState.Iteration;
-      while vIter < vMsg.Iteration do
+      if vState = nil then
+        raise ERALWhatsAppError.CreateFmt(rsSignalNoSenderKey, [ASender, AGroup]);
+      if not RALWACurveVerify(vState.SigningPub, vSerialized,
+        RALWACopy(AData, Length(AData) - 64, 64)) then
+        raise ERALWhatsAppError.Create(rsSignalGroupSignature);
+      if vMsg.Iteration < vState.Iteration then
       begin
-        vSkipped := vState.Skipped.Add;
-        vSkipped.Index := vIter;
-        vSkipped.Seed := SeedOf(vChainKey);
-        vChainKey := NextChain(vChainKey);
-        Inc(vIter);
+        vFound := False;
+        for vIdx := 0 to vState.Skipped.Count - 1 do
+          if vState.Skipped[vIdx].Index = vMsg.Iteration then
+          begin
+            vSeed := vState.Skipped[vIdx].Seed;
+            vState.Skipped.Delete(vIdx);
+            vFound := True;
+            Break;
+          end;
+        if not vFound then
+          raise ERALWhatsAppError.Create(rsSignalDuplicate);
+      end
+      else
+      begin
+        if Int64RAL(vMsg.Iteration) - vState.Iteration > cRALSignalMaxSkip then
+          raise ERALWhatsAppError.Create(rsSignalTooFar);
+        vChainKey := vState.ChainKey;
+        vIter := vState.Iteration;
+        while vIter < vMsg.Iteration do
+        begin
+          vSkipped := vState.Skipped.Add;
+          vSkipped.Index := vIter;
+          vSkipped.Seed := SeedOf(vChainKey);
+          vChainKey := NextChain(vChainKey);
+          Inc(vIter);
+        end;
+        while vState.Skipped.Count > cRALSignalMaxSkip do
+          vState.Skipped.Delete(0);
+        vSeed := SeedOf(vChainKey);
+        vState.ChainKey := NextChain(vChainKey);
+        vState.Iteration := vMsg.Iteration + 1;
       end;
-      while vState.Skipped.Count > cRALSignalMaxSkip do
-        vState.Skipped.Delete(0);
-      vSeed := SeedOf(vChainKey);
-      vState.ChainKey := NextChain(vChainKey);
-      vState.Iteration := vMsg.Iteration + 1;
+      SenderMessageKeys(vSeed, vIV, vKey);
+      Result := RALWAAESCBCDecrypt(vKey, vIV, vMsg.Ciphertext);
+      StoreSenderKeys(AGroup, ASender, vRecord);
+    finally
+      vMsg.Free;
+      vRecord.Free;
     end;
-    SenderMessageKeys(vSeed, vIV, vKey);
-    Result := RALWAAESCBCDecrypt(vKey, vIV, vMsg.Ciphertext);
-    StoreSenderKeys(AGroup, ASender, vRecord);
   finally
-    vMsg.Free;
-    vRecord.Free;
+    FLock.Leave;
   end;
 end;
 
@@ -773,30 +1027,35 @@ var
   vPair: TRALWhatsAppKeyPair;
   vRandom: TBytes;
 begin
-  vRecord := LoadSenderKeys(AGroup, AOwnAddress);
-  vMsg := TWASenderKeyDistribution.Create;
+  FLock.Enter;
   try
-    if vRecord.States.Count = 0 then
-    begin
-      vState := vRecord.States.Add;
-      vRandom := RandomBytes(4);
-      vState.KeyId := Cardinal(RALWAReadBigEndian(vRandom)) and $7FFFFFFF;
-      vState.Iteration := 0;
-      vState.ChainKey := RandomBytes(32);
-      vPair := RALWAGenerateKeyPair;
-      vState.SigningPub := vPair.Pub;
-      vState.SigningPriv := vPair.Priv;
-      StoreSenderKeys(AGroup, AOwnAddress, vRecord);
+    vRecord := LoadSenderKeys(AGroup, AOwnAddress);
+    vMsg := TWASenderKeyDistribution.Create;
+    try
+      if vRecord.States.Count = 0 then
+      begin
+        vState := vRecord.States.Add;
+        vRandom := RandomBytes(4);
+        vState.KeyId := Cardinal(RALWAReadBigEndian(vRandom)) and $7FFFFFFF;
+        vState.Iteration := 0;
+        vState.ChainKey := RandomBytes(32);
+        vPair := RALWAGenerateKeyPair;
+        vState.SigningPub := vPair.Pub;
+        vState.SigningPriv := vPair.Priv;
+        StoreSenderKeys(AGroup, AOwnAddress, vRecord);
+      end;
+      vState := vRecord.States[0];
+      vMsg.Id := vState.KeyId;
+      vMsg.Iteration := vState.Iteration;
+      vMsg.ChainKey := vState.ChainKey;
+      vMsg.SigningKey := RALWASerializeKey(vState.SigningPub);
+      Result := RALWABytes(OneByte(cRALSignalVersion), vMsg.Encode);
+    finally
+      vMsg.Free;
+      vRecord.Free;
     end;
-    vState := vRecord.States[0];
-    vMsg.Id := vState.KeyId;
-    vMsg.Iteration := vState.Iteration;
-    vMsg.ChainKey := vState.ChainKey;
-    vMsg.SigningKey := RALWASerializeKey(vState.SigningPub);
-    Result := RALWABytes(OneByte(cRALSignalVersion), vMsg.Encode);
   finally
-    vMsg.Free;
-    vRecord.Free;
+    FLock.Leave;
   end;
 end;
 
@@ -808,23 +1067,28 @@ var
   vMsg: TWASenderKeyMessage;
   vIV, vKey, vSerialized: TBytes;
 begin
-  GroupDistribution(AGroup, AOwnAddress);
-  vRecord := LoadSenderKeys(AGroup, AOwnAddress);
-  vMsg := TWASenderKeyMessage.Create;
+  FLock.Enter;
   try
-    vState := vRecord.States[0];
-    SenderMessageKeys(SeedOf(vState.ChainKey), vIV, vKey);
-    vMsg.Id := vState.KeyId;
-    vMsg.Iteration := vState.Iteration;
-    vMsg.Ciphertext := RALWAAESCBCEncrypt(vKey, vIV, APlain);
-    vSerialized := RALWABytes(OneByte(cRALSignalVersion), vMsg.Encode);
-    Result := RALWABytes(vSerialized, RALWACurveSign(vState.SigningPriv, vSerialized));
-    vState.ChainKey := NextChain(vState.ChainKey);
-    vState.Iteration := vState.Iteration + 1;
-    StoreSenderKeys(AGroup, AOwnAddress, vRecord);
+    GroupDistribution(AGroup, AOwnAddress);
+    vRecord := LoadSenderKeys(AGroup, AOwnAddress);
+    vMsg := TWASenderKeyMessage.Create;
+    try
+      vState := vRecord.States[0];
+      SenderMessageKeys(SeedOf(vState.ChainKey), vIV, vKey);
+      vMsg.Id := vState.KeyId;
+      vMsg.Iteration := vState.Iteration;
+      vMsg.Ciphertext := RALWAAESCBCEncrypt(vKey, vIV, APlain);
+      vSerialized := RALWABytes(OneByte(cRALSignalVersion), vMsg.Encode);
+      Result := RALWABytes(vSerialized, RALWACurveSign(vState.SigningPriv, vSerialized));
+      vState.ChainKey := NextChain(vState.ChainKey);
+      vState.Iteration := vState.Iteration + 1;
+      StoreSenderKeys(AGroup, AOwnAddress, vRecord);
+    finally
+      vMsg.Free;
+      vRecord.Free;
+    end;
   finally
-    vMsg.Free;
-    vRecord.Free;
+    FLock.Leave;
   end;
 end;
 
@@ -836,43 +1100,58 @@ var
   vState: TWAStoredSenderKeyState;
   vIdx: IntegerRAL;
 begin
-  vRecord := LoadSenderKeys(AGroup, ASender);
-  vMsg := TWASenderKeyDistribution.Create;
-  vNew := TWAStoredSenderKeyRecord.Create;
+  FLock.Enter;
   try
-    vMsg.Decode(Unversion(AData, 0));
-    // the new state first, then the others but one of the same id
-    vState := vNew.States.Add;
-    vState.KeyId := vMsg.Id;
-    vState.Iteration := vMsg.Iteration;
-    vState.ChainKey := vMsg.ChainKey;
-    vState.SigningPub := RALWAStripKey(vMsg.SigningKey);
-    for vIdx := 0 to vRecord.States.Count - 1 do
-      if (vRecord.States[vIdx].KeyId <> vMsg.Id) and
-         (vNew.States.Count < cMaxSenderKeyStates) then
-        vNew.States.Append(vRecord.States[vIdx].Clone);
-    StoreSenderKeys(AGroup, ASender, vNew);
+    vRecord := LoadSenderKeys(AGroup, ASender);
+    vMsg := TWASenderKeyDistribution.Create;
+    vNew := TWAStoredSenderKeyRecord.Create;
+    try
+      vMsg.Decode(Unversion(AData, 0));
+      // the new state first, then the others but one of the same id
+      vState := vNew.States.Add;
+      vState.KeyId := vMsg.Id;
+      vState.Iteration := vMsg.Iteration;
+      vState.ChainKey := vMsg.ChainKey;
+      vState.SigningPub := RALWAStripKey(vMsg.SigningKey);
+      for vIdx := 0 to vRecord.States.Count - 1 do
+        if (vRecord.States[vIdx].KeyId <> vMsg.Id) and
+           (vNew.States.Count < cMaxSenderKeyStates) then
+          vNew.States.Append(vRecord.States[vIdx].Clone);
+      StoreSenderKeys(AGroup, ASender, vNew);
+    finally
+      vNew.Free;
+      vMsg.Free;
+      vRecord.Free;
+    end;
   finally
-    vNew.Free;
-    vMsg.Free;
-    vRecord.Free;
+    FLock.Leave;
   end;
 end;
 
 procedure TRALSignalProtocol.GroupReset(const AGroup, AOwnAddress: StringRAL);
 begin
-  FStore.Delete('sk:' + AGroup + ':' + AOwnAddress);
+  FLock.Enter;
+  try
+    FStore.Delete('sk:' + AGroup + ':' + AOwnAddress);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TRALSignalProtocol.HasSession(const AAddress: StringRAL): Boolean;
 var
   vRecord: TWAStoredSessionRecord;
 begin
-  vRecord := LoadRecord(AAddress);
+  FLock.Enter;
   try
-    Result := (vRecord <> nil) and (vRecord.Current <> nil);
+    vRecord := LoadRecord(AAddress);
+    try
+      Result := (vRecord <> nil) and (vRecord.Current <> nil);
+    finally
+      vRecord.Free;
+    end;
   finally
-    vRecord.Free;
+    FLock.Leave;
   end;
 end;
 
@@ -913,56 +1192,61 @@ var
   vRoot, vChain, vSendRoot, vSignedPreKey, vTheirIdentity, vPreKey: TBytes;
   vReceiver: TWAStoredChain;
 begin
-  vSignedPreKey := RALWAStripKey(ABundle.SignedPreKey);
-  vTheirIdentity := RALWAStripKey(ABundle.IdentityKey);
-  if not RALWACurveVerify(vTheirIdentity, RALWASerializeKey(vSignedPreKey),
-    ABundle.SignedPreKeySignature) then
-    raise ERALWhatsAppError.CreateFmt(rsSignalBundle, [AAddress]);
-  if ABundle.HasPreKey then
-    vPreKey := RALWAStripKey(ABundle.PreKey)
-  else
-    SetLength(vPreKey, 0);
-  vBase := RALWAGenerateKeyPair;
-  RALSignalX3DHAlice(FIdentity.IdentityKey, vBase, vTheirIdentity, vSignedPreKey, vPreKey,
-    vRoot, vChain);
-  vSession := TWAStoredSession.Create;
+  FLock.Enter;
   try
-    vSession.RemoteIdentity := vTheirIdentity;
-    vSession.LocalIdentity := FIdentity.IdentityKey.Pub;
-    vReceiver := vSession.ReceiverChains.Add;
-    vReceiver.RatchetPub := vSignedPreKey;
-    vReceiver.ChainKey := vChain;
-    vReceiver.Index := 0;
-    vSending := RALWAGenerateKeyPair;
-    RALSignalRatchetStep(vRoot, vSignedPreKey, vSending.Priv, vSendRoot, vChain);
-    vSession.RootKey := vSendRoot;
-    vSession.SenderChain := TWAStoredChain.Create;
-    vSession.SenderChain.RatchetPub := vSending.Pub;
-    vSession.SenderChain.RatchetPriv := vSending.Priv;
-    vSession.SenderChain.ChainKey := vChain;
-    vSession.SenderChain.Index := 0;
-    vSession.PreviousCounter := 0;
-    vSession.RemoteRegistrationId := ABundle.RegistrationId;
-    vSession.LocalRegistrationId := FIdentity.RegistrationId;
-    vSession.AliceBaseKey := vBase.Pub;
-    vSession.Pending := True;
-    vSession.PendingHasPreKey := ABundle.HasPreKey;
-    vSession.PendingPreKeyId := ABundle.PreKeyId;
-    vSession.PendingSignedPreKeyId := ABundle.SignedPreKeyId;
-    vSession.PendingBaseKey := vBase.Pub;
-  except
-    vSession.Free;
-    raise;
-  end;
-  vRecord := LoadRecord(AAddress);
-  if vRecord = nil then
-    vRecord := TWAStoredSessionRecord.Create;
-  try
-    PromoteSession(vRecord, vSession);
-    StoreRecord(AAddress, vRecord);
-    FStore.PutBytes('id:' + AAddress, vTheirIdentity);
+    vSignedPreKey := RALWAStripKey(ABundle.SignedPreKey);
+    vTheirIdentity := RALWAStripKey(ABundle.IdentityKey);
+    if not RALWACurveVerify(vTheirIdentity, RALWASerializeKey(vSignedPreKey),
+      ABundle.SignedPreKeySignature) then
+      raise ERALWhatsAppError.CreateFmt(rsSignalBundle, [AAddress]);
+    if ABundle.HasPreKey then
+      vPreKey := RALWAStripKey(ABundle.PreKey)
+    else
+      SetLength(vPreKey, 0);
+    vBase := RALWAGenerateKeyPair;
+    RALSignalX3DHAlice(FIdentity.IdentityKey, vBase, vTheirIdentity, vSignedPreKey, vPreKey,
+      vRoot, vChain);
+    vSession := TWAStoredSession.Create;
+    try
+      vSession.RemoteIdentity := vTheirIdentity;
+      vSession.LocalIdentity := FIdentity.IdentityKey.Pub;
+      vReceiver := vSession.ReceiverChains.Add;
+      vReceiver.RatchetPub := vSignedPreKey;
+      vReceiver.ChainKey := vChain;
+      vReceiver.Index := 0;
+      vSending := RALWAGenerateKeyPair;
+      RALSignalRatchetStep(vRoot, vSignedPreKey, vSending.Priv, vSendRoot, vChain);
+      vSession.RootKey := vSendRoot;
+      vSession.SenderChain := TWAStoredChain.Create;
+      vSession.SenderChain.RatchetPub := vSending.Pub;
+      vSession.SenderChain.RatchetPriv := vSending.Priv;
+      vSession.SenderChain.ChainKey := vChain;
+      vSession.SenderChain.Index := 0;
+      vSession.PreviousCounter := 0;
+      vSession.RemoteRegistrationId := ABundle.RegistrationId;
+      vSession.LocalRegistrationId := FIdentity.RegistrationId;
+      vSession.AliceBaseKey := vBase.Pub;
+      vSession.Pending := True;
+      vSession.PendingHasPreKey := ABundle.HasPreKey;
+      vSession.PendingPreKeyId := ABundle.PreKeyId;
+      vSession.PendingSignedPreKeyId := ABundle.SignedPreKeyId;
+      vSession.PendingBaseKey := vBase.Pub;
+    except
+      vSession.Free;
+      raise;
+    end;
+    vRecord := LoadRecord(AAddress);
+    if vRecord = nil then
+      vRecord := TWAStoredSessionRecord.Create;
+    try
+      PromoteSession(vRecord, vSession);
+      StoreRecord(AAddress, vRecord);
+      FStore.PutBytes('id:' + AAddress, vTheirIdentity);
+    finally
+      vRecord.Free;
+    end;
   finally
-    vRecord.Free;
+    FLock.Leave;
   end;
 end;
 

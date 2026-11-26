@@ -765,6 +765,27 @@
   cmChatWawTestSession = 'Test session';
   cmChatWawLoggedIn = 'Logged in as %s';
   cmChatWawWaitingPair = 'Waiting for pairing (scan the QR or enter the pairing code).';
+  emChatWawEmpty = 'The message to %s has nothing to send.';
+  emChatWawNoTarget = 'Editing or deleting a WhatsApp message needs the id of the message.';
+  emChatWawCannotSend = 'The WhatsApp Web channel cannot send to %s.';
+  emChatWawBadPhone = 'The phone number of a pairing code needs the country code and more than 6 digits, without a leading 0.';
+  emChatWawBadCert = 'The certificate of the WhatsApp Web server did not verify (%s).';
+  emChatWawMediaHost = 'The media address %s is not a WhatsApp host.';
+  emChatWawDevices = 'The WhatsApp Web channel did not get the devices of %s.';
+  emChatWawStopped = 'The WhatsApp Web channel %s stopped: %s (code %d).';
+  emChatWawUnsealed = 'The WhatsApp Web channel %s keeps its keys unsealed in the store: set Token (or TokenName) to seal them.';
+  emChatWawMemoryStore = 'The WhatsApp Web channel %s keeps its session in memory only: link a Store or set the bot''s PersistFile, or every start asks for a new pairing.';
+  cmChatWawSessionSaved = 'A session is saved for %s.';
+  cmChatWawSessionSealed = 'A session is saved (sealed with the Token).';
+  cmChatWawNoSession = 'No session is saved: start the channel and pair it.';
+  cmChatWawLoggedOut = 'logged out';
+  cmChatWawBanned = 'temporarily banned';
+  cmChatWawOutdated = 'client version refused';
+  cmChatWawReplaced = 'another connection took the session';
+  cmChatWawPairingExpired = 'the pairing expired';
+  cmChatWawRefused = 'login refused';
+  cmChatWawReconnectLimit = 'too many connections in the window';
+  emChatWawPaused = 'The WhatsApp Web channel %s waits %d s before it connects again: %s.';
   // end of Chat WhatsApp Web
   // Service container (RALHostingContainerPackage)
   emContainerUnknown = 'There is no service named %s.';
