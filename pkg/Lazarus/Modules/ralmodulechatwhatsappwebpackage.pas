@@ -8,7 +8,7 @@ unit RALModuleChatWhatsAppWebPackage;
 interface
 
 uses
-  RALWhatsAppCrypto, RALWhatsAppProto, RALWhatsAppBinary, RALWhatsAppMedia, RALWhatsAppNoise, RALWhatsAppSignal, RALChatWhatsAppWeb, LazarusPackageIntf;
+  RALWhatsAppCrypto, RALWhatsAppProto, RALWhatsAppBinary, RALWhatsAppMedia, RALWhatsAppNoise, RALWhatsAppSignal, RALChatWhatsAppWeb, RALQRCode, LazarusPackageIntf;
 
 implementation
 

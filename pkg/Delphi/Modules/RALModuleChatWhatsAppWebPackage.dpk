@@ -43,6 +43,7 @@ contains
   RALWhatsAppMedia in '..\..\..\src\modules\chat\whatsappweb\RALWhatsAppMedia.pas',
   RALWhatsAppNoise in '..\..\..\src\modules\chat\whatsappweb\RALWhatsAppNoise.pas',
   RALWhatsAppSignal in '..\..\..\src\modules\chat\whatsappweb\RALWhatsAppSignal.pas',
+  RALQRCode in '..\..\..\src\modules\chat\whatsappweb\RALQRCode.pas',
   RALChatWhatsAppWeb in '..\..\..\src\modules\chat\whatsappweb\RALChatWhatsAppWeb.pas';
 
 end.

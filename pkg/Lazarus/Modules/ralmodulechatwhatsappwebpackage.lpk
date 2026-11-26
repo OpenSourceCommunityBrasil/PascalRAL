@@ -26,7 +26,7 @@
     </CompilerOptions>
     <Description Value="PascalRAL | Chat channel: WhatsApp Web (no official API)"/>
     <Version Major="2"/>
-    <Files Count="7">
+    <Files Count="8">
       <Item1>
         <Filename Value="..\..\..\src\modules\chat\whatsappweb\RALWhatsAppCrypto.pas"/>
         <UnitName Value="RALWhatsAppCrypto"/>
@@ -55,6 +55,10 @@
         <Filename Value="..\..\..\src\modules\chat\whatsappweb\RALChatWhatsAppWeb.pas"/>
         <UnitName Value="RALChatWhatsAppWeb"/>
       </Item7>
+      <Item8>
+        <Filename Value="..\..\..\src\modules\chat\whatsappweb\RALQRCode.pas"/>
+        <UnitName Value="RALQRCode"/>
+      </Item8>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="7">

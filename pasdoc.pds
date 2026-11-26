@@ -165,7 +165,7 @@ Item_93=src\modules\chat\whatsappweb
 Item_94=src\modules\chat\whatsappweb\design
 
 [Files]
-Count=361
+Count=362
 Item_0=src\core\RALTypes.pas
 Item_1=src\core\RALConsts.pas
 Item_2=src\core\RALCustomObjects.pas
@@ -527,6 +527,7 @@ Item_357=src\modules\chat\whatsappweb\RALWhatsAppNoise.pas
 Item_358=src\modules\chat\whatsappweb\RALWhatsAppSignal.pas
 Item_359=src\modules\chat\whatsappweb\RALChatWhatsAppWeb.pas
 Item_360=src\modules\chat\whatsappweb\design\RALModuleChatWhatsAppWebReg.pas
+Item_361=src\modules\chat\whatsappweb\RALQRCode.pas
 [AdditionalFiles]
 Count=0
 

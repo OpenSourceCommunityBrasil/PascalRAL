@@ -183,6 +183,7 @@
         <DCCReference Include="..\..\..\src\modules\chat\whatsappweb\RALWhatsAppMedia.pas"/>
         <DCCReference Include="..\..\..\src\modules\chat\whatsappweb\RALWhatsAppNoise.pas"/>
         <DCCReference Include="..\..\..\src\modules\chat\whatsappweb\RALWhatsAppSignal.pas"/>
+        <DCCReference Include="..\..\..\src\modules\chat\whatsappweb\RALQRCode.pas"/>
         <DCCReference Include="..\..\..\src\modules\chat\whatsappweb\RALChatWhatsAppWeb.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
