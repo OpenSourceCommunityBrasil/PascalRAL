@@ -828,24 +828,39 @@ end;
 function RALPoll(var AItems: TRALPollItems; ACount, ATimeout: IntegerRAL): IntegerRAL;
 var
   vFds: array of TPollFd;
-  vInt: IntegerRAL;
+  vMap: array of IntegerRAL;
+  vInt, vUsed: IntegerRAL;
   vDeadline, vNow: Int64RAL;
   vWait: IntegerRAL;
 begin
   Result := 0;
-  if ACount <= 0 then
+  SetLength(vFds, ACount);
+  SetLength(vMap, ACount);
+  vUsed := 0;
+  for vInt := 0 to ACount - 1 do
+  begin
+    AItems[vInt].Returned := 0;
+    {$IFDEF RALWindows}
+    { WSAPoll reports POLLHUP as soon as the peer's FIN arrives, half-close
+      included, and reports it whatever the events asked - none included. A
+      connection that stopped reading after the peer's FIN (a TCP tunnel
+      waiting for the other side) then woke every poll at once and spun its
+      loop: 200 tunnels of the balancer took 47 s on two cores. On POSIX
+      nobody wakes for a socket that asks nothing; here it stays out }
+    if AItems[vInt].Events = 0 then
+      Continue;
+    {$ENDIF}
+    vFds[vUsed].fd := AItems[vInt].Handle;
+    vFds[vUsed].events := PollEventsToSys(AItems[vInt].Events);
+    vFds[vUsed].revents := 0;
+    vMap[vUsed] := vInt;
+    Inc(vUsed);
+  end;
+  if vUsed <= 0 then
   begin
     if ATimeout > 0 then
       Sleep(ATimeout);
     Exit;
-  end;
-  SetLength(vFds, ACount);
-  for vInt := 0 to ACount - 1 do
-  begin
-    vFds[vInt].fd := AItems[vInt].Handle;
-    vFds[vInt].events := PollEventsToSys(AItems[vInt].Events);
-    vFds[vInt].revents := 0;
-    AItems[vInt].Returned := 0;
   end;
   if ATimeout >= 0 then
     vDeadline := RALSocketNow + ATimeout
@@ -853,7 +868,7 @@ begin
     vDeadline := 0;
   vWait := ATimeout;
   repeat
-    Result := sys_poll(@vFds[0], ACount, vWait);
+    Result := sys_poll(@vFds[0], vUsed, vWait);
     if (Result >= 0) or (LastError <> cEINTR) then
       Break;
     // a signal woke the wait: wait again for what is left
@@ -870,8 +885,18 @@ begin
   until False;
   if Result < 0 then
     RaiseSocket('poll', LastError);
-  for vInt := 0 to ACount - 1 do
-    AItems[vInt].Returned := PollEventsFromSys(vFds[vInt].revents);
+  for vInt := 0 to vUsed - 1 do
+  begin
+    AItems[vMap[vInt]].Returned := PollEventsFromSys(vFds[vInt].revents);
+    {$IFDEF RALWindows}
+    { the peer's FIN comes as POLLHUP alone, without POLLRDNORM: for a socket
+      that asked to read it is readable, as on POSIX - the read answers the
+      end of the stream }
+    if ((AItems[vMap[vInt]].Events and RALPollIn) <> 0) and
+       ((AItems[vMap[vInt]].Returned and RALPollHup) <> 0) then
+      AItems[vMap[vInt]].Returned := AItems[vMap[vInt]].Returned or RALPollIn;
+    {$ENDIF}
+  end;
 end;
 
 {$IF Defined(RALWindows) and not Defined(FPC)}
@@ -1279,6 +1304,7 @@ var
   vError: Integer;
   vOne, vZero: Integer;
   vFamily: TRALIPFamily;
+  vBacklog: Integer;
 begin
   Close;
   vFamily := AFamily;
@@ -1313,7 +1339,16 @@ begin
   finally
     sys_freeaddrinfo(vList);
   end;
-  if sys_listen(FHandle, ABacklog) <> 0 then
+  vBacklog := ABacklog;
+  {$IFDEF RALWindows}
+  { Windows caps a backlog given as a number at 200 and refuses (RST) every
+    connection past it - 200 simultaneous connects and the 201st failed.
+    SOMAXCONN_HINT(n), the negative value, is the only way to ask for more;
+    Windows keeps it between 200 and 65535 }
+  if vBacklog > 200 then
+    vBacklog := -vBacklog;
+  {$ENDIF}
+  if sys_listen(FHandle, vBacklog) <> 0 then
   begin
     vError := LastError;
     Close;
