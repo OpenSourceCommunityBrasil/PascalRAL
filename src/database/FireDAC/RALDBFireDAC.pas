@@ -138,6 +138,11 @@ begin
     FConnector.Params.Add('CharacterSet=UTF8');
 
   if DatabaseType = dtSQLite then begin
+    { FireDAC opens SQLite in shared-cache mode by default: two connections of
+      the same process then lock whole tables, and a writer that meets a lock
+      fails at once with "database table is locked" instead of waiting the busy
+      timeout, as it does across processes. }
+    FConnector.Params.Add('SharedCache=False');
     FConnector.Params.Add('LockingMode=Normal');
     FConnector.Params.Add('OpenMode=CreateUTF8');
     FConnector.Params.Add('StringFormat=Unicode');
